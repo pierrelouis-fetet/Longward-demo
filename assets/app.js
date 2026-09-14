@@ -10020,15 +10020,27 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
        par part arrondi au centime rendrait un total faux — 7 529 fois 1,33 fait
        10 013 et non les 10 000 saisis.
 
-       D'ou trois regles et pas quatre : taper le prix par part ECRIT le total ;
-       taper le total recalcule le prix par part ; changer le nombre de parts
-       recalcule le prix par part, JAMAIS le total. La derniere est celle qui
-       compte — recalculer le total ferait bouger un montant qu'on n'a pas
-       touche, au moment ou l'on corrige une quantite.
+       QUATRE REGLES, et la quatrieme a manque. Taper le prix par part ECRIT le
+       total ; taper le total recalcule le prix par part ; changer le nombre de
+       parts recalcule le prix par part, JAMAIS le total — celle-la compte, un
+       recalcul du total ferait bouger un montant qu'on n'a pas touche au moment
+       ou l'on corrige une quantite.
 
-       Quatre decimales au prix par part : une part vaut souvent quelques euros,
-       et deux decimales suffiraient a l'affichage mais pas a la relecture d'un
-       montant qu'on vient de saisir. */
+       La quatrieme : quand le nombre de parts MANQUE et qu'un total et son prix
+       par part sont tous deux ecrits, c'est le nombre qui se deduit. Sans elle,
+       quelqu'un qui remplit d'abord les prix par part tapait dans le vide : la
+       multiplication n'avait pas de multiplicateur, et rien ne le disait. Le
+       champ promet « l'un remplit l'autre » et ne remplissait rien.
+
+       Une deduction en entraine une autre : le nombre trouve sur une ligne sert
+       aussitot a l'autre, dont le total attendait ce meme multiplicateur. D'ou
+       les paires assemblees AVANT d'etre cablees — chacune doit pouvoir
+       reveiller ses voisines.
+
+       Quatre decimales au prix par part comme au nombre deduit : une part vaut
+       souvent quelques euros, et une division tombe rarement rond. Le chiffre
+       obtenu se corrige a la main, il ne se donne pas pour exact. */
+    const paires = [];
     for (const c of champs.filter(x => x.parPart)) {
       const total = $(`#f_${c.cle}`);
       const unite = $(`#f_${c.cle}_part`);
@@ -10043,8 +10055,23 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
         if (n() > 0 && unite.value !== '')
           total.value = String(round2(num(unite.value) * n()));
       };
-      unite.addEventListener('input', versTotal);
-      total.addEventListener('input', versUnite);
+      paires.push({ total, unite, combien, n, versUnite, versTotal });
+    }
+    for (const p of paires) {
+      const { total, unite, combien, n, versUnite, versTotal } = p;
+      const versParts = () => {
+        if (n() > 0 || total.value === '' || !(num(unite.value) > 0)) return false;
+        combien.value = String(
+          Math.round((num(total.value) / num(unite.value)) * 10000) / 10000);
+        for (const autre of paires) {
+          if (autre === p) continue;
+          if (autre.total.value === '') autre.versTotal();
+          else if (autre.unite.value === '') autre.versUnite();
+        }
+        return true;
+      };
+      unite.addEventListener('input', () => { if (!versParts()) versTotal(); });
+      total.addEventListener('input', () => { if (!versParts()) versUnite(); });
       combien.addEventListener('input', versUnite);
       versUnite();
     }

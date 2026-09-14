@@ -4039,15 +4039,21 @@ suite('Parts de société : un nombre saisi, deux prix déduits', () => {
 /* ------------------------------------------------------------------
    Le prix d'une part se saisit, et le total reste la verite
    ------------------------------------------------------------------ */
-suite('Saisie par part : trois règles, jamais quatre', () => {
+suite('Saisie par part : quatre règles, et jamais celle qui bouge le total', () => {
 
   const vue = () => lireSource('assets/app.js');
   /* Le bloc de cablage, isole par son entete. Les regles se lisent la, et non
      dans le commentaire qui les annonce. */
+  /* La tranche part de l'assemblage des paires et court jusqu'a la sortie du
+     bloc. Elle s'arretait au premier `}` de colonne quatre, ce qui suffisait
+     quand tout tenait dans une boucle : depuis que les paires s'assemblent
+     avant d'etre cablees, ce `}` ferme la PREMIERE boucle et les ecouteurs
+     tombaient hors du champ de lecture. Trois controles sont passes au vert
+     sur un bloc qui ne contenait plus ce qu'ils cherchaient. */
   const cablage = () => {
     const app = vue();
-    const d = app.indexOf("for (const c of champs.filter(x => x.parPart))");
-    return app.slice(d, app.indexOf('\n    }', d));
+    const d = app.indexOf('const paires = [];');
+    return app.slice(d, app.indexOf("const premier = $('#modalBody')", d));
   };
   const champs = () => {
     const app = vue();
@@ -4059,14 +4065,17 @@ suite('Saisie par part : trois règles, jamais quatre', () => {
     /* C'est le geste qui manquait : une société qui lève annonce un prix par
        part, pas la valeur d'un bloc. */
     const c = cablage();
-    vrai(/unite\.addEventListener\('input', versTotal\)/.test(c),
+    /* L'ecouteur passe d'abord par la deduction du nombre de parts, qui rend
+       faux quand elle n'a pas lieu : le motif tient donc l'appel, pas la forme
+       exacte de l'ecouteur. */
+    vrai(/unite\.addEventListener\('input',[\s\S]{0,60}versTotal\(\)/.test(c),
       'le champ unitaire écrit le total');
     vrai(/total\.value = String\(round2\(num\(unite\.value\) \* n\(\)\)\)/.test(c),
       'et le total vaut le prix multiplié par la quantité');
   });
 
   test('taper un total recalcule le prix par part', () => {
-    vrai(/total\.addEventListener\('input', versUnite\)/.test(cablage()),
+    vrai(/total\.addEventListener\('input',[\s\S]{0,60}versUnite\(\)/.test(cablage()),
       'les deux sens fonctionnent');
   });
 
@@ -18758,6 +18767,38 @@ suite('Une application vide dit quoi faire', () => {
        fiche n'auraient plus de diviseur au premier rechargement. */
     vrai(/estDeclare\(e3\.parts\) \? \{ parts: num\(e3\.parts\) \}/.test(src),
       'le nombre de parts survit à la création');
+
+    /* QUATRIEME REGLE : le nombre de parts se déduit lui aussi. Quelqu'un qui
+       remplit d'abord les prix par part tapait dans le vide — la multiplication
+       n'avait pas de multiplicateur, et rien ne le disait. Le champ promet
+       « l'un remplit l'autre » et ne remplissait rien. Vu à l'écran, sur une
+       création où seuls les deux prix par part étaient saisis. */
+    const cablage = src.slice(src.indexOf('const paires = [];'),
+                              src.indexOf("const premier = $('#modalBody')"));
+    vrai(/const versParts = \(\) =>/.test(cablage),
+      'le nombre de parts se déduit d’un total et de son prix par part');
+    vrai(/if \(!versParts\(\)\) versTotal\(\)/.test(cablage)
+      && /if \(!versParts\(\)\) versUnite\(\)/.test(cablage),
+      'la déduction passe avant les deux règles qu’elle remplace');
+    /* Une deduction en entraine une autre : le nombre trouve sur une ligne sert
+       aussitot a l'autre, dont le total attendait ce meme multiplicateur. */
+    vrai(/autre === p\) continue/.test(cablage)
+      && /autre\.total\.value === ''\) autre\.versTotal\(\)/.test(cablage),
+      'et elle réveille les lignes qui attendaient ce nombre');
+    /* Et le reveil vaut dans les DEUX sens. Une ligne dont le total est saisi
+       mais dont le prix par part est vide se complete aussi : tout ce qu'il
+       faut pour l'ecrire est a l'ecran, le laisser vide dementait la promesse
+       « l'un remplit l'autre » juste au-dessus du champ. Vu sur une saisie ou
+       la valeur du jour etait tapee a la main pendant que le montant investi
+       donnait le nombre de parts. */
+    vrai(/else if \(autre\.unite\.value === ''\) autre\.versUnite\(\)/.test(cablage),
+      'dans les deux sens, total manquant comme prix par part manquant');
+    /* Une ligne deja ecrite ne se touche pas : on complete, on ne corrige pas.
+       Les deux branches du reveil sont gardees par un champ vide, et c'est ce
+       que compte cette assertion — une seule garde laisserait l'autre branche
+       ecraser une saisie. */
+    eq((cablage.match(/autre\.(total|unite)\.value === ''/g) || []).length, 2,
+      'sans jamais réécrire un montant déjà saisi');
   });
 
   test('la liste de démarrage ne coche pas un pas qu’on ne peut pas avoir franchi', () => {
