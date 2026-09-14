@@ -7026,7 +7026,7 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
       exemple: EXEMPLE_PLACEMENT[classe] || 'ex. Projet Bordeaux' },
     ...(type && type.parts ? [{ cle: 'parts', label: trad('Nombre de parts'),
       type: 'nombre', valeur: l ? (num(l.parts) || '') : '', exemple: '0',
-      aide: trad('il commande les deux prix par part ci-dessous') }] : []),
+      aide: trad('il se déduit du montant investi, et commande la valeur du jour') }] : []),
     { cle: 'valeur',
       label: `${estime ? 'Valeur estimée' : 'Valeur aujourd’hui'} (€)`, type: 'nombre',
       valeur: l ? num(l.valeur) : '', exemple: '0',
@@ -7041,7 +7041,9 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
       valeur: l ? (num(l.prixDeRevient) || '') : '', exemple: '0',
       aide: trad('facultatif, il donne la plus-value'),
       ...(type && type.parts
-        ? { parPart: 'parts', parPartLabel: 'Prix d’achat de la part (€)' } : {}) },
+        ? { parPart: 'parts', parPartLabel: 'Prix d’achat de la part (€)',
+            parPartSous: 'il donne le nombre de parts',
+            parPartDeduitParts: true } : {}) },
     { cle: 'dateAcquisition', label: trad('Date d’entrée'), type: 'date',
       valeur: l ? (l.dateAcquisition || '') : todayISO() },
     ...(datee ? [{ cle: 'estimeLe',
@@ -7985,7 +7987,7 @@ const ACTIONS = {
            seule chose qu'on sache a coup sur en creant un bien. */
         ...(t.parts ? [{ cle: 'parts', label: trad('Nombre de parts'),
           type: 'nombre', exemple: '0',
-          aide: trad('il commande les deux prix par part ci-dessous') }] : []),
+          aide: trad('il se déduit du montant investi, et commande la valeur du jour') }] : []),
         { cle: 'valeur', requis: true,
           label: estDetenuEnDirect(t) ? trad('Valeur estimée du bien entier (€)')
                                       : trad('Valeur actuelle (€)'),
@@ -8005,7 +8007,9 @@ const ACTIONS = {
         ] : [
         { cle: 'revient', label: trad('Montant investi (€)'), type: 'nombre', exemple: '0',
           aide: trad('prix d’acquisition, frais compris'),
-          ...(t.parts ? { parPart: 'parts', parPartLabel: 'Prix d’achat de la part (€)' } : {}) },
+          ...(t.parts ? { parPart: 'parts', parPartLabel: 'Prix d’achat de la part (€)',
+            parPartSous: 'il donne le nombre de parts',
+            parPartDeduitParts: true } : {}) },
         ]),
         { cle: 'ouvertLe', label: motDateCompte(t), type: 'date' },
         /* La date de l'estimation, distincte de celle de l'achat.
@@ -9944,7 +9948,7 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
         ${saisie}
         ${c.mois ? `<span class="hint" id="${id}_mois"></span>` : ''}
         ${!c.parPart ? '' : `<div class="champ-par-part">
-          <label for="${id}_part">${esc(trad(c.parPartLabel))}<span class="sub">${esc(trad('l’un remplit l’autre'))}</span></label>
+          <label for="${id}_part">${esc(trad(c.parPartLabel))}<span class="sub">${esc(trad(c.parPartSous || 'l’un remplit l’autre'))}</span></label>
           <input id="${id}_part" type="number" step="any" inputmode="decimal" placeholder="0">
         </div>`}
       </div>`;
@@ -10055,23 +10059,31 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
         if (n() > 0 && unite.value !== '')
           total.value = String(round2(num(unite.value) * n()));
       };
-      paires.push({ total, unite, combien, n, versUnite, versTotal });
+      paires.push({ total, unite, combien, n, versUnite, versTotal,
+                    deduitParts: !!c.parPartDeduitParts });
     }
     for (const p of paires) {
       const { total, unite, combien, n, versUnite, versTotal } = p;
       const versParts = () => {
-        if (n() > 0 || total.value === '' || !(num(unite.value) > 0)) return false;
+        if (total.value === '' || !(num(unite.value) > 0)) return false;
         combien.value = String(
           Math.round((num(total.value) / num(unite.value)) * 10000) / 10000);
         for (const autre of paires) {
           if (autre === p) continue;
           if (autre.total.value === '') autre.versTotal();
-          else if (autre.unite.value === '') autre.versUnite();
+          else autre.versUnite();
         }
         return true;
       };
-      unite.addEventListener('input', () => { if (!versParts()) versTotal(); });
-      total.addEventListener('input', () => { if (!versParts()) versUnite(); });
+      unite.addEventListener('input', () => {
+        if (p.deduitParts && total.value !== '') { versParts(); return; }
+        if (n() <= 0 && versParts()) return;
+        versTotal();
+      });
+      total.addEventListener('input', () => {
+        if (n() <= 0 && versParts()) return;
+        versUnite();
+      });
       combien.addEventListener('input', versUnite);
       versUnite();
     }

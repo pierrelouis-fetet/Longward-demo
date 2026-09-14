@@ -4039,7 +4039,7 @@ suite('Parts de société : un nombre saisi, deux prix déduits', () => {
 /* ------------------------------------------------------------------
    Le prix d'une part se saisit, et le total reste la verite
    ------------------------------------------------------------------ */
-suite('Saisie par part : quatre règles, et jamais celle qui bouge le total', () => {
+suite('Saisie par part : le montant et le prix par part donnent les parts', () => {
 
   const vue = () => lireSource('assets/app.js');
   /* Le bloc de cablage, isole par son entete. Les regles se lisent la, et non
@@ -4068,14 +4068,14 @@ suite('Saisie par part : quatre règles, et jamais celle qui bouge le total', ()
     /* L'ecouteur passe d'abord par la deduction du nombre de parts, qui rend
        faux quand elle n'a pas lieu : le motif tient donc l'appel, pas la forme
        exacte de l'ecouteur. */
-    vrai(/unite\.addEventListener\('input',[\s\S]{0,60}versTotal\(\)/.test(c),
+    vrai(/unite\.addEventListener\('input',[\s\S]{0,1400}versTotal\(\);/.test(c),
       'le champ unitaire écrit le total');
     vrai(/total\.value = String\(round2\(num\(unite\.value\) \* n\(\)\)\)/.test(c),
       'et le total vaut le prix multiplié par la quantité');
   });
 
   test('taper un total recalcule le prix par part', () => {
-    vrai(/total\.addEventListener\('input',[\s\S]{0,60}versUnite\(\)/.test(cablage()),
+    vrai(/total\.addEventListener\('input',[\s\S]{0,160}versUnite\(\);/.test(cablage()),
       'les deux sens fonctionnent');
   });
 
@@ -18768,37 +18768,58 @@ suite('Une application vide dit quoi faire', () => {
     vrai(/estDeclare\(e3\.parts\) \? \{ parts: num\(e3\.parts\) \}/.test(src),
       'le nombre de parts survit à la création');
 
-    /* QUATRIEME REGLE : le nombre de parts se déduit lui aussi. Quelqu'un qui
-       remplit d'abord les prix par part tapait dans le vide — la multiplication
-       n'avait pas de multiplicateur, et rien ne le disait. Le champ promet
-       « l'un remplit l'autre » et ne remplissait rien. Vu à l'écran, sur une
-       création où seuls les deux prix par part étaient saisis. */
+    /* LE NOMBRE DE PARTS DECOULE, IL NE COMMANDE PAS. « Je mets 5 000 a 1,80
+       la part » : deux faits, et le nombre de parts est ce qu'ils donnent.
+       L'ecran faisait l'inverse — il gardait le nombre de parts affiche et
+       renvoyait 9 000 a qui venait d'ecrire 5 000, puis 1 a qui venait
+       d'ecrire 1,80. Les deux champs se repoussaient et aucun des deux ne
+       tenait. Vu a l'ecran, sur une creation de parts de societe.
+
+       Le prix du JOUR ne dit pas la meme chose : un cours qui bouge ne change
+       pas le nombre de parts detenues. Lui ecrit le total, comme avant. D'ou
+       un drapeau par champ plutot qu'une regle unique, et un sous-titre qui
+       dit lequel fait quoi. */
     const cablage = src.slice(src.indexOf('const paires = [];'),
                               src.indexOf("const premier = $('#modalBody')"));
     vrai(/const versParts = \(\) =>/.test(cablage),
       'le nombre de parts se déduit d’un total et de son prix par part');
-    vrai(/if \(!versParts\(\)\) versTotal\(\)/.test(cablage)
-      && /if \(!versParts\(\)\) versUnite\(\)/.test(cablage),
-      'la déduction passe avant les deux règles qu’elle remplace');
+    vrai(/if \(p\.deduitParts && total\.value !== ''\) \{ versParts\(\); return; \}/
+      .test(cablage), 'le prix d’achat le déduit dès que le montant est écrit');
+    /* Et le drapeau est pose sur le montant investi, des deux cotes, jamais sur
+       la valeur du jour : deux declarations, la fiche et la creation. */
+    eq((src.match(/parPartDeduitParts: true/g) || []).length, 2,
+      'le montant investi le porte, à la fiche comme à la création');
+    const dujour = "parPartLabel: 'Prix de la part aujourd’hui (€)'";
+    let vus = 0;
+    for (let i = src.indexOf(dujour); i >= 0; i = src.indexOf(dujour, i + 1)) {
+      vus++;
+      vrai(!/parPartDeduitParts/.test(src.slice(i, src.indexOf('}', i))),
+        'et le prix du jour ne le porte pas, il revalorise');
+    }
+    eq(vus, 2, 'les deux déclarations du prix du jour sont bien relues');
+    /* Tant qu'il n'y a rien a diviser, le prix par part multiplie : c'est le
+       geste d'une societe qui leve, et il ne doit pas disparaitre. */
+    vrai(/if \(n\(\) <= 0 && versParts\(\)\) return;\n\s*versTotal\(\);/.test(cablage),
+      'sans montant écrit, le prix par part remplit le total');
     /* Une deduction en entraine une autre : le nombre trouve sur une ligne sert
-       aussitot a l'autre, dont le total attendait ce meme multiplicateur. */
+       aussitot a l'autre, dont le total attendait ce meme multiplicateur, et
+       les prix par part deja affiches se remettent d'accord avec lui. */
     vrai(/autre === p\) continue/.test(cablage)
-      && /autre\.total\.value === ''\) autre\.versTotal\(\)/.test(cablage),
-      'et elle réveille les lignes qui attendaient ce nombre');
-    /* Et le reveil vaut dans les DEUX sens. Une ligne dont le total est saisi
-       mais dont le prix par part est vide se complete aussi : tout ce qu'il
-       faut pour l'ecrire est a l'ecran, le laisser vide dementait la promesse
-       « l'un remplit l'autre » juste au-dessus du champ. Vu sur une saisie ou
-       la valeur du jour etait tapee a la main pendant que le montant investi
-       donnait le nombre de parts. */
-    vrai(/else if \(autre\.unite\.value === ''\) autre\.versUnite\(\)/.test(cablage),
-      'dans les deux sens, total manquant comme prix par part manquant');
-    /* Une ligne deja ecrite ne se touche pas : on complete, on ne corrige pas.
-       Les deux branches du reveil sont gardees par un champ vide, et c'est ce
-       que compte cette assertion — une seule garde laisserait l'autre branche
-       ecraser une saisie. */
-    eq((cablage.match(/autre\.(total|unite)\.value === ''/g) || []).length, 2,
+      && /autre\.total\.value === ''\) autre\.versTotal\(\)/.test(cablage)
+      && /else autre\.versUnite\(\)/.test(cablage),
+      'et elle réveille les autres lignes, total manquant ou prix à rafraîchir');
+    /* LA REGLE QUI PROTEGE LA DONNEE : `versParts` ne touche aucun total. Un
+       total est un montant saisi, que treize ecrans additionnent ; un prix par
+       part n'est qu'une facon de le lire, et il peut donc bouger. */
+    vrai(!/autre\.total\.value =[^=]/.test(cablage)
+      && !/^\s*total\.value =/m.test(cablage.slice(cablage.indexOf('const versParts'))),
       'sans jamais réécrire un montant déjà saisi');
+    /* Le sous-titre dit lequel fait quoi, sinon deux champs jumeaux se
+       comportent differemment sans que rien ne le signale. */
+    vrai(/parPartSous: 'il donne le nombre de parts'/.test(src),
+      'le champ annonce ce qu’il déduit');
+    vrai(/trad\(c\.parPartSous \|\| 'l’un remplit l’autre'\)/.test(src),
+      'et celui qui ne le dit pas garde la phrase commune');
   });
 
   test('la liste de démarrage ne coche pas un pas qu’on ne peut pas avoir franchi', () => {
