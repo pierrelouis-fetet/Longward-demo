@@ -4117,6 +4117,45 @@ suite('Une valeur estimée ne se compare pas au relevé du mois dernier', () => 
     vrai(/COMPTES\(\)\.filter\(x => x\.etabId === etab\.id\)\.length === 1/.test(compte),
       'et seulement s’il ne porte que ce compte');
   });
+
+  test('la date d’entrée se voit, et les deux portes l’écrivent aussi', () => {
+    /* LA LIGNE DISPARAISSAIT QUAND ELLE ETAIT VIDE, donc rien ne disait qu'un
+       placement n'avait pas de date ni ou la poser. Ses deux voisines de la
+       meme liste, « Prix d'achat / part » et « Date de clôture », affichent
+       depuis toujours une mention quand le champ manque : une carte de lecture
+       qui escamote ses lignes vides se lit comme une carte complete.
+
+       Et la date vivait aux MEMES deux endroits que le nom : la fiche lit
+       `c.ouvertLe`, la fenêtre du placement écrit `l.dateAcquisition`. Sur un
+       actif terminal ce sont deux écritures d'un seul fait, donc la date
+       saisie ne s'affichait pas. Vu à l'écran, sur une part de société. */
+    const src = app();
+    const carte = src.slice(src.indexOf("trad('Détails du placement')"),
+                            src.indexOf("trad('Nom, dates et notes')"));
+    vrai(/\$\{t\.dateSensible \? '' :/.test(carte),
+      'seule une date sans objet reste masquée');
+    vrai(!/!c\.ouvertLe \? ''/.test(carte),
+      'une date absente ne fait plus disparaître sa ligne');
+    vrai(/c\.ouvertLe \? esc\(fmtDate\(c\.ouvertLe\)\)\s*\n?\s*: nonRenseigne/.test(carte),
+      'elle invite à la renseigner, comme ses deux voisines');
+
+    const dp = src.indexOf("async 'editer-placement'(btn)");
+    const place = src.slice(dp, dp + 3200);
+    vrai(/if \('dateAcquisition' in v\) \{/.test(place)
+      && /c\.ouvertLe = v\.dateAcquisition;/.test(place),
+      'dater le placement date le compte');
+    /* Une date effacee s'efface, elle ne devient pas une chaine vide : c'est ce
+       que fait `pose()` de l'autre cote, et deux regimes d'effacement sur le
+       meme champ finiraient par se contredire. */
+    vrai(/else delete c\.ouvertLe;/.test(place),
+      'et l’effacer l’efface, au lieu d’écrire une chaîne vide');
+
+    const dc2 = src.indexOf("async 'modifier-compte'(btn)");
+    const compte2 = src.slice(dc2, src.indexOf("async 'ajouter-compte'", dc2));
+    vrai(/if \('ouvertLe' in v && estActifTerminal\(typeCompte\(c\.type\)\)/.test(compte2)
+      && /c\.lignes\[0\]\.dateAcquisition = v\.ouvertLe \|\| '';/.test(compte2),
+      'et dater le compte date sa ligne unique');
+  });
 });
 
 suite('Saisie par part : le montant et le prix par part donnent les parts', () => {
@@ -4592,7 +4631,11 @@ suite('Fiche d’une participation : une carte, pas deux', () => {
     const d = corps();
     vrai(/badgeMobilisable\(mobiliteLigne\(l, c\)\)/.test(d), 'la liquidité est demandée');
     vrai(/motDateCompte\(t\)/.test(d), 'et le mot de la date suit le type');
-    vrai(/t\.dateSensible \|\| !c\.ouvertLe \? '' :/.test(d),
+    /* La seconde moitié de la garde est tombée : une date absente faisait
+       disparaître sa ligne, donc rien ne disait qu'il en manquait une. Seul
+       un type à date sensible reste muet ici, parce qu'il la montre
+       ailleurs avec ce qu'elle commande. */
+    vrai(/\$\{t\.dateSensible \? '' :/.test(d),
       'un type à date sensible ne l’affiche pas');
   });
 

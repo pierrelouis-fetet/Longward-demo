@@ -4067,8 +4067,9 @@ function detailsPlacement(c, idx, t, l) {
       ${ligne(trad('Plus-value latente') + aide(trad('La valeur d’aujourd’hui moins ce que tu as payé. Latente : elle n’est encaissée qu’à la revente, et la valeur d’un placement non coté est une estimation.')),
               plusValue)}
       ${ligne(trad('Liquidité'), badgeMobilisable(mobiliteLigne(l, c)))}
-      ${t.dateSensible || !c.ouvertLe ? '' :
-        `<dt>${motDateCompte(t)}</dt><dd>${esc(fmtDate(c.ouvertLe))}</dd>`}
+      ${t.dateSensible ? '' :
+        `<dt>${motDateCompte(t)}</dt><dd>${c.ouvertLe ? esc(fmtDate(c.ouvertLe))
+          : nonRenseigne}</dd>`}
       ${c.statut === 'archive' ? `<dt>${trad('Date de clôture')}</dt>
         <dd>${c.clotureLe ? esc(fmtDate(c.clotureLe))
               : `<span class="muted">${trad('non renseignée')}</span>`}</dd>` : ''}
@@ -7749,6 +7750,10 @@ const ACTIONS = {
       if (v.type) c.type = v.type;
       if ('plafond' in v) pose('plafond', num(v.plafond) || 0);
       if ('ouvertLe' in v) pose('ouvertLe', v.ouvertLe);
+      if ('ouvertLe' in v && estActifTerminal(typeCompte(c.type))
+          && (c.lignes || []).length === 1 && !(c.cash || []).length) {
+        c.lignes[0].dateAcquisition = v.ouvertLe || '';
+      }
       if ('clotureLe' in v) pose('clotureLe', v.clotureLe);
       if ('numero' in v) pose('numero', String(v.numero || '').trim());
 
@@ -8556,9 +8561,17 @@ const ACTIONS = {
        lequel comptait ni ou le corriger. Meme garde qu'au retour, et meme refus
        d'ecrire une chaine vide. */
     if (estActifTerminal(typeCompte(c.type))
-        && (c.lignes || []).length === 1 && !(c.cash || []).length
-        && String(v.libelle || '').trim()) {
-      c.libelle = String(v.libelle).trim();
+        && (c.lignes || []).length === 1 && !(c.cash || []).length) {
+      if (String(v.libelle || '').trim()) c.libelle = String(v.libelle).trim();
+      /* La date fait le meme chemin que le nom, pour la meme raison : la fiche
+         lit `c.ouvertLe` quand ce formulaire-ci ecrit `l.dateAcquisition`.
+         Deux dates pour une seule entree, et celle qui s'affichait n'etait pas
+         celle qu'on venait de saisir. Vide, elle s'efface plutot que d'ecrire
+         une chaine vide, comme le fait `pose()` de l'autre cote. */
+      if ('dateAcquisition' in v) {
+        if (v.dateAcquisition) c.ouvertLe = v.dateAcquisition;
+        else delete c.ouvertLe;
+      }
     }
     refreshAccounts(); Store.save(); render();
     toast(`${guill(l.libelle)} · ${fmtEUR0(num(v.valeur))}`);
