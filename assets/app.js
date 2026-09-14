@@ -3739,10 +3739,11 @@ function viewHistory() {
     ? Math.min(amplitudes[amplitudes.length - 1], 3 * mediane) : 0;
   const jaugeDe = dlt => (echelleJauge > 0 ? num(dlt) / echelleJauge : 0);
   const attente = currentMonthPending();
+  const vide = pasAFaire('comptes') || !tous.length || !lignes.length;
 
   return `
   ${(() => {
-    if (!attente.missing) return '';
+    if (!attente.missing || !tous.length) return '';
     return `<div class="note">⤒ <span><b>${esc(attente.label)} ${trad('n’est pas encore enregistré.')}</b>
       ${trad('Un relevé reprend d’un coup tous les montants actuels ({v}), et tient en un geste.')
         .replace('{v}', fmtEUR0(nowTotals().total))}</span>
@@ -3770,7 +3771,7 @@ function viewHistory() {
       })() : ''}
       <div class="row">
         ${annees.length > 1 ? yearControl('history-year', annees, annee) : ''}
-        <button class="btn sm" data-action="ajouter-releve">${trad('+ Ajouter un relevé')}</button>
+        ${vide ? '' : `<button class="btn sm" data-action="ajouter-releve">${trad('+ Ajouter un relevé')}</button>`}
       </div>
     </div>
     ${pasAFaire('comptes') ? `
@@ -4522,6 +4523,30 @@ function creditsDuCompte(c) {
    l'eteigne. */
 let pasDeplie = null;
 
+/* LE RENVOI SUIT CE QU'IL Y A A VOIR, PAS LA BRANCHE QUI L'AFFICHE.
+
+   Il n'a d'abord existe que sous la question « as-tu tout mis ? ». Or un pas
+   franchi qu'on rouvre pour verifier montre sa consigne et son bouton d'ajout,
+   dans l'AUTRE branche du rendu : il perdait donc le seul chemin vers la liste
+   au moment precis ou l'on venait la relire. Deux branches, un seul besoin.
+
+   La condition est desormais la meme des deux cotes, et c'est la bonne : des
+   qu'un premier element existe, il y a quelque chose a regarder. Tant qu'il n'y
+   en a aucun, la liste serait vide et le lien n'apprendrait rien — c'est
+   exactement la question a laquelle `pasAFaire` repond deja, on ne lui en
+   ecrit pas une seconde.
+
+   Deux formes, une seule intention : une VUE quand la liste est une page, une
+   ACTION quand elle est une fenetre qui liste et ajoute a la fois. */
+function renvoiPas(p) {
+  const v = p.declare && p.declare.voir;
+  if (!v || pasAFaire(p.cle)) return '';
+  const ou = v.vue ? `data-action="goto" data-view="${esc(v.vue)}" data-anchor=""`
+                   : `data-action="${esc(v.action)}"`;
+  return `
+          <button type="button" class="lien-nu pas-voir" ${ou}>${trad(v.libelle)}</button>`;
+}
+
 function carteDemarrage() {
   /* `acquis` quand il existe, `fait` sinon : voir la note du pas des releves.
      La liste demande si un pas est FRANCHI, pas s'il faut encore le reclamer,
@@ -4559,13 +4584,9 @@ function carteDemarrage() {
             <button type="button" class="btn sm" data-action="declarer-pas"
                     data-cle="${esc(p.declare.cle)}">${trad(p.declare.oui)}</button>
             <button type="button" class="btn sm ghost" data-action="${esc(p.action)}">${trad(p.declare.ajouter)}</button>
-          </span>
-          ${!p.declare.voir ? '' : `
-          <button type="button" class="lien-nu pas-voir" ${p.declare.voir.vue
-            ? `data-action="goto" data-view="${esc(p.declare.voir.vue)}" data-anchor=""`
-            : `data-action="${esc(p.declare.voir.action)}"`}>${trad(p.declare.voir.libelle)}</button>`}` : `
+          </span>${renvoiPas(p)}` : `
           <p class="small muted">${trad(p.quoi)}</p>
-          <button type="button" class="btn sm" data-action="${esc(p.action)}">${trad(p.bouton)}</button>`)}
+          <button type="button" class="btn sm" data-action="${esc(p.action)}">${trad(p.bouton)}</button>${renvoiPas(p)}`)}
         </div>
       </li>`;
       }).join('')}
@@ -9708,6 +9729,16 @@ const ACTIONS = {
   },
 
   async 'ajouter-releve'() {
+    if (!inventaireDeclareComplet()) {
+      const pret = await askConfirm(
+        `${trad('As-tu bien rentré tous tes comptes ?')}\n${
+          trad('Un relevé les photographie tels qu’ils sont. Un compte oublié manquera '
+             + 'à celui-ci et à tous les suivants, donc à toute ta courbe.')}`,
+        { danger: false, ok: trad('Oui, je les ai tous'), refus: trad('Voir mes comptes') });
+      if (!pret) { location.hash = '#/accounts'; return; }
+      masquerNotif(CLE_INVENTAIRE);
+      Store.save();
+    }
     await askMonthlySnapshot(indexReleve(currentMonthKey()));
   },
 };

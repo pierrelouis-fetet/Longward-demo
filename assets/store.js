@@ -5789,7 +5789,7 @@ const PREMIERS_PAS = [
     quoi: 'Enregistre ton premier relevé mensuel : c’est la photo de tes comptes à '
         + 'une date. Il en faut deux pour que la courbe et le rythme d’accumulation '
         + 'aient une pente à montrer.',
-    bouton: 'Enregistrer un relevé', action: 'ajouter-releve',
+    bouton: 'Enregistrer ton premier relevé', action: 'ajouter-releve',
     /* DEUX QUESTIONS, ET ELLES DIFFERENT SUR CE PAS-LA.
 
        `fait` repond a « faut-il encore le reclamer ? », et sans compte la

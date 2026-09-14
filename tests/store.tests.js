@@ -4039,6 +4039,78 @@ suite('Parts de société : un nombre saisi, deux prix déduits', () => {
 /* ------------------------------------------------------------------
    Le prix d'une part se saisit, et le total reste la verite
    ------------------------------------------------------------------ */
+suite('Le premier relevé : une seule porte, et une question avant', () => {
+
+  const app = () => lireSource('assets/app.js');
+
+  test('une page vide n’offre qu’un chemin vers le relevé', () => {
+    /* TROIS PORTES VERS LE MEME GESTE, C'EST DEUX DE TROP. Sur une page encore
+       vide, le rappel du mois en cours, le bouton de l'en-tête et celui de
+       l'état vide ouvraient tous la même fenêtre. L'état vide garde le sien :
+       il est le seul des trois à expliquer ce qu'est un relevé. Vu à l'écran. */
+    const src = app();
+    const vue = src.slice(src.indexOf('const vide = pasAFaire(\'comptes\')'),
+                          src.indexOf('Entrées et sorties exceptionnelles'));
+    vrai(/const vide = pasAFaire\('comptes'\) \|\| !tous\.length \|\| !lignes\.length;/.test(src),
+      'la page sait quand elle n’a rien à montrer');
+    vrai(/\$\{vide \? '' : `<button class="btn sm" data-action="ajouter-releve">/.test(vue),
+      'l’en-tête ne propose plus le geste quand il n’y a rien');
+    vrai(/if \(!attente\.missing \|\| !tous\.length\) return '';/.test(vue),
+      'et le rappel du mois se tait tant qu’aucun relevé n’existe');
+    /* Le bouton de l'etat vide, lui, reste : c'est celui qu'on garde. */
+    vrai(/\+ Ajouter ton premier relevé/.test(vue), 'l’état vide garde le sien');
+  });
+
+  test('le bouton dit que c’est le premier', () => {
+    /* Il disait « Enregistrer un relevé » sous un texte qui parle du premier :
+       le libellé doit dire le geste qu'on vient faire, et ce pas ne s'affiche
+       que tant qu'aucun relevé n'existe. */
+    const pas = PREMIERS_PAS.find(p => p.cle === 'releves');
+    eq(pas.bouton, 'Enregistrer ton premier relevé', 'le pas le dit');
+    vrai(!!I18N.en[pas.bouton], 'et il existe en anglais');
+  });
+
+  test('le tout premier relevé demande si les comptes y sont tous', () => {
+    /* UN COMPTE OUBLIE NE MANQUE PAS QU'A CE RELEVE-LA. Il manque à tous les
+       suivants, donc à la courbe entière et au rythme qui s'en déduit : c'est
+       le seul geste dont une omission se propage dans le temps. */
+    const src = app();
+    const a = src.slice(src.indexOf("async 'ajouter-releve'()"),
+                        src.indexOf("async 'ajouter-releve'()") + 2200);
+    vrai(/if \(!inventaireDeclareComplet\(\)\) \{/.test(a),
+      'la question ne se pose qu’avant le premier');
+    vrai(/trad\('As-tu bien rentré tous tes comptes \?'\)/.test(a), 'et elle est posée');
+    vrai(/refus: trad\('Voir mes comptes'\)/.test(a),
+      '« Voir mes comptes » plutôt qu’« Annuler » : refuser n’est pas renoncer');
+    vrai(/if \(!pret\) \{ location\.hash = '#\/accounts'; return; \}/.test(a),
+      'et le refus mène bien aux comptes');
+    /* LA MEME REPONSE QUE CELLE DU GUIDE, SOUS LA MEME CLEF : y repondre ici
+       repond la-bas, et la question ne se repose pas d'un ecran a l'autre. */
+    vrai(/masquerNotif\(CLE_INVENTAIRE\);/.test(a),
+      'répondre ici répond aussi dans le guide');
+    const cle = PREMIERS_PAS.find(p => p.cle === 'comptes').declare.cle;
+    eq(cle, CLE_INVENTAIRE, 'et c’est bien la clef du guide');
+    for (const k of ['As-tu bien rentré tous tes comptes ?', 'Oui, je les ai tous',
+                     'Voir mes comptes']) {
+      vrai(!!I18N.en[k], '« ' + k + ' » existe en anglais');
+    }
+  });
+
+  test('déclarer l’inventaire depuis le relevé éteint la question du guide', () => {
+    /* Le controle porte sur le MODELE : une seule clef pour un seul fait. */
+    Fixture.poser();
+    Store.state.monthly = [];
+    Store.state.meta = { ...(Store.state.meta || {}), notifsMasquees: [] };
+    vrai(!inventaireDeclareComplet(), 'au départ, rien n’est déclaré');
+    masquerNotif(CLE_INVENTAIRE);
+    vrai(inventaireDeclareComplet(), 'la déclaration prend');
+    /* `pasDeclare` dit que la déclaration du pas est faite : le guide cesse
+       alors de poser la question, puisqu'elle vient d'être répondue ailleurs. */
+    vrai(pasDeclare(PAS_PAR_CLE['comptes']),
+      'et le pas du guide tient sa réponse, sans la reposer');
+  });
+});
+
 suite('On ne répond pas « tout y est » sans pouvoir regarder', () => {
 
   test('chaque pas qui pose la question offre d’aller voir la liste', () => {
@@ -4091,14 +4163,36 @@ suite('On ne répond pas « tout y est » sans pouvoir regarder', () => {
        aller lire. La hiérarchie se dit par le remplissage, jamais par la
        taille. */
     const app = lireSource('assets/app.js');
+    const f = app.slice(app.indexOf('function renvoiPas(p) {'),
+                        app.indexOf('function carteDemarrage()'));
+    vrai(/class="lien-nu pas-voir"/.test(f), 'le renvoi porte le style de lien');
     const carte = app.slice(app.indexOf('function carteDemarrage()'),
                             app.indexOf('function ', app.indexOf('function carteDemarrage()') + 10));
-    vrai(/class="lien-nu pas-voir"/.test(carte), 'le renvoi porte le style de lien');
-    vrai(!/paire-btn[\s\S]{0,400}pas-voir[\s\S]{0,80}<\/span>/.test(carte),
+    vrai(!/<span class="paire-btn">[\s\S]{0,500}pas-voir/.test(carte),
       'et vit hors de la rangée de boutons');
-    vrai(/!p\.declare\.voir \? ''/.test(carte), 'un pas sans renvoi n’en rend aucun');
     const css = lireSource('assets/styles.css');
     vrai(/\.pas-voir \{/.test(css), 'il a sa règle');
+  });
+
+  test('un pas qu’on rouvre garde son chemin vers la liste', () => {
+    /* DEUX BRANCHES, UN SEUL BESOIN. Le renvoi n'a d'abord existé que sous la
+       question « as-tu tout mis ? ». Or un pas franchi qu'on rouvre pour
+       vérifier montre sa consigne et son bouton d'ajout, dans l'AUTRE branche du
+       rendu : il perdait donc le seul chemin vers la liste au moment précis où
+       l'on venait la relire. Vu à l'écran, sur le pas des comptes rouvert.
+
+       La condition est la même des deux côtés, et c'est `pasAFaire` qui la
+       porte — dès qu'un premier élément existe, il y a quelque chose à
+       regarder. On ne lui écrit pas une seconde règle à côté. */
+    const app = lireSource('assets/app.js');
+    const carte = app.slice(app.indexOf('function carteDemarrage()'),
+                            app.indexOf('function ', app.indexOf('function carteDemarrage()') + 10));
+    eq((carte.match(/\$\{renvoiPas\(p\)\}/g) || []).length, 2,
+      'les deux branches posent le renvoi');
+    const f = app.slice(app.indexOf('function renvoiPas(p) {'),
+                        app.indexOf('function carteDemarrage()'));
+    vrai(/if \(!v \|\| pasAFaire\(p\.cle\)\) return '';/.test(f),
+      'et rien tant qu’il n’y a rien à voir');
   });
 });
 
@@ -36563,7 +36657,11 @@ suite('Le premier relevé se demande jusqu’à ce qu’un relevé existe', () =
     vrai(/premier relevé mensuel/.test(pas.quoi), 'il demande le premier relevé');
     vrai(/photo de tes comptes/.test(pas.quoi), 'et dit ce que c’est');
     vrai(/deux/.test(pas.quoi), 'en expliquant qu’il en faudra deux pour une pente');
-    eq(pas.bouton, 'Enregistrer un relevé', 'le bouton ne change pas');
+    /* Le libellé dit désormais que c'est le PREMIER : ce pas ne s'affiche
+       que tant qu'aucun relevé n'existe, et « Enregistrer un relevé » sous un
+       texte qui parle du premier laissait le geste plus vague que la
+       consigne. La porte, elle, ne change pas. */
+    eq(pas.bouton, 'Enregistrer ton premier relevé', 'le bouton dit le premier');
     eq(pas.action, 'ajouter-releve', 'ni la porte qu’il ouvre');
   });
 });

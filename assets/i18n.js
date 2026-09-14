@@ -2191,6 +2191,9 @@ const I18N = {
 
     "+ Ajouter un relevé": "+ Add a statement",
     "+ Ajouter le relevé": "+ Add the statement",
+    "As-tu bien rentré tous tes comptes ?": "Have you entered all your accounts?",
+    "Un relevé les photographie tels qu’ils sont. Un compte oublié manquera à celui-ci et à tous les suivants, donc à toute ta courbe.": "A statement photographs them as they are. A forgotten account will be missing from this one and from every later one, so from your whole curve.",
+    "Enregistrer ton premier relevé": "Record your first statement",
     "+ Ajouter ton premier relevé": "+ Add your first statement",
     "Enregistrer le relevé": "Record the statement",
     "Modifier le relevé": "Edit the statement",
