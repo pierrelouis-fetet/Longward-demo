@@ -4066,7 +4066,7 @@ function detailsPlacement(c, idx, t, l) {
       ${ligne(trad('Valeur actuelle'), fmtEUR(l.valeur))}
       ${ligne(trad('Plus-value latente') + aide(trad('La valeur d’aujourd’hui moins ce que tu as payé. Latente : elle n’est encaissée qu’à la revente, et la valeur d’un placement non coté est une estimation.')),
               plusValue)}
-      ${ligne(trad('Liquidité'), badgeMobilisable(mobiliteLigne(l, c)))}
+      ${ligne(trad('Liquidité'), champMobilite(l, c, true))}
       ${t.dateSensible ? '' :
         `<dt>${motDateCompte(t)}</dt><dd>${c.ouvertLe ? esc(fmtDate(c.ouvertLe))
           : nonRenseigne}</dd>`}
@@ -4085,8 +4085,38 @@ function detailsPlacement(c, idx, t, l) {
   </div>`;
 }
 
+/* La disponibilite, reglable, et A UN SEUL ENDROIT.
+
+   Deux cartes la posent : celle d'un placement en parts (`detailsPlacement`) et
+   celle des autres actifs terminaux (`lignePlacement`). Seule la seconde offrait
+   le menu, donc une part de societe affichait « Bloque » sans qu'aucun ecran ne
+   permette de le dementir — et c'est precisement le cas que le reglage existe
+   pour couvrir : un non cote qui se revend sur un marche secondaire n'est pas
+   bloque, et c'est le placement qui sait, pas le type.
+
+   Un helper plutot qu'une seconde copie du menu : deux listes d'options ecrites
+   a la main pour une seule verite finissent par diverger, et celle qu'on oublie
+   de changer dit le contraire de l'autre.
+
+   Le menu reste un vrai `<select>` : il porte l'accessibilite et le clavier, ce
+   qu'un faux menu reconstruit aurait fallu refaire. */
+function champMobilite(l, compte, editable) {
+  const badge = badgeMobilisable(mobiliteLigne(l, compte));
+  if (!editable || !l.refMobilite) return badge;
+  return `
+    <span class="dispo-reglable">
+      ${badge}
+      <select data-path="${esc(l.refMobilite)}"
+              aria-label="${trad('Disponibilité de')} ${esc(l.libelle)}">
+        <option value="auto" ${!l.mobilite || l.mobilite === 'auto' ? 'selected' : ''}>
+          ${trad('Auto,')} ${esc(trad(MOBILISABLE_COURT[mobilisabilite(l.classe, compte.type)]))}</option>
+        ${Object.entries(MOBILISABLE_COURT).map(([v, lib]) =>
+          `<option value="${v}" ${l.mobilite === v ? 'selected' : ''}>${esc(trad(lib))}</option>`).join('')}
+      </select>
+    </span>`;
+}
+
 function lignePlacement(l, compte, editable = false, sansNom = false) {
-  const mob = mobiliteLigne(l, compte);
   const gain = l.prixDeRevient ? l.valeur - l.prixDeRevient : null;
   /* La disponibilite se lit comme une pastille, pas comme un menu deroulant.
 
@@ -4101,17 +4131,7 @@ function lignePlacement(l, compte, editable = false, sansNom = false) {
      s'ouvre, et la ligne ne paie plus une colonne entiere pour cela. Le menu
      reste un vrai `<select>` : il porte l'accessibilite et le clavier, ce qu'un
      faux menu reconstruit aurait fallu refaire. */
-  const dispo = editable && l.refMobilite ? `
-    <span class="dispo-reglable">
-      ${badgeMobilisable(mob)}
-      <select data-path="${esc(l.refMobilite)}"
-              aria-label="${trad('Disponibilité de')} ${esc(l.libelle)}">
-        <option value="auto" ${!l.mobilite || l.mobilite === 'auto' ? 'selected' : ''}>
-          ${trad('Auto,')} ${esc(trad(MOBILISABLE_COURT[mobilisabilite(l.classe, compte.type)]))}</option>
-        ${Object.entries(MOBILISABLE_COURT).map(([v, lib]) =>
-          `<option value="${v}" ${l.mobilite === v ? 'selected' : ''}>${esc(trad(lib))}</option>`).join('')}
-      </select>
-    </span>` : badgeMobilisable(mob);
+  const dispo = champMobilite(l, compte, editable);
   const st = statutLigne(l);
   /* Le nom affiche de la ligne.
 

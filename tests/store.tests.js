@@ -4629,7 +4629,14 @@ suite('Fiche d’une participation : une carte, pas deux', () => {
 
   test('la liquidité et les dates viennent du modèle, sans être recalculées', () => {
     const d = corps();
-    vrai(/badgeMobilisable\(mobiliteLigne\(l, c\)\)/.test(d), 'la liquidité est demandée');
+    /* ELLE SE REGLE, ET PAS SEULEMENT SUR L'AUTRE CARTE. Un placement en
+       parts rend `detailsPlacement`, les autres actifs terminaux rendent
+       `lignePlacement` : seule la seconde portait le menu, donc une part de
+       société affichait « Bloqué » sans qu'aucun écran ne permette de le
+       démentir — et c'est précisément le cas que le réglage existe pour
+       couvrir : un non coté qui se revend sur un marché secondaire n'est pas
+       bloqué. Vu à l'écran. */
+    vrai(/champMobilite\(l, c, true\)/.test(d), 'la liquidité est demandée, et réglable');
     vrai(/motDateCompte\(t\)/.test(d), 'et le mot de la date suit le type');
     /* La seconde moitié de la garde est tombée : une date absente faisait
        disparaître sa ligne, donc rien ne disait qu'il en manquait une. Seul
@@ -4638,6 +4645,24 @@ suite('Fiche d’une participation : une carte, pas deux', () => {
     vrai(/\$\{t\.dateSensible \? '' :/.test(d),
       'un type à date sensible ne l’affiche pas');
   });
+
+  test('le menu de disponibilité n’existe qu’une fois', () => {
+    /* Deux listes d'options écrites à la main pour une seule vérité finissent
+       par diverger, et celle qu'on oublie de changer dit le contraire de
+       l'autre. Les deux cartes appellent donc le même helper. */
+    const app = vue();
+    eq((app.match(/<select data-path="\$\{esc\(l\.refMobilite\)\}"/g) || []).length, 1,
+      'un seul menu dans toute l’application');
+    eq((app.match(/function champMobilite\(/g) || []).length, 1,
+      'et un seul helper qui le pose');
+    const h = app.slice(app.indexOf('function champMobilite('),
+                        app.indexOf('function lignePlacement('));
+    vrai(/if \(!editable \|\| !l\.refMobilite\) return badge;/.test(h),
+      'sans droit d’écrire, il ne rend que la pastille');
+    vrai(/data-path="\$\{esc\(l\.refMobilite\)\}"/.test(h),
+      'et le réglage s’écrit à la frappe, par son chemin');
+  });
+
 
   test('tout ce qui s’affiche est traduit', () => {
     /* La regle de la maison : une chaine nait dans `trad()`. */
