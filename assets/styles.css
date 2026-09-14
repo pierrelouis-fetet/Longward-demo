@@ -553,6 +553,13 @@ body {
    `block` tranche pour les deux. `width: fit-content` garde le souligne sous
    le seul texte — un bouton en bloc s'etendrait sur toute la largeur, et son
    libelle se centrerait, ce qui en ferait un troisieme bouton a l'oeil. */
+.pas-actes {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+@media (max-width: 767px) {
+  .pas-actes { grid-template-columns: 1fr; }
+}
+
 .pas-voir {
   display: block; width: fit-content; text-align: left;
   margin-top: 10px; font-size: 12.5px;

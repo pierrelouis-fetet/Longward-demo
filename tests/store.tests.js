@@ -4066,8 +4066,16 @@ suite('Le premier relevé : une seule porte, et une question avant', () => {
        le libellé doit dire le geste qu'on vient faire, et ce pas ne s'affiche
        que tant qu'aucun relevé n'existe. */
     const pas = PREMIERS_PAS.find(p => p.cle === 'releves');
+    /* IL EST REVENU A « un relevé », et la raison est une mesure : la rangée
+       d'un pas donne à son bouton une demi-carte, soit 150 px à 375 px, et
+       « Enregistrer ton premier relevé » en demande 194. Il s'y plierait en
+       deux lignes à côté d'un bouton d'une seule. « Premier » n'est pas perdu
+       pour autant : le titre du pas le dit, et la consigne juste au-dessus
+       aussi. */
     eq(pas.bouton, 'Enregistrer ton premier relevé', 'le pas le dit');
     vrai(!!I18N.en[pas.bouton], 'et il existe en anglais');
+    vrai(/premier relevé/.test(pas.titre + ' ' + pas.quoi),
+      'et « premier » se lit dans le titre et la consigne');
   });
 
   test('le tout premier relevé demande si les comptes y sont tous', () => {
@@ -4154,6 +4162,57 @@ suite('On ne répond pas « tout y est » sans pouvoir regarder', () => {
       vrai(new RegExp(`'${p.declare.voir.action}'\\(`).test(app),
         '« ' + p.declare.voir.action + ' » est une action déclarée');
     }
+  });
+
+  test('rouvrir un pas, c’est redémander sa question', () => {
+    /* IL RÉPONDAIT PAR LE MODE D'EMPLOI. Un pas franchi qu'on rouvrait montrait
+       sa consigne et son bouton d'ajout, en gardant sa coche : on y revenait
+       pour vérifier, et l'application ne reposait jamais la seule chose qu'elle
+       ne sait pas déduire. Vu à l'écran, sur le pas des comptes.
+
+       UN SEUL MOT LE DIT, ET TOUT EN DÉCOULE : le marqueur repasse au numéro, le
+       compteur recule, le pas redevient courant, et sa question s'affiche. Une
+       seconde condition posée à côté de chacun aurait fini par en contredire
+       une autre. */
+    const app = lireSource('assets/app.js');
+    const carte = app.slice(app.indexOf('function carteDemarrage()'),
+                            app.indexOf('function ', app.indexOf('function carteDemarrage()') + 10));
+    vrai(/const acquis = p => \(pasDeplie === p\.cle && p\.declare \? false/.test(carte),
+      'un pas rouvert n’est plus acquis');
+    /* Seuls les pas qui POSENT une question reculent : le releve n'en a pas,
+       il n'y a rien a re-declarer, et lui retirer sa coche ne dirait rien. */
+    vrai(/pasDeplie === p\.cle && p\.declare/.test(carte),
+      'et seulement ceux qui posent une question');
+    const act = app.slice(app.indexOf("'declarer-pas'(btn) {"),
+                          app.indexOf("'declarer-pas'(btn) {") + 700);
+    vrai(/pasDeplie = null;/.test(act),
+      'répondre referme le pas qu’on venait de rouvrir');
+  });
+
+  test('tous les boutons d’un pas ont la même taille', () => {
+    /* DEUX MESURES, DEUX DÉFAUTS. Un pas qui n'offre que son geste laissait sa
+       largeur suivre la longueur de son libellé : « Entrer tes comptes » faisait
+       130 px là où « Oui, tout y est », juste dessous, en faisait 134. Et deux
+       colonnes à 375 px n'en laissent que 134, où « Ajouter une rentrée » et
+       « Entrer ton salaire net » se plient en deux lignes : 46 px de haut à
+       côté d'un voisin de 30, ce qui est le défaut qu'on venait corriger.
+
+       La grille décide de la largeur, le bouton l'occupe ; et sous 768 px elle
+       s'empile, comme les rangées des fiches et pour la même mesure. Tous les
+       boutons du guide font alors exactement la même largeur, un ou deux, et
+       aucun libellé ne se replie. */
+    const app = lireSource('assets/app.js');
+    const carte = app.slice(app.indexOf('function carteDemarrage()'),
+                            app.indexOf('function ', app.indexOf('function carteDemarrage()') + 10));
+    eq((carte.match(/<span class="pas-actes">/g) || []).length, 2,
+      'les deux branches posent la même rangée');
+    vrai(!/<span class="paire-btn">/.test(carte),
+      'et plus aucune ne garde l’ancienne');
+    const css = lireSource('assets/styles.css');
+    const regle = css.slice(css.indexOf('.pas-actes {'), css.indexOf('.pas-voir {'));
+    vrai(/grid-template-columns: 1fr 1fr/.test(regle), 'deux colonnes de même fraction');
+    vrai(/@media \(max-width: 767px\) \{\s*\.pas-actes \{ grid-template-columns: 1fr; \}/
+      .test(regle), 'et une seule sous 768 px');
   });
 
   test('c’est un lien, pas un troisième bouton', () => {
@@ -36671,10 +36730,9 @@ suite('Le premier relevé se demande jusqu’à ce qu’un relevé existe', () =
     vrai(/premier relevé mensuel/.test(pas.quoi), 'il demande le premier relevé');
     vrai(/photo de tes comptes/.test(pas.quoi), 'et dit ce que c’est');
     vrai(/deux/.test(pas.quoi), 'en expliquant qu’il en faudra deux pour une pente');
-    /* Le libellé dit désormais que c'est le PREMIER : ce pas ne s'affiche
-       que tant qu'aucun relevé n'existe, et « Enregistrer un relevé » sous un
-       texte qui parle du premier laissait le geste plus vague que la
-       consigne. La porte, elle, ne change pas. */
+    /* Le libelle tient dans la demi-carte que la rangee lui donne : 150 px a
+       375 px, et « Enregistrer ton premier releve » en demandait 194. Le mot
+       « premier » vit dans le titre du pas et dans sa consigne. */
     eq(pas.bouton, 'Enregistrer ton premier relevé', 'le bouton dit le premier');
     eq(pas.action, 'ajouter-releve', 'ni la porte qu’il ouvre');
   });

@@ -4551,7 +4551,8 @@ function carteDemarrage() {
   /* `acquis` quand il existe, `fait` sinon : voir la note du pas des releves.
      La liste demande si un pas est FRANCHI, pas s'il faut encore le reclamer,
      et les deux divergent la ou un pas depend d'un autre. */
-  const acquis = p => (p.acquis ? p.acquis() : (!pasAFaire(p.cle) && pasDeclare(p)));
+  const acquis = p => (pasDeplie === p.cle && p.declare ? false
+    : p.acquis ? p.acquis() : (!pasAFaire(p.cle) && pasDeclare(p)));
   if (demarrageMasque()) return '';
   const restants = PREMIERS_PAS.filter(p => !acquis(p));
   const fini = !restants.length;
@@ -4580,13 +4581,15 @@ function carteDemarrage() {
           ${!(courant || pasDeplie === p.cle) ? '' : (
           courant && p.declare && !pasAFaire(p.cle) ? `
           <p class="small muted">${trad(p.declare.detail)}</p>
-          <span class="paire-btn">
+          <span class="pas-actes">
             <button type="button" class="btn sm" data-action="declarer-pas"
                     data-cle="${esc(p.declare.cle)}">${trad(p.declare.oui)}</button>
             <button type="button" class="btn sm ghost" data-action="${esc(p.action)}">${trad(p.declare.ajouter)}</button>
           </span>${renvoiPas(p)}` : `
           <p class="small muted">${trad(p.quoi)}</p>
-          <button type="button" class="btn sm" data-action="${esc(p.action)}">${trad(p.bouton)}</button>${renvoiPas(p)}`)}
+          <span class="pas-actes">
+            <button type="button" class="btn sm" data-action="${esc(p.action)}">${trad(p.bouton)}</button>
+          </span>${renvoiPas(p)}`)}
         </div>
       </li>`;
       }).join('')}
@@ -7558,6 +7561,7 @@ const ACTIONS = {
     const cle = btn.dataset.cle;
     if (!cle) return;
     masquerNotif(cle);
+    pasDeplie = null;
     Store.save();
     render();
     toast(trad('Ta liste est déclarée complète'));

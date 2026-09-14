@@ -100,6 +100,7 @@ const I18N = {
     'Réessayer': 'Try again',
     'Se déconnecter': 'Sign out',
 
+    'Entrer tes charges': 'Enter your fixed costs',
     'Commence ici': 'Start here',
     '{n} sur {t}': '{n} of {t}',
     'Tes comptes et avoirs divers': 'Your accounts and other assets',
