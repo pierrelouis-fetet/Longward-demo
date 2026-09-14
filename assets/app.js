@@ -4064,7 +4064,7 @@ function detailsPlacement(c, idx, t, l) {
               u && u.revient != null ? fmtPart(u.revient)
                 : (u ? nonRenseigne : null))}
       ${ligne(trad('Valeur actuelle'), fmtEUR(l.valeur))}
-      ${ligne(trad('Plus-value latente') + aide(trad('La valeur d’aujourd’hui moins ce que tu as payé. Latente : elle n’est encaissée qu’à la revente, et la valeur d’un placement non coté est une estimation.')),
+      ${ligne(trad('Plus-value latente') + aide(trad('La valeur d’aujourd’hui moins ce que tu as payé. Latente : elle n’est encaissée qu’à la revente, et la valeur d’un placement non coté est une estimation. Aucun impôt n’en est déduit : l’application ne modélise aucun régime fiscal, ici pas plus qu’ailleurs.')),
               plusValue)}
       ${ligne(trad('Liquidité'), champMobilite(l, c, true))}
       ${t.dateSensible ? '' :
@@ -12270,6 +12270,7 @@ const APERCUS = {
              j.lignes.length ? `${fmtSigned(j.eur)} ${trad('aujourd’hui')}` : trad('pas de cours du jour')].join(' · '),
       total: pnl.pnl,
       totalNote: [`${trad('sur.investis', 'sur')} ${fmtEUR0(pnl.invested)} ${trad('investis')}`,
+        trad('avant impôt'),
         noteSansBase(pnl)].filter(Boolean).join(', '),
       lignes: Store.state.positions
         .map(p => ({ label: p.name, meta: `${ACC[p.account]?.short || ''} · ${ASSET_CLASSES[assetClassDe(p)]}`,

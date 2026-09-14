@@ -4619,6 +4619,35 @@ suite('Fiche d’une participation : une carte, pas deux', () => {
     vrai(/à la revente/.test(d), 'la seconde, que rien n’est encaissé');
   });
 
+  test('la réserve d’impôt se dit là où le chiffre imposable se lit', () => {
+    /* AUCUN CALCUL, UNE MENTION. L'application ne modélise aucun régime fiscal
+       — elle le dit déjà pour l'immobilier, « micro-foncier, réel, meublé, SCI,
+       les règles changent et une estimation automatique finirait par mentir ».
+       Tout ce qu'elle affiche est donc avant impôt.
+
+       D'où la place choisie : la PLUS-VALUE, qui est le chiffre que l'impôt
+       mordrait, et non le montant du compte. Écrite sous un seul montant, la
+       mention laisserait croire que les autres en sont nets — c'est la faute
+       que ce projet a déjà payée ailleurs, un même libellé qui ne compte pas
+       la même chose selon l'écran. */
+    const d2 = corps();
+    vrai(/Aucun impôt n’en est déduit/.test(d2),
+      'la bulle de la plus-value latente le dit');
+    vrai(/aucun régime fiscal/.test(d2), 'et dit pourquoi : rien n’est modélisé');
+    /* Le meme chiffre s'examine ailleurs pour les lignes cotees : l'apercu de la
+       plus-value latente porte la meme reserve, en trois mots. */
+    const app = vue();
+    const dp = app.indexOf('pnlLatent: () => {');
+    vrai(/trad\('avant impôt'\)/.test(app.slice(dp, app.indexOf('cta:', dp))),
+      'et l’aperçu de la plus-value latente aussi');
+    vrai(!!I18N.en['avant impôt'], 'la mention existe en anglais');
+    /* ET AUCUN CALCUL N'EST NE AVEC ELLE : pas de taux, pas d'abattement, pas de
+       montant d'impot. Une mention qui deviendrait une estimation serait pire
+       que le silence, parce qu'elle aurait l'air d'un chiffre verifie. */
+    vrai(!/flatTax|prelevementsSociaux|impotLatent|\b0\.3 \* pnl/.test(app),
+      'aucun taux, aucun montant d’impôt n’est calculé');
+  });
+
   test('le financement reste une carte à part', () => {
     /* Une dette n'est pas un detail du placement : elle se lit et se saisit
        ailleurs, et la fusion ne l'a pas absorbee. */
