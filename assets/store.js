@@ -326,6 +326,20 @@ function typesCompteChoix() {
   return [...TYPES_COMPTE.filter(t => !t.interne), ...typesPerso()];
 }
 
+function typeParDefautChez(etabId) {
+  const dispo = new Set(typesCompteChoix().map(t => t.id));
+  const repli = dispo.has('courant') ? 'courant' : (typesCompteChoix()[0]?.id || 'courant');
+  if (!etabId) return repli;
+  const vus = new Map();
+  for (const c of COMPTES()) {
+    if (c.etabId !== etabId || c.statut === 'archive' || !dispo.has(c.type)) continue;
+    vus.set(c.type, (vus.get(c.type) || 0) + 1);
+  }
+  let meilleur = null;
+  for (const [id, n] of vus) if (!meilleur || n >= meilleur[1]) meilleur = [id, n];
+  return meilleur ? meilleur[0] : repli;
+}
+
 /* Rend l'identifiant du type, existant ou cree. Un nom deja porte est repris
    au lieu d'etre dedouble : deux types « Plan épargne logement » seraient deux
    poches pour le meme fait. Le prefixe `t_` garantit qu'un identifiant cree
@@ -6317,6 +6331,92 @@ function salesCumulative(range) {
    cinq endroits, et cinq variantes finissent par ne plus dire la meme chose. */
 function aDesPositionsMarche() {
   return (Store.state.positions || []).length > 0;
+}
+
+/* LA REPARTITION DU PORTEFEUILLE DE MARCHE, LIGNE PAR LIGNE.
+
+   La page repond a « ou est mon argent », toutes poches confondues. Celui qui
+   detient des titres a une seconde question, qu'aucune carte ne posait : a quoi
+   ressemble son portefeuille. C'est celle-la qu'on lit partout ailleurs, et
+   c'est un anneau qu'on attend pour y repondre.
+
+   ELLE N'EXISTE QUE CHEZ QUI EN A. Rend `null` sans position : un anneau vide
+   sous un titre qui parle de portefeuille apprendrait a quelqu'un qu'il lui
+   manque quelque chose qui ne lui manque pas. Meme regle que la cloche, qui ne
+   reclame pas d'actualiser des cours a qui n'a aucun titre.
+
+   CE QU'ELLE NE DIT PAS, ET C'EST LA RESERVE QUI COMPTE : un fonds est UNE
+   ligne. Un portefeuille d'un seul ETF monde donne une part de 100 % et n'est
+   pas concentre pour autant. Deux camemberts de cette page sont morts d'avoir
+   laisse croire l'inverse — zone geographique et secteur agregeaient des
+   classements devinees du libelle. Celui-ci ne devine rien : il repartit des
+   montants connus, et sa bulle dit ce qu'il compte.
+
+   LA QUEUE SE REGROUPE, ET LE NOMBRE SE DIT. Trente lignes font trente parts
+   illisibles, dont vingt sous le degre. Les sept plus grosses gardent leur nom,
+   le reste devient « Autres » — et « Autres » porte le compte de ce qu'il
+   absorbe, sans quoi une part anonyme de 18 % ne se verifie nulle part.
+
+   LES NON POSITIVES SORTENT, ET SE COMPTENT. Une part negative n'existe pas sur
+   un anneau. Ce qui est ecarte se compte plutot que de laisser un total qui ne
+   se retrouve pas, comme le fait deja `latentPnl()`.
+
+   Et le total rendu est la SOMME DES PARTS RENDUES, pas un second calcul : les
+   pourcentages tombent donc toujours a cent, et le pied du tableau redonne
+   exactement ce que l'anneau dessine. */
+function repartitionPortefeuille(max = 8) {
+  /* CE QU'ELLE COUVRE EST EXACTEMENT LA BASE DU PORTEFEUILLE, ni plus ni moins.
+
+     `basePortefeuilleMarches()` additionne trois choses : les positions cotees,
+     les lignes manuelles des comptes de marche — un fonds d'assurance-vie n'a
+     pas de cours, il n'en est pas moins detenu — et le cash qui attend d'etre
+     investi. N'en prendre qu'une aurait donne au meme nom deux montants sur
+     deux ecrans, ce que ce projet traque partout ailleurs : « Liquidites » a
+     deja valu deux choses sur deux pages, les deux totaux justes.
+
+     LE CASH EST UNE PART, PAS UN OUBLI. Quelqu'un dont un cinquieme du
+     portefeuille dort en attendant un point d'entree doit le VOIR sur son
+     anneau : c'est une allocation, pas un detail comptable. Et il ne se fait
+     jamais absorber par « Autres » — il n'est pas une ligne plus petite que les
+     autres, c'est la part qui n'est pas investie. */
+  const lignes = [
+    ...Store.state.positions.map(p => ({
+      label: String(p.name || '').trim() || trad('Sans nom'), value: posValue(p) })),
+    ...comptesOuverts()
+      .filter(c => typeCompte(c.type).groupe === 'bourse')
+      .flatMap(c => (c.lignes || []).map(l => ({
+        label: String(l.libelle || '').trim() || trad('Sans nom'), value: num(l.valeur) }))),
+  ].filter(x => Number.isFinite(x.value));
+
+  const gardees = lignes.filter(x => x.value > 0.005).sort((a, b) => b.value - a.value);
+  const attente = round2(poches().investir);
+  const aPart = attente > 0.005
+    ? [{ label: trad('À investir'), value: attente, attente: true }] : [];
+  if (!gardees.length && !aPart.length) return null;
+
+  const place = max - aPart.length;
+  let parts;
+  let regroupees = 0;
+  if (gardees.length <= place) {
+    parts = gardees.map(x => ({ label: x.label, value: round2(x.value) }));
+  } else {
+    const tete = gardees.slice(0, place - 1);
+    const queue = gardees.slice(place - 1);
+    regroupees = queue.length;
+    parts = [...tete.map(x => ({ label: x.label, value: round2(x.value) })),
+             { label: trad('Autres'), reste: true,
+               value: round2(queue.reduce((s, x) => s + x.value, 0)) }];
+  }
+  parts = [...parts, ...aPart];
+  const total = round2(parts.reduce((s, x) => s + x.value, 0));
+  return {
+    parts: parts.map(x => ({ ...x, pct: total > 0 ? (x.value / total) * 100 : null })),
+    total, regroupees,
+    /* Ce qui est ecarte se compte plutot que de laisser un total qui ne se
+       retrouve pas, comme le fait deja `latentPnl()`. Une part negative
+       n'existe pas sur un anneau. */
+    ecartees: lignes.length - gardees.length,
+  };
 }
 
 function latentPnl() {

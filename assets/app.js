@@ -3236,6 +3236,8 @@ function pochesPatrimoine({ financier = false, net = false } = {}) {
   });
 }
 
+const nomPortefeuille = () => trad('Tes investissements de marché');
+
 const teinterParRang = items =>
   items.map((x, i) => ({ ...x, couleur: x.couleur || x.color || `var(--series-${(i % 8) + 1})` }));
 
@@ -3372,6 +3374,25 @@ function viewAllocation() {
     ${phraseConcentration()}
   </div>
 
+  ${(() => {
+    const pf = repartitionPortefeuille();
+    if (!pf) return '';
+    const parts = teinterParRang(pf.parts);
+    return `
+  <div class="card">
+    <div class="card-head"><h2>${trad('Ton portefeuille de marché')}</h2></div>
+    <p class="hint" style="margin:0 0 12px">${trad('La part de chaque ligne dans ton portefeuille.')}${
+      aide(trad('Un fonds compte pour UNE ligne : un portefeuille d’un seul ETF monde donne une part de 100 %, ce qui ne veut pas dire qu’il est concentré. Cette carte répartit des montants, elle ne lit pas ce qu’il y a dans un fonds.'))}</p>
+    <div class="chart" id="aPortefeuille"></div>
+    ${!pf.regroupees ? '' : `<p class="hint" style="margin:8px 0 0">${
+      trad('« Autres » regroupe {n} lignes plus petites.').replace('{n}', pf.regroupees)}</p>`}
+    ${!pf.ecartees ? '' : `<p class="hint" style="margin:8px 0 0">${
+      trad('{n} ligne(s) sans valeur positive ne figurent pas ici.').replace('{n}', pf.ecartees)}</p>`}
+    ${tbl(parts, nomPortefeuille(), pf.total)}
+  </div>
+
+`;
+  })()}
   <div class="card">
     <div class="card-head"><h2>${trad('Où est placé ton argent')}</h2></div>
     <p class="tete-legende">${mentionBase(baseAvoirsAlloc(), valeurAvoirsAlloc())}</p>
@@ -3406,6 +3427,19 @@ function mountAllocation() {
     height: 200, centerLabel: baseAlloc().nom, centerValue: valeurBaseAlloc(),
     items: pochesPatrimoine({ financier: allocFinancier, net: true }).map(p => ({ label: p.label, value: p.value, color: p.color })),
   });
+  /* L'anneau du portefeuille : les memes parts, la meme teinte par rang que le
+     tableau juste dessous, donc les pastilles et les tranches ne peuvent pas
+     diverger. Il ne se monte que si la carte s'est rendue — `mount` sort en
+     silence sur un conteneur absent, mais le dire ici evite de compter deux
+     fois la repartition. */
+  const pf = repartitionPortefeuille();
+  if (pf) {
+    Charts.donut($('#aPortefeuille'), {
+      anime: animAlloc, height: 220,
+      centerLabel: nomPortefeuille(), centerValue: pf.total,
+      items: teinterParRang(pf.parts).map(p => ({ label: p.label, value: p.value, color: p.couleur || p.color })),
+    });
+  }
   const bt = teinterParRang(byAccountType({ financier: allocFinancier }));
   Charts.donut($('#aType'), {
     anime: animAlloc,
@@ -4595,7 +4629,7 @@ function carteDemarrage() {
       }).join('')}
     </ol>
     ${!fini ? '' : `
-    <p class="small muted" style="margin:12px 0 0">${
+    <p class="small muted" style="margin:12px 0 14px">${
       trad('Tout est en place. Ce guide a fait son travail, tu peux le refermer.')}</p>
     <div class="fiche-actes centre">
       <button type="button" class="btn sm" data-action="fermer-demarrage">${trad('Refermer le guide')}</button>
@@ -7933,7 +7967,11 @@ const ACTIONS = {
       ok: 'Continuer',
       champs: [{ cle: 'type', label: 'Type', type: 'liste',
         options: [...typesCompteChoix().map(t => [t.id, t.label]),
-                  ['__nouveau', trad('+ Autre type…')]], valeur: 'courant' }],
+                  ['__nouveau', trad('+ Autre type…')]],
+        /* Le defaut suit l'etablissement plutot que d'etre pose en dur : voir
+           `typeParDefautChez`. Chez une societe qui ne porte que des parts, la
+           fenetre proposait d'ouvrir un compte courant. */
+        valeur: typeParDefautChez(etabImpose) }],
     });
     if (!e1) return;
     if (e1.type === '__nouveau') {

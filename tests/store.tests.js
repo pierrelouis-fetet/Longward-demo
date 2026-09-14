@@ -2695,9 +2695,13 @@ suite('Les anneaux d’Allocation se transforment quand le périmètre change', 
                          t.indexOf('allocTransition = false;',
                                    t.indexOf('const animAlloc = allocTransition;')));
     vrai(bloc.length > 200, 'le montage des anneaux doit être trouvable');
-    eq((bloc.match(/anime: animAlloc/g) || []).length, 3,
-      'les trois anneaux reçoivent le même drapeau');
-    for (const id of ['#aMacro', '#aType', '#aDispo']) {
+    /* Ils sont QUATRE depuis que le portefeuille de marché a le sien. Il ne
+       se monte que chez qui détient des titres, mais son appel est écrit au
+       même endroit que les autres et reçoit donc le même drapeau : les
+       animer ensemble ou pas du tout. */
+    eq((bloc.match(/anime: animAlloc/g) || []).length, 4,
+      'les quatre anneaux reçoivent le même drapeau');
+    for (const id of ['#aMacro', '#aType', '#aDispo', '#aPortefeuille']) {
       vrai(bloc.includes(id), `${id} est dans le bloc que le drapeau couvre`);
     }
   });
@@ -4266,6 +4270,191 @@ suite('On ne répond pas « tout y est » sans pouvoir regarder', () => {
                         app.indexOf('function carteDemarrage()'));
     vrai(/if \(!v \|\| pasAFaire\(p\.cle\)\) return '';/.test(f),
       'et rien tant qu’il n’y a rien à voir');
+  });
+});
+
+suite('Le type proposé à la création suit l’établissement', () => {
+
+  const chez = (types, etab = 'e_x') => {
+    Fixture.poser();
+    Store.state.etabs = [{ id: etab, nom: 'X', notes: '', dettes: [] }];
+    Store.state.comptes = types.map((t, i) => ({
+      id: 'c' + i, etabId: etab, type: typeof t === 'string' ? t : t.type,
+      statut: typeof t === 'string' ? undefined : t.statut,
+      cash: [], lignes: [],
+    }));
+    return typeParDefautChez(etab);
+  };
+
+  test('chez une société qui ne porte que des parts, il propose des parts', () => {
+    /* LE DEFAUT ETAIT POSE EN DUR. La fenêtre proposait d'ouvrir un compte
+       courant chez une société non cotée dont on ne détient que des parts, et
+       chez un courtier qui n'en tient aucun : un défaut qui ne peut pas être le
+       bon fait relire la liste entière à chaque ajout. Vu à l'écran. */
+    eq(chez(['pe', 'pe']), 'pe', 'deux parts de société, donc une troisième');
+    eq(chez(['pea', 'cto', 'pea']), 'pea', 'celui qui revient le plus l’emporte');
+  });
+
+  test('il se dérive, il ne se recopie pas', () => {
+    /* Jamais une table « société -> parts de société » : une seconde liste
+       écrite à la main aurait fini par contredire celle des types, et c'est le
+       défaut qui revient le plus souvent ici. */
+    const st = lireSource('assets/store.js');
+    const f = st.slice(st.indexOf('function typeParDefautChez('),
+                       st.indexOf('\n}', st.indexOf('function typeParDefautChez(')));
+    vrai(/typesCompteChoix\(\)/.test(f), 'les types viennent de la liste des types');
+    vrai(!/'pe'|'pea'|'cto'/.test(f), 'et aucun identifiant n’est écrit dans la règle');
+  });
+
+  test('le dernier arrivé départage les ex æquo', () => {
+    /* C'est le geste qu'on vient de refaire, donc le plus probable. */
+    eq(chez(['pea', 'pe']), 'pe', 'un de chaque : le dernier ouvert');
+    eq(chez(['pe', 'pea']), 'pea', 'et l’ordre compte');
+  });
+
+  test('un compte archivé ne dit plus ce qu’on ouvre', () => {
+    eq(chez([{ type: 'pe', statut: 'archive' }, 'pea']), 'pea',
+      'l’archive ne pèse pas');
+    eq(chez([{ type: 'pe', statut: 'archive' }]), 'courant',
+      'et sans rien de vivant, le repli');
+  });
+
+  test('sans établissement, ou chez un établissement vide, « courant »', () => {
+    /* C'est le premier compte que la plupart des gens saisissent. */
+    Fixture.poser();
+    eq(typeParDefautChez(null), 'courant', 'aucun établissement');
+    eq(chez([]), 'courant', 'établissement vide');
+  });
+
+  test('la fenêtre de création s’en sert', () => {
+    const app = lireSource('assets/app.js');
+    vrai(/valeur: typeParDefautChez\(etabImpose\) \}\]/.test(app),
+      'l’assistant demande le défaut plutôt que de l’écrire');
+    vrai(!/\], valeur: 'courant' \}\]/.test(app), 'et plus rien n’est posé en dur');
+  });
+});
+
+suite('L’anneau du portefeuille : un total qui égale ses parts', () => {
+
+  /* Un état contrôlé : la graine porte ses propres positions et son propre cash
+     à investir, et la forme du fixture changerait les réponses sans changer la
+     règle. On vide donc les comptes de marché avant de poser les lignes. */
+  const poser = (valeurs, cash = 0) => {
+    Fixture.poser();
+    Store.state.positions = valeurs.map((v, i) => ({
+      id: 'p' + i, name: 'L' + i, account: 'a', manual: true, value: v,
+    }));
+    for (const c of COMPTES()) {
+      if (typeCompte(c.type).groupe === 'bourse') { c.lignes = []; c.cash = []; }
+    }
+    if (cash) {
+      const bourse = COMPTES().find(c => typeCompte(c.type).groupe === 'bourse');
+      bourse.cash = [{ montant: cash, affectation: 'investir' }];
+    }
+    return repartitionPortefeuille();
+  };
+
+  test('le total égale la somme de ses parts, et les parts font cent', () => {
+    /* C'est l'invariant de la maison, et c'est pour lui que ce calcul vit dans
+       le modèle : le harnais ne charge pas `app.js`, et un anneau dont les
+       tranches ne composent pas son centre ne se verrait nulle part. */
+    const pf = poser([1000, 500, 250, 250]);
+    pres(pf.total, 2000, 'le total est celui des parts');
+    pres(pf.parts.reduce((s, x) => s + x.value, 0), pf.total, 'et il l’égale exactement');
+    pres(pf.parts.reduce((s, x) => s + x.pct, 0), 100, 'les pourcentages font cent');
+    eq(pf.parts[0].value, 1000, 'la plus grosse ligne ouvre le classement');
+  });
+
+  test('il couvre exactement la base du portefeuille', () => {
+    /* LE MEME NOM NE PEUT PAS PORTER DEUX MONTANTS. `basePortefeuilleMarches()`
+       est la base dont se sert tout le reste de l'application pour peser une
+       ligne ; si l'anneau en couvrait une autre, deux écrans donneraient deux
+       parts différentes pour la même ligne. C'est le défaut que ce projet traque
+       partout : « Liquidités » a déjà valu deux choses sur deux pages. */
+    const pf = poser([1000, 500], 400);
+    pres(pf.total, basePortefeuilleMarches(), 'l’anneau couvre toute la base');
+    pres(pf.total, 1900, 'positions et cash compris');
+  });
+
+  test('le cash qui attend est une part, jamais un oubli', () => {
+    /* Quelqu'un dont un cinquième du portefeuille dort en attendant un point
+       d'entrée doit le VOIR : c'est une allocation, pas un détail comptable. */
+    const pf = poser([1600], 400);
+    const cash = pf.parts.find(x => x.attente);
+    vrai(!!cash, 'il a sa part');
+    pres(cash.value, 400, 'qui vaut ce qui attend');
+    pres(cash.pct, 20, 'et pèse ce qu’il pèse');
+    /* IL NE SE FAIT PAS ABSORBER PAR « AUTRES » : il n'est pas une ligne plus
+       petite que les autres, c'est la part qui n'est pas investie. */
+    const gros = poser([100, 90, 80, 70, 60, 50, 40, 30, 20, 10], 5);
+    vrai(gros.parts[gros.parts.length - 1].attente,
+      'même minuscule, il garde sa part');
+    eq(gros.parts.length, 8, 'huit parts au plus, lui compris');
+  });
+
+  test('la queue se regroupe, et le nombre se dit', () => {
+    /* Trente lignes font trente parts illisibles, dont vingt sous le degré. Et
+       une part anonyme de 18 % ne se vérifie nulle part si elle ne dit pas
+       combien de lignes elle absorbe. */
+    const pf = poser([100, 90, 80, 70, 60, 50, 40, 30, 20, 10]);
+    eq(pf.parts.length, 8, 'huit parts au plus');
+    eq(pf.regroupees, 3, 'et « Autres » dit combien il en absorbe');
+    vrai(pf.parts[7].reste, 'la dernière part est le regroupement');
+    pres(pf.parts[7].value, 60, 'qui vaut la somme de ce qu’il absorbe');
+    /* MEME SOUS REGROUPEMENT, le total reste la somme des parts rendues : sans
+       cela le pied du tableau annoncerait autre chose que l'anneau. */
+    pres(pf.parts.reduce((s, x) => s + x.value, 0), pf.total, 'le total suit');
+    pres(pf.total, 550, 'et vaut bien tout le portefeuille');
+  });
+
+  test('une valeur non positive sort, et se compte', () => {
+    /* Une part négative n'existe pas sur un anneau. Ce qui est écarté se compte
+       plutôt que de laisser un total qui ne se retrouve pas — c'est déjà ce que
+       fait `latentPnl()` pour les lignes sans prix de revient. */
+    const pf = poser([1000, 0, -50, 500]);
+    eq(pf.parts.length, 2, 'deux parts seulement');
+    eq(pf.ecartees, 2, 'et les deux autres se comptent');
+    pres(pf.total, 1500, 'le total ne porte que ce qui est dessiné');
+  });
+
+  test('sans titre ni cash, pas d’anneau du tout', () => {
+    /* Un anneau vide sous un titre qui parle de portefeuille apprendrait à
+       quelqu'un qu'il lui manque quelque chose qui ne lui manque pas. Même
+       règle que la cloche, qui ne réclame pas d'actualiser des cours à qui n'a
+       aucun titre. */
+    eq(poser([]), null, 'aucune position');
+    eq(poser([0, -10]), null, 'aucune valeur positive non plus');
+    vrai(poser([], 300) !== null, 'mais du cash seul suffit à dire quelque chose');
+    const app = lireSource('assets/app.js');
+    vrai(/const pf = repartitionPortefeuille\(\);\s*\n\s*if \(!pf\) return '';/.test(app),
+      'et la carte ne se rend pas');
+    vrai(/if \(pf\) \{\s*\n\s*Charts\.donut\(\$\('#aPortefeuille'\)/.test(app),
+      'ni l’anneau');
+  });
+
+  test('la carte annonce sa base, et la réserve qui va avec', () => {
+    /* SA BASE N'EST PAS CELLE DE LA PAGE : les parts se rapportent au
+       portefeuille de marché, pas aux avoirs. Et la réserve qui compte : un
+       fonds est UNE ligne. Deux camemberts de cette page sont morts d'avoir
+       laissé croire l'inverse. */
+    const app = lireSource('assets/app.js');
+    /* Le centre prend son nom d'une FONCTION, jamais d'une chaîne écrite là :
+       un centre qui porte un libellé à la main peut dériver de ce que ses parts
+       totalisent, et cette page a déjà payé ce défaut. */
+    vrai(/centerLabel: nomPortefeuille\(\), centerValue: pf\.total/.test(app),
+      'le centre dit sur quoi elle compte, et vaut ses parts');
+    vrai(/const nomPortefeuille = \(\) => trad\(/.test(app),
+      'et ce nom vit à un seul endroit');
+    vrai(/Un fonds compte pour UNE ligne/.test(app), 'et ce qu’elle ne sait pas lire');
+    for (const cle of ['Ton portefeuille de marché', 'Tes investissements de marché',
+                       'Autres', 'À investir']) {
+      vrai(!!I18N.en[cle], '« ' + cle + ' » existe en anglais');
+    }
+    /* Les pastilles du tableau et les tranches de l'anneau partent de la MEME
+       teinte par rang : deux appels a `teinterParRang` sur la meme liste, donc
+       elles ne peuvent pas diverger. */
+    vrai(/teinterParRang\(pf\.parts\)/.test(app), 'le tableau teinte par rang');
+    vrai(/items: teinterParRang\(pf\.parts\)/.test(app), 'et l’anneau aussi');
   });
 });
 
@@ -30015,10 +30204,31 @@ suite('La page Allocation dit la base qu’elle emploie', () => {
     eq((montage.match(/centerLabel: trad\(/g) || []).length, 0,
       'le centre d’un anneau nomme la base de la page, jamais une chaîne écrite là');
 
-    /* Le centre de chaque anneau nomme la base ET vaut la somme de ses parts. */
+    /* Le centre de chaque anneau nomme la base ET vaut la somme de ses parts.
+
+       TROIS NOMS ADMIS, ET LE TROISIEME EST UNE EXCEPTION QUI SE DIT.
+       `baseAlloc()` et `baseAvoirsAlloc()` suivent le commutateur : elles
+       sont les deux perimetres de la page, et une mention qui ne bouge pas
+       quand le calcul bouge rassure a tort.
+
+       `basePortefeuille()` ne le suit pas, et c'est voulu : un portefeuille
+       de marche est le meme qu'on compte en patrimoine net ou en avoirs, donc
+       le faire basculer lui ferait dire deux choses pour un seul fait. Elle
+       reste une FONCTION, ce qui est le vrai objet de ce controle : un centre
+       qui porte un libelle ecrit a la main peut deriver de ce que ses parts
+       totalisent, et cette page a deja annonce 354,6 k EUR au milieu de parts
+       qui en totalisaient 66 551.
+
+       Ce qui garde l'exception honnete est la ligne d'apres : son centre vaut
+       `pf.total`, que le modele construit comme la somme des parts rendues. */
     for (const centre of [...montage.matchAll(/centerLabel: ([^,]+),/g)]) {
-      vrai(/^(baseAlloc|baseAvoirsAlloc)\(\)\.nom$/.test(centre[1].trim()),
+      vrai(/^((baseAlloc|baseAvoirsAlloc)\(\)\.nom|nomPortefeuille\(\))$/
+        .test(centre[1].trim()),
         `un anneau annonce « ${centre[1].trim()} » au centre au lieu de sa base`);
+      if (centre[1].trim() === 'nomPortefeuille()') {
+        vrai(/centerLabel: nomPortefeuille\(\), centerValue: pf\.total/.test(montage),
+          'et le centre du portefeuille vaut la somme de ses propres parts');
+      }
     }
 
     /* Et les sources de la page le suivent aussi, sinon deux cartes du meme ecran
