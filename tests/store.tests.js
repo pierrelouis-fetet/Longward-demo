@@ -4039,6 +4039,109 @@ suite('Parts de société : un nombre saisi, deux prix déduits', () => {
 /* ------------------------------------------------------------------
    Le prix d'une part se saisit, et le total reste la verite
    ------------------------------------------------------------------ */
+suite('Le résumé d’un établissement compte ce qui a une base', () => {
+
+  test('le total égale la somme de ses parts', () => {
+    const p = poserDeux(2000);
+    vrai(p != null, 'un établissement qui porte des lignes rend un résumé');
+    pres(p.investi + p.pnl, p.valeur, 'investi plus écart font la valeur');
+    if (p.investi > 0) pres(p.pct, (p.pnl / p.investi) * 100, 'et le pourcentage part de l’investi');
+  });
+
+  /* Un établissement à nous, plutôt que celui de la graine : ces contrôles
+     portent sur ce qui entre et sort du calcul, et la forme du fixture
+     changerait la réponse sans changer la règle. `prixDeRevient` absent vaut
+     coût inconnu — zéro y vaudrait « non renseigné » aussi, c'est
+     `acquisitionLigne()` qui le dit, un vrai coût nul se déclare par
+     `prixAchat: 0`. */
+  const poserDeux = (revientDeLaSeconde) => {
+    Fixture.poser();
+    Store.state.etabs.push({ id: 'e_essai', nom: 'Essai', notes: '', dettes: [] });
+    Store.state.comptes.push({ id: 'c_essai', etabId: 'e_essai', type: 'pe', cash: [],
+      lignes: [
+        { id: 'la', classe: 'nonCote', libelle: 'a', valeur: 5000, prixDeRevient: 4000 },
+        { id: 'lb', classe: 'nonCote', libelle: 'b', valeur: 3000,
+          ...(revientDeLaSeconde == null ? {} : { prixDeRevient: revientDeLaSeconde }) },
+      ] });
+    return perfEtab('e_essai');
+  };
+
+  test('une ligne sans prix de revient sort du calcul, et se dit', () => {
+    /* ELLE NE PEUT PAS Y ENTRER A ZERO. Compter sa valeur sans son coût
+       gonflerait l'écart du montant entier de cette ligne — une plus-value
+       inventée, et toujours du côté flatteur. Elle part donc dans `horsBase`,
+       qui s'affiche : sans lui, le résumé aurait l'air de parler de tout le
+       solde annoncé en tête. */
+    const avec = poserDeux(2000);
+    pres(avec.investi, 6000, 'les deux coûts sont comptés');
+    pres(avec.valeur, 8000, 'et les deux valeurs');
+    pres(avec.horsBase, 0, 'rien ne sort du calcul');
+
+    const sans = poserDeux(null);
+    pres(sans.investi, 4000, 'le coût manquant quitte l’investi');
+    pres(sans.valeur, 5000, 'et sa valeur quitte la valeur');
+    pres(sans.horsBase, 3000, 'elle se retrouve entièrement hors base');
+    /* LE PIEGE QUE CE CONTROLE GARDE : comptée à zéro, la seconde ligne aurait
+       fait « +4 000 » d'écart au lieu de « +1 000 ». */
+    pres(sans.pnl, 1000, 'l’écart ne gonfle pas du montant de la ligne écartée');
+  });
+
+  test('les espèces ne sont jamais une plus-value', () => {
+    /* Elles n'ont aucun coût d'acquisition : un solde de compte courant n'a pas
+       été acheté. Les compter dans la valeur sans les compter dans l'investi
+       ferait exactement la même plus-value inventée. */
+    const avant = poserDeux(2000);
+    const c = compteById('c_essai');
+    c.cash = [{ montant: 1234, libelle: 'test' }];
+    const apres = perfEtab('e_essai');
+    pres(apres.investi, avant.investi, 'l’investi ne bouge pas');
+    pres(apres.valeur, avant.valeur, 'la valeur non plus');
+    pres(apres.horsBase - avant.horsBase, 1234, 'et le liquide passe hors base');
+  });
+
+  test('aucune base, aucun résumé', () => {
+    /* Une banque qui ne porte que des espèces n'a pas de plus-value, et une
+       carte de trois zéros ne dirait rien. */
+    poserDeux(2000);
+    compteById('c_essai').lignes = [];
+    eq(perfEtab('e_essai'), null, 'le résumé se tait');
+  });
+
+  test('un pourcentage n’existe que sur une base positive', () => {
+    /* Diviser par zéro n'existe pas, et une base négative retournerait le
+       signe : c'est la règle que `deltas()` tient déjà ailleurs. */
+    poserDeux(2000);
+    compteById('c_essai').lignes =
+      [{ id: 'lz', classe: 'nonCote', libelle: 'z', valeur: 900, prixDeRevient: 0 }];
+    const p = perfEtab('e_essai');
+    vrai(p == null || p.pct === null, 'sans coût saisi, aucun pourcentage n’est rendu');
+  });
+
+  test('la carte vit sur la fiche, et se tait quand le modèle se tait', () => {
+    const src = lireSource('assets/app.js');
+    const fiche = src.slice(src.indexOf('function viewFicheEtab('),
+                            src.indexOf("trad('Crédits en cours')", src.indexOf('function viewFicheEtab(')));
+    vrai(/const p = perfEtab\(e\.id\);/.test(fiche), 'elle demande le résumé au modèle');
+    vrai(/if \(!p\) return '';/.test(fiche), 'et ne rend rien quand il n’y a pas de base');
+    vrai(/trad\('Investi et plus-value'\)/.test(fiche), 'la carte porte son titre');
+    vrai(/trad\('sur les lignes dont le prix de revient est saisi'\)/.test(fiche),
+      'et annonce sa base, comme toute carte qui en a une');
+    vrai(/p\.pct == null \? ''/.test(fiche), 'un pourcentage absent ne s’écrit pas');
+    vrai(/p\.horsBase < 0\.005 \? ''/.test(fiche),
+      'et ce qui sort du calcul ne se dit que s’il y en a');
+    /* Elle se lit AVANT la liste des comptes : le grand chiffre, ce qu'il a
+       coûté, puis le détail qui le compose. */
+    vrai(fiche.indexOf("trad('Investi et plus-value')")
+       < fiche.indexOf("trad('rattachés')"),
+      'elle complète le grand chiffre avant d’ouvrir le détail');
+    for (const cle of ['Investi et plus-value',
+                       'sur les lignes dont le prix de revient est saisi',
+                       'hors de ce calcul, faute de prix de revient']) {
+      vrai(!!I18N.en[cle], '« ' + cle + ' » existe en anglais');
+    }
+  });
+});
+
 suite('Une valeur estimée ne se compare pas au relevé du mois dernier', () => {
 
   const st = () => lireSource('assets/store.js');

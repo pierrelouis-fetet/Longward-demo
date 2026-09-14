@@ -5682,6 +5682,25 @@ function viewFicheEtab(id) {
             data-action="modifier-etab" data-id="${esc(e.id)}">${trad('Modifier')}</button>
   </div>
 
+  ${(() => {
+    const p = perfEtab(e.id);
+    if (!p) return '';
+    return `
+  <div class="card">
+    <div class="card-head"><h2>${trad('Investi et plus-value')}</h2>
+      <span class="hint">${trad('sur les lignes dont le prix de revient est saisi')}</span></div>
+    <dl class="kv">
+      <dt>${trad('Montant investi')}</dt><dd>${fmtEUR(p.investi)}</dd>
+      <dt>${trad('Valeur actuelle')}</dt><dd>${fmtEUR(p.valeur)}</dd>
+      <dt><b>${trad('Plus-value latente')}${aide(trad('La valeur d’aujourd’hui moins ce que tu as payé, sur les seules lignes dont le prix de revient est saisi. Latente : elle n’est encaissée qu’à la revente, et aucun impôt n’en est déduit.'))}</b></dt>
+        <dd><b class="${cls(p.pnl)}">${fmtSigned(p.pnl)}</b>${p.pct == null ? ''
+          : ` <span class="muted">·</span> <span class="${cls(p.pnl)}">${fmtSignedPct(p.pct)}</span>`}</dd>
+    </dl>
+    ${p.horsBase < 0.005 ? '' : `<p class="hint" style="margin:8px 0 0">${
+      fmtEUR0(p.horsBase)} ${trad('hors de ce calcul, faute de prix de revient')}</p>`}
+  </div>`;
+  })()}
+
   <div class="card">
     <div class="card-head"><h2>${majuscule(motContenu(e.id, 2))} ${trad('rattachés')}</h2>
       <button class="btn sm ghost" data-action="ajouter-compte" data-etab="${esc(e.id)}"

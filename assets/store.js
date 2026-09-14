@@ -3291,6 +3291,45 @@ function prixParPart(ligne) {
    parfaitement calculable et un pourcentage qui ne l'est pas. Diviser rendrait
    `Infinity`, que rien n'affiche correctement. Les deux champs sont donc
    independants, et chacun se tait quand il ne sait pas. */
+/* Le resume d'un etablissement : ce qui y est investi, ce que cela vaut, et
+   l'ecart. Dans le modele et non dans la vue, pour la raison habituelle — le
+   harnais ne charge pas `app.js`, et l'invariant qui compte ici est qu'un total
+   egale la somme de ses parts.
+
+   IL NE COMPTE QUE CE QUI A UNE BASE, et c'est tout l'enjeu. `perfLigne()`
+   decide seule si le cout d'une ligne est connu ; on l'interroge plutot que
+   d'ecrire une seconde regle, qui finirait par dire le contraire. Additionner
+   la valeur d'une ligne dont le prix de revient manque gonflerait l'ecart du
+   montant entier de cette ligne — une plus-value inventee, du cote flatteur.
+   Les especes n'ont aucun cout d'acquisition et ne comptent donc jamais.
+
+   CE QUI EST LAISSE DE COTE SE DIT. Sans `horsBase`, le resume aurait l'air de
+   parler de tout le solde affiche en tete, et personne ne pourrait voir que
+   deux nombres ne se rapportent pas au meme perimetre.
+
+   `pct` reste nul sur une base qui n'est pas strictement positive : un rapport
+   a zero n'existe pas, et une base negative retourne le signe.
+
+   Rend `null` quand aucune ligne n'a de base : une banque qui ne porte que des
+   especes n'a pas de plus-value, et une carte de zeros ne dirait rien. */
+function perfEtab(etabId) {
+  let investi = 0, valeur = 0, horsBase = 0, lignes = 0;
+  for (const c of COMPTES().filter(x => x.etabId === etabId && x.statut !== 'archive')) {
+    horsBase += cashCompte(c);
+    for (const l of lignesDe(c)) {
+      if (perfLigne(l).pnl == null) { horsBase += num(l.valeur); continue; }
+      investi += num(l.prixDeRevient);
+      valeur += num(l.valeur);
+      lignes++;
+    }
+  }
+  if (!lignes) return null;
+  const pnl = round2(valeur - investi);
+  return { investi: round2(investi), valeur: round2(valeur), pnl,
+           pct: investi > 0 ? (pnl / investi) * 100 : null,
+           horsBase: round2(horsBase), lignes };
+}
+
 function perfLigne(ligne) {
   if (!ligne || ligne.partInvalide) return { pnl: null, pct: null };
   const coutConnu = ligne.acquisition ? ligne.acquisition.total != null
