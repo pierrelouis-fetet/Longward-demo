@@ -4039,6 +4039,86 @@ suite('Parts de société : un nombre saisi, deux prix déduits', () => {
 /* ------------------------------------------------------------------
    Le prix d'une part se saisit, et le total reste la verite
    ------------------------------------------------------------------ */
+suite('Une valeur estimée ne se compare pas au relevé du mois dernier', () => {
+
+  const st = () => lireSource('assets/store.js');
+  const app = () => lireSource('assets/app.js');
+
+  test('le drapeau distingue ce qu’on apprécie de ce qu’un tiers établit', () => {
+    /* TROIS NATURES, ET LES CONFONDRE S'EST DEJA PAYE. Une valeur qu'on
+       apprecie soi-meme (une montre, une participation), une valeur qu'un tiers
+       PUBLIE (la VL d'un fonds), un solde qu'on LIT chez un teneur de compte.
+       Seule la premiere est une opinion. */
+    vrai(typeof estValeurEstimee === 'function', 'le prédicat existe');
+    vrai(estValeurEstimee(TYPES_COMPTE.find(t => t.id === 'pe')),
+      'une part de société se valorise soi-même');
+    vrai(!estValeurEstimee(TYPES_COMPTE.find(t => t.id === 'fondsNonCote')),
+      'une VL publiée est établie par un tiers, ce n’est pas une opinion');
+    vrai(!estValeurEstimee(TYPES_COMPTE.find(t => t.id === 'crowdfunding')),
+      'le nominal d’un prêt ne bouge pas tant qu’il n’est pas remboursé');
+    /* Et tout ce qui se detient en direct l'est sans avoir a le redeclarer :
+       le drapeau se DERIVE de `direct`, il ne recopie pas sa liste. */
+    for (const t of TYPES_COMPTE.filter(x => x.direct)) {
+      vrai(estValeurEstimee(t), `« ${t.id} » se détient en direct, donc il s’estime`);
+    }
+    vrai(/const estValeurEstimee = t => !!t && \(!!t\.direct \|\| !!t\.estimee\);/.test(st()),
+      'et la dérivation est écrite une fois');
+  });
+
+  test('la ligne dit ce que le montant est, au lieu d’un écart trompeur', () => {
+    /* LE DEFAUT VU A L'ECRAN : « +5 000 EUR depuis sept. » sous une
+       participation. L'ecart comparait la valeur du jour au dernier releve, or
+       les deux sont des chiffres que le detenteur a poses lui-meme : le nombre
+       affiche mesurait la revision de sa propre estimation et se lisait comme
+       une plus-value. Deux choses tres differentes sous la meme forme. */
+    const src = app();
+    const ligne = src.slice(src.indexOf('function ligneCompte('),
+                            src.indexOf('function ', src.indexOf('function ligneCompte(') + 10));
+    vrai(/const estimee = estValeurEstimee\(typeCompte\(c\.type\)\);/.test(ligne),
+      'la ligne sait si son montant est une estimation');
+    vrai(/const v = estimee \? null : variationCompte\(c\.id\);/.test(ligne),
+      'et l’écart ne se calcule alors pas');
+    vrai(/estimee \? `<span class="sub">\$\{trad\('estimation actuelle'\)\}<\/span>`/.test(ligne),
+      'la place sous le montant dit « estimation actuelle »');
+    /* La phrase remplace l'ecart, elle ne s'y ajoute pas : deux sous-titres sous
+       un meme montant se disputeraient la meme ligne. */
+    eq((ligne.match(/class="sub/g) || []).length, 4,
+      'un seul sous-titre à la fois sous le montant');
+    vrai(!!I18N.en['estimation actuelle'], 'et la phrase existe en anglais');
+  });
+
+  test('un actif terminal porte UN nom, et les deux portes l’écrivent', () => {
+    /* DEUX PORTES SUR LE MEME FAIT, CE QUI EST SAIN — deux copies qui
+       divergent, non. Sur un actif terminal le compte EST le placement : la
+       fenetre du compte et celle du placement offrent toutes deux « Intitule »,
+       et seule la premiere propageait. Renommer par la seconde laissait
+       l'en-tete afficher l'ancien nom au-dessus du nouveau, sans que rien ne
+       dise lequel comptait. Vu a l'ecran, sur une part de societe.
+
+       La garde est terminale et non directe : une participation est tenue par
+       un tiers et n'est pas davantage divisible qu'un appartement. */
+    const src = app();
+    const dc = src.indexOf("async 'modifier-compte'(btn)");
+    const compte = src.slice(dc, src.indexOf("if (v.type) c.type = v.type;", dc));
+    vrai(/if \(estActifTerminal\(typeCompte\(c\.type\)\)\n\s*&& \(c\.lignes \|\| \[\]\)\.length === 1 && !\(c\.cash \|\| \[\]\)\.length/
+      .test(compte), 'renommer le compte renomme sa ligne unique');
+    vrai(/c\.lignes\[0\]\.libelle = String\(v\.libelle\)\.trim\(\);/.test(compte),
+      'et c’est bien le nom saisi qui descend');
+    const place = src.slice(src.indexOf("async 'editer-placement'(btn)"),
+                            src.indexOf("async 'editer-placement'(btn)") + 3000);
+    vrai(/if \(estActifTerminal\(typeCompte\(c\.type\)\)[\s\S]{0,160}c\.libelle = String\(v\.libelle\)\.trim\(\);/
+      .test(place), 'et renommer la ligne renomme le compte');
+    /* CE QUI NE REMONTE PAS : le nom de l'etablissement. Un bien detenu en
+       direct EST son contenant, une participation est tenue par un courtier qui
+       en porte d'autres. Renommer la part renommerait le courtier. */
+    vrai(/const etab = estDetenuEnDirect\(typeCompte\(c\.type\)\) \? etabById\(c\.etabId\) : null;/
+      .test(compte),
+      'le contenant, lui, ne suit que pour ce qu’on détient en direct');
+    vrai(/COMPTES\(\)\.filter\(x => x\.etabId === etab\.id\)\.length === 1/.test(compte),
+      'et seulement s’il ne porte que ce compte');
+  });
+});
+
 suite('Saisie par part : le montant et le prix par part donnent les parts', () => {
 
   const vue = () => lireSource('assets/app.js');
@@ -16458,7 +16538,11 @@ suite('Un bien change de contenant, et garde un seul nom', () => {
     const src = lireSource('assets/app.js');
     const debut = src.indexOf("async 'modifier-compte'");
     const handler = src.slice(debut, src.indexOf("async 'ajouter-compte'"));
-    vrai(/estDetenuEnDirect\(typeCompte\(c\.type\)\)\s*\n?\s*&& \(c\.lignes \|\| \[\]\)\.length === 1/
+    /* La garde s'est elargie du DIRECT au TERMINAL : une participation non
+       cotee est tenue par un tiers et n'est pas davantage divisible qu'un
+       appartement. Restreinte au direct, elle laissait une part de societe
+       porter deux noms qui divergeaient en silence. */
+    vrai(/estActifTerminal\(typeCompte\(c\.type\)\)\s*\n?\s*&& \(c\.lignes \|\| \[\]\)\.length === 1/
       .test(handler), 'le renommage suit, sous garde');
     vrai(/&& !\(c\.cash \|\| \[\]\)\.length/.test(handler),
       'et jamais sur un compte qui porte aussi des espèces');
@@ -16477,6 +16561,10 @@ suite('Un bien change de contenant, et garde un seul nom', () => {
        ligne qui portait le nouveau. */
     vrai(/etab\.nom = String\(v\.libelle\)\.trim\(\);/.test(handler),
       'le contenant prend aussi le nom du bien');
+    /* Et LUI reste reserve au direct : le contenant d'une participation est le
+       courtier qui la tient, le renommer du nom de la part serait faux. */
+    vrai(/const etab = estDetenuEnDirect\(typeCompte\(c\.type\)\) \? etabById\(c\.etabId\) : null;/
+      .test(handler), 'mais seulement pour ce qu’on détient en direct');
     vrai(/COMPTES\(\)\.filter\(x => x\.etabId === etab\.id\)\.length === 1/.test(handler),
       'seulement quand l’établissement n’a que ce compte : un parking '
       + 'rattaché au même contenant garde son nom propre');

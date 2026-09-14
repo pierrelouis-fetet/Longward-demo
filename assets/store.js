@@ -242,7 +242,7 @@ const TYPES_COMPTE = [
      invitait a en ranger un second dedans. `direct` dit la meme chose pour ce
      qu'on detient physiquement ; celui-ci le dit pour ce qui est detenu par un
      tiers mais ne se subdivise pas. */
-  { id: 'pe',      label: 'Parts de société', classes: ['nonCote'], defaut: 'investir', groupe: 'pe', parts: true, terminal: true },
+  { id: 'pe',      label: 'Parts de société', classes: ['nonCote'], defaut: 'investir', groupe: 'pe', parts: true, terminal: true, estimee: true },
   /* `vl` : sa valeur ne s'estime pas, elle se PUBLIE. C'est la difference qui
      vaut un type a part plutot qu'un rangement dans « Parts de societe ».
 
@@ -359,6 +359,21 @@ const estUnBien = t => !!t && !t.titres && t.groupe === 'pe';
    detention. Le drapeau `direct` vit donc sur le type, declare une fois dans
    `TYPES_COMPTE`, la ou vivent deja `sansEtab`, `prete` et `interne`. */
 const estDetenuEnDirect = t => !!t && !!t.direct;
+/* Une valeur que PERSONNE ne confirme : c'est le detenteur qui l'apprecie, et
+   rien d'exterieur ne dit s'il a raison. Un bien detenu en direct (`direct`) et
+   une participation non cotee (`estimee`) sont dans ce cas.
+
+   Ce que ce drapeau n'est pas, et les trois s'etaient deja melanges : une VL
+   publiee par une societe de gestion (`vl`) est un chiffre etabli par un tiers,
+   pas une opinion ; un solde lu chez un teneur de compte est un fait ; le
+   nominal d'un pret ne bouge pas tant qu'il n'est pas rembourse.
+
+   Ce qui en depend : l'ecart affiche sous le montant. « +5 000 EUR depuis
+   sept. » se lit comme une plus-value alors que c'est le detenteur qui a revu
+   son propre chiffre entre deux releves, et les deux ne veulent pas dire la
+   meme chose. La ligne annonce donc ce que le montant EST plutot que de
+   comparer deux estimations. */
+const estValeurEstimee = t => !!t && (!!t.direct || !!t.estimee);
 /* Un actif terminal : le contenant EST la chose, il ne porte pas de sous-lignes.
 
    Deux facons de l'etre, et une seule question : ce qu'on detient soi-meme

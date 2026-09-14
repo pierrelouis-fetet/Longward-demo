@@ -433,6 +433,7 @@ const I18N = {
     "ce que tu en tirerais en le vendant aujourd’hui": "what you would get for it if you sold it today",
     "Prix de la part aujourd’hui (€)": "Price per share today (€)",
     "Prix d’achat de la part (€)": "Purchase price per share (€)",
+    "estimation actuelle": "current estimate",
     "l’un remplit l’autre": "each one fills the other",
     "il donne le nombre de parts": "it gives the share count",
     "il se déduit du montant investi, et commande la valeur du jour": "it follows from the amount invested, and drives today’s value",

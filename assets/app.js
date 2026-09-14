@@ -3985,7 +3985,8 @@ function sousTitreCompte(c, avecEtab = true) {
 }
 
 function ligneCompte(c, avecEtab = true) {
-  const v = variationCompte(c.id);
+  const estimee = estValeurEstimee(typeCompte(c.type));
+  const v = estimee ? null : variationCompte(c.id);
   const idx = Store.state.comptes.indexOf(c);
   return `
   <div class="cpt-swipe" data-compte="${esc(c.id)}">
@@ -3998,7 +3999,8 @@ function ligneCompte(c, avecEtab = true) {
         <span class="sub">${esc(sousTitreCompte(c, avecEtab))}</span></span>
       ${sparkCompte(c.id)}
       <span class="cpt-val">${fmtEUR(valeurCompte(c))}
-        ${v ? `<span class="sub ${cls(v.eur)}">${fmtSigned(v.eur)} ${trad('depuis')} ${esc(v.depuis)}</span>`
+        ${estimee ? `<span class="sub">${trad('estimation actuelle')}</span>`
+          : v ? `<span class="sub ${cls(v.eur)}">${fmtSigned(v.eur)} ${trad('depuis')} ${esc(v.depuis)}</span>`
             : `<span class="sub">&nbsp;</span>`}</span>
       <span class="cpt-chev">›</span>
     </button>
@@ -7721,19 +7723,25 @@ const ACTIONS = {
          en titre au-dessus d'une ligne « studio lyon » : deux noms pour une
          chose, ce que ce projet refuse partout ailleurs.
 
-         La garde tient en trois conditions : detenu en direct, une seule ligne,
-         aucune espece. Des qu'un compte porte deux placements, chacun a son nom
-         propre et rien ne doit l'ecraser. */
-      if (estDetenuEnDirect(typeCompte(c.type))
+         La garde tient en trois conditions : un actif TERMINAL, une seule
+         ligne, aucune espece. Terminal et non « detenu en direct » : une
+         participation non cotee est tenue par un tiers et n'est pourtant pas
+         davantage divisible qu'un appartement, le compte y EST le placement de
+         la meme facon. Restreinte au direct, la regle laissait une part de
+         societe porter deux noms qui divergeaient en silence. Des qu'un compte
+         porte deux placements, chacun a son nom propre et rien ne l'ecrase. */
+      if (estActifTerminal(typeCompte(c.type))
           && (c.lignes || []).length === 1 && !(c.cash || []).length
           && String(v.libelle || '').trim()) {
         c.lignes[0].libelle = String(v.libelle).trim();
-        /* Le contenant est le troisieme exemplaire du meme nom : un bien
-           detenu en direct EST son contenant, et la carte de la liste des
-           actifs affiche `etab.nom`. Meme regle que le champ « Nom du bien » :
-           seulement quand l'etablissement n'a que ce compte — un parking
-           rattache au meme contenant garde son nom propre. */
-        const etab = etabById(c.etabId);
+        /* Le contenant est le troisieme exemplaire du meme nom, et LUI reste
+           reserve au direct : un bien detenu en direct EST son contenant, et la
+           carte de la liste des actifs affiche `etab.nom`. Une participation
+           non cotee, non — son contenant est le courtier qui la tient, et le
+           renommer du nom de la part serait faux meme s'il n'en tenait qu'une.
+           Seconde condition, inchangee : seulement quand l'etablissement n'a
+           que ce compte, un parking rattache au meme contenant garde son nom. */
+        const etab = estDetenuEnDirect(typeCompte(c.type)) ? etabById(c.etabId) : null;
         if (etab && COMPTES().filter(x => x.etabId === etab.id).length === 1) {
           etab.nom = String(v.libelle).trim();
         }
@@ -8540,6 +8548,18 @@ const ACTIONS = {
       return;
     }
     Object.assign(l, litPlacement(v, l));
+    /* L'AUTRE SENS DU MEME NOM, et il manquait. Sur un actif terminal le compte
+       EST le placement, mais c'est le nom du COMPTE que l'en-tete, la liste des
+       actifs et les menus lisent — `nomCompteV2()` le prend en premier.
+       Renommer depuis cette fenetre-ci ne touchait que la ligne : le titre
+       gardait l'ancien nom au-dessus du nouveau, et rien a l'ecran ne disait
+       lequel comptait ni ou le corriger. Meme garde qu'au retour, et meme refus
+       d'ecrire une chaine vide. */
+    if (estActifTerminal(typeCompte(c.type))
+        && (c.lignes || []).length === 1 && !(c.cash || []).length
+        && String(v.libelle || '').trim()) {
+      c.libelle = String(v.libelle).trim();
+    }
     refreshAccounts(); Store.save(); render();
     toast(`${guill(l.libelle)} · ${fmtEUR0(num(v.valeur))}`);
   },
