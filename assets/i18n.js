@@ -14,8 +14,37 @@
 const LANGS = [['fr', 'Français'], ['en', 'English']];
 const LANG_KEY = 'wealth-dashboard:lang';
 
+/* LA LANGUE SE DEVINE, PUIS SE CHOISIT, ET JAMAIS L'INVERSE.
+
+   Le choix enregistre prime toujours : quelqu'un qui a pris le francais sur un
+   navigateur anglais ne se le voit pas redevine au rechargement suivant. La
+   detection ne sert qu'a la premiere visite, ou l'alternative etait d'imposer
+   l'anglais a tout le monde.
+
+   `navigator.languages` est une liste ordonnee par preference, et non un seul
+   code : un navigateur francais annonce souvent `fr-FR` puis `en-US`. On prend
+   la premiere que l'application sait parler, pas la premiere tout court.
+
+   Le serveur fait le meme calcul sur `Accept-Language`, et les deux doivent
+   conclure pareil : la page de connexion et le tableau de bord ne peuvent pas
+   parler deux langues. */
+const LANGUES_CONNUES = new Set(LANGS.map(([code]) => code));
+
+function langueDuNavigateur() {
+  try {
+    const annoncees = navigator.languages && navigator.languages.length
+      ? navigator.languages : [navigator.language];
+    for (const etiquette of annoncees) {
+      const code = String(etiquette || '').slice(0, 2).toLowerCase();
+      if (LANGUES_CONNUES.has(code)) return code;
+    }
+  } catch (e) { /* un navigateur sans cette API garde l'anglais */ }
+  return 'en';
+}
+
 function currentLang() {
-  try { return localStorage.getItem(LANG_KEY) || 'en'; } catch (e) { return 'en'; }
+  try { return localStorage.getItem(LANG_KEY) || langueDuNavigateur(); }
+  catch (e) { return langueDuNavigateur(); }
 }
 
 function setLang(code) {
@@ -59,7 +88,86 @@ const I18N = {
     'nav.settings': 'Preferences',
     'nav.notifications': 'Notifications',
     'nav.networth': 'Net worth',
+    'account.privacy': 'Privacy',
+    'account.signout': 'Sign out',
     'nav.theme': 'Theme',
+
+    /* L'ecran de repli quand le compte n'a pas pu etre etabli. Ces clefs sont
+       des phrases francaises, comme tout ce que `trad()` traduit. */
+    'Session à revérifier': 'Session needs checking',
+    'Ton compte n’a pas pu être confirmé. Recharge la page pour te reconnecter.':
+      'Your account could not be confirmed. Reload the page to sign in again.',
+    'Réessayer': 'Try again',
+    'Se déconnecter': 'Sign out',
+
+    'Commence ici': 'Start here',
+    '{n} sur {t}': '{n} of {t}',
+    'Tes comptes et avoirs divers': 'Your accounts and other assets',
+    'Ton salaire et tes rentrées d’argent': 'Your salary and other income',
+    'Ton premier relevé': 'Your first statement',
+    'Tes charges fixes': 'Your fixed costs',
+    'Banques, livrets, comptes de courtage, biens et crédits : ton patrimoine n’est juste que s’ils y sont tous.':
+      'Banks, savings, brokerage accounts, property and loans: your wealth is only right if they are all there.',
+    'Oui, je les ai tous': 'Yes, that is all of them',
+    'Ajouter un compte': 'Add an account',
+    'As-tu enregistré toutes tes rentrées d’argent ?':
+      'Have you entered all your incoming money?',
+    'Salaire, primes, loyers perçus, pensions : ton budget se calcule sur leur somme.':
+      'Salary, bonuses, rent received, pensions: your budget is worked out on their total.',
+    'Oui, tout y est': 'Yes, that is everything',
+    'Ajouter une rentrée': 'Add an income source',
+    'Entrer tes charges fixes': 'Enter your fixed costs',
+    'As-tu enregistré toutes tes charges fixes ?':
+      'Have you entered all your fixed costs?',
+    'Loyer, assurances, abonnements, mensualités de crédit : ce qui part tous les mois sans que tu y penses.':
+      'Rent, insurance, subscriptions, loan instalments: what leaves every month without you thinking about it.',
+    'Ajouter une charge': 'Add a fixed cost',
+    'Ta liste est déclarée complète': 'Your list is marked complete',
+    'Tout est en place. Ce guide a fait son travail, tu peux le refermer.':
+      'Everything is in place. This guide has done its job, you can close it.',
+    'Refermer le guide': 'Close the guide',
+    'Confirme avec le code reçu': 'Confirm with the code you received',
+    'Un code vient d’être envoyé à {a}. Entre-le pour confirmer la suppression.':
+      'A code has just been sent to {a}. Enter it to confirm the deletion.',
+    'Code incorrect ou expiré. Rien n’a été effacé.':
+      'Incorrect or expired code. Nothing was erased.',
+
+    'Commence par tes comptes': 'Start with your accounts',
+    'Une banque, un livret, un compte de courtage ou un bien : tout part de là.':
+      'A bank, a savings account, a brokerage account or an asset: it all starts there.',
+    'As-tu enregistré tous tes comptes et avoirs ?':
+      'Have you entered all your accounts and assets?',
+    'La croix de cette ligne veut dire oui : le relevé mensuel prendra alors le relais. Sinon, ouvre Actifs pour compléter.':
+      'The cross on this row means yes, and the monthly statement then takes over. Otherwise open Assets to finish the list.',
+
+    'Envoi au cloud…': 'Saving to the cloud…',
+    'Sauvegardé dans le cloud': 'Saved to the cloud',
+
+    'nav.profil': 'Account',
+    'Ton compte': 'Your account',
+    'Cette instance ne tient pas de comptes séparés : il n’y a pas de profil à afficher.':
+      'This instance keeps no separate accounts, so there is no profile to show.',
+    'Adresse de connexion': 'Sign-in address',
+    'Tu te connectes avec un code envoyé à cette adresse. Il n’y a pas de mot de passe à retenir.':
+      'You sign in with a code sent to this address. There is no password to remember.',
+    'Tes données': 'Your data',
+    'Ton patrimoine est enregistré sous ton compte et te suit d’un appareil à l’autre. Les sauvegardes et l’export vivent dans Données.':
+      'Your wealth is stored under your account and follows you from one device to another. Backups and export live in Data.',
+    'Aller à Données': 'Go to Data',
+    'Quitter Longward': 'Leaving Longward',
+    'La suppression efface ton compte, ton patrimoine et tes sessions. Elle est immédiate et ne s’annule pas. Exporte tes données avant si tu veux les garder.':
+      'Deleting removes your account, your wealth and your sessions. It is immediate and cannot be undone. Export your data first if you want to keep it.',
+    'Effacer mon compte et mes données': 'Delete my account and my data',
+    'Effacer définitivement ton compte ?': 'Delete your account for good?',
+    'Ton patrimoine, tes sauvegardes en ligne et ton accès à {a} seront effacés. Cette action ne s’annule pas.':
+      'Your wealth, your online backups and your access for {a} will be erased. This cannot be undone.',
+    'Si tu veux garder une copie, annule et passe d’abord par Données.':
+      'To keep a copy, cancel and go through Data first.',
+    'Effacer mon compte': 'Delete my account',
+    'Suppression impossible : vérifie ta connexion.':
+      'Deletion failed: check your connection.',
+    'Suppression impossible pour le moment. Rien n’a été effacé.':
+      'Deletion is not possible right now. Nothing was erased.',
 
     'view.overview': 'Overview',
     'view.overview.sub': 'A snapshot of your wealth',
@@ -85,6 +193,8 @@ const I18N = {
     'view.data.sub': 'Backup, import, export and sync',
     'view.settings': 'Preferences',
     'view.settings.sub': 'Language, appearance, notifications and app behaviour',
+    'view.profil': 'Account',
+    'view.profil.sub': 'Your sign-in address, your data, and how to leave',
     'view.notifications': 'Notifications',
     'view.notifications.sub': 'What the bell is allowed to tell you',
 
@@ -900,7 +1010,7 @@ const I18N = {
     "ex. Crédit Agricole": "e.g. Northgate Bank",
     "ex. Fortuneo": "e.g. Fortuneo",
     "ex. PEA Fortuneo": "e.g. PEA Fortuneo",
-    "ex. Salaire, loyer perçu": "e.g. Salary, rent received",
+    "ex. Salaire net, loyer perçu": "e.g. Net salary, rent received",
     "ex. Studio Lyon 3e": "e.g. Studio in Lyon",
     "hors séance": "outside trading hours",
     "la base des pourcentages ci-dessus": "the basis of the percentages above",
@@ -1600,7 +1710,7 @@ const I18N = {
     "Devises": "Currencies",
 
     "Aperçu": "Overview",
-    "Vois clair.": "See clearly.",
+    "Vois juste.": "See clearly.",
     "Avance.": "Move forward.",
 
     "Voir et modifier les sources de revenus": "See and edit income sources",
@@ -1916,7 +2026,8 @@ const I18N = {
     "Le total des mensualités des crédits rattachés à ce bien. Chaque prêt se lit séparément dans « Financement », plus bas.":
       "The total instalments of the loans attached to this property. Each loan is shown separately under “Financing”, below.",
     "Banque / prêteur": "Bank / lender",
-    "Le montant perçu chaque mois, avant les charges que tu déclares à part": "The amount received each month, before the costs you declare separately",
+    'Ce qui arrive vraiment sur ton compte : salaire net, loyer encaissé. Les charges que tu déclares à part ne sont pas déduites ici.':
+      'What actually lands in your account: net salary, rent received. The costs you declare separately are not deducted here.',
     "{n} ligne sans clôture de référence n’y est pas comptée":
       "{n} holding without a reference close is not counted in it",
     "{n} lignes sans clôture de référence n’y sont pas comptées":
@@ -2474,13 +2585,14 @@ const I18N = {
     "Aucun compte pour l’instant.": "No account yet.",
     "Ce chiffre compare ton argent disponible à ce que te coûte un mois. Il attend donc tes charges fixes.":
       'This figure compares the money you can reach with what a month costs you. So it waits on your fixed costs.',
-    'Déclare ton salaire et tes autres rentrées : c’est d’elles que partent ta capacité d’épargne, ton budget et ce qu’il te reste à vivre.':
-      'Declare your salary and your other income: they are what your saving capacity, your budget and what is left to live on all start from.',
+    'Déclare ton salaire net et tes autres rentrées : c’est d’elles que partent ta capacité d’épargne, ton budget et ce qu’il te reste à vivre.':
+      'Declare your net salary and your other income: they are what your saving capacity, your budget and what is left to live on all start from.',
     'Aucun objectif fixé pour {a}': 'No target set for {a}',
     "Ce chiffre compare ton argent disponible à ce que te coûte un mois. Il attend donc deux choses : un compte avec du cash, et tes charges fixes.": "This figure compares the money you can reach with what a month costs you. So it waits on two things: an account with cash in it, and your fixed costs.",
-    "Entrer ton salaire": "Enter your salary",
+    "Entrer ton salaire net": "Enter your net salary",
     "Entrer tes dépenses": "Enter your spending",
-    "Ajoute un compte pour commencer : une banque, un livret, un compte de courtage ou un bien. C’est d’eux que viennent ton patrimoine, ta répartition et ton autonomie.": "Add an account to begin: a bank, a savings account, a brokerage account or an asset. They are where your wealth, your allocation and your runway come from.",
+    'Chaque poche est un compte : dans une même banque, un compte courant, un PEA et un livret en font trois. C’est d’eux que viennent ton patrimoine, ta répartition et ton autonomie.':
+      'Every pocket is an account: within one bank, a current account, a share plan and a savings account make three. They are where your wealth, your allocation and your runway come from.',
     "Ajoute tes loyers, assurances et abonnements : ce sont eux qui décident de ce qu’il te reste à vivre chaque mois.": "Add your rent, insurance and subscriptions: they are what decides how much you have left to live on each month.",
     "Créer un compte-titres": "Create a brokerage account",
     "Un titre se pose sur le compte qui le détient : commence par en créer un.": "A security sits on the account that holds it: start by creating one.",
@@ -2571,6 +2683,9 @@ const FR = {
   'nav.settings': 'Préférences',
   'nav.notifications': 'Notifications',
   'nav.networth': 'Patrimoine net',
+  'account.privacy': 'Confidentialité',
+  'account.signout': 'Se déconnecter',
+  'nav.profil': 'Profil',
   'nav.theme': 'Thème',
 
   'view.overview': 'Aperçu',
@@ -2604,6 +2719,8 @@ const FR = {
   'view.data.sub': 'Sauvegarde, import, export et synchronisation',
   'view.settings': 'Préférences',
   'view.settings.sub': "Langue, apparence, notifications et comportement de l'app",
+  'view.profil': 'Profil',
+  'view.profil.sub': 'Ton adresse de connexion, tes données, et comment partir',
   'view.notifications': 'Notifications',
   'view.notifications.sub': 'Ce que la cloche a le droit de dire',
 
@@ -2656,4 +2773,8 @@ function translateStatic() {
     }
   }
   document.documentElement.lang = currentLang();
+  const lienConf = document.querySelector('a[data-i18n="account.privacy"]');
+  if (lienConf) {
+    lienConf.setAttribute('href', currentLang() === 'fr' ? '/confidentialite' : '/privacy');
+  }
 }

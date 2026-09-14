@@ -4,8 +4,17 @@ const CloudSync = (() => {
   const WRITE_DELAY = 2500;
 
   const SYNCED_KEY = 'wealth-dashboard:synced-at';
-  const lastSyncedAt = () => { try { return localStorage.getItem(SYNCED_KEY); } catch (e) { return null; } };
-  const markSynced = at => { try { localStorage.setItem(SYNCED_KEY, at || ''); } catch (e) {} };
+  let userId = null;
+  const syncedKey = () => userId ? `${SYNCED_KEY}:user:${userId}` : SYNCED_KEY;
+  const lastSyncedAt = () => { try { return localStorage.getItem(syncedKey()); } catch (e) { return null; } };
+  const markSynced = at => { try { localStorage.setItem(syncedKey(), at || ''); } catch (e) {} };
+
+  const COMPTES_KEY = 'wealth-dashboard:comptes';
+  const litComptes = () => {
+    try { return localStorage.getItem(COMPTES_KEY) === '1'; } catch (e) { return false; }
+  };
+  let comptes = litComptes();
+  let probed = false;
 
   let available = false;        // /api/state répond
   let user = null;              // email Cloudflare Access
@@ -24,15 +33,29 @@ const CloudSync = (() => {
      version qui n'est plus en place, et se fait refuser sans raison. */
   const noterVersionLue = at => { markSynced(at); status.conflict = null; };
 
+  const aJour = () => {
+    const local = Store.state?.meta?.savedAt;
+    if (!local) return true;
+    return lastSyncedAt() === local;
+  };
+
   async function probe() {
     const d = await Quotes.healthData();
-    available = !!d && d.storage === 'kv';
+    probed = true;
+    available = !!d && (d.storage === 'kv' || d.storage === 'd1');
     user = (d && d.user) || null;
+    userId = (d && d.userId) || null;
+    if (d && typeof d.accounts === 'boolean') {
+      comptes = d.accounts;
+      try { localStorage.setItem(COMPTES_KEY, comptes ? '1' : '0'); } catch (e) {}
+    }
     return available;
   }
 
   async function pull() {
-    const r = await fetch('/api/state', { cache: 'no-store' });
+    const r = await fetch('/api/state', {
+      cache: 'no-store', headers: { 'X-Longward-User': userId || '' },
+    });
     if (r.status === 204) return null;
     if (!r.ok) throw new Error(`lecture impossible (HTTP ${r.status})`);
     return r.json();
@@ -90,7 +113,7 @@ const CloudSync = (() => {
       const params = force ? '?force=1' : (vu ? `?base=${encodeURIComponent(vu)}` : '');
       const r = await fetch('/api/state' + params, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Longward-User': userId || '' },
         body: payload,
       });
 
@@ -139,7 +162,8 @@ const CloudSync = (() => {
   }
 
   async function init() {
-    if (!(await probe())) return { available: false };
+    if (!probed && !(await probe())) return { available: false };
+    if (!available) return { available: false };
     let remote = null;
     try { remote = await pull(); }
     catch (e) { status.error = e.message; return { available: true, error: e.message }; }
@@ -209,7 +233,12 @@ const CloudSync = (() => {
     clearTimeout(timer);
     try {
       const vu = lastSyncedAt();
-      navigator.sendBeacon('/api/state' + (vu ? `?base=${encodeURIComponent(vu)}` : ''),
+      const params = vu ? `?base=${encodeURIComponent(vu)}` : '';
+      const separateur = params ? '&' : '?';
+      /* `sendBeacon` ne porte pas d'en-tete : le compte passe donc en
+         parametre, faute de mieux, et le serveur le compare a sa session. */
+      navigator.sendBeacon('/api/state' + params + separateur
+        + `user=${encodeURIComponent(userId || '')}`,
         new Blob([payload], { type: 'application/json' }));
       lastPayload = payload;
     } catch (e) { /* rien à faire de plus au moment de la fermeture */ }
@@ -219,7 +248,10 @@ const CloudSync = (() => {
     init, pull, push, schedulePush, probe, flushOnUnload, setOnChange,
     setOnConflit, noterVersionLue,
     isAvailable: () => available,
+    aJour,
     getUser: () => user,
+    getUserId: () => userId,
+    comptesActifs: () => comptes,
     status: () => ({ ...status }),
   };
 })();

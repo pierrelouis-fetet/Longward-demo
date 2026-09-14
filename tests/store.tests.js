@@ -11,6 +11,31 @@
 
 const { suite, test, pres, eq, vrai, leve } = Tests;
 
+/* CET ARBRE PORTE-T-IL LA GRAINE DE DEMONSTRATION ?
+
+   Le projet a trois points de sortie : le depot prive, la demonstration
+   publique avec son patrimoine fictif, et la beta, qui part a vide pour qu'un
+   testeur pose ses propres chiffres sans faire le menage d'abord.
+
+   LE SIGNAL EST LA GRAINE ELLE-MEME, et non un drapeau pose a cote. Une
+   premiere version lisait `SEED_VERSION`, qui n'existe que dans la graine de la
+   demonstration — mais le depot prive n'en porte pas non plus, et sa graine est
+   pleine : le controle s'y serait cru sur un arbre vide et aurait exige d'une
+   graine bien garnie qu'elle ne porte aucun compte. Un drapeau qui repond a
+   cote de la question finit toujours par repondre faux.
+
+   LES CONTROLES CONCERNES NE SE TAISENT PAS POUR AUTANT. « Le jeu porte deux
+   comptes de titres » n'a pas d'objet sur un arbre vide ; « sa graine ne porte
+   aucun compte » en a un, et c'est la verite de cet arbre-la. Un controle qui
+   se tait est pire qu'absent : il compte pour un vert. */
+function sansGraineDeDemo(quoi) {
+  const garnie = (SEED.accounts || []).length || (SEED.positions || []).length;
+  if (garnie) return false;
+  eq((SEED.accounts || []).length, 0,
+    quoi + ' : cet arbre part à vide, et sa graine ne porte aucun compte');
+  return true;
+}
+
 /* Le texte d'un fichier du projet, en synchrone comme le harnais.
 
    Deux sortes de tests s'en servent. Les regles qui vivent dans `app.js` ne
@@ -78,9 +103,24 @@ function auJour(iso, faire) {
    anglais, l'instance privee en francais — et plusieurs controles en dependent.
    La recopier dans chacun d'eux aurait fait deux tests a editer pour un depot,
    et un test faux pour l'autre. */
+/* LA LANGUE PAR DEFAUT N'EST PLUS UNE CONSTANTE, C'EST UN REPLI.
+
+   L'application ouvrait en anglais pour tout le monde ; elle suit desormais
+   les langues annoncees par le navigateur, et ne retombe sur une valeur fixe
+   que si aucune n'est reconnue. C'est cette valeur-la que les fichiers servis
+   declarent — un fichier statique ne peut pas deviner qui le lit — et c'est
+   donc elle que les controles doivent comparer.
+
+   Elle se lit dans `langueDuNavigateur()`, sur son dernier `return` : le seul
+   chemin qui ne depend ni du stockage ni du navigateur. */
 function langueParDefaut() {
-  const m = lireSource('assets/i18n.js').match(/getItem\(LANG_KEY\) \|\| '(\w+)'/);
-  vrai(m, 'la langue par défaut doit se lire dans i18n.js');
+  const src = lireSource('assets/i18n.js');
+  vrai(/getItem\(LANG_KEY\) \|\| langueDuNavigateur\(\)/.test(src),
+    'la langue doit s’hériter du navigateur faute de choix enregistré');
+  const fn = src.slice(src.indexOf('function langueDuNavigateur()'),
+                       src.indexOf('function currentLang()'));
+  const m = fn.match(/return '(\w+)';\s*\}\s*$/);
+  vrai(m, 'le repli ultime doit se lire dans langueDuNavigateur');
   return m[1];
 }
 
@@ -114,6 +154,7 @@ function corpsDe(src, nom) {
 suite('Les totaux égalent la somme de leurs parts', () => {
 
   test('un premier lancement rend un état complet, pas une coquille', () => {
+    if (sansGraineDeDemo('le premier lancement')) return;
     /* `load()` ne migrait que l'etat relu du stockage. Sur une machine vierge
        elle posait la graine telle quelle, dans l'ancien modele, et rendait la
        main : `comptes` n'existait pas, et tout ce qui en descend valait zero.
@@ -213,6 +254,456 @@ suite('Les totaux égalent la somme de leurs parts', () => {
     pres(s.invested + s.cashToInvest, s.balance,
       'titres + à investir = total chez les courtiers');
     pres(s.balance, 11250, '9 000 d’ETF + 750 d’or + 1 500 de cash');
+  });
+});
+
+suite('Comptes séparés et authentification', () => {
+  test('le stockage local porte l’identifiant stable du compte', () => {
+    const store = lireSource('assets/store.js');
+    vrai(/function setStorageScope\(scope\)/.test(store), 'le compte définit sa portée locale');
+    vrai(/cleParUtilisateur\(modeDemo\(\) \? CLE_DEMO : CLE_REELLE\)/.test(store),
+      'les données sont rangées dans cette portée');
+    vrai(/localStorage\.getItem\(cleSauvegardes\(\)\)/.test(store),
+      'les sauvegardes suivent la même portée');
+    const app = lireSource('assets/app.js');
+    const init = app.slice(app.indexOf('(async function init()'), app.indexOf("if (location.protocol === 'file:')"));
+    vrai(init.indexOf('await CloudSync.probe();') < init.indexOf('Store.load();'),
+      'l’identité est établie avant de charger des données locales');
+  });
+
+  test('un ancien onglet ne peut pas écrire sous le compte suivant', () => {
+    const sync = lireSource('assets/cloudsync.js');
+    vrai(/'X-Longward-User': userId \|\| ''/.test(sync),
+      'chaque requête nomme le compte qui a produit son état');
+    vrai(/user=\$\{encodeURIComponent\(userId \|\| ''\)\}/.test(sync),
+      'le dernier envoi de fermeture nomme aussi ce compte');
+    const worker = lireSource('_worker.js');
+    vrai(/claimedOwner !== owner/.test(worker),
+      'le serveur refuse une requête produite avant un changement de session');
+  });
+
+  test('les comptes et patrimoines sont reliés dans D1', () => {
+    const schema = lireSource('schema.sql');
+    vrai(/CREATE TABLE IF NOT EXISTS users/.test(schema), 'les utilisateurs existent');
+    vrai(/owner_id TEXT PRIMARY KEY REFERENCES users\(id\)/.test(schema),
+      'un patrimoine appartient à un utilisateur');
+    vrai(/token_hash TEXT PRIMARY KEY/.test(schema), 'les jetons de session ne sont pas stockés en clair');
+    const worker = lireSource('_worker.js');
+    vrai(/email_confirmed_at/.test(worker), 'une adresse non confirmée ne crée pas de session');
+    /* Le controle d'origine accepte deux preuves, et c'est voulu : `Origin`,
+       et `Sec-Fetch-Site` que le navigateur pose lui-meme et qu'aucun script
+       de page ne peut ecrire. Un POST venu d'un autre site porte
+       `cross-site` ; un client hors navigateur peut forger l'en-tete mais n'a
+       pas le cookie de la victime, donc ne gagne rien. */
+    vrai(/Origin'\) === url\.origin/.test(worker),
+      'l’origine de la requête est comparée à celle du site');
+    vrai(/includes\(request\.method\) && !memeOrigine/.test(worker),
+      'les formulaires et écritures venant d’un autre site sont refusés');
+    vrai(/DELETE FROM sessions WHERE token_hash/.test(worker), 'la déconnexion révoque la session');
+    vrai(/WHERE owner_id = \? AND revision = \?/.test(worker),
+      'une écriture concurrente ne peut pas écraser une révision différente');
+  });
+
+  test('demander un code coûte quelque chose à qui en abuse', () => {
+    /* L'endpoint est ouvert par nature, prend une adresse quelconque et fait
+       partir du courrier signe du domaine. Le plafond du fournisseur vaut pour
+       le PROJET : quelqu'un qui le sature bloque les vrais testeurs. Le
+       compteur doit donc vivre ici. */
+    const worker = lireSource('_worker.js');
+    const schema = lireSource('schema.sql');
+    vrai(/CREATE TABLE IF NOT EXISTS auth_throttle/.test(schema), 'le compteur a sa table');
+    vrai(/ON CONFLICT\(bucket\) DO UPDATE SET/.test(worker),
+      'le compteur s’incrémente en une seule instruction, pas en lecture puis écriture');
+    vrai(/otp:ip:\$\{clientIp\(request\)\}/.test(worker), 'le débit est compté par adresse IP');
+    vrai(/otp:mail:\$\{email\}/.test(worker), 'et par adresse e-mail visée');
+    vrai(/code:mail:\$\{email\}/.test(worker),
+      'les essais de code sont comptés : six chiffres se devinent sans limite');
+
+    /* L'ordre compte : les compteurs avant l'appel sortant, sinon on paie
+       l'envoi avant de decider qu'on le refusait. */
+    const envoi = worker.indexOf("path === '/api/auth/request-code'");
+    const bloc = worker.slice(envoi, worker.indexOf("path === '/api/auth/verify-code'"));
+    vrai(bloc.indexOf('otp:ip:') < bloc.indexOf("'/auth/v1/otp'"),
+      'le compteur passe avant l’envoi du courrier');
+  });
+
+  test('le contrôle anti-robot dort tant qu’il n’est pas configuré', () => {
+    const worker = lireSource('_worker.js');
+    vrai(/if \(!env\.TURNSTILE_SECRET_KEY\) return true;/.test(worker),
+      'sans clef secrète, la porte laisse passer comme avant');
+    vrai(/siteKey \? '' :/.test(worker),
+      'sans clef publique, aucun widget n’est affiché');
+    vrai(/turnstile\/v0\/siteverify/.test(worker),
+      'le jeton se vérifie côté serveur, sinon le widget n’est qu’une image');
+    vrai(/env\.TURNSTILE_SITE_KEY \? ' https:\/\/challenges\.cloudflare\.com' : ''/.test(worker),
+      'la CSP ne s’ouvre au script tiers que si le widget existe');
+    /* Le motif vise la chaîne construite, pas le commentaire qui la décrit :
+       une première version cherchait « script-src … unsafe-inline » partout et
+       tombait sur la prose qui explique justement qu’il n’y en a pas. */
+    vrai(/"default-src 'self'; script-src 'self'"/.test(worker),
+      'et elle ne s’ouvre jamais aux scripts en ligne');
+  });
+
+  test('l’ancienne porte se ferme dès que les comptes servent', () => {
+    /* Le mot de passe unique ne porte aucune identite : sa session retombe sur
+       `state:default`, partage par tous ceux qui le connaissent. La consigne
+       de ne pas le definir vivait dans un document ; elle vit maintenant dans
+       le code, ou personne n'a besoin de se la rappeler. */
+    const worker = lireSource('_worker.js');
+    vrai(/const motDePasseAdmis = !!pwd && !emailAuthReady;/.test(worker),
+      'le mot de passe partagé cesse d’ouvrir quand les comptes existent');
+    vrai(/env\.ALLOW_PUBLIC === '1' && !emailAuthReady/.test(worker),
+      'et l’ouverture publique ne peut plus contourner les comptes');
+  });
+
+  test('se déconnecter marche même sans JavaScript', () => {
+    /* Le lien est une ancre : si le script qui intercepte le clic n'a pas pris,
+       elle part en GET. La route ne repondait qu'au POST, donc le bouton de
+       sortie affichait « route inconnue » et laissait la session ouverte. */
+    const worker = lireSource('_worker.js');
+    vrai(/path === '\/api\/logout' && \(request\.method === 'POST' \|\| request\.method === 'GET'\)/
+      .test(worker), 'la déconnexion répond aussi à une simple navigation');
+    vrai(/wd_session=; Path=\/; HttpOnly; Secure; SameSite=Lax; Max-Age=0/.test(worker),
+      'et elle efface aussi le cookie de l’ancienne porte');
+  });
+
+  test('une adresse revenue sous un nouvel identifiant retrouve son patrimoine', () => {
+    /* `ON CONFLICT(id)` ne couvre pas l'index unique de l'adresse : un compte
+       supprime puis recree chez le fournisseur faisait lever l'instruction,
+       annulait le lot, et la personne ne pouvait plus entrer. */
+    const worker = lireSource('_worker.js');
+    const schema = lireSource('schema.sql');
+    vrai(/UPDATE users SET id = \?1, updated_at = unixepoch\(\) WHERE email = \?2 AND id <> \?1/
+      .test(worker), 'la ligne existante est réaffectée avant l’insertion');
+    /* Les deux lignes de table, pas un compte d’occurrences : le commentaire
+       qui explique la cascade en portait une troisième. */
+    vrai(/user_id TEXT NOT NULL REFERENCES users\(id\) ON DELETE CASCADE ON UPDATE CASCADE/
+      .test(schema), 'les sessions suivent le nouvel identifiant');
+    vrai(/owner_id TEXT PRIMARY KEY REFERENCES users\(id\) ON DELETE CASCADE ON UPDATE CASCADE/
+      .test(schema), 'le patrimoine aussi');
+  });
+
+  test('ce qui n’est pas le site ne part pas en ligne', () => {
+    /* `wrangler.json` sert la racine du depot : sans liste d'exclusion, le mode
+       d'emploi de l'authentification et le schema de la base s'obtiennent a
+       l'adresse qui porte leur nom. La porte les protege, mais l'inscription
+       est libre : tout inscrit les lit. */
+    const ignore = lireSource('.assetsignore');
+    vrai(ignore, '.assetsignore doit être lisible pour ce contrôle');
+    for (const motif of ['*.md', '*.py', '*.sql', 'wrangler.json', 'tests/']) {
+      vrai(ignore.includes(motif), `${motif} ne doit pas être servi`);
+    }
+  });
+
+  test('deux actions ne portent jamais le même nom', () => {
+    /* UNE CLEF EN DOUBLE NE SE SIGNALE PAS, ET LA DERNIERE GAGNE. Un écran du
+       compte a posé `supprimer-compte` sans voir que le nom était pris : dans
+       cette application un compte est un compte BANCAIRE, et l'action existante
+       en supprime un. Le bouton « Effacer mon compte et mes données » appelait
+       donc la suppression d'une ligne d'actifs, sans qu'aucune erreur ne le
+       dise. C'est le même défaut que deux clefs identiques dans le
+       dictionnaire, et il mérite le même garde-fou.
+
+       Le motif vise les méthodes posées à deux espaces d'indentation : c'est la
+       forme des entrées d'`ACTIONS`. */
+    const src = lireSource('assets/app.js');
+    /* La tranche s'arrête à la première accolade fermante en colonne zéro :
+       hors d'`ACTIONS`, deux objets peuvent légitimement porter la même clef. */
+    const debut = src.indexOf('const ACTIONS = {');
+    vrai(debut >= 0, 'ACTIONS doit être trouvable');
+    const table = src.slice(debut, src.indexOf('\n};', debut));
+    const vus = new Map();
+    const doubles = [];
+    /* Les deux formes coexistent : la méthode abrégée `'nom'() {` et la
+       propriété `'nom': makeDeleter(...)`. N'en chercher qu'une laissait
+       passer la moitié des actions. */
+    for (const m of table.matchAll(/^ {2}(?:async )?'([a-z0-9-]+)'\s*[:(]/gm)) {
+      if (vus.has(m[1])) doubles.push(m[1]);
+      else vus.set(m[1], true);
+    }
+    vrai(vus.size > 40, `${vus.size} actions relevées : le motif ne les voit plus`);
+    eq(doubles.length, 0, 'noms déclarés deux fois : ' + doubles.join(', '));
+
+    /* Et tout bouton doit désigner une action qui existe : un nom mal recopié
+       donne un bouton muet, ce qui ne se voit qu'en cliquant. */
+    const manquantes = [];
+    for (const m of src.matchAll(/data-action="([a-z0-9-]+)"/g)) {
+      if (!vus.has(m[1])) manquantes.push(m[1]);
+    }
+    eq(manquantes.length, 0, 'boutons sans action : ' + [...new Set(manquantes)].join(', '));
+  });
+
+  test('la connexion parle la langue de l’application', () => {
+    /* `currentLang()` rend 'en' en dur quand rien n'est stocké : l'application
+       est anglaise par défaut, par décision et non par détection. Les pages du
+       worker étaient les seules chaînes françaises codées en dur du projet, et
+       le parcours basculait de langue au milieu — connexion française, courriel
+       français, puis application anglaise.
+
+       Ces pages ne peuvent pas appeler `trad()` : le worker les construit sans
+       le dictionnaire. Une seule langue est donc possible, et c'est celle de
+       l'application. Le contrôle porte sur cet accord, pas sur l'anglais. */
+    const i18n = lireSource('assets/i18n.js');
+    vrai(/navigator\.languages/.test(i18n),
+      'le navigateur annonce une liste ordonnée, et c’est elle qu’on lit');
+    vrai(/localStorage\.getItem\(LANG_KEY\) \|\| langueDuNavigateur\(\)/.test(i18n),
+      'le choix enregistré prime toujours sur la détection');
+
+    const worker = lireSource('_worker.js');
+    /* Le serveur fait le meme calcul que le navigateur, sur `Accept-Language`.
+       Cet en-tete est une liste PONDEREE : « en-US,en;q=0.9,fr;q=0.8 » annonce
+       un anglophone qui comprend le francais. Chercher « fr » dedans le
+       prendrait pour un francophone, d'ou la lecture des poids. */
+    vrai(/function langueDemandee\(request\)/.test(worker),
+      'le worker déduit la langue de l’en-tête du navigateur');
+    vrai(/q=\(\[\\d\.\]\+\)/.test(worker) || /q=\(\[\\d.\]\+\)/.test(worker),
+      'et il lit les pondérations plutôt que de chercher un code au hasard');
+
+    /* Les deux tables portent les memes clefs : une clef presente d'un seul
+       cote rendrait `undefined` dans la page, sans erreur et sans que rien ne
+       le dise. */
+    const table = worker.slice(worker.indexOf('const AUTH_TEXTES = {'),
+                               worker.indexOf('function langueDemandee'));
+    const clefsDe = code => {
+      const debut = table.indexOf(`  ${code}: {`);
+      const bloc = table.slice(debut, table.indexOf('\n  },', debut));
+      return [...bloc.matchAll(/^\s{4}(\w+):/gm)].map(m => m[1]).sort();
+    };
+    const en = clefsDe('en');
+    const fr = clefsDe('fr');
+    vrai(en.length > 15, `${en.length} clefs relevées : le motif ne les voit plus`);
+    eq(fr.join(','), en.join(','), 'les deux langues doivent porter les mêmes clefs');
+
+    /* Et aucune page ne reçoit une chaîne écrite à la main : elle échapperait
+       à la traduction sans que personne s'en aperçoive. C'est arrivé deux fois
+       au même message, resté français dans une page anglaise. */
+    for (const m of worker.matchAll(/page(?:Connexion|Code)\(([^)]*)\)/g)) {
+      vrai(!/'[A-Za-zÀ-ÿ]/.test(m[1]),
+        `« ${m[1]} » : un message doit passer par la table, pas par une chaîne`);
+    }
+  });
+
+  test('le témoin d’enregistrement ne promet que ce qui est fait', () => {
+    /* Il annonçait « Sauvegardé localement » en toutes circonstances, ce qui
+       était vrai tant que rien ne partait ailleurs. Depuis que les comptes
+       rangent le patrimoine en base, la phrase est fausse la moitié du temps,
+       et fausse dans le mauvais sens : elle laisse croire qu'un changement
+       n'a pas quitté l'appareil. L'inverse serait pire — annoncer le cloud
+       avant l'aboutissement ferait fermer l'onglet trop tôt. */
+    const app = lireSource('assets/app.js');
+    vrai(/function libelleEnregistrement\(\)/.test(app),
+      'le libellé se dérive de l’état de synchronisation');
+    const fn = app.slice(app.indexOf('function libelleEnregistrement()'),
+                         app.indexOf('function majTemoinEnregistrement()'));
+    vrai(/s\.pushing/.test(fn), 'un envoi en cours se dit en cours');
+    vrai(/s\.error \|\| s\.conflict/.test(fn),
+      'un envoi échoué retombe sur le local, qui est alors la vérité');
+    /* LA QUESTION EST « RESTE-T-IL A ENVOYER », PAS « AI-JE ENVOYE ».
+       Une première version regardait `lastPush`, qui ne vaut que pour la page
+       en cours : arriver sur une application déjà synchronisée ne déclenche
+       aucun envoi, donc le témoin annonçait « localement » alors que tout
+       était en ligne. Vu à l'écran, pas par un test. */
+    /* Les commentaires partent avant le contrôle : celui qui explique cette
+       erreur-là cite justement `lastPush`, et le motif tombait dessus. Un test
+       qui lit de la prose finit par accuser une explication. */
+    const code = fn.replace(/\/\*[\s\S]*?\*\//g, '');
+    vrai(!/lastPush/.test(code),
+      'le libellé ne se fie pas à un envoi fait pendant cette page');
+    vrai(/CloudSync\.aJour\(\)/.test(fn),
+      'il compare le repère de synchronisation à l’état en mémoire');
+    const sync = lireSource('assets/cloudsync.js');
+    vrai(/const aJour = \(\) => \{/.test(sync) && /lastSyncedAt\(\) === local/.test(sync),
+      'et ce repère survit au rechargement, contrairement à un compteur de page');
+    vrai(/modeDemo\(\) \|\| !CloudSync\.isAvailable\(\)/.test(fn),
+      'sans cloud, ou en démonstration, rien ne prétend au cloud');
+
+    /* Le repos apres le flash ne doit pas retomber sur la chaine figee. */
+    const flash = app.slice(app.indexOf('function flashSaved()'),
+                            app.indexOf('function flashSaved()') + 500);
+    vrai(/textContent = libelleEnregistrement\(\)/.test(flash),
+      'et le témoin retombe sur l’état réel après le flash');
+    vrai(/majTemoinEnregistrement\(\);\n    if \(currentView\(\) === 'data'\)/.test(app),
+      'chaque fin d’envoi rafraîchit le témoin');
+
+    const i18n = lireSource('assets/i18n.js');
+    for (const clef of ['Envoi au cloud…', 'Sauvegardé dans le cloud']) {
+      vrai(i18n.includes(`'${clef}'`), `« ${clef} » doit porter sa traduction`);
+    }
+  });
+
+  test('la politique de confidentialité se lit avant de donner son adresse', () => {
+    /* Cloudflare Pages redirige `/confidentialite.html` vers `/confidentialite`
+       par un 308, avant le worker. Seule la première écriture était déclarée
+       publique : la redirection tombait sur le garde-fou et la page renvoyait
+       l'écran de connexion. Mesuré en ligne, pas déduit — le formulaire
+       d'inscription y renvoie, et l'information doit précéder la collecte. */
+    const worker = lireSource('_worker.js');
+    const publics = worker.slice(worker.indexOf('const PUBLIC = ['),
+                                 worker.indexOf('];', worker.indexOf('const PUBLIC = [')));
+    /* Les deux langues et les deux écritures de chacune : Pages redirige la
+       forme `.html` vers la forme nue, et la redirection doit atterrir sur une
+       adresse publique elle aussi. */
+    for (const chemin of ["'/confidentialite.html'", "'/confidentialite'",
+                          "'/privacy.html'", "'/privacy'"]) {
+      vrai(publics.includes(chemin), `${chemin} doit être lisible sans session`);
+    }
+    /* Le motif tient l'adresse, pas le libellé : une première version citait
+       « politique », et la traduction de la page l'a fait tomber sur un lien
+       pourtant juste. Ce qui compte ici est le chemin.
+
+       Il pointe l'anglais, comme tout ce que le worker construit ; le français
+       est à un clic depuis la page. */
+    vrai(/href="\$\{T\.confidentialite\}"/.test(worker),
+      'le formulaire pointe l’adresse canonique, sans saut de redirection');
+    /* Une adresse par langue, et les deux sont publiques : un francophone ne
+       doit pas atterrir sur la version anglaise pour lire ses droits. */
+    vrai(/confidentialite: '\/privacy'/.test(worker)
+      && /confidentialite: '\/confidentialite'/.test(worker),
+      'chaque langue renvoie vers sa propre version');
+    const index = lireSource('index.html');
+    vrai(/href="\/privacy" data-i18n="account.privacy"/.test(index),
+      'et le lien de la barre latérale aussi');
+
+    /* Chaque version renvoie vers l'autre : une page qui ne dit pas que sa
+       jumelle existe est une impasse pour qui ne lit pas cette langue. */
+    const fr = lireSource('confidentialite.html');
+    const en = lireSource('privacy.html');
+    vrai(/href="\/privacy">English<\/a>/.test(fr), 'la version française mène à l’anglaise');
+    vrai(/href="\/confidentialite">Français<\/a>/.test(en), 'et réciproquement');
+    vrai(/<html lang="fr"/.test(fr) && /<html lang="en"/.test(en),
+      'chacune déclare sa langue');
+    /* Les deux textes doivent nommer les mêmes destinataires : une version qui
+       en oublie un dit autre chose que l'autre, et c'est un document
+       juridique. */
+    for (const tiers of ['Cloudflare', 'Supabase', 'Resend', 'CNIL']) {
+      vrai(fr.includes(tiers) && en.includes(tiers),
+        `« ${tiers} » doit être nommé dans les deux versions`);
+    }
+  });
+
+  test('la session glisse, sous un plafond qui ne glisse pas', () => {
+    /* Une duree fixe est le pire des deux mondes : a trente jours, qui ouvre
+       l'application tous les jours se fait redemander un code au trentieme, et
+       l'ordinateur oublie dans un train garde l'acces trente jours. L'un est
+       gene sans raison, l'autre protege trop tard. */
+    const worker = lireSource('_worker.js');
+    vrai(/const SESSION_GLISSE = 14;/.test(worker), 'la fenêtre glissante fait deux semaines');
+    vrai(/const SESSION_PLAFOND = 90;/.test(worker), 'le plafond absolu fait trois mois');
+
+    const fn = worker.slice(worker.indexOf('async function sessionIdentity'),
+                            worker.indexOf('async function supabaseAuth'));
+    /* Le plafond part de la CREATION : lu sur `expires_at`, il glisserait avec
+       la fenêtre et ne plafonnerait plus rien. */
+    vrai(/s\.created_at \+ \? > unixepoch\(\)/.test(fn),
+      'le plafond se compte depuis la création, jamais depuis la dernière visite');
+    vrai(/UPDATE sessions SET expires_at/.test(fn), 'chaque visite repousse la fenêtre');
+    vrai(/Math\.min\(maintenant \+ SESSION_GLISSE \* 86400,/.test(fn),
+      'et la prolongation ne dépasse jamais le plafond');
+    /* L'ecriture coute : elle ne doit pas partir a chaque requete. */
+    vrai(/vise > row\.expires_at \+ 86400/.test(fn),
+      'la base n’est réécrite qu’une fois par jour et par session');
+
+    /* Le cookie porte le PLAFOND, pas la fenêtre : le renvoyer a chaque
+       prolongation demanderait de toucher toutes les réponses. Il ne donne
+       aucun droit, c'est la base qui tranche. */
+    vrai(/lw_session=\$\{session\}[^`]*Max-Age=\$\{SESSION_PLAFOND \* 86400\}/.test(worker),
+      'le cookie vit aussi longtemps que le plafond, et pas plus');
+  });
+
+  test('effacer un compte se revérifie, le reste non', () => {
+    /* Une session ouverte suffit pour tout lire, et c'est le prix assumé de ne
+       pas redemander un code a chaque visite. Mais lire se répare, effacer non :
+       la seule action irréversible redemande la preuve de la boîte e-mail. */
+    const worker = lireSource('_worker.js');
+    vrai(/path === '\/api\/account\/delete-code' && request\.method === 'POST'/.test(worker),
+      'un code se demande avant d’effacer');
+    const bloc = worker.slice(worker.indexOf("path === '/api/account/delete'"),
+                              worker.indexOf("path === '/api/health'"));
+    vrai(/\/auth\/v1\/verify/.test(bloc), 'le code se vérifie chez le fournisseur');
+    /* Et son résultat doit désigner LA MEME personne : un code valide pour une
+       autre adresse ne peut pas ouvrir cette suppression-ci. */
+    vrai(/verifie\.data\?\.user\?\.id !== appIdentity\.id/.test(bloc),
+      'le code vérifié doit désigner le compte qu’on efface');
+    vrai(/code:mail:\$\{appIdentity\.email\}/.test(bloc),
+      'les essais sont comptés, comme à la connexion');
+    /* La demande de code passe par les mêmes freins : une porte de suppression
+       sans limite serait un moyen commode de faire partir du courrier. */
+    const envoi = worker.slice(worker.indexOf("path === '/api/account/delete-code'"),
+                               worker.indexOf("path === '/api/account/delete'"));
+    vrai(/otp:ip:/.test(envoi) && /otp:mail:/.test(envoi),
+      'et la demande de code est freinée par IP et par adresse');
+  });
+
+  test('le diagnostic rend l’adresse du compte, pas seulement celle du portail', () => {
+    /* `/api/health` est la seule source d'identite du navigateur : l'ecran du
+       profil affiche ce qu'elle renvoie. La ligne ne lisait que l'adresse
+       fournie par un portail d'entreprise, qui n'existe pas quand on se
+       connecte par code — le serveur rendait donc un identifiant SANS adresse,
+       et le profil s'affichait vide sur une session pourtant valide.
+
+       Vu a l'ecran, puis confirme en interrogeant la route : `userId` etait
+       renseigne et `user` nul. La base, elle, portait bien l'adresse. */
+    const worker = lireSource('_worker.js');
+    const sante = worker.slice(worker.indexOf("if (path === '/api/health')"),
+                               worker.indexOf("if (path === '/api/quotes')"));
+    vrai(/user: appIdentity\?\.email \|\| email \|\| null/.test(sante),
+      'l’adresse du compte passe devant celle du portail');
+    vrai(/userId: appIdentity\?\.id \|\| null/.test(sante),
+      'et l’identifiant stable l’accompagne');
+    /* Les deux doivent venir de la meme source : un identifiant sans adresse,
+       ou l'inverse, laisse l'interface incapable de dire qui est connecte. */
+    vrai(sante.indexOf('appIdentity?.id') > 0 && sante.indexOf('appIdentity?.email') > 0,
+      'les deux se lisent sur la session vérifiée');
+  });
+
+  test('sans identité sur un site à comptes, aucun patrimoine ne s’ouvre', () => {
+    const sync = lireSource('assets/cloudsync.js');
+    vrai(/comptesActifs: \(\) => comptes/.test(sync),
+      'le client sait si ce site tient des comptes');
+    vrai(/localStorage\.setItem\(COMPTES_KEY/.test(sync),
+      'et il s’en souvient, sinon une panne réseau le lui fait oublier');
+
+    const app = lireSource('assets/app.js');
+    const init = app.slice(app.indexOf('(async function init()'), app.indexOf("if (location.protocol === 'file:')"));
+    vrai(/CloudSync\.comptesActifs\(\)/.test(init) && /ecranIdentiteManquante\(\)/.test(init),
+      'une identité manquante affiche un écran plutôt que d’ouvrir la clef partagée');
+    vrai(init.indexOf('ecranIdentiteManquante();') < init.indexOf('Store.load();'),
+      'et ce refus tombe avant toute lecture locale');
+  });
+
+  test('le mode et le masque suivent le compte, le thème reste au navigateur', () => {
+    const store = lireSource('assets/store.js');
+    vrai(/const cleMode = \(\) => cleParUtilisateur\(MODE_KEY\)/.test(store),
+      'le mode démonstration ne se lègue pas au compte suivant');
+    vrai(/const cleMasque = \(\) => cleParUtilisateur\(MASK_KEY\)/.test(store),
+      'le mode discret non plus');
+    vrai(/function relireMasque\(\)/.test(store),
+      'le masque se relit une fois la portée connue, sa première lecture étant trop tôt');
+  });
+});
+
+suite('Chaque écran dit son nom', () => {
+  test('toute entrée de menu porte son titre et son sous-titre, dans les deux langues', () => {
+    /* L'en-tete compose ses clefs : `view.<vue>` et `view.<vue>.sub`. Une vue
+       ajoutee sans elles n'echoue pas — `t()` rend la clef quand elle manque,
+       donc l'ecran affiche « view.profil » en gros titre. C'est arrive, et
+       seule une capture d'ecran l'a dit.
+
+       La liste se DERIVE du menu plutot que de se recopier : une entree
+       ajoutee demain entre dans ce controle sans qu'on y pense. */
+    const html = lireSource('index.html');
+    const vues = [...new Set([...html.matchAll(/data-view="([\w-]+)"/g)].map(m => m[1]))];
+    vrai(vues.length >= 7, `${vues.length} vues relevées : le motif ne les voit plus`);
+
+    for (const langue of ['fr', 'en']) {
+      enLangue(langue, () => {
+        for (const vue of vues) {
+          for (const clef of [`view.${vue}`, `view.${vue}.sub`]) {
+            vrai(t(clef) !== clef, `« ${clef} » manque en ${langue}`);
+          }
+        }
+      });
+    }
   });
 });
 
@@ -8110,12 +8601,22 @@ suite('Ce que la cloche annonce', () => {
 /* ------------------------------------------------------------------
    13. Les rappels de saisie
    ------------------------------------------------------------------ */
+/* Vider `monthly` fait d'un etat installe un nouveau venu, et le rappel mensuel
+   attend desormais que l'inventaire des comptes soit declare complet. Les
+   controles qui suivent portent sur la MECANIQUE du rappel — report,
+   expiration, jour dit — et non sur l'accueil : ils declarent donc la reponse
+   en meme temps qu'ils vident le mois. */
+const sansReleves = e => {
+  e.monthly = [];
+  e.meta.notifsMasquees = [CLE_INVENTAIRE];
+};
+
 suite('Rappels de saisie', () => {
 
   const moisCourant = () => currentMonthKey();
 
   test('un mois sans relevé réclame une saisie', () => {
-    Fixture.poser(e => { e.monthly = []; });
+    Fixture.poser(sansReleves);
     const p = currentMonthPending();
     eq(p.vide, true, 'le mois est bien vide');
     eq(p.missing, true, 'donc le rappel s allume');
@@ -8136,7 +8637,7 @@ suite('Rappels de saisie', () => {
     /* Il porte une cle de mois : rien a lever a la main, et on ne peut pas
        taire un rappel pour toujours par accident. */
     Fixture.poser(e => {
-      e.monthly = [];
+      sansReleves(e);
       e.meta.rappelsMasques = { releve: '2020-01-01' };
     });
     eq(currentMonthPending().missing, true,
@@ -8152,7 +8653,7 @@ suite('Rappels de saisie', () => {
 
   test('un état sans ce champ se comporte comme avant', () => {
     /* Aucune migration : `rappelsMasques` peut ne pas exister. */
-    Fixture.poser(e => { e.monthly = []; delete e.meta.rappelsMasques; });
+    Fixture.poser(e => { sansReleves(e); delete e.meta.rappelsMasques; });
     eq(currentMonthPending().missing, true);
   });
 
@@ -8160,7 +8661,7 @@ suite('Rappels de saisie', () => {
      ne se vérifierait qu'en attendant sept jours. */
 
   test('« Plus tard » repousse de sept jours, pas du mois', () => {
-    Fixture.poser(e => { e.monthly = []; });
+    Fixture.poser(sansReleves);
     auJour('2026-07-25', () => {
       eq(reporterRappel('releve'), '2026-08-01', 'sept jours apres le 25 juillet');
       eq(currentMonthPending().missing, false, 'le rappel se tait aujourd’hui');
@@ -8175,7 +8676,7 @@ suite('Rappels de saisie', () => {
     /* Le piege : une cle de mois est « 2026-08-01 », soit une date ISO elle
        aussi. Sans le prefixe, ce report se lirait comme un masquage d'aout,
        et le rappel disparaitrait trente jours au lieu de sept. */
-    Fixture.poser(e => { e.monthly = []; });
+    Fixture.poser(sansReleves);
     auJour('2026-07-25', () => reporterRappel('releve'));
     vrai(String(Store.state.meta.rappelsMasques.releve).startsWith('jusquau:'),
       'un report doit se distinguer d’une clé de mois');
@@ -18215,7 +18716,159 @@ suite('Une application vide dit quoi faire', () => {
     vrai(!pasAFaire('releves'), 'le relevé attend qu’un compte existe');
     eq(currentMonthPending().missing, false, 'aucun relevé réclamé sans un compte');
     eq(depensesEnAttente().missing, false, 'aucun mois clos réclamé le premier jour');
-    eq(healthChecks().length, 0, 'et pas une seule alerte pour accueillir');
+    /* UNE SEULE LIGNE POUR ACCUEILLIR, ET C'EST LE PREMIER GESTE.
+
+       La cloche se taisait entierement sur un premier lancement, et c'etait la
+       correction d'un defaut inverse : elle reclamait un releve a qui n'avait
+       aucun compte. Mais le silence complet avait son propre cout — elle ne
+       servait qu'a ceux dont l'application etait deja remplie, et le premier
+       venu n'y lisait pas par ou commencer.
+
+       Elle dit donc une chose, une seule, et c'est l'etape qui commande toutes
+       les autres. Le compte exact est verifie : deux lignes d'accueil seraient
+       deja un menu, et zero le silence d'avant. */
+    const accueil = healthChecks();
+    eq(accueil.length, 1, 'une seule ligne pour accueillir');
+    eq(accueil[0].view, 'accounts', 'et elle mène aux comptes');
+    eq(accueil[0].level, 'action', 'c’est un geste à faire, pas un avertissement');
+  });
+
+  test('la création d’un placement en parts propose le prix par part', () => {
+    /* LA FICHE SAVAIT COMPTER PAR PART, LA CREATION NON. Elle reclamait deux
+       totaux, donc on posait « 7 529 parts a 1,33 » sur un coin de table pour
+       taper 10 000 — puis la fiche rouvrait en affichant fierement les deux
+       prix par part qu'on venait de calculer a la main. Le mecanisme existait,
+       il n'etait pas offert au moment ou il sert.
+
+       Vu a l'ecran, sur une note de compte qui portait le calcul en toutes
+       lettres. */
+    const src = lireSource('assets/app.js');
+    eq((src.match(/cle: 'parts', label: trad\('Nombre de parts'\)/g) || []).length, 2,
+      'le nombre de parts se demande à la création comme sur la fiche');
+    /* Deux montants de chaque cote, donc quatre cablages : la valeur du jour et
+       le montant investi, sur la fiche et a la creation. */
+    eq((src.match(/parPart: 'parts'/g) || []).length, 4,
+      'les quatre montants se remplissent par leur prix par part');
+    for (const libelle of ['Prix de la part aujourd’hui (€)', 'Prix d’achat de la part (€)']) {
+      eq((src.match(new RegExp(libelle.replace(/[().€]/g, '\\$&'), 'g')) || []).length, 2,
+        `« ${libelle} » existe des deux côtés, la création et la fiche`);
+    }
+
+    /* Et le nombre saisi se garde : sans lui, les deux prix par part de la
+       fiche n'auraient plus de diviseur au premier rechargement. */
+    vrai(/estDeclare\(e3\.parts\) \? \{ parts: num\(e3\.parts\) \}/.test(src),
+      'le nombre de parts survit à la création');
+  });
+
+  test('la liste de démarrage ne coche pas un pas qu’on ne peut pas avoir franchi', () => {
+    /* DEUX QUESTIONS QUI DIVERGENT. `fait` repond a « faut-il encore le
+       reclamer ? » : sans compte, non, il n'y a rien a photographier et
+       l'invite se tait. La liste posait cette question-la pour dessiner ses
+       coches, et cochait donc « Ton premier relevé » sur une application vide,
+       juste au-dessus de « Tes comptes » qui restait a faire. On ne
+       photographie pas des comptes qu'on n'a pas.
+
+       Mesure a l'ecran : « 1 sur 4 » sur un etat vierge. */
+    Store.state = blankState();
+    Store.migrate();
+    refreshAccounts();
+    const releves = PAS_PAR_CLE.releves;
+    vrai(releves.acquis, 'le pas des relevés distingue « acquis » de « à réclamer »');
+    eq(releves.acquis(), false, 'sans compte, aucun relevé n’a été pris');
+    eq(releves.fait(), true, 'et pourtant il ne se réclame pas : rien à photographier');
+    eq(PREMIERS_PAS.filter(p => (p.acquis ? p.acquis() : !pasAFaire(p.cle))).length, 0,
+      'aucun des quatre pas n’est franchi sur une application vierge');
+
+    const app = lireSource('assets/app.js');
+    vrai(/p\.acquis \? p\.acquis\(\) : \(!pasAFaire\(p\.cle\) && pasDeclare\(p\)\)/.test(app),
+      'la carte demande si le pas est franchi, pas s’il se réclame');
+
+    /* LA DECLARATION SE DERIVE DU PAS, elle ne se recopie pas par cas. Les
+       comptes et les rentrees ont le meme defaut — la premiere ligne saisie
+       franchit le pas alors qu'il en manque quatre — et l'ecrire deux fois
+       aurait garanti qu'un troisieme cas soit ecrit une troisieme fois. */
+    /* Les trois pas qui portent une LISTE la declarent. Le releve n'en est pas
+       une : un seul suffit, il n'y a rien a compter. */
+    for (const cle of ['comptes', 'revenus', 'depenses']) {
+      const d = PAS_PAR_CLE[cle].declare;
+      vrai(d, `« ${cle} » demande une déclaration`);
+      for (const champ of ['cle', 'question', 'detail', 'oui', 'ajouter']) {
+        vrai(d[champ], `« ${cle} » : le descripteur porte ${champ}`);
+      }
+    }
+    const drapeaux = PREMIERS_PAS.filter(p => p.declare).map(p => p.declare.cle);
+    eq(new Set(drapeaux).size, drapeaux.length,
+      'chaque pas a son propre drapeau : répondre pour l’un ne répond pas pour l’autre');
+
+    /* Un titre et son bouton disent le meme pas. « Tes charges fixes » sous un
+       bouton « Entrer tes dépenses » faisait douter qu'il s'agisse du meme
+       geste. */
+    /* Le mot commun, pas le premier : « Ton premier relevé » et « Enregistrer
+       un relevé » se rejoignent sur le dernier. Les mots courts sont écartés,
+       ils rapprocheraient n'importe quoi de n'importe quoi. */
+    const motsUtiles = t => new Set(t.toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .split(/[^a-z]+/).filter(m => m.length >= 5));
+    for (const p of PREMIERS_PAS) {
+      const duBouton = motsUtiles(p.bouton);
+      vrai([...motsUtiles(p.titre)].some(m => duBouton.has(m)),
+        `« ${p.titre} » et « ${p.bouton} » doivent parler du même pas`);
+    }
+    vrai(/data-action="declarer-pas"[\s\S]{0,80}data-cle=/.test(app),
+      'un seul geste sert tous les pas, la clef venant du bouton');
+
+    /* Et l'accueil ne redit pas ce que la carte porte : les deux affichaient la
+       meme phrase et le meme bouton, a trois centimetres l'un de l'autre. */
+    const i = app.indexOf('function viewOverview()');
+    const vue = app.slice(i, app.indexOf('\nfunction ', i + 1));
+    vrai(/carteDemarrage\(\)/.test(vue), 'l’accueil ouvre sur le chemin');
+
+    /* LE GUIDE POSSEDE LE PREMIER PASSAGE, LES BANDEAUX LA ROUTINE. Le rappel
+       mensuel s'affichait sous la carte, qui porte le meme geste a son
+       troisieme pas : deux fois la meme demande, a deux centimetres l'une de
+       l'autre, dans deux formes differentes. Le bandeau ne disparait pas pour
+       autant, il revient chaque mois — il attend que le guide ait fini. */
+    for (const attente of ['moisEnAttente', 'depEnAttente']) {
+      vrai(new RegExp(`\\$\\{${attente}\\.missing && !guide \\?`).test(vue),
+        `le bandeau « ${attente} » attend que le guide ait fini`);
+    }
+    vrai(!/invitePremierPas\('comptes'\)/.test(vue),
+      'et il ne double pas l’invite que la carte porte déjà');
+  });
+
+  test('la cloche demande l’inventaire avant de réclamer un relevé', () => {
+    /* L'ORDRE EST CELUI DES DONNEES, PAS CELUI DU CALENDRIER. Un patrimoine a
+       moitie declare donne un premier point faux, et une courbe fausse des son
+       origine ne se rattrape pas : le mois suivant montrerait un bond qui n'est
+       qu'une saisie oubliee. La question passe donc devant, et le rappel
+       mensuel attend sa reponse.
+
+       Avoir UN compte ne veut pas dire les avoir TOUS, et rien dans les donnees
+       ne distingue les deux etats — seule la personne le sait. D'ou une
+       question, la seule de la cloche. */
+    Fixture.poser(e => { e.monthly = []; });   // des comptes, aucun relevé encore
+    vrai(notifications().some(n => n.cle === CLE_INVENTAIRE),
+      'la question de l’inventaire se pose');
+    eq(currentMonthPending().missing, false,
+      'et le relevé se tait tant qu’elle attend sa réponse');
+
+    /* La croix vaut oui : c'est le geste que la ligne annonce. */
+    masquerNotif(CLE_INVENTAIRE);
+    vrai(!notifications().some(n => n.cle === CLE_INVENTAIRE),
+      'répondre éteint la question');
+    eq(currentMonthPending().missing, true, 'et le relevé prend le relais');
+  });
+
+  test('un relevé déjà pris vaut réponse, sans rien demander', () => {
+    /* Poser la question a quelqu'un qui photographie ses comptes depuis des
+       mois serait lui faire confirmer ce qu'il fait deja. Sans cette
+       equivalence, la garde punissait tout l'existant : chaque personne
+       installee perdait son rappel jusqu'a repondre a une question qui ne la
+       concernait pas. */
+    Fixture.poser();
+    vrai(aUnRelevePatrimonial(), 'le jeu porte des relevés');
+    vrai(!notifications().some(n => n.cle === CLE_INVENTAIRE),
+      'la question ne se pose pas à qui a déjà commencé');
   });
 
   test('les trois pas se dérivent des données, jamais d’un drapeau', () => {
@@ -18671,8 +19324,12 @@ suite('Une modification ne se perd pas quand l’écran se verrouille', () => {
        corps envoye est retenu, donc le second ne fait rien — et le minuteur est
        annule, pour qu'une page restauree ne repousse pas un etat deja parti. */
     const cs = lireSource('assets/cloudsync.js');
-    const fn = cs.slice(cs.indexOf('function flushOnUnload'),
-                        cs.indexOf('function flushOnUnload') + 700);
+    /* La tranche s'arrete a la fermeture de la fonction, pas apres un
+       nombre de caracteres : une ligne ajoutee dans le corps poussait le
+       repere hors d'une fenetre de 700, et le controle tombait sur un code
+       juste. Un test ne doit dependre ni d'un commentaire ni d'une longueur. */
+    const debut = cs.indexOf('function flushOnUnload');
+    const fn = cs.slice(debut, cs.indexOf('\n  }\n', debut));
     vrai(/if \(payload === lastPayload\) return;/.test(fn),
       'un état déjà envoyé ne repart pas');
     vrai(/lastPayload = payload;/.test(fn),
@@ -23176,6 +23833,7 @@ suite('La graine de la démonstration parle une seule langue', () => {
      Ce controle vit dans ce depot seul : la graine de l'instance privee porte de
      vraies donnees, en francais, et n'a rien a faire en anglais. */
   test('aucun libellé de la graine ne porte d’accent', () => {
+    if (sansGraineDeDemo('les libellés de la graine')) return;
     const fautifs = [];
     for (const f of ['assets/seed.js', 'assets/seed-budget.js']) {
       const src = lireSource(f);
@@ -28413,17 +29071,23 @@ suite('Le manifeste parle la langue de l’application', () => {
        Elle a deja derive : l'application affichait la nouvelle devise pendant
        que la page de connexion gardait l'ancienne. Rien ne le disait, parce que
        rien ne regardait. */
+    /* LA LANGUE SE DERIVE, ELLE NE SE RECOPIE PAS. Ce contrôle fixait « fr »
+       en dur, donc il exigeait du français d'une page servie à un public que
+       l'application accueille en anglais. Il tenait la devise et laissait
+       filer la langue. `langueParDefaut()` est la même source que celle qui
+       gouverne la balise `html` du document. */
     let attendu;
-    enLangue('fr', () => {
-      attendu = trad('Vois clair.') + ' <b>' + trad('Avance.') + '</b>';
+    enLangue(langueParDefaut(), () => {
+      attendu = trad('Vois juste.') + ' <b>' + trad('Avance.') + '</b>';
     });
     const w = lireSource('_worker.js');
     vrai(w.includes(attendu),
       'la page de connexion devrait porter « ' + attendu + ' »');
     /* La page de connexion ne se traduit pas : le Worker ne sait pas quelle
        langue le visiteur a choisie, cette preference vivant dans un stockage
-       auquel il n'a pas acces. Le francais y est donc la seule version, et
-       c'est un fait a connaitre plutot qu'un oubli a corriger. */
+       auquel il n'a pas acces. Elle porte donc UNE langue, et ce ne peut etre
+       que celle dans laquelle l'application ouvre — sinon le parcours bascule
+       au milieu, entre l'ecran de connexion et le tableau de bord. */
     vrai(!/Suivre\. Arbitrer\.|Projeter\./.test(w),
       'et plus aucune trace de l’ancienne');
   });
@@ -28438,7 +29102,7 @@ suite('Le manifeste parle la langue de l’application', () => {
        dans une variable. */
     let attendu;
     enLangue(langueParDefaut(), () => {
-      attendu = trad('Vois clair.') + ' ' + trad('Avance.');
+      attendu = trad('Vois juste.') + ' ' + trad('Avance.');
     });
     vrai(manifeste().description.startsWith(attendu),
       `la description devrait commencer par « ${attendu} », elle dit `
@@ -28538,7 +29202,8 @@ suite('Les réponses du worker sont aussi protégées que les fichiers', () => {
     vrai(/if \(!identifie\) return json\(\{ error: 'identité requise' \}, 403\);/.test(fn),
       'sans identité prouvée, /api/state refuse');
     /* L'identité vient du serveur, jamais d'un en-tête que la requête se donne. */
-    vrai(/const identifie = !!email/.test(w), 'elle descend de l’adresse validée');
+    vrai(/const identifie = !!appIdentity \|\| !!email/.test(w),
+      'elle descend de l’adresse validée ou de la session du compte');
     vrai(/tokenIsValid\(cookieValue\(request, 'wd_session'\), pwd\)/.test(w),
       'ou du cookie de session signé');
     /* Le garde-fou d'entrée et celui de l'état sont deux questions distinctes :
@@ -29151,6 +29816,7 @@ suite('La recherche vaut aussi pour les comptes archivés', () => {
 suite('Une démonstration montre la même chose à tout le monde', () => {
 
   test('le jeu de démonstration ne va pas chercher de cours', () => {
+    if (sansGraineDeDemo('le rafraîchissement des cours')) return;
     /* `autoRefresh: true` faisait interroger la passerelle a chaque chargement :
        les valeurs de marche bougeaient donc entre deux visites, et entre deux
        captures d'ecran. Les quatre images du README se contredisaient a
@@ -29176,6 +29842,7 @@ suite('Une démonstration montre la même chose à tout le monde', () => {
   });
 
   test('ses totaux se recalculent à l’identique', () => {
+    if (sansGraineDeDemo('les totaux du jeu')) return;
     /* Le controle qui vaut pour toute l'application, applique au jeu qu'un
        visiteur voit : la somme des parts fait le total. S'il tombe ici, une
        capture d'ecran montrera une incoherence a des inconnus. */
@@ -30052,6 +30719,7 @@ suite('La démonstration ne porte aucune enveloppe française', () => {
   };
 
   test('le rythme de la démonstration s’explique par son budget', () => {
+    if (sansGraineDeDemo('le rythme du jeu')) return;
     /* Les releves mensuels ont ete ecrits a la main, chaque compte montant d'un
        pas regulier, sans que la somme de ces pas soit jamais rapprochee du
        budget. Le patrimoine grimpait de 1 900 EUR par mois quand le budget n'en
@@ -30078,6 +30746,7 @@ suite('La démonstration ne porte aucune enveloppe française', () => {
   });
 
   test('aucun nom réel n’a repris place dans la graine', () => {
+    if (sansGraineDeDemo('les établissements de la graine')) return;
     /* La graine est fictive, et rien ne l'empechait de cesser de l'etre : coller
        un patrimoine reel dedans est le chemin le plus court quand on veut « des
        donnees realistes pour tester », et ce depot est public.
@@ -30125,6 +30794,7 @@ suite('La démonstration ne porte aucune enveloppe française', () => {
   });
 
   test('les deux comptes de titres restent distincts', () => {
+    if (sansGraineDeDemo('les deux comptes de titres')) return;
     /* Deux enveloppes de meme intitule ne se relisent pas : la colonne courte
        est tout ce qu'un tableau serre affiche. */
     const titres = SEED_ACCOUNTS.filter(a => a.holdings);
@@ -35913,8 +36583,15 @@ suite('Un premier compte ne remplit pas l’accueil de zéros', () => {
        pas en aurait fait deux, dont l'une ecrite pour une autre carte. */
     vrai(/<h2>\$\{trad\('Accumulation ce mois-ci'\)\}<\/h2><\/div>\s*\$\{invitePremierPas\('revenus'\)\}/
       .test(src), 'la carte vide porte l’invite de la table, et rien d’autre');
-    const quoi = 'Déclare ton salaire et tes autres rentrées : c’est d’elles que partent ta capacité d’épargne, ton budget et ce qu’il te reste à vivre.';
-    eq(PAS_PAR_CLE.revenus.quoi, quoi, 'le pas dit ce qu’il apporte');
+    /* LA PHRASE NE SE RECOPIE PAS ICI, SA PROPRIETE SE VERIFIE. Une copie mot
+       pour mot faisait tomber ce controle a la premiere retouche du texte — un
+       seul mot ajoute, et il criait sans qu'aucun defaut existe. Ce qu'il veut
+       dire tient en deux regles : le pas annonce ce qu'il APPORTE, et jamais ce
+       qui manque a l'ecran qui l'affiche. */
+    const quoi = PAS_PAR_CLE.revenus.quoi;
+    vrai(/capacité d’épargne/.test(quoi), 'le pas dit ce qu’il apporte');
+    vrai(!/cette carte|cet écran|cette page/.test(quoi),
+      'et non ce qui manque à l’écran qui le montre');
     vrai(I18N.en[quoi], 'et il a sa traduction');
     vrai(!/Sans revenu déclaré, cette carte/.test(src),
       'l’ancien texte, écrit pour la barre du budget, ne s’affiche plus sur celle-ci');

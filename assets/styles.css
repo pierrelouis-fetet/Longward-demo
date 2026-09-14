@@ -521,6 +521,35 @@ body {
 .sb-delta.up { color: var(--good-text); }
 .sb-delta.down { color: var(--critical); }
 .saved { font-size: 10.5px; color: #5d6875; text-align: center; transition: color .2s; }
+.compte-liens { display: flex; justify-content: center; gap: 12px; font-size: 11px; }
+.compte-liens a { color: var(--sidebar-faible); }
+/* Une valeur qu'on lit et qu'on ne modifie pas. Un champ desactive dirait
+   « modifiable, mais pas maintenant » ; celle-ci n'est simplement pas a saisir.
+   `break-all` parce qu'une adresse longue ne doit pas elargir sa carte. */
+.valeur-fixe { font-size: 15px; padding: 4px 0 2px; word-break: break-all; }
+
+.pas-liste { list-style: none; margin: 0; padding: 0; }
+.pas { display: flex; gap: 12px; padding: 10px 0; }
+.pas + .pas { border-top: 1px solid var(--border); }
+.pas-marque {
+  flex: none; width: 24px; height: 24px; border-radius: var(--radius-pill);
+  display: grid; place-items: center; font-size: 12px; font-weight: 650;
+  border: 1px solid var(--border-strong); color: var(--muted);
+}
+.pas.fait .pas-marque { border-color: var(--good); color: var(--good); }
+.pas.courant .pas-marque { border-color: var(--accent); color: var(--accent); }
+.pas-corps { min-width: 0; }
+.pas-corps b { font-size: 14px; font-weight: 600; }
+.pas.fait .pas-corps b { color: var(--muted); font-weight: 500; }
+.pas-corps p { margin: 5px 0 10px; line-height: 1.5; }
+.pas-retour {
+  display: flex; align-items: baseline; gap: 8px; width: 100%;
+  padding: 0; border: 0; background: none; font: inherit; color: inherit;
+  text-align: left; cursor: pointer;
+}
+.pas-modifier { font-size: 11.5px; color: var(--muted); margin-left: auto; }
+@media (hover: hover) { .pas-retour:hover .pas-modifier { color: var(--text-secondary); } }
+.pas-retour:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .saved.flash { color: var(--good); }
 .fiche-note { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--grid); }
 .fiche-note p { margin: 4px 0 0; font-size: 13px; line-height: 1.5; white-space: pre-wrap;
@@ -3904,6 +3933,138 @@ td .empty, th .empty { background: none; border: none; }
   .sym-cell input { min-width: 6em; }
 }
 
+.entete-actions { display: flex; align-items: center; gap: 8px; position: relative; }
+.btn-rond {
+  width: 38px; height: 38px; flex: none; padding: 0;
+  display: grid; place-items: center; position: relative;
+  border-radius: var(--radius-pill); cursor: pointer;
+  border: 1px solid var(--sidebar-border); background: var(--sidebar-hover);
+  color: var(--sidebar-ink);
+  transition: background .15s, transform .12s;
+}
+.btn-rond:active { transform: scale(.94); }
+.btn-rond svg {
+  width: 19px; height: 19px;
+  fill: none; stroke: currentColor; stroke-width: 1.7;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.btn-rond[aria-expanded="true"] { background: var(--sidebar-actif, var(--sidebar-border)); }
+.btn-rond:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.pastille-ronde {
+  position: absolute; top: 1px; right: 1px;
+  width: 9px; height: 9px; border-radius: var(--radius-pill);
+  background: var(--critical);
+  box-shadow: 0 0 0 2px var(--sidebar);
+}
+
+.popover-notifs {
+  position: absolute; top: calc(100% + 10px); right: 0; z-index: 70;
+  width: min(330px, calc(100vw - 24px));
+  max-height: min(60vh, 420px); overflow-y: auto; overscroll-behavior: contain;
+  background: var(--surface-1); color: var(--text-primary);
+  border: 1px solid var(--border-strong); border-radius: var(--radius);
+  box-shadow: var(--ombre-fenetre);
+  padding: 6px;
+  transform-origin: top right;
+  animation: notifs-entree .16s cubic-bezier(.2, 1, .3, 1);
+}
+.popover-notifs[hidden] { display: none; }
+@keyframes notifs-entree {
+  from { opacity: 0; transform: scale(.94) translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .popover-notifs { animation: none; }
+}
+
+.notif-tete {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  padding: 6px 8px 8px;
+}
+.notif-tete b { font-size: 13.5px; }
+.notif-tete span { font-size: 11.5px; color: var(--muted); margin-left: auto; }
+.notif-reglages { flex: none; padding: 2px 4px; opacity: .6; }
+@media (hover: hover) { .notif-reglages:hover { opacity: 1; } }
+/* `fill` et `stroke` viennent de l'attribut du SVG : trois points pleins, pas
+   trois anneaux. La regle generale des icones au trait ne s'applique donc pas
+   ici, et c'est voulu. */
+.notif-reglages svg { width: 16px; height: 16px; display: block; }
+
+.notif-ligne {
+  display: flex; align-items: flex-start; gap: 2px; border-radius: var(--radius-sm);
+}
+@media (hover: hover) { .notif-ligne:hover { background: var(--surface-2); } }
+.notif-ligne + .notif-ligne { border-top: 1px solid var(--border); border-radius: 0; }
+.notif-corps {
+  display: flex; gap: 9px; flex: 1; min-width: 0; text-align: left;
+  padding: 9px 4px 9px 8px; border: none; background: none; border-radius: var(--radius-sm);
+  font: inherit; color: inherit; cursor: pointer;
+}
+.notif-x { margin: 6px 5px 0 0; flex: none; opacity: .55; }
+@media (hover: hover) { .notif-x:hover { opacity: 1; } }
+@media (hover: hover) {
+  .notif-x { opacity: 0; }
+  .notif-ligne:hover .notif-x, .notif-x:focus-visible { opacity: 1; }
+}
+.notif-ic { flex: none; width: 16px; font-size: 13px; line-height: 1.5; }
+.notif-ligne.n-action .notif-ic { color: var(--warning); }
+.notif-ligne.n-error  .notif-ic { color: var(--critical); }
+.notif-ligne.n-warn   .notif-ic { color: var(--serious); }
+.notif-ligne.n-info   .notif-ic { color: var(--muted); }
+.notif-txt { min-width: 0; }
+.notif-txt b { display: block; font-size: 13px; font-weight: 600; }
+.notif-txt span { font-size: 12px; color: var(--text-secondary); }
+.notif-vide { padding: 16px 10px 18px; text-align: center; color: var(--muted); font-size: 13px; }
+
+.notif-fermer {
+  display: block; width: 100%; padding: 5px 0 3px; margin-top: 2px;
+  border: none; background: none; cursor: pointer;
+  border-top: 1px solid var(--border);
+  color: var(--muted); border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+@media (hover: hover) { .notif-fermer:hover { background: var(--surface-2); color: var(--text-secondary); } }
+.notif-fermer svg {
+  width: 20px; height: 20px; margin: 0 auto; display: block;
+  fill: none; stroke: currentColor; stroke-width: 1.9;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+
+@media (min-width: 901px) {
+  /* `position: sticky` CREE TOUJOURS UN CONTEXTE D'EMPILEMENT, meme sans
+     `z-index`. Tout ce qui vit dans la barre y est donc enferme : le panneau
+     des notifications avait beau demander 200, il restait sous un bandeau a 1,
+     parce que la comparaison ne se fait pas entre eux mais entre leurs
+     contextes — celui de la barre valant zero. C'est elle qu'on remonte, et le
+     panneau suit. Elle occupe sa propre colonne, donc rien ne passe dessous. */
+  .sidebar { z-index: 100; }
+  .entete-actions { position: fixed; top: 20px; right: 24px; margin: 0; }
+  .entete-actions > #btnMasqueEntete,
+  .entete-actions > #btnProfil { display: none; }
+  /* LE PANNEAU S'OUVRE VERS L'INTERIEUR, ET HORS DU CADRE DE LA BARRE.
+
+     Deux defauts se suivaient. Il etait ancre a droite parce qu'il descendait
+     d'un en-tete colle au bord droit de l'ecran : dans la barre laterale, cette
+     droite-la laisse le panneau s'etendre vers une gauche hors ecran, et les
+     trois quarts disparaissaient — 330 px ancres a 229, donc un bord gauche a
+     moins cent.
+
+     Ancre a gauche, il restait coupe net au bord de la barre. `overflow-y: auto`
+     y suffit : une seule valeur d'overflow rogne les DEUX axes, et rien de plus
+     large que la barre ne peut en sortir. La position fixe l'en affranchit.
+
+     Sa hauteur vient de `--notif-haut`, posee a l'ouverture : une position fixe
+     ne suit plus son bouton, et la barre peut defiler sous lui. */
+  .popover-notifs {
+    position: fixed;
+    top: var(--notif-haut, 70px);
+    right: 24px;
+    left: auto;
+    transform-origin: top right;
+    z-index: 200;
+  }
+}
+
 @media (max-width: 900px) {
 
   /* Le logo reste au-dessus du panneau qu'il ouvre. Le tiroir couvre tout
@@ -3933,103 +4094,6 @@ td .empty, th .empty { background: none; border: none; }
   }
 
   .retour-page { display: none; }
-
-  .entete-actions { display: flex; align-items: center; gap: 8px; position: relative; }
-  .btn-rond {
-    width: 38px; height: 38px; flex: none; padding: 0;
-    display: grid; place-items: center; position: relative;
-    border-radius: var(--radius-pill); cursor: pointer;
-    border: 1px solid var(--sidebar-border); background: var(--sidebar-hover);
-    color: var(--sidebar-ink);
-    transition: background .15s, transform .12s;
-  }
-  .btn-rond:active { transform: scale(.94); }
-  .btn-rond svg {
-    width: 19px; height: 19px;
-    fill: none; stroke: currentColor; stroke-width: 1.7;
-    stroke-linecap: round; stroke-linejoin: round;
-  }
-  .btn-rond[aria-expanded="true"] { background: var(--sidebar-actif, var(--sidebar-border)); }
-  .btn-rond:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-  .pastille-ronde {
-    position: absolute; top: 1px; right: 1px;
-    width: 9px; height: 9px; border-radius: var(--radius-pill);
-    background: var(--critical);
-    box-shadow: 0 0 0 2px var(--sidebar);
-  }
-
-  .popover-notifs {
-    position: absolute; top: calc(100% + 10px); right: 0; z-index: 70;
-    width: min(330px, calc(100vw - 24px));
-    max-height: min(60vh, 420px); overflow-y: auto; overscroll-behavior: contain;
-    background: var(--surface-1); color: var(--text-primary);
-    border: 1px solid var(--border-strong); border-radius: var(--radius);
-    box-shadow: var(--ombre-fenetre);
-    padding: 6px;
-    transform-origin: top right;
-    animation: notifs-entree .16s cubic-bezier(.2, 1, .3, 1);
-  }
-  .popover-notifs[hidden] { display: none; }
-  @keyframes notifs-entree {
-    from { opacity: 0; transform: scale(.94) translateY(-6px); }
-    to   { opacity: 1; transform: none; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .popover-notifs { animation: none; }
-  }
-
-  .notif-tete {
-    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
-    padding: 6px 8px 8px;
-  }
-  .notif-tete b { font-size: 13.5px; }
-  .notif-tete span { font-size: 11.5px; color: var(--muted); margin-left: auto; }
-  .notif-reglages { flex: none; padding: 2px 4px; opacity: .6; }
-  @media (hover: hover) { .notif-reglages:hover { opacity: 1; } }
-  /* `fill` et `stroke` viennent de l'attribut du SVG : trois points pleins, pas
-     trois anneaux. La regle generale des icones au trait ne s'applique donc pas
-     ici, et c'est voulu. */
-  .notif-reglages svg { width: 16px; height: 16px; display: block; }
-
-  .notif-ligne {
-    display: flex; align-items: flex-start; gap: 2px; border-radius: var(--radius-sm);
-  }
-  @media (hover: hover) { .notif-ligne:hover { background: var(--surface-2); } }
-  .notif-ligne + .notif-ligne { border-top: 1px solid var(--border); border-radius: 0; }
-  .notif-corps {
-    display: flex; gap: 9px; flex: 1; min-width: 0; text-align: left;
-    padding: 9px 4px 9px 8px; border: none; background: none; border-radius: var(--radius-sm);
-    font: inherit; color: inherit; cursor: pointer;
-  }
-  .notif-x { margin: 6px 5px 0 0; flex: none; opacity: .55; }
-  @media (hover: hover) { .notif-x:hover { opacity: 1; } }
-  @media (hover: hover) {
-    .notif-x { opacity: 0; }
-    .notif-ligne:hover .notif-x, .notif-x:focus-visible { opacity: 1; }
-  }
-  .notif-ic { flex: none; width: 16px; font-size: 13px; line-height: 1.5; }
-  .notif-ligne.n-action .notif-ic { color: var(--warning); }
-  .notif-ligne.n-error  .notif-ic { color: var(--critical); }
-  .notif-ligne.n-warn   .notif-ic { color: var(--serious); }
-  .notif-ligne.n-info   .notif-ic { color: var(--muted); }
-  .notif-txt { min-width: 0; }
-  .notif-txt b { display: block; font-size: 13px; font-weight: 600; }
-  .notif-txt span { font-size: 12px; color: var(--text-secondary); }
-  .notif-vide { padding: 16px 10px 18px; text-align: center; color: var(--muted); font-size: 13px; }
-
-  .notif-fermer {
-    display: block; width: 100%; padding: 5px 0 3px; margin-top: 2px;
-    border: none; background: none; cursor: pointer;
-    border-top: 1px solid var(--border);
-    color: var(--muted); border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-  }
-  @media (hover: hover) { .notif-fermer:hover { background: var(--surface-2); color: var(--text-secondary); } }
-  .notif-fermer svg {
-    width: 20px; height: 20px; margin: 0 auto; display: block;
-    fill: none; stroke: currentColor; stroke-width: 1.9;
-    stroke-linecap: round; stroke-linejoin: round;
-  }
 
   /* Une pilule flottante, translucide, detachee des bords.
 
@@ -4668,6 +4732,7 @@ details[open]::details-content { block-size: auto; }
     grid-template-columns: repeat(2, minmax(0, 14em));
     justify-content: end;
   }
+  .fiche-actes.centre { justify-content: center; }
 }
 
 .cpt-section {

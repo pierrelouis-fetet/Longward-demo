@@ -13,6 +13,56 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
   headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
 });
 
+const hex = bytes => [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
+async function sha256(value) {
+  return hex(new Uint8Array(await crypto.subtle.digest(
+    'SHA-256', new TextEncoder().encode(value))));
+}
+
+const SESSION_GLISSE = 14;
+const SESSION_PLAFOND = 90;
+
+async function sessionIdentity(request, env) {
+  const token = cookieValue(request, 'lw_session');
+  if (!token || !env.DB) return null;
+  const tokenHash = await sha256(token);
+  const row = await env.DB.prepare(
+    `SELECT u.id, u.email, s.expires_at, s.created_at
+       FROM sessions s JOIN users u ON u.id = s.user_id
+      WHERE s.token_hash = ?
+        AND s.expires_at > unixepoch()
+        AND s.created_at + ? > unixepoch()`)
+    .bind(tokenHash, SESSION_PLAFOND * 86400).first();
+  if (!row) return null;
+
+  const maintenant = Math.floor(Date.now() / 1000);
+  const vise = Math.min(maintenant + SESSION_GLISSE * 86400,
+                        row.created_at + SESSION_PLAFOND * 86400);
+  if (vise > row.expires_at + 86400) {
+    await env.DB.prepare('UPDATE sessions SET expires_at = ? WHERE token_hash = ?')
+      .bind(vise, tokenHash).run();
+  }
+  return { id: row.id, email: row.email, provider: 'supabase' };
+}
+
+async function supabaseAuth(env, path, body) {
+  const publishableKey = env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY;
+  if (!env.SUPABASE_URL || !publishableKey) {
+    return { ok: false, status: 501, data: { error: 'authentification non configurée' } };
+  }
+  const response = await fetch(env.SUPABASE_URL.replace(/\/+$/, '') + path, {
+    method: 'POST',
+    headers: {
+      'apikey': publishableKey,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  let data = {};
+  try { data = await response.json(); } catch { /* reponse vide */ }
+  return { ok: response.ok, status: response.status, data };
+}
+
 async function getJson(url, ttl = 45) {
   const r = await fetch(url, { headers: HEADERS, cf: { cacheTtl: ttl, cacheEverything: true } });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -385,6 +435,82 @@ async function handleState(request, env, email, identifie) {
 
 const DEMO_PUBLIQUE = true;
 
+async function handleD1State(request, env, identity) {
+  if (!env.DB) return json({ error: 'stockage non configuré' }, 501);
+  if (!identity?.id) return json({ error: 'identité requise' }, 403);
+  const owner = identity.id;
+  const claimedOwner = request.headers.get('X-Longward-User')
+    || new URL(request.url).searchParams.get('user');
+  if (!claimedOwner || claimedOwner !== owner) {
+    return json({ error: 'session changée, recharge nécessaire' }, 409);
+  }
+
+  if (request.method === 'GET') {
+    const row = await env.DB.prepare(
+      'SELECT body FROM portfolios WHERE owner_id = ?').bind(owner).first();
+    if (!row) return new Response(null, { status: 204 });
+    return new Response(row.body, {
+      headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+    });
+  }
+
+  if (request.method === 'DELETE') {
+    await env.DB.prepare('DELETE FROM portfolios WHERE owner_id = ?').bind(owner).run();
+    return json({ ok: true });
+  }
+
+  if (request.method !== 'PUT' && request.method !== 'POST') {
+    return json({ error: 'méthode non autorisée' }, 405);
+  }
+
+  const body = await request.text();
+  if (body.length > MAX_BYTES) return json({ error: 'état trop volumineux' }, 413);
+  let incoming;
+  try { incoming = JSON.parse(body); }
+  catch { return json({ error: 'JSON invalide' }, 400); }
+  if (!incoming || !incoming.positions || !incoming.monthly) {
+    return json({ error: 'format inattendu' }, 400);
+  }
+
+  const nextRevision = incoming?.meta?.savedAt;
+  if (!nextRevision) return json({ error: 'révision manquante' }, 400);
+  const params = new URL(request.url).searchParams;
+  const force = params.get('force') === '1';
+  const base = params.get('base');
+
+  if (force) {
+    await env.DB.prepare(
+      `INSERT INTO portfolios (owner_id, body, revision, updated_at)
+       VALUES (?, ?, ?, unixepoch())
+       ON CONFLICT(owner_id) DO UPDATE SET
+         body = excluded.body, revision = excluded.revision, updated_at = unixepoch()`)
+      .bind(owner, body, nextRevision).run();
+    return json({ ok: true, savedAt: nextRevision, bytes: body.length });
+  }
+
+  if (!base) {
+    const inserted = await env.DB.prepare(
+      `INSERT OR IGNORE INTO portfolios (owner_id, body, revision, updated_at)
+       VALUES (?, ?, ?, unixepoch())`).bind(owner, body, nextRevision).run();
+    if (inserted.meta?.changes === 1) {
+      return json({ ok: true, savedAt: nextRevision, bytes: body.length });
+    }
+  } else {
+    const updated = await env.DB.prepare(
+      `UPDATE portfolios SET body = ?, revision = ?, updated_at = unixepoch()
+        WHERE owner_id = ? AND revision = ?`)
+      .bind(body, nextRevision, owner, base).run();
+    if (updated.meta?.changes === 1) {
+      return json({ ok: true, savedAt: nextRevision, bytes: body.length });
+    }
+  }
+
+  const current = await env.DB.prepare(
+    'SELECT revision FROM portfolios WHERE owner_id = ?').bind(owner).first();
+  return json({ error: 'conflit', remoteSavedAt: current?.revision || null,
+    localSavedAt: nextRevision, base: base || null, raison: 'version non lue' }, 409);
+}
+
 const CLEFS_TTL_MS = 60 * 60 * 1000;
 let clefsCache = { url: null, a: 0, clefs: null };
 
@@ -479,6 +605,256 @@ function cookieValue(request, name) {
   return hit ? hit.slice(name.length + 1) : null;
 }
 
+/* --- FREINER L'ABUS AVANT QU'IL COUTE ------------------------------------
+
+   `/api/auth/request-code` n'est protege par aucune session : c'est sa raison
+   d'etre, on ne peut pas demander d'etre connecte pour se connecter. Il prend
+   une adresse quelconque et declenche un envoi facture, signe du domaine.
+   Sans compteur, un inconnu fait partir autant de courrier qu'il veut.
+
+   LE PLAFOND DU FOURNISSEUR NE SUFFIT PAS, ET POUR UNE RAISON QUI SURPREND :
+   il vaut pour le PROJET ENTIER. Quelqu'un qui le sature n'envoie pas
+   seulement du courrier indesirable, il empeche les vrais testeurs de
+   recevoir le leur. Un plafond partage est une panne a la demande.
+
+   Ce qui se protege ici n'est donc pas la facture, c'est la reputation du
+   domaine et la disponibilite de l'inscription.
+
+   `/api/auth/verify-code` compte aussi, et c'est le second oubli classique :
+   un code a six chiffres sans limite d'essais se devine. */
+
+const ABUS = {
+  mailParAdresse: { plafond: 3, fenetre: 900 },
+  mailParIp: { plafond: 12, fenetre: 3600 },
+  essaisParAdresse: { plafond: 10, fenetre: 900 },
+};
+
+/* UNE SEULE INSTRUCTION, PARCE QUE DEUX NE TIENNENT PAS. Lire le compteur puis
+   l'ecrire laisse deux requetes simultanees lire la meme valeur et la depasser
+   toutes les deux. Le `ON CONFLICT ... DO UPDATE` fait l'addition dans la base,
+   et `RETURNING` rend la valeur qui a reellement ete posee. */
+async function compteur(env, seau, plafond, fenetre) {
+  if (!env.DB) return { permis: true, reste: plafond };
+  const row = await env.DB.prepare(
+    `INSERT INTO auth_throttle (bucket, count, reset_at)
+     VALUES (?1, 1, unixepoch() + ?2)
+     ON CONFLICT(bucket) DO UPDATE SET
+       count = CASE WHEN auth_throttle.reset_at <= unixepoch()
+                    THEN 1 ELSE auth_throttle.count + 1 END,
+       reset_at = CASE WHEN auth_throttle.reset_at <= unixepoch()
+                       THEN unixepoch() + ?2 ELSE auth_throttle.reset_at END
+     RETURNING count, reset_at`).bind(seau, fenetre).first();
+  const count = row?.count ?? 1;
+  return { permis: count <= plafond, reste: Math.max(0, plafond - count) };
+}
+
+const clientIp = request => request.headers.get('CF-Connecting-IP') || 'ip-inconnue';
+
+/* TURNSTILE DORT TANT QU'IL N'EST PAS CONFIGURE, comme le reste des portes de
+   ce worker. Sans `TURNSTILE_SECRET_KEY`, la fonction laisse passer et le
+   formulaire ne montre aucun widget : une instance privee ne change pas de
+   comportement parce qu'on a deploye une version plus recente. Avec les deux
+   clefs, le formulaire porte le widget et le jeton se verifie ici.
+
+   La verification se fait cote serveur : un widget affiche sans controle du
+   jeton ne freine personne, il ajoute juste une image. */
+async function turnstileOk(env, request, form) {
+  if (!env.TURNSTILE_SECRET_KEY) return true;
+  const token = String(form.get('cf-turnstile-response') || '');
+  if (!token) return false;
+  try {
+    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      body: new URLSearchParams({
+        secret: env.TURNSTILE_SECRET_KEY, response: token, remoteip: clientIp(request),
+      }),
+    });
+    const data = await r.json();
+    return data.success === true;
+  } catch (e) {
+    return true;
+  }
+}
+
+/* L'ACCES ADMINISTRATEUR, ET LE PEU QU'ON LUI DEMANDE.
+
+   La clef `service role` ouvre tout chez le fournisseur d'identite : elle
+   ignore les regles d'acces et parle au nom de n'importe qui. Elle ne sert donc
+   qu'a ce qu'aucune autre ne peut faire, et le reste du worker continue avec la
+   clef publiable.
+
+   UN SEUL APPEL L'UTILISE AUJOURD'HUI : supprimer un compte. C'est le droit a
+   l'effacement, et il ne s'exerce pas avec les droits de la personne
+   elle-meme — un utilisateur ne peut pas se supprimer chez le fournisseur.
+
+   L'identifiant vient TOUJOURS de la session verifiee, jamais d'un parametre.
+   Prendre un identifiant du client donnerait a quiconque l'effacement du compte
+   d'autrui, et cette clef-la ne refuserait pas. */
+async function supabaseAdmin(env, chemin, methode) {
+  const clef = env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!env.SUPABASE_URL || !clef) return { ok: false, status: 501 };
+  try {
+    const r = await fetch(env.SUPABASE_URL.replace(/\/+$/, '') + chemin, {
+      method: methode,
+      headers: { 'apikey': clef, 'Authorization': `Bearer ${clef}` },
+    });
+    return { ok: r.ok, status: r.status };
+  } catch (e) {
+    return { ok: false, status: 0 };
+  }
+}
+
+async function createSession(env, user) {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  const token = b64url(bytes);
+  const tokenHash = await sha256(token);
+  const email = String(user.email || '').trim().toLowerCase();
+  const expiresAt = Math.floor(Date.now() / 1000) + SESSION_GLISSE * 86400;
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM sessions WHERE expires_at <= unixepoch()'),
+    env.DB.prepare('DELETE FROM auth_throttle WHERE reset_at <= unixepoch()'),
+    /* LA MEME ADRESSE PEUT REVENIR SOUS UN AUTRE IDENTIFIANT. Un compte
+       supprime puis recree chez le fournisseur porte une adresse connue et un
+       identifiant neuf. `ON CONFLICT(id)` ne voit pas ce cas : le conflit tombe
+       sur l'index unique de l'adresse, l'instruction leve, et le lot entier est
+       annule — la personne ne peut plus se connecter, sans qu'une ligne dise
+       pourquoi. On reaffecte donc la ligne existante avant d'inserer, et la
+       cascade du schema emmene le patrimoine et les sessions avec elle. */
+    env.DB.prepare('UPDATE users SET id = ?1, updated_at = unixepoch() WHERE email = ?2 AND id <> ?1')
+      .bind(user.id, email),
+    env.DB.prepare(
+      `INSERT INTO users (id, email, created_at, updated_at) VALUES (?, ?, unixepoch(), unixepoch())
+       ON CONFLICT(id) DO UPDATE SET email = excluded.email, updated_at = unixepoch()`)
+      .bind(user.id, email),
+    env.DB.prepare(
+      'INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, unixepoch())')
+      .bind(tokenHash, user.id, expiresAt),
+  ]);
+  return token;
+}
+
+const escHtml = value => String(value || '').replace(/[&<>"']/g, c => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+}[c]));
+
+const AUTH_STYLE = `<style>
+*{box-sizing:border-box}body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+background:#08080A;color:#ECEADF;margin:0;min-height:100dvh;display:grid;place-items:center;
+padding:24px;background-image:radial-gradient(60em 40em at 20% -10%,rgba(126,77,255,.16),transparent 60%)}
+form{width:min(25em,100%);background:#121216;border:1px solid #292930;border-radius:18px;padding:28px}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:24px;font-weight:650}.brand img{border-radius:8px}
+h1{font-size:25px;margin:0 0 8px}p{color:#aaa8b0;font-size:14px;line-height:1.55}
+label{display:block;font-size:13px;margin:22px 0 7px}input{width:100%;font:inherit;font-size:16px;
+padding:13px 14px;border-radius:11px;border:1px solid #35353e;background:#0e0e12;color:#fff}
+button{width:100%;font:inherit;font-weight:650;padding:13px;margin-top:18px;border:0;border-radius:11px;
+color:#fff;background:linear-gradient(135deg,#7E4DFF,#9A63FF);cursor:pointer}.err{color:#ff7770}
+.legal{font-size:11.5px;text-align:center;margin-top:18px}.legal a{color:#b98cff}</style>`;
+
+/* LES PAGES DU WORKER PARLENT LA LANGUE DU VISITEUR.
+
+   Elles ne peuvent pas appeler `trad()` : le worker les construit sans le
+   dictionnaire. Leurs chaines vivent donc ici, en double, et c'est le prix a
+   payer pour qu'un francophone ne lise pas l'anglais sur le seul ecran qu'il
+   voit avant d'entrer.
+
+   Les deux tables portent exactement les memes clefs, et un controle l'exige :
+   une clef presente d'un seul cote rendrait `undefined` dans la page, sans
+   erreur et sans que rien ne le dise. */
+const AUTH_TEXTES = {
+  en: {
+    lang: 'en',
+    titreConnexion: 'Sign in · Longward',
+    titreCode: 'Verify · Longward',
+    confidentialite: '/privacy',
+    h1: 'Enter your space',
+    intro: 'We send you a one-time code. If this address is new, your account is created once it is verified.',
+    labelEmail: 'Email address',
+    bouton: 'Send me a code',
+    legalAvant: 'By continuing, you confirm you have read the ',
+    legalLien: 'privacy policy',
+    h1Code: 'Check your email',
+    introAvant: 'Enter the code sent to ',
+    labelCode: 'Code',
+    boutonCode: 'Verify code',
+    emailInvalide: 'Invalid email address.',
+    tropIp: 'Too many requests from this network. Try again in an hour.',
+    robot: 'Confirm you are not a robot, then try again.',
+    tropMail: 'Too many codes requested for this address. Try again in fifteen minutes.',
+    envoiImpossible: 'The code cannot be sent right now.',
+    indisponible: 'Sign-in is unavailable. Try again in a moment.',
+    codeInvalide: 'Invalid code.',
+    tropEssais: 'Too many attempts. Request a new code in fifteen minutes.',
+    codeFaux: 'Incorrect or expired code.',
+  },
+  fr: {
+    lang: 'fr',
+    titreConnexion: 'Connexion · Longward',
+    titreCode: 'Vérification · Longward',
+    confidentialite: '/confidentialite',
+    h1: 'Entre dans ton espace',
+    intro: 'Tu reçois un code à usage unique. Si cette adresse est nouvelle, ton compte est créé après vérification.',
+    labelEmail: 'Adresse e-mail',
+    bouton: 'Recevoir mon code',
+    legalAvant: 'En continuant, tu reconnais avoir lu la ',
+    legalLien: 'politique de confidentialité',
+    h1Code: 'Vérifie ton e-mail',
+    introAvant: 'Entre le code envoyé à ',
+    labelCode: 'Code',
+    boutonCode: 'Valider le code',
+    emailInvalide: 'Adresse e-mail invalide.',
+    tropIp: 'Trop de demandes depuis ce réseau. Réessaie dans une heure.',
+    robot: 'Confirme que tu n’es pas un robot, puis réessaie.',
+    tropMail: 'Trop de codes demandés pour cette adresse. Réessaie dans un quart d’heure.',
+    envoiImpossible: 'Le code ne peut pas être envoyé pour le moment.',
+    indisponible: 'Le service de connexion est indisponible. Réessaie dans un instant.',
+    codeInvalide: 'Code invalide.',
+    tropEssais: 'Trop d’essais. Demande un nouveau code dans un quart d’heure.',
+    codeFaux: 'Code incorrect ou expiré.',
+  },
+};
+
+/* `Accept-Language` est une liste ponderee, pas un code : `en-US,en;q=0.9,fr;q=0.8`
+   annonce un anglophone qui comprend le francais. Chercher « fr » quelque part
+   dedans le prendrait pour un francophone. On lit donc les poids. */
+function langueDemandee(request) {
+  const brut = request.headers.get('Accept-Language') || '';
+  let meilleure = { code: 'en', q: -1 };
+  for (const morceau of brut.split(',')) {
+    const [etiquette, ...params] = morceau.trim().split(';');
+    const code = etiquette.slice(0, 2).toLowerCase();
+    if (!AUTH_TEXTES[code]) continue;
+    let q = 1;
+    for (const p of params) {
+      const m = /^\s*q=([\d.]+)/.exec(p);
+      if (m) q = Number(m[1]);
+    }
+    if (q > meilleure.q) meilleure = { code, q };
+  }
+  return meilleure.code;
+}
+
+const TURNSTILE_WIDGET = siteKey => !siteKey ? '' :
+  `<div class="cf-turnstile" data-sitekey="${escHtml(siteKey)}" data-theme="dark"></div>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>`;
+
+const EMAIL_LOGIN_PAGE = (error, siteKey = '', T = AUTH_TEXTES.en) => `<!DOCTYPE html><html lang="${T.lang}"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>${T.titreConnexion}</title>${AUTH_STYLE}
+<form method="POST" action="/api/auth/request-code"><div class="brand"><img src="/icon-192.png" alt="" width="34" height="34">Longward</div>
+<h1>${T.h1}</h1><p>${T.intro}</p>
+${error ? `<p class="err">${escHtml(error)}</p>` : ''}<label for="email">${T.labelEmail}</label>
+<input id="email" name="email" type="email" autocomplete="email" required autofocus>
+${TURNSTILE_WIDGET(siteKey)}
+<button type="submit">${T.bouton}</button><p class="legal">${T.legalAvant}<a href="${T.confidentialite}">${T.legalLien}</a>.</p></form></html>`;
+
+const VERIFY_PAGE = (email, error = '', T = AUTH_TEXTES.en) => `<!DOCTYPE html><html lang="${T.lang}"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>${T.titreCode}</title>${AUTH_STYLE}
+<form method="POST" action="/api/auth/verify-code"><div class="brand"><img src="/icon-192.png" alt="" width="34" height="34">Longward</div>
+<h1>${T.h1Code}</h1><p>${T.introAvant}<b>${escHtml(email)}</b>.</p>
+${error ? `<p class="err">${escHtml(error)}</p>` : ''}<input name="email" type="hidden" value="${escHtml(email)}">
+<label for="code">${T.labelCode}</label><input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,8}" required autofocus>
+<button type="submit">${T.boutonCode}</button></form></html>`;
+
 /* LA PORTE D'ENTREE MERITE LE SOIN DU RESTE.
 
    C'est le premier ecran, et longtemps le seul qu'un visiteur non autorise
@@ -498,7 +874,7 @@ function cookieValue(request, name) {
 
    `error` ne porte que des chaines fixes de ce fichier, jamais une entree du
    visiteur. Si cela devait changer un jour, il faudrait l'echapper ici. */
-const LOGIN_PAGE = (error) => `<!DOCTYPE html><html lang="fr"><meta charset="utf-8">
+const LOGIN_PAGE = (error) => `<!DOCTYPE html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Longward</title>
 <style>
@@ -541,18 +917,18 @@ const LOGIN_PAGE = (error) => `<!DOCTYPE html><html lang="fr"><meta charset="utf
    <img class="mark" src="/icon-192.png" alt="" width="34" height="34">
    <span class="nom">Longward</span>
  </div>
- <h1>Entre dans <em>ton espace</em></h1>
- <p class="sous">Vois clair. <b>Avance.</b></p>
- <label for="mdp">Mot de passe</label>
- <input id="mdp" type="password" name="password" placeholder="Ton mot de passe" autofocus
+ <h1>Enter <em>your space</em></h1>
+ <p class="sous">See clearly. <b>Move forward.</b></p>
+ <label for="mdp">Password</label>
+ <input id="mdp" type="password" name="password" placeholder="Your password" autofocus
         required autocomplete="current-password">
  ${error ? `<span class="err">${error}</span>` : ''}
- <button type="submit">Entrer</button>
- <p class="pied">Cet espace est privé. Tes données restent les tiennes.</p>
+ <button type="submit">Sign in</button>
+ <p class="pied">This space is private. Your data stays yours.</p>
 </form></html>`;
 
-const LOCKED_PAGE = `<!DOCTYPE html><html lang="fr"><meta charset="utf-8">
-<title>Dashboard verrouillé</title>
+const LOCKED_PAGE = `<!DOCTYPE html><html lang="en"><meta charset="utf-8">
+<title>Dashboard locked</title>
 <style>
  body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#0d0d0d;color:#eceadf;
       margin:0;min-height:100vh;display:grid;place-items:center;padding:24px}
@@ -564,31 +940,45 @@ const LOCKED_PAGE = `<!DOCTYPE html><html lang="fr"><meta charset="utf-8">
       padding:3px 9px;border-radius:99px;letter-spacing:.05em;margin-bottom:14px}
 </style>
 <main>
- <span class="tag">ACCÈS FERMÉ</span>
- <h1>Ce dashboard n'est pas encore protégé</h1>
- <p>Il refuse de servir la moindre donnée tant qu'aucune protection n'est en
-    place. C'est volontaire : mieux vaut un site inutilisable qu'un patrimoine
-    lisible par n'importe qui.</p>
- <p><b>Le plus simple — un mot de passe :</b></p>
+ <span class="tag">LOCKED</span>
+ <h1>This dashboard is not protected yet</h1>
+ <p>It serves nothing at all until a protection is in place. That is
+    deliberate: an unusable site beats a net worth anyone can read.</p>
+ <p><b>The simplest route, a password:</b></p>
  <ol>
-  <li>Réglages du projet Cloudflare → <b>Variables and Secrets</b></li>
+  <li>Cloudflare project settings → <b>Variables and Secrets</b></li>
   <li><b>Add variable</b>, type <b>Secret</b></li>
-  <li>Nom : <code>DASHBOARD_PASSWORD</code> — Valeur : ton mot de passe</li>
+  <li>Name: <code>DASHBOARD_PASSWORD</code>, value: your password</li>
   <li><b>Save and deploy</b></li>
  </ol>
- <p>Recharge : un écran de connexion apparaîtra.</p>
- <p style="font-size:13px;color:#898781">Alternative plus robuste, si tu veux une
-    connexion par code email : configure <b>Cloudflare Zero Trust → Access</b> sur
-    ce nom d'hôte. Les deux fonctionnent, l'un ou l'autre suffit.</p>
- <p style="font-size:13px;color:#898781">Pour publier ce site volontairement sans
-    authentification, définis la variable d'environnement
-    <code>ALLOW_PUBLIC=1</code> dans les réglages du projet.</p>
+ <p>Reload, and a sign-in screen appears.</p>
+ <p style="font-size:13px;color:#898781">A sturdier option, for sign-in by email
+    code: set up <b>Cloudflare Zero Trust → Access</b> on this hostname. Either
+    route works, one of them is enough.</p>
+ <p style="font-size:13px;color:#898781">To publish this site deliberately with no
+    authentication, set the environment variable <code>ALLOW_PUBLIC=1</code> in the
+    project settings.</p>
 </main></html>`;
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname;
+
+    /* Les ecritures viennent de l'interface Longward elle-meme. Ce controle
+       bloque notamment une connexion ou une deconnexion imposee par un site
+       tiers au moyen d'un formulaire invisible.
+
+       Deux preuves valent ici, et la seconde n'est pas un relachement :
+       `Sec-Fetch-Site` est pose par le navigateur, aucun script de page ne peut
+       l'ecrire, et un envoi venu d'ailleurs porte `cross-site`. Elle rattrape
+       le cas ou l'hebergeur presente au worker l'adresse immuable du
+       deploiement quand le navigateur, lui, utilise l'alias de branche. */
+    const memeOrigine = request.headers.get('Origin') === url.origin
+      || request.headers.get('Sec-Fetch-Site') === 'same-origin';
+    if (['POST', 'PUT', 'DELETE'].includes(request.method) && !memeOrigine) {
+      return json({ error: 'origine refusée' }, 403);
+    }
 
     const pwd = env.DASHBOARD_PASSWORD;
     /* Les protections de `_headers` ne s'appliquent qu'aux fichiers servis par
@@ -615,12 +1005,98 @@ export default {
          protegee des trois. Elle n'a ni style en ligne ni script, mais la
          liste se recopie entiere : deux CSP differentes sur un meme site
          finiraient par diverger sur la seule qui compte. */
+      /* Le widget anti-robot est un script tiers : il lui faut sa source et son
+         cadre, et rien de plus. Les deux ne s'ouvrent que si le site porte une
+         clef publique, donc la CSP reste au plus serre partout ailleurs. Ce qui
+         ne s'ouvre jamais, c'est `unsafe-inline` sur le script. */
       'Content-Security-Policy':
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+        "default-src 'self'; script-src 'self'"
+        + (env.TURNSTILE_SITE_KEY ? ' https://challenges.cloudflare.com' : '')
+        + "; style-src 'self' 'unsafe-inline'; "
         + "img-src 'self' data:; font-src 'self'; connect-src 'self'; "
         + "manifest-src 'self'; worker-src 'self'; object-src 'none'; "
+        + (env.TURNSTILE_SITE_KEY ? "frame-src https://challenges.cloudflare.com; " : '')
         + "base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
     };
+
+    const emailAuthReady = !!(
+      env.SUPABASE_URL
+      && (env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY)
+      && env.DB
+    );
+    const T = AUTH_TEXTES[langueDemandee(request)];
+    const pageConnexion = error => EMAIL_LOGIN_PAGE(error, env.TURNSTILE_SITE_KEY || '', T);
+    const pageCode = (adresse, erreur) => VERIFY_PAGE(adresse, erreur, T);
+
+    if (path === '/api/auth/request-code' && request.method === 'POST') {
+      try {
+        const form = await request.formData();
+        const email = String(form.get('email') || '').trim().toLowerCase();
+        if (!/^\S+@\S+\.\S+$/.test(email)) {
+          return new Response(pageConnexion(T.emailInvalide), { status: 400, headers: htmlHeaders });
+        }
+
+        const parIp = await compteur(env, `otp:ip:${clientIp(request)}`,
+          ABUS.mailParIp.plafond, ABUS.mailParIp.fenetre);
+        if (!parIp.permis) {
+          return new Response(pageConnexion(T.tropIp),
+            { status: 429, headers: htmlHeaders });
+        }
+        if (!await turnstileOk(env, request, form)) {
+          return new Response(pageConnexion(T.robot),
+            { status: 400, headers: htmlHeaders });
+        }
+        const parMail = await compteur(env, `otp:mail:${email}`,
+          ABUS.mailParAdresse.plafond, ABUS.mailParAdresse.fenetre);
+        if (!parMail.permis) {
+          return new Response(pageConnexion(T.tropMail),
+            { status: 429, headers: htmlHeaders });
+        }
+
+        const sent = await supabaseAuth(env, '/auth/v1/otp', { email, create_user: true });
+        if (!sent.ok) {
+          return new Response(pageConnexion(T.envoiImpossible),
+            { status: sent.status === 429 ? 429 : 502, headers: htmlHeaders });
+        }
+        return new Response(pageCode(email), { status: 200, headers: htmlHeaders });
+      } catch (e) {
+        /* Cette route vit hors du `try` general plus bas. Sans celui-ci, une
+           panne de base rendrait la page d'exception brute de la plateforme
+           sur le seul ecran ou un visiteur a besoin d'une phrase lisible. */
+        return new Response(pageConnexion(T.indisponible),
+          { status: 503, headers: htmlHeaders });
+      }
+    }
+
+    if (path === '/api/auth/verify-code' && request.method === 'POST') {
+      try {
+      const form = await request.formData();
+      const email = String(form.get('email') || '').trim().toLowerCase();
+      const token = String(form.get('code') || '').trim();
+      if (!/^\S+@\S+\.\S+$/.test(email) || !/^\d{6,8}$/.test(token)) {
+        return new Response(pageCode(email, T.codeInvalide), { status: 400, headers: htmlHeaders });
+      }
+      const essais = await compteur(env, `code:mail:${email}`,
+        ABUS.essaisParAdresse.plafond, ABUS.essaisParAdresse.fenetre);
+      if (!essais.permis) {
+        return new Response(pageCode(email, T.tropEssais),
+          { status: 429, headers: htmlHeaders });
+      }
+      const verified = await supabaseAuth(env, '/auth/v1/verify', { email, token, type: 'email' });
+      const user = verified.data?.user;
+      if (!verified.ok || !user?.id || !user?.email || !user?.email_confirmed_at) {
+        return new Response(pageCode(email, T.codeFaux), { status: 401, headers: htmlHeaders });
+      }
+      const session = await createSession(env, user);
+      return new Response(null, { status: 303, headers: {
+        'Location': '/', 'Cache-Control': 'no-store',
+        'Set-Cookie': `lw_session=${session}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${SESSION_PLAFOND * 86400}`,
+      } });
+      } catch (e) {
+        return new Response(pageCode('', T.indisponible),
+          { status: 503, headers: htmlHeaders });
+      }
+    }
 
     if (path === '/api/login' && request.method === 'POST') {
       if (!pwd) return json({ error: 'aucun mot de passe configuré' }, 501);
@@ -630,7 +1106,7 @@ export default {
       const ok = (await hmac(pwd, 'check')) === (await hmac(given, 'check'));
       if (!ok) {
         await new Promise(r => setTimeout(r, 1000));   // freine le bourrinage
-        return new Response(LOGIN_PAGE('Mot de passe incorrect.'), { status: 401, headers: htmlHeaders });
+        return new Response(LOGIN_PAGE('Incorrect password.'), { status: 401, headers: htmlHeaders });
       }
       const token = await makeToken(pwd);
       return new Response(null, {
@@ -644,24 +1120,64 @@ export default {
       });
     }
 
-    if (path === '/api/logout') {
-      return new Response(null, {
-        status: 303,
-        headers: { 'Location': '/', 'Set-Cookie': 'wd_session=; Path=/; Max-Age=0' },
-      });
+    /* LE GET COMPTE AUTANT QUE LE POST, ET CE N'EST PAS UN CONFORT.
+       Le lien « Se déconnecter » est une ancre vers cette adresse ; le script
+       de la page intercepte le clic, vide le stockage local, puis envoie un
+       POST. Si ce script n'a pas pris, l'ancre part en GET : la route ne
+       repondait qu'au POST, donc la personne lisait « route inconnue » en JSON
+       et restait connectee. Un bouton de sortie qui ne sort pas est le pire
+       des boutons.
+
+       Accepter le GET ne rouvre rien : le cookie de compte est en
+       `SameSite=Strict`, donc une image posee sur un site tiers n'emporte
+       aucune session et ne deconnecte personne. */
+    if (path === '/api/logout' && (request.method === 'POST' || request.method === 'GET')) {
+      const session = cookieValue(request, 'lw_session');
+      if (session && env.DB) {
+        await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?')
+          .bind(await sha256(session)).run();
+      }
+      const sortie = new Headers({ 'Location': '/', 'Cache-Control': 'no-store' });
+      sortie.append('Set-Cookie', 'lw_session=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0');
+      sortie.append('Set-Cookie', 'wd_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+      return new Response(null, { status: 303, headers: sortie });
     }
 
-    const PUBLIC = ['/icon-192.png', '/apple-touch-icon.png'];
+    const PUBLIC = ['/icon-192.png', '/apple-touch-icon.png',
+      /* LES DEUX ECRITURES, ET CE N'EST PAS UNE PRECAUTION EN L'AIR.
+         Cloudflare Pages redirige `/confidentialite.html` vers
+         `/confidentialite` par un 308 avant meme d'arriver ici. Seule la
+         premiere etait declaree publique : la redirection tombait donc sur le
+         garde-fou, et la politique de confidentialite renvoyait la page de
+         connexion. Le formulaire d'inscription y renvoie pourtant, et
+         quelqu'un doit pouvoir la lire AVANT de donner son adresse. */
+      '/confidentialite.html', '/confidentialite',
+      '/privacy.html', '/privacy'];
 
     const email = await accessEmail(request, env);
-    const identifie = !!email
-      || (pwd && await tokenIsValid(cookieValue(request, 'wd_session'), pwd));
+    const appIdentity = await sessionIdentity(request, env);
+
+    /* DEUX PORTES SUR LA MEME MAISON, ET LA PLUS ANCIENNE N'A PAS DE SERRURE
+       INDIVIDUELLE. Le mot de passe unique est juste pour une instance a un
+       seul proprietaire : sa session ne porte aucune identite, donc le stockage
+       retombe sur la clef partagee `state:default`. Laisse en service a cote
+       des comptes, il donne a quiconque connait ce mot de passe un acces qui
+       n'est celui de personne — et `ALLOW_PUBLIC` fait pire encore.
+
+       La consigne existait, ecrite dans un mode d'emploi. Une regle qui vit
+       dans un document se respecte jusqu'au jour ou quelqu'un ne l'a pas lue. */
+    const motDePasseAdmis = !!pwd && !emailAuthReady;
+    const identifie = !!appIdentity || !!email
+      || (motDePasseAdmis && await tokenIsValid(cookieValue(request, 'wd_session'), pwd));
     const authorised = PUBLIC.includes(path)
       || (DEMO_PUBLIQUE && !pwd)
-      || env.ALLOW_PUBLIC === '1'
+      || (env.ALLOW_PUBLIC === '1' && !emailAuthReady)
       || identifie;
 
     if (!authorised) {
+      if (emailAuthReady && !path.startsWith('/api/')) {
+        return new Response(pageConnexion(''), { status: 401, headers: htmlHeaders });
+      }
       if (path.startsWith('/api/')) {
         return json({ error: 'non authentifié' }, 403);
       }
@@ -673,13 +1189,59 @@ export default {
     }
 
     try {
+      if (path === '/api/account/delete-code' && request.method === 'POST') {
+        if (!appIdentity) return json({ error: 'identité requise' }, 403);
+        const parIp = await compteur(env, `otp:ip:${clientIp(request)}`,
+          ABUS.mailParIp.plafond, ABUS.mailParIp.fenetre);
+        const parMail = await compteur(env, `otp:mail:${appIdentity.email}`,
+          ABUS.mailParAdresse.plafond, ABUS.mailParAdresse.fenetre);
+        if (!parIp.permis || !parMail.permis) {
+          return json({ error: 'trop de demandes' }, 429);
+        }
+        const envoye = await supabaseAuth(env, '/auth/v1/otp',
+          { email: appIdentity.email, create_user: false });
+        if (!envoye.ok) return json({ error: 'envoi impossible' }, 502);
+        return json({ ok: true });
+      }
+
+      if (path === '/api/account/delete' && request.method === 'POST') {
+        if (!appIdentity) return json({ error: 'identité requise' }, 403);
+        const essais = await compteur(env, `code:mail:${appIdentity.email}`,
+          ABUS.essaisParAdresse.plafond, ABUS.essaisParAdresse.fenetre);
+        if (!essais.permis) return json({ error: 'trop d’essais' }, 429);
+
+        let recu = {};
+        try { recu = await request.json(); } catch { /* corps vide */ }
+        const code = String(recu.code || '').trim();
+        if (!/^\d{6,8}$/.test(code)) return json({ error: 'code invalide' }, 400);
+
+        const verifie = await supabaseAuth(env, '/auth/v1/verify',
+          { email: appIdentity.email, token: code, type: 'email' });
+        if (!verifie.ok || verifie.data?.user?.id !== appIdentity.id) {
+          return json({ error: 'code incorrect' }, 401);
+        }
+        await env.DB.prepare('DELETE FROM users WHERE id = ?').bind(appIdentity.id).run();
+        const chezLeFournisseur = await supabaseAdmin(
+          env, `/auth/v1/admin/users/${appIdentity.id}`, 'DELETE');
+        const sortie = new Headers({
+          'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store',
+        });
+        sortie.append('Set-Cookie',
+          'lw_session=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0');
+        return new Response(
+          JSON.stringify({ ok: true, identiteEffacee: chezLeFournisseur.ok }),
+          { headers: sortie });
+      }
+
       if (path === '/api/health') {
         return json({
           ok: true,
           service: 'wealth-dashboard',
           host: 'cloudflare',
-          storage: env.WEALTH ? 'kv' : 'none',
-          user: email || null,
+          storage: env.DB ? 'd1' : (env.WEALTH ? 'kv' : 'none'),
+          accounts: emailAuthReady,
+          userId: appIdentity?.id || null,
+          user: appIdentity?.email || email || null,
         });
       }
 
@@ -705,6 +1267,7 @@ export default {
         return json({ results: out });
       }
 
+      if (path === '/api/state' && appIdentity) return handleD1State(request, env, appIdentity);
       if (path === '/api/state') return handleState(request, env, email, identifie);
 
       return json({ error: 'route inconnue' }, 404);

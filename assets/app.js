@@ -19,12 +19,33 @@ const monthsLeftInYear = () => monthsToObjective();
 function arrow(v) { return v > 0 ? '▲' : v < 0 ? '▼' : '•'; }
 
 let savedTimer = null;
+function libelleEnregistrement() {
+  if (modeDemo() || !CloudSync.isAvailable()) return trad('Sauvegardé localement');
+  const s = CloudSync.status();
+  if (s.error || s.conflict) return trad('Sauvegardé localement');
+  /* LA QUESTION EST « RESTE-T-IL A ENVOYER », PAS « AI-JE ENVOYE ». Une
+     premiere version regardait `lastPush`, qui ne vaut que pour la page en
+     cours : arriver sur une application deja synchronisee ne declenche aucun
+     envoi, donc le temoin annoncait « localement » alors que tout etait en
+     ligne. `aJour()` compare le repere de synchronisation a l'etat en memoire,
+     et ce repere-la survit au rechargement. */
+  if (s.pushing || !CloudSync.aJour()) return trad('Envoi au cloud…');
+  return trad('Sauvegardé dans le cloud');
+}
+
+function majTemoinEnregistrement() {
+  const f = $('#savedFlag');
+  if (f && !f.classList.contains('ko') && !f.classList.contains('flash')) {
+    f.textContent = libelleEnregistrement();
+  }
+}
+
 function signalerEcritureVue(ok, premierEchec) {
   const f = $('#savedFlag');
   if (f) {
     f.classList.toggle('ko', !ok);
     if (!ok) f.textContent = trad('Non enregistré');
-    else f.textContent = trad('Sauvegardé localement');
+    else f.textContent = libelleEnregistrement();
   }
   if (!ok && premierEchec) {
     toast(trad('Impossible d’enregistrer sur cet appareil. Exporte une sauvegarde.'));
@@ -40,7 +61,7 @@ function flashSaved() {
   f.textContent = trad('Sauvegardé ✓');
   f.classList.add('flash');
   clearTimeout(savedTimer);
-  savedTimer = setTimeout(() => { f.classList.remove('flash'); f.textContent = trad('Sauvegardé localement'); }, 1400);
+  savedTimer = setTimeout(() => { f.classList.remove('flash'); f.textContent = libelleEnregistrement(); }, 1400);
 }
 
 let champsEcrits = new WeakMap();
@@ -292,6 +313,7 @@ const VIEWS = {
   accounts:   { cle: 'accounts',    render: viewAccounts },
   data:       { cle: 'data',        render: viewData },
   settings:   { cle: 'settings',    render: viewSettings },
+  profil:     { cle: 'profil',      render: viewProfil },
   /* La cle de vue est `accounts` : c'est elle qui donne a l'ecran son chevron
      de retour vers Actifs, exactement comme aux fiches. */
   'comptes-archives': { cle: 'accounts', render: viewComptesArchives },
@@ -770,10 +792,12 @@ function viewOverview() {
 
   const moisEnAttente = currentMonthPending();
   const depEnAttente = depensesEnAttente();
+  const guide = carteDemarrage();
 
   return `
+  ${guide}
 
-  ${moisEnAttente.missing ? `
+  ${moisEnAttente.missing && !guide ? `
   <div class="rappel card-cliquable">
     <button type="button" class="card-couvre" data-action="ajouter-releve"
             aria-label="${trad('Prendre le snapshot de')} ${esc(moisEnAttente.label)}"></button>
@@ -783,7 +807,7 @@ function viewOverview() {
     ${sortiesRappel('releve', moisEnAttente.label)}
   </div>` : ''}
 
-  ${depEnAttente.missing ? `
+  ${depEnAttente.missing && !guide ? `
   <div class="rappel card-cliquable">
     <button type="button" class="card-couvre" data-action="saisir-mois-en-attente"
             aria-label="${trad('Saisir les dépenses de')} ${esc(depEnAttente.label)}"></button>
@@ -806,7 +830,6 @@ function viewOverview() {
         </span>` : ''}
       </div>
       <div class="hero-value">${fmtEUR(evoNet ? t.total : t.brut)}</div>`}
-      ${invitePremierPas('comptes')}
     </div>
     ${blocVariation}
     ${(() => {
@@ -1207,6 +1230,42 @@ function tile(label, value, pct, color, meta, apercu, arg) {
   return `<button type="button" class="tile tile-link" style="--tile-color:${color}"
             data-action="apercu" data-apercu="${esc(apercu)}"${arg ? ` data-arg="${esc(arg)}"` : ''}
             title="${trad('Voir le détail de')} ${esc(trad(label))}">${inner}<span class="t-go">⋯</span></button>`;
+}
+
+function viewProfil() {
+  const adresse = CloudSync.getUser();
+  if (!adresse) {
+    return `<div class="card"><div class="card-head"><h2>${trad('Ton compte')}</h2></div>
+      <p class="muted">${trad('Cette instance ne tient pas de comptes séparés : il n’y a pas de profil à afficher.')}</p>
+    </div>`;
+  }
+  return `
+  <div class="card">
+    <div class="card-head"><h2>${trad('Ton compte')}</h2></div>
+    <div class="modal-champs">
+      <div class="field">
+        <label>${trad('Adresse de connexion')}</label>
+        <div class="valeur-fixe">${esc(adresse)}</div>
+      </div>
+    </div>
+    <p class="muted">${trad('Tu te connectes avec un code envoyé à cette adresse. Il n’y a pas de mot de passe à retenir.')}</p>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>${trad('Tes données')}</h2></div>
+    <p class="muted">${trad('Ton patrimoine est enregistré sous ton compte et te suit d’un appareil à l’autre. Les sauvegardes et l’export vivent dans Données.')}</p>
+    <div class="fiche-actes centre">
+      <a class="btn sm ghost" href="#/data">${trad('Aller à Données')}</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>${trad('Quitter Longward')}</h2></div>
+    <p class="muted">${trad('La suppression efface ton compte, ton patrimoine et tes sessions. Elle est immédiate et ne s’annule pas. Exporte tes données avant si tu veux les garder.')}</p>
+    <div class="fiche-actes centre">
+      <button class="btn ghost danger" data-action="effacer-identite">${trad('Effacer mon compte et mes données')}</button>
+    </div>
+  </div>`;
 }
 
 function viewSettings() {
@@ -4422,6 +4481,77 @@ function creditsDuCompte(c) {
    Le texte et l'action viennent de `PREMIERS_PAS`, pas de l'appelant : les
    ecrans vides de cette application se sont deja contredits pour avoir ete
    ecrits chacun de son cote. */
+/* LE CHEMIN EN ENTIER, ET NON SEULEMENT LE PAS SUIVANT.
+
+   Chaque ecran disait deja ce qui lui manquait, et cette guidance-la reste : un
+   ecran qui ne peut rien montrer doit dire ce qui le remplirait. Mais elle ne
+   repond qu'a « pourquoi cette page est vide », jamais a « par ou je commence
+   et combien y a-t-il d'etapes ». Quelqu'un qui arrive voit une carte et sept
+   entrees de menu toutes vides : il n'a aucune carte du territoire.
+
+   Cette carte-ci montre les quatre pas d'un coup, dit lequel est fait, et
+   n'ouvre QUE le premier qui reste. Quatre paragraphes cote a cote feraient un
+   mur ; la liste donne la carte, le pas courant donne la consigne.
+
+   Elle se derive de `PREMIERS_PAS` et ne recopie rien : les ecrans vides de
+   cette application se sont deja contredits pour avoir ete ecrits chacun de son
+   cote. Et elle disparait entierement des que tout est fait, sans que rien ne
+   l'eteigne. */
+let pasDeplie = null;
+
+function carteDemarrage() {
+  /* `acquis` quand il existe, `fait` sinon : voir la note du pas des releves.
+     La liste demande si un pas est FRANCHI, pas s'il faut encore le reclamer,
+     et les deux divergent la ou un pas depend d'un autre. */
+  const acquis = p => (p.acquis ? p.acquis() : (!pasAFaire(p.cle) && pasDeclare(p)));
+  if (demarrageMasque()) return '';
+  const restants = PREMIERS_PAS.filter(p => !acquis(p));
+  const fini = !restants.length;
+  const premier = fini ? null : (restants.find(p => !p.ouvrable || p.ouvrable()) || restants[0]);
+  const faits = PREMIERS_PAS.length - restants.length;
+  return `
+  <div class="card demarrage">
+    <div class="card-head">
+      <h2>${trad('Commence ici')}</h2>
+      <span class="muted">${trad('{n} sur {t}').replace('{n}', faits).replace('{t}', PREMIERS_PAS.length)}</span>
+    </div>
+    <ol class="pas-liste">
+      ${PREMIERS_PAS.map((p, i) => {
+        const fait = acquis(p);
+        const courant = !!premier && p.cle === premier.cle;
+        return `
+      <li class="pas${fait ? ' fait' : ''}${courant ? ' courant' : ''}">
+        <span class="pas-marque">${fait ? '✓' : i + 1}</span>
+        <div class="pas-corps">
+          ${!fait ? `<b>${
+            trad(courant && p.declare && !pasAFaire(p.cle) ? p.declare.question : p.titre)}</b>` : `
+          <button type="button" class="pas-retour" data-action="deplier-pas" data-cle="${esc(p.cle)}">
+            <b>${trad(p.titre)}</b>
+            <span class="pas-modifier">${trad(pasDeplie === p.cle ? 'Fermer' : 'Modifier')}</span>
+          </button>`}
+          ${!(courant || pasDeplie === p.cle) ? '' : (
+          courant && p.declare && !pasAFaire(p.cle) ? `
+          <p class="small muted">${trad(p.declare.detail)}</p>
+          <span class="paire-btn">
+            <button type="button" class="btn sm" data-action="declarer-pas"
+                    data-cle="${esc(p.declare.cle)}">${trad(p.declare.oui)}</button>
+            <button type="button" class="btn sm ghost" data-action="${esc(p.action)}">${trad(p.declare.ajouter)}</button>
+          </span>` : `
+          <p class="small muted">${trad(p.quoi)}</p>
+          <button type="button" class="btn sm" data-action="${esc(p.action)}">${trad(p.bouton)}</button>`)}
+        </div>
+      </li>`;
+      }).join('')}
+    </ol>
+    ${!fini ? '' : `
+    <p class="small muted" style="margin:12px 0 0">${
+      trad('Tout est en place. Ce guide a fait son travail, tu peux le refermer.')}</p>
+    <div class="fiche-actes centre">
+      <button type="button" class="btn sm" data-action="fermer-demarrage">${trad('Refermer le guide')}</button>
+    </div>`}
+  </div>`;
+}
+
 function invitePremierPas(cle) {
   const p = PAS_PAR_CLE[cle];
   if (!p || !pasAFaire(cle)) return '';
@@ -7335,6 +7465,88 @@ const ACTIONS = {
     toast(`${guill(x.label)} ${trad('supprimé')}`);
   },
 
+  /* `effacer-identite` et non `supprimer-compte` : ce dernier existe deja, et il
+     supprime un compte BANCAIRE. Deux clefs de meme nom dans cet objet ne se
+     signalent pas — la derniere gagne en silence, et le bouton de l'ecran du
+     compte appelait la suppression d'une ligne d'actifs. Le mot « compte » est
+     pris dans cette application, il faut en choisir un autre. */
+  /* La carte se referme sur un geste, jamais sur une condition : voir la note
+     de `CLE_DEMARRAGE`. Le bouton n'apparait qu'une fois les quatre pas
+     franchis, donc rien ne se perd en la fermant. */
+  'fermer-demarrage'() {
+    masquerNotif(CLE_DEMARRAGE);
+    Store.save();
+    render();
+  },
+
+  'deplier-pas'(btn) {
+    const cle = btn.dataset.cle;
+    pasDeplie = pasDeplie === cle ? null : cle;
+    render();
+  },
+
+  'declarer-pas'(btn) {
+    const cle = btn.dataset.cle;
+    if (!cle) return;
+    masquerNotif(cle);
+    Store.save();
+    render();
+    toast(trad('Ta liste est déclarée complète'));
+  },
+
+  async 'effacer-identite'() {
+    const adresse = CloudSync.getUser();
+    if (!await askConfirm(trad('Effacer définitivement ton compte ?') + '\n'
+      + trad('Ton patrimoine, tes sauvegardes en ligne et ton accès à {a} seront effacés. '
+        + 'Cette action ne s’annule pas.').replace('{a}', adresse || '')
+      + '\n\n' + trad('Si tu veux garder une copie, annule et passe d’abord par Données.'),
+      { ok: 'Effacer mon compte', danger: true })) return;
+
+    let envoi;
+    try {
+      envoi = await fetch('/api/account/delete-code', { method: 'POST' });
+    } catch (e) {
+      toast(trad('Suppression impossible : vérifie ta connexion.'));
+      return;
+    }
+    if (!envoi.ok) {
+      toast(trad('Suppression impossible pour le moment. Rien n’a été effacé.'));
+      return;
+    }
+    const code = await askText('Confirme avec le code reçu',
+      trad('Un code vient d’être envoyé à {a}. Entre-le pour confirmer la suppression.')
+        .replace('{a}', adresse || ''), '000000', '', 8);
+    if (!code) return;
+
+    let reponse;
+    try {
+      reponse = await fetch('/api/account/delete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: String(code).trim() }),
+      });
+    } catch (e) {
+      toast(trad('Suppression impossible : vérifie ta connexion.'));
+      return;
+    }
+    if (reponse.status === 401) {
+      toast(trad('Code incorrect ou expiré. Rien n’a été effacé.'));
+      return;
+    }
+    if (!reponse.ok) {
+      toast(trad('Suppression impossible pour le moment. Rien n’a été effacé.'));
+      return;
+    }
+    const scope = CloudSync.getUserId();
+    if (scope) {
+      const suffixe = `:user:${scope}`;
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const cle = localStorage.key(i);
+        if (cle?.endsWith(suffixe)) localStorage.removeItem(cle);
+      }
+    }
+    location.replace('/');
+  },
+
   async 'start-blank'() {
     if (!await askConfirm(trad('Repartir de zéro ?') + '\n'
       + trad('Toutes les données actuelles seront effacées : {p} positions, {c} comptes, '
@@ -7771,13 +7983,17 @@ const ACTIONS = {
            pourtant au patrimoine sans un mot, faussant le brut, le net et toutes
            les repartitions. Il n'y a rien a inventer pour la remplir — c'est la
            seule chose qu'on sache a coup sur en creant un bien. */
+        ...(t.parts ? [{ cle: 'parts', label: trad('Nombre de parts'),
+          type: 'nombre', exemple: '0',
+          aide: trad('il commande les deux prix par part ci-dessous') }] : []),
         { cle: 'valeur', requis: true,
           label: estDetenuEnDirect(t) ? trad('Valeur estimée du bien entier (€)')
                                       : trad('Valeur actuelle (€)'),
           type: 'nombre', exemple: '0',
           aide: estDetenuEnDirect(t)
               ? trad('Sa valeur totale aujourd’hui. Si tu n’en détiens qu’une part, renseigne ta quote-part séparément.')
-              : 'ce que cela vaut aujourd’hui' },
+              : 'ce que cela vaut aujourd’hui',
+          ...(t.parts ? { parPart: 'parts', parPartLabel: 'Prix de la part aujourd’hui (€)' } : {}) },
         ...(bien && estDetenuEnDirect(t) ? [
         { cle: 'section_acq', label: 'Acquisition', type: 'section' },
         { cle: 'prixAchat', label: trad('Prix d’achat (€)'), type: 'nombre', exemple: '0',
@@ -7788,7 +8004,8 @@ const ACTIONS = {
           exemple: '0', aide: trad('ceux du départ, pour le mettre en état') },
         ] : [
         { cle: 'revient', label: trad('Montant investi (€)'), type: 'nombre', exemple: '0',
-          aide: trad('prix d’acquisition, frais compris') },
+          aide: trad('prix d’acquisition, frais compris'),
+          ...(t.parts ? { parPart: 'parts', parPartLabel: 'Prix d’achat de la part (€)' } : {}) },
         ]),
         { cle: 'ouvertLe', label: motDateCompte(t), type: 'date' },
         /* La date de l'estimation, distincte de celle de l'achat.
@@ -7909,6 +8126,7 @@ const ACTIONS = {
         ...(estDeclare(e3.travauxInitiaux)
           ? { travauxInitiaux: num(e3.travauxInitiaux) } : {}),
         ...(estDeclare(e3.revient) ? { prixDeRevient: num(e3.revient) } : {}),
+        ...(estDeclare(e3.parts) ? { parts: num(e3.parts) } : {}),
         dateAcquisition: e3.ouvertLe || '', estimeLe: e3.estimeLe || todayISO(),
         ...(e3.usageBien ? { usage: e3.usageBien } : {}),
         /* Vide reste vide : sans quote-part declaree, la ligne n'en porte pas,
@@ -9175,9 +9393,9 @@ const ACTIONS = {
   async 'add-income'() {
     const v = await askForm({
       titre: trad('Nouvelle source de revenu'),
-      sous: trad('Le montant perçu chaque mois, avant les charges que tu déclares à part'),
+      sous: trad('Ce qui arrive vraiment sur ton compte : salaire net, loyer encaissé. Les charges que tu déclares à part ne sont pas déduites ici.'),
       champs: [
-        { cle: 'label', label: 'Source', type: 'texte', requis: true, exemple: 'ex. Salaire',
+        { cle: 'label', label: 'Source', type: 'texte', requis: true, exemple: 'ex. Salaire net',
           suggestions: valeursConnues('source') },
         { cle: 'amount', label: trad('Montant mensuel (€)'), type: 'nombre', exemple: '0' },
       ],
@@ -9496,7 +9714,7 @@ function fenetreRevenus() {
           <div class="field rev-nom">
             <label>${trad('Source')}</label>
             <input data-path="budget.income.${i}.label" value="${esc(r.label)}"
-                   placeholder="${trad('ex. Salaire, loyer perçu')}">
+                   placeholder="${trad('ex. Salaire net, loyer perçu')}">
           </div>
           <button class="btn icon rev-suppr" data-action="del-income" data-i="${i}"
                   title="${trad('Supprimer cette source')}">✕</button>
@@ -12535,7 +12753,22 @@ function basculeNotifs() {
   const ouvrir = p.hidden;
   if (ouvrir) rendNotifs();
   p.hidden = !ouvrir;
-  $('#btnCloche')?.setAttribute('aria-expanded', String(ouvrir));
+  const cloche = $('#btnCloche');
+  cloche?.setAttribute('aria-expanded', String(ouvrir));
+  /* LE PANNEAU SORT DE LA BARRE LATERALE, DONC IL SE PLACE A L'OUVERTURE.
+
+     La barre porte `overflow-y: auto`, et une seule valeur d'overflow suffit a
+     rogner les DEUX axes : un panneau plus large qu'elle y etait coupe net. Il
+     passe donc en position fixe sur grand ecran, ce qui l'affranchit de ce
+     cadre — mais une position fixe ne suit plus son bouton, et la barre peut
+     defiler sous lui.
+
+     Sa hauteur se lit donc sur la cloche au moment ou l'on ouvre, pas une fois
+     pour toutes dans la feuille. C'est la seule mesure que le CSS ne peut pas
+     faire seul. */
+  if (ouvrir && cloche) {
+    p.style.setProperty('--notif-haut', `${Math.round(cloche.getBoundingClientRect().bottom + 10)}px`);
+  }
 }
 
 /* Marches ne se montre qu'a qui a des titres.
@@ -13696,15 +13929,58 @@ function applyField(f) {
   setPath(path, f.value);
 }
 
+function ecranIdentiteManquante() {
+  document.getElementById('lancement')?.remove();
+  document.body.innerHTML = `
+    <div style="min-height:100vh;display:grid;place-items:center;padding:24px;text-align:center">
+      <div style="max-width:26em">
+        <img src="/icon-192.png" alt="" width="56" height="56" style="border-radius:12px">
+        <h1 style="font-size:22px;margin:18px 0 8px">${trad('Session à revérifier')}</h1>
+        <p style="opacity:.75;line-height:1.55">${
+          trad('Ton compte n’a pas pu être confirmé. Recharge la page pour te reconnecter.')}</p>
+        <p style="margin-top:22px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+          <a class="btn" href="/">${trad('Réessayer')}</a>
+          <a class="btn ghost" href="/api/logout">${trad('Se déconnecter')}</a>
+        </p>
+      </div>
+    </div>`;
+}
+
 (async function init() {
   try {
     document.documentElement.dataset.theme =
       localStorage.getItem('wealth-dashboard:theme') || 'dark';
   } catch (e) { document.documentElement.dataset.theme = 'dark'; }
+  await CloudSync.probe();
+  const portee = CloudSync.getUserId();
+  if (portee) {
+    setStorageScope(portee);
+    relireMasque();
+  } else if (CloudSync.comptesActifs()) {
+    /* Sans ce refus, la portee reste vide et `Store.load()` lit la clef sans
+       suffixe, celle d'avant les comptes, que tout le monde partage sur ce
+       navigateur. Une coupure reseau au demarrage suffisait a remettre deux
+       personnes sur le meme patrimoine. */
+    ecranIdentiteManquante();
+    return;
+  }
   Store.load();
   Store.autoBackup();
   translateStatic();          // libellés du menu, avant le premier rendu
   bindGlobal();
+  $('#btnLogout')?.addEventListener('click', async e => {
+    e.preventDefault();
+    const scope = CloudSync.getUserId();
+    if (scope) {
+      const suffix = `:user:${scope}`;
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key?.endsWith(suffix)) localStorage.removeItem(key);
+      }
+    }
+    try { await fetch('/api/logout', { method: 'POST' }); } catch (err) { /* session deja vide */ }
+    location.replace('/');
+  });
   render();
 
   const lancement = $('#lancement');
@@ -13749,7 +14025,12 @@ function applyField(f) {
     toast(trad(mot));
   }
 
-  CloudSync.setOnChange(() => { if (currentView() === 'data') render(); });
+  /* `onChange` part du `finally` de chaque envoi, abouti ou non : c'est le seul
+     moment ou l'on sait quoi promettre au temoin. */
+  CloudSync.setOnChange(() => {
+    majTemoinEnregistrement();
+    if (currentView() === 'data') render();
+  });
   CloudSync.setOnConflit(async d => {
     try {
       const distant = await CloudSync.pull();
@@ -13765,6 +14046,7 @@ function applyField(f) {
   });
   try {
     const cloud = modeDemo() ? { available: false } : await CloudSync.init();
+    majTemoinEnregistrement();
     if (cloud.adopted) {
       /* Cet appareil était simplement en retard, sans modification locale :
          on prend la version en ligne sans rien demander.

@@ -1,16 +1,40 @@
 
 const MODE_KEY   = 'wealth-dashboard:mode';
+
+/* LA PORTEE DU STOCKAGE LOCAL, ET POURQUOI ELLE EXISTE.
+
+   Une seule cle `wealth-dashboard:v1` par navigateur suffisait tant qu'un
+   navigateur ne servait qu'une personne. Des que des comptes existent, la
+   deuxieme qui se connecte ouvre le patrimoine de la premiere et l'ecrase en
+   enregistrant. Ce n'est pas une gene d'affichage, c'est une fuite entre
+   comptes.
+
+   La portee est l'identifiant stable du compte, jamais l'adresse : changer
+   d'adresse ne doit ni perdre ni reaffecter un patrimoine. Elle est filtree
+   parce qu'elle entre dans un nom de clef.
+
+   Vide, les clefs gardent leur nom d'origine : une instance a un seul
+   proprietaire ne voit pas ses donnees demenager parce qu'on a deploye une
+   version plus recente. */
+let STORAGE_SCOPE = '';
+
+function setStorageScope(scope) {
+  STORAGE_SCOPE = String(scope || '').replace(/[^a-zA-Z0-9_-]/g, '');
+}
+const cleParUtilisateur = cle => STORAGE_SCOPE ? `${cle}:user:${STORAGE_SCOPE}` : cle;
+
+const cleMode = () => cleParUtilisateur(MODE_KEY);
 const CLE_REELLE = 'wealth-dashboard:v1';
 const CLE_DEMO   = 'wealth-dashboard:demo';
 
 function modeDemo() {
-  try { return localStorage.getItem(MODE_KEY) === 'demo'; } catch (e) { return false; }
+  try { return localStorage.getItem(cleMode()) === 'demo'; } catch (e) { return false; }
 }
 function setModeDemo(on) {
-  try { on ? localStorage.setItem(MODE_KEY, 'demo') : localStorage.removeItem(MODE_KEY); }
+  try { on ? localStorage.setItem(cleMode(), 'demo') : localStorage.removeItem(cleMode()); }
   catch (e) {}
 }
-const cleStockage = () => (modeDemo() ? CLE_DEMO : CLE_REELLE);
+const cleStockage = () => cleParUtilisateur(modeDemo() ? CLE_DEMO : CLE_REELLE);
 
 /* La demonstration a-t-elle vieilli chez ce visiteur ?
 
@@ -46,6 +70,7 @@ let signalerEcriture = () => {};
 const poserSignalEcriture = fn => { signalerEcriture = fn; };
 
 const BACKUP_KEY = 'wealth-dashboard:backups';
+const cleSauvegardes = () => cleParUtilisateur(BACKUP_KEY);
 const UNDO_LIMIT = 40;
 const BACKUP_LIMIT = 8;
 
@@ -1730,13 +1755,22 @@ const round2 = v => Math.round(v * 100) / 100;
 const round4 = v => Math.round(v * 10000) / 10000;
 
 const MASK_KEY = 'wealth-dashboard:discret';
-let montantsMasques = (() => {
-  try { return localStorage.getItem(MASK_KEY) === '1'; } catch (e) { return false; }
-})();
+const cleMasque = () => cleParUtilisateur(MASK_KEY);
+
+function lireMasque() {
+  try { return localStorage.getItem(cleMasque()) === '1'; } catch (e) { return false; }
+}
+
+/* CETTE VALEUR SE LIT DEUX FOIS, ET LA SECONDE EST LA BONNE. Le fichier
+   s'evalue avant que l'identite soit connue, donc la premiere lecture porte sur
+   la clef sans portee. `relireMasque()` est rappele des que le compte est
+   etabli : sans lui, le reglage du compte precedent restait a l'ecran. */
+function relireMasque() { montantsMasques = lireMasque(); }
+let montantsMasques = lireMasque();
 
 function setMasque(on) {
   montantsMasques = !!on;
-  try { localStorage.setItem(MASK_KEY, on ? '1' : '0'); } catch (e) {}
+  try { localStorage.setItem(cleMasque(), on ? '1' : '0'); } catch (e) {}
 }
 const masqueActif = () => montantsMasques;
 
@@ -2417,7 +2451,7 @@ const Store = {
   },
 
   backups() {
-    try { return JSON.parse(localStorage.getItem(BACKUP_KEY)) || []; }
+    try { return JSON.parse(localStorage.getItem(cleSauvegardes())) || []; }
     catch (e) { return []; }
   },
 
@@ -2425,10 +2459,10 @@ const Store = {
     const list = this.backups();
     list.unshift({ at: new Date().toISOString(), reason, data: this.state });
     try {
-      localStorage.setItem(BACKUP_KEY, JSON.stringify(list.slice(0, BACKUP_LIMIT)));
+      localStorage.setItem(cleSauvegardes(), JSON.stringify(list.slice(0, BACKUP_LIMIT)));
       return true;
     } catch (e) {
-      try { localStorage.setItem(BACKUP_KEY, JSON.stringify(list.slice(0, 2))); return true; }
+      try { localStorage.setItem(cleSauvegardes(), JSON.stringify(list.slice(0, 2))); return true; }
       catch (e2) { console.warn('Sauvegarde auto impossible', e2); return false; }
     }
   },
@@ -3360,6 +3394,29 @@ function jourRappelAtteint() {
 const aUnComptePropre = () =>
   comptesOuverts().some(c => !typeCompte(c.type).interne);
 
+/* L'INVENTAIRE EST-IL DECLARE COMPLET ?
+
+   Avoir un compte ne veut pas dire les avoir tous. Quelqu'un qui en saisit un
+   puis s'interrompt a un patrimoine vrai pour ce compte et faux pour le reste,
+   et rien dans les donnees ne distingue les deux etats : seule la personne le
+   sait. La cloche pose donc la question, et sa reponse se range ici.
+
+   La clef est posee a la main et non derivee du titre : `cleNotif` derive la
+   sienne du titre TRADUIT, donc repondre en francais n'aurait pas repondu en
+   anglais. Une clef qui commande autre chose que son propre affichage ne peut
+   pas dependre de la langue. */
+const CLE_INVENTAIRE = 'inventaire-comptes';
+const CLE_RENTREES = 'inventaire-rentrees';
+const CLE_CHARGES = 'inventaire-charges';
+
+const pasDeclare = p => !p.declare || notifsMasquees().includes(p.declare.cle);
+
+const CLE_DEMARRAGE = 'demarrage-fini';
+const demarrageMasque = () => notifsMasquees().includes(CLE_DEMARRAGE);
+
+const inventaireDeclareComplet = () =>
+  aUnRelevePatrimonial() || notifsMasquees().includes(CLE_INVENTAIRE);
+
 /* Existe-t-il au moins un RELEVE PATRIMONIAL ? Une question, une fonction.
 
    Elle etait posee par `aDejaServi`, qui en pose une autre — l'application
@@ -3389,7 +3446,7 @@ function currentMonthPending() {
            /* `vide` reste vrai avant le jour dit : c'est un fait sur les
               donnees, et la page des releves s'en sert pour marquer la ligne.
               Seul `missing`, qui commande la cloche et les bandeaux, attend. */
-           missing: vide && aUnComptePropre()
+           missing: vide && aUnComptePropre() && inventaireDeclareComplet()
                     && jourRappelAtteint() && !rappelMasque('releve', key) };
 }
 
@@ -5631,18 +5688,33 @@ function planFinancement(compte) {
 const ecartAExpliquer = plan => plan?.complet && Math.abs(plan.ecart) > 1;
 
 const PREMIERS_PAS = [
-  { cle: 'comptes',
-    quoi: 'Ajoute un compte pour commencer : une banque, un livret, un compte de '
-        + 'courtage ou un bien. C’est d’eux que viennent ton patrimoine, ta '
-        + 'répartition et ton autonomie.',
+  { cle: 'comptes', titre: 'Tes comptes et avoirs divers',
+    quoi: 'Chaque poche est un compte : dans une même banque, un compte courant, '
+        + 'un PEA et un livret en font trois. C’est d’eux que viennent ton '
+        + 'patrimoine, ta répartition et ton autonomie.',
     /* `aUnComptePropre` et non le simple compte des comptes : celui des especes
        est pose par le modele pour tout le monde, et un compte que personne n'a
        cree ne peut pas tenir lieu de premier pas. */
     bouton: 'Entrer tes comptes', action: 'ajouter-compte',
+    /* UN COMPTE N'EST PAS TOUS LES COMPTES. `fait` ne bouge pas : il repond a
+       « faut-il encore reclamer un PREMIER compte ? », et les invites des
+       autres ecrans s'en servent pour se taire des qu'il y en a un. Les
+       confondre ferait reapparaitre « Ajoute un compte pour commencer » sur une
+       application qui en porte deja cinq. */
+    declare: { cle: CLE_INVENTAIRE,
+      question: 'As-tu enregistré tous tes comptes et avoirs ?',
+      detail: 'Banques, livrets, comptes de courtage, biens et crédits : ton patrimoine n’est juste que s’ils y sont tous.',
+      oui: 'Oui, je les ai tous',
+      ajouter: 'Ajouter un compte' },
     fait: () => aUnComptePropre() },
-  { cle: 'revenus',
-    quoi: 'Déclare ton salaire et tes autres rentrées : c’est d’elles que partent ta capacité d’épargne, ton budget et ce qu’il te reste à vivre.',
-    bouton: 'Entrer ton salaire', action: 'toggle-revenus',
+  { cle: 'revenus', titre: 'Ton salaire et tes rentrées d’argent',
+    quoi: 'Déclare ton salaire net et tes autres rentrées : c’est d’elles que partent ta capacité d’épargne, ton budget et ce qu’il te reste à vivre.',
+    bouton: 'Entrer ton salaire net', action: 'toggle-revenus',
+    declare: { cle: CLE_RENTREES,
+      question: 'As-tu enregistré toutes tes rentrées d’argent ?',
+      detail: 'Salaire, primes, loyers perçus, pensions : ton budget se calcule sur leur somme.',
+      oui: 'Oui, tout y est',
+      ajouter: 'Ajouter une rentrée' },
     fait: () => (B().income || []).length > 0 },
   /* Le releve arrive apres les comptes, et il n'est « a faire » que lorsqu'il
      devient faisable : sans un compte, il n'y a rien a photographier, et
@@ -5657,16 +5729,34 @@ const PREMIERS_PAS = [
      UN SEUL releve suffit, et le texte dit pourquoi il en faudra deux : une
      pente demande deux points. Reclamer le second bloquerait le premier pas sur
      un geste qui ne se fait qu'un mois plus tard. */
-  { cle: 'releves',
+  { cle: 'releves', titre: 'Ton premier relevé',
     quoi: 'Enregistre ton premier relevé mensuel : c’est la photo de tes comptes à '
         + 'une date. Il en faut deux pour que la courbe et le rythme d’accumulation '
         + 'aient une pente à montrer.',
     bouton: 'Enregistrer un relevé', action: 'ajouter-releve',
+    /* DEUX QUESTIONS, ET ELLES DIFFERENT SUR CE PAS-LA.
+
+       `fait` repond a « faut-il encore le reclamer ? », et sans compte la
+       reponse est non : il n'y a rien a photographier, et l'invite se tait.
+       `acquis` repond a « est-il franchi ? », et la reponse est non aussi —
+       personne n'a pris de releve.
+
+       La liste de demarrage pose la SECONDE : avec la premiere, elle cochait
+       « Ton premier releve » sur une application vide, juste au-dessus de
+       « Tes comptes » qui restait a faire. On ne photographie pas des comptes
+       qu'on n'a pas, et l'annoncer fait douter du reste. */
+    acquis: () => aUnRelevePatrimonial(),
+    ouvrable: () => aUnComptePropre(),
     fait: () => !aUnComptePropre() || aUnRelevePatrimonial() },
-  { cle: 'depenses',
+  { cle: 'depenses', titre: 'Tes charges fixes',
     quoi: 'Ajoute tes loyers, assurances et abonnements : ce sont eux qui décident '
         + 'de ce qu’il te reste à vivre chaque mois.',
-    bouton: 'Entrer tes dépenses', action: 'add-charge',
+    bouton: 'Entrer tes charges fixes', action: 'add-charge',
+    declare: { cle: CLE_CHARGES,
+      question: 'As-tu enregistré toutes tes charges fixes ?',
+      detail: 'Loyer, assurances, abonnements, mensualités de crédit : ce qui part tous les mois sans que tu y penses.',
+      oui: 'Oui, tout y est',
+      ajouter: 'Ajouter une charge' },
     fait: () => (B().fixedCharges || []).length > 0 || aDesDepensesSaisies() },
 ];
 const PAS_PAR_CLE = Object.fromEntries(PREMIERS_PAS.map(p => [p.cle, p]));
@@ -6883,15 +6973,50 @@ function notifications() {
   const actives = reglagesNotifs();
   const masquees = notifsMasquees();
   return healthChecks()
-    .filter(n => actives[n.sujet] !== false && !masquees.includes(cleNotif(n)))
-    .map(n => ({ ...n, cle: cleNotif(n) }))
+    /* UNE CLEF PEUT ETRE DONNEE, ET C'EST PARFOIS NECESSAIRE. `cleNotif` derive
+       la sienne du TITRE, qui est traduit : eteindre une ligne en francais ne
+       l'eteignait pas en anglais, et un controle dont l'extinction commande
+       autre chose ne peut pas reposer la-dessus. Une clef posee a la main ne
+       depend d'aucune langue. */
+    .filter(n => actives[n.sujet] !== false && !masquees.includes(n.cle || cleNotif(n)))
+    .map(n => ({ ...n, cle: n.cle || cleNotif(n) }))
     .sort((a, b) => RANG_NOTIF[a.level] - RANG_NOTIF[b.level]);
 }
 
 function healthChecks() {
   const out = [];
   let sujet = 'coherence';
-  const add = (level, title, detail, view) => out.push({ level, sujet, title, detail, view });
+  const add = (level, title, detail, view, cle) =>
+    out.push({ level, sujet, title, detail, view, cle });
+
+  /* --- LES PREMIERS PAS PASSENT DEVANT TOUT LE RESTE ---------------------
+
+     La cloche ne disait que des rappels d'exploitation : actualiser des cours,
+     enregistrer un releve, saisir des depenses. Elle s'adressait donc a
+     quelqu'un dont l'application est deja remplie, et le premier venu la
+     trouvait en train de reclamer « le releve de septembre » avant meme
+     d'avoir declare un compte. Un rappel qui suppose ce qui manque envoie vers
+     un geste impossible.
+
+     L'ORDRE DES ETAPES EST CELUI DES DONNEES, et non celui du calendrier :
+     sans compte il n'y a rien a photographier, et sans inventaire complet la
+     photo est fausse. Ces deux lignes se posent donc AVANT tous les autres
+     controles, la ou le tri par gravite les laissera en tete.
+
+     `PREMIERS_PAS` porte deja cette progression pour les ecrans vides. On ne la
+     recopie pas : la cloche pose la meme question, et la seule chose qui lui
+     appartient est le moment ou elle la pose. */
+  sujet = 'saisies';
+  if (!aUnComptePropre()) {
+    add('action', trad('Commence par tes comptes'),
+      trad('Une banque, un livret, un compte de courtage ou un bien : tout part de là.'),
+      'accounts', CLE_INVENTAIRE);
+  } else if (!inventaireDeclareComplet()) {
+    add('action', trad('As-tu enregistré tous tes comptes et avoirs ?'),
+      trad('La croix de cette ligne veut dire oui : le relevé mensuel prendra alors le relais. Sinon, ouvre Actifs pour compléter.'),
+      'accounts', CLE_INVENTAIRE);
+  }
+  sujet = 'coherence';
 
   sujet = 'cours';
   for (const p of Store.state.positions) {
