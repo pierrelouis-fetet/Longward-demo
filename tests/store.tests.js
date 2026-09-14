@@ -17592,7 +17592,11 @@ suite('Un graphique de ventes tient debout à huit cents ventes', () => {
     };
     const bloc = regle(css, '.view {');
     vrai(bloc, 'la règle .view doit être trouvable');
-    vrai(/max-width: 1480px/.test(bloc), 'la colonne de contenu est bornée');
+    /* 1 100 px, et le chiffre vient d'une mesure : le tableau le plus large de
+       l'application demande 891 px, il en reçoit 1 002. À 1 480, un intitulé
+       et son montant étaient séparés de 1 328 px sur un écran de 1 680, pour
+       un tableau de trois colonnes. */
+    vrai(/max-width: 1100px/.test(bloc), 'la colonne de contenu est bornée');
     vrai(/margin: 0 auto/.test(bloc), 'et centrée au-delà');
     vrai(/width: 100%/.test(bloc),
       'sans quoi une colonne flex se rétrécirait sur son contenu');

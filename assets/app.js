@@ -3967,21 +3967,6 @@ function variationCompte(id) {
   return { eur: maintenant - avant, pct: (maintenant / avant - 1) * 100, depuis: fmtMonth(dernier.date) };
 }
 
-function sparkCompte(id) {
-  const vals = Store.state.monthly
-    .filter(r => r.v && r.v[id] != null)
-    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
-    .map(r => num(r.v[id]));
-  vals.push(nowValue(id));
-  if (vals.filter(v => v !== 0).length < 3) return '';
-  const W = 64, H = 20, min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
-  const pts = vals.map((v, i) => `${(i * W / (vals.length - 1)).toFixed(1)},${(H - 2 - (v - min) / span * (H - 4)).toFixed(1)}`).join(' ');
-  const monte = vals[vals.length - 1] >= vals[0];
-  return `<svg class="spark-mini" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">
-    <polyline points="${pts}" fill="none" stroke="${monte ? 'var(--good)' : 'var(--critical)'}" stroke-width="1.5"/>
-  </svg>`;
-}
-
 /* Une teinte neutre, et non plus une couleur tiree du nom.
 
    Elle etait un hachage du nom du groupe vers les huit teintes de serie. Trois
@@ -4032,7 +4017,6 @@ function ligneCompte(c, avecEtab = true) {
     <button type="button" class="cpt-ligne" data-action="fiche-compte" data-id="${esc(c.id)}">
       <span class="cpt-nom">${esc(nomCompteV2(c))}
         <span class="sub">${esc(sousTitreCompte(c, avecEtab))}</span></span>
-      ${sparkCompte(c.id)}
       <span class="cpt-val">${fmtEUR(valeurCompte(c))}
         ${estimee ? `<span class="sub">${trad('estimation actuelle')}</span>`
           : v ? `<span class="sub ${cls(v.eur)}">${fmtSigned(v.eur)} ${trad('depuis')} ${esc(v.depuis)}</span>`
