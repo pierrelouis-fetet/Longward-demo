@@ -7122,7 +7122,15 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
      peremption. Un seul champ pour les deux natures : la date a laquelle ce
      chiffre a ete etabli. Un second aurait ete deux ecritures du meme fait. */
   const publiee = !!(type && type.vl);
-  const estime = estDetenuEnDirect(type);
+  /* `estValeurEstimee` et non `estDetenuEnDirect` : une part de societe se
+     valorise soi-meme autant qu'une montre, et c'est deja ce que dit la liste
+     des comptes en ecrivant « estimation actuelle » sous son montant. Restreinte
+     au direct, la question « depuis quand ce chiffre tient-il ? » ne se posait
+     pas la ou elle se pose le plus — une valeur de part vieillit entre deux
+     levees, et rien a l'ecran ne disait depuis quand.
+     Un seul predicat pour un seul fait : celui qui decide du mot « estimation »
+     decide aussi de la date qui l'accompagne. */
+  const estime = estValeurEstimee(type);
   const datee = estime || publiee;
   return [
     { cle: 'libelle', label: 'Intitulé', type: 'texte', requis: true, max: NOM_LIGNE_MAX,
@@ -7153,8 +7161,16 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
     ...(datee ? [{ cle: 'estimeLe',
       label: trad(publiee ? 'VL du' : 'Estimée le'), type: 'date',
       valeur: l ? (l.estimeLe || '') : todayISO(),
+      /* ELLE NE PROMET PLUS DE RAPPEL. Le texte annoncait que la cloche
+         reclamerait cette valeur au bout d'un an : `valeurPerimee()` existe,
+         `aRevoir` se calcule, et AUCUN ecran ne les lit — ni la cloche, ni une
+         carte. Une bulle qui promet ce que l'application ne fait pas est un
+         mensonge de la meme famille qu'un commentaire perime, et celui-la se
+         serait propage a chaque type qu'on ajoute au drapeau.
+         Elle dit donc ce que la date EST : le jour ou ce chiffre a ete etabli,
+         ce qui est deja la seule chose qu'on ait besoin de savoir en la lisant. */
       aide: trad(publiee ? 'la date de la dernière valeur liquidative publiée'
-                         : 'la cloche te rappellera de la revoir dans un an') }] : []),
+                         : 'le jour où tu as établi ce chiffre') }] : []),
     ...(publiee ? [{ cle: 'vlPeriode', label: trad('Publiée'), type: 'liste',
       options: VL_PERIODES, valeur: l ? (l.vlPeriode || 'trimestre') : 'trimestre',
       aide: trad('à quelle fréquence le fonds publie sa valeur') }] : []),
@@ -7767,6 +7783,9 @@ const ACTIONS = {
         { cle: 'ouvertLe', label: motDateCompte(typeCompte(c.type)), type: 'date',
           valeur: valeur('ouvertLe', c.ouvertLe || ''),
           aide: t.dateSensible ? 'elle commande la disponibilité de ce compte' : 'facultatif' },
+        { cle: 'notes', label: 'Notes', type: 'texte',
+          valeur: valeur('notes', c.notes || ''),
+          exemple: trad('facultatif') },
         { cle: 'numero', label: trad('Numéro de compte'), type: 'texte',
           valeur: valeur('numero', c.numero || ''), aide: trad('facultatif') });
 
@@ -7858,6 +7877,7 @@ const ACTIONS = {
       }
       if ('clotureLe' in v) pose('clotureLe', v.clotureLe);
       if ('numero' in v) pose('numero', String(v.numero || '').trim());
+      if ('notes' in v) pose('notes', String(v.notes || '').trim());
 
       Store.save(); render();
       toast(typeChange
@@ -8141,7 +8161,10 @@ const ACTIONS = {
            jamais une supposition. Pre-remplie au jour de la saisie, parce qu'on
            saisit ce qu'on vient d'estimer. */
         { cle: 'estimeLe', label: trad('Estimée le'), type: 'date', valeur: todayISO(),
-          aide: trad('la cloche te rappellera de la revoir dans un an') },
+          /* Elle ne promet plus de rappel : voir la note de `champsPlacement`.
+             La meme phrase vivait ici, et une promesse fausse recopiee est
+             deux fois fausse. */
+          aide: trad('le jour où tu as établi ce chiffre') },
         /* Au bien DETENU EN DIRECT, et a lui seul : la classe `immobilier`
            couvre aussi la SCPI, a qui l'on demandait donc si elle etait une
            residence principale. Le drapeau `direct` du type tranche.

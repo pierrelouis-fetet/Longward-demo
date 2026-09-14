@@ -110,6 +110,7 @@ const I18N = {
     'Sans nom': 'Unnamed',
     'Autres': 'Other',
     'À investir': 'To invest',
+    'le jour où tu as établi ce chiffre': 'the day you established this figure',
     'Commence ici': 'Start here',
     '{n} sur {t}': '{n} of {t}',
     'Tes comptes et avoirs divers': 'Your accounts and other assets',

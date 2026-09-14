@@ -4273,6 +4273,72 @@ suite('On ne répond pas « tout y est » sans pouvoir regarder', () => {
   });
 });
 
+suite('Une valeur qu’on apprécie porte la date où on l’a établie', () => {
+
+  const champs = () => {
+    const app = lireSource('assets/app.js');
+    return app.slice(app.indexOf('function champsPlacement'),
+                     app.indexOf('function litPlacement'));
+  };
+
+  test('les parts de société y ont droit, comme une montre', () => {
+    /* La question « depuis quand ce chiffre tient-il ? » ne se posait pas là où
+       elle se pose le plus : une valeur de part vieillit entre deux levées, et
+       rien à l'écran ne disait depuis quand. Vu à l'écran. */
+    vrai(/const estime = estValeurEstimee\(type\);/.test(champs()),
+      'le champ suit le même prédicat que le mot « estimation »');
+    vrai(estValeurEstimee(TYPES_COMPTE.find(t => t.id === 'pe')),
+      'et une part de société en est une');
+    /* UN SEUL PREDICAT POUR UN SEUL FAIT : celui qui décide du mot décide aussi
+       de la date qui l'accompagne. Deux règles auraient fini par se contredire,
+       et l'écran aurait dit « estimation actuelle » sans jamais la dater. */
+    vrai(!/const estime = estDetenuEnDirect\(type\)/.test(champs()),
+      'et l’ancienne règle ne subsiste pas à côté');
+  });
+
+  test('la bulle ne promet plus un rappel qui n’existe pas', () => {
+    /* `valeurPerimee()` existe, `aRevoir` se calcule, et AUCUN écran ne les lit
+       — ni la cloche, ni une carte. Le texte annonçait pourtant que la cloche
+       réclamerait cette valeur au bout d'un an. Une bulle qui promet ce que
+       l'application ne fait pas est un mensonge de la même famille qu'un
+       commentaire périmé, et celui-là se serait propagé à chaque type ajouté. */
+    const app = lireSource('assets/app.js');
+    vrai(!/la cloche te rappellera de la revoir/.test(app),
+      'la promesse est retirée');
+    vrai(/'le jour où tu as établi ce chiffre'/.test(app),
+      'et la bulle dit ce que la date est');
+    vrai(!!I18N.en['le jour où tu as établi ce chiffre'], 'en anglais aussi');
+    /* Le controle qui garde la reparation : le jour ou la cloche saura le
+       reclamer, `valeurPerimee` sera lue quelque part. Tant qu'elle ne l'est
+       pas, aucun texte ne doit le pretendre. */
+    const st = lireSource('assets/store.js');
+    vrai(/function valeurPerimee\(/.test(st), 'la mécanique attend, elle');
+  });
+
+  test('« Nom, dates et notes » porte enfin une note', () => {
+    /* LE LIEN PROMETTAIT UNE NOTE, ET LA FENÊTRE N'EN AVAIT PAS. Sur la fiche
+       d'un placement en parts, la note se LIT et ce lien est le seul chemin vers
+       son écriture : sans ce champ, elle n'était modifiable nulle part. Le
+       commentaire de la carte l'annonçait déjà — « le nom, les dates et la note
+       vivent dans l'autre formulaire » — il ne restait qu'à le rendre vrai. */
+    const app = lireSource('assets/app.js');
+    const f = app.slice(app.indexOf("async 'modifier-compte'(btn)"),
+                        app.indexOf("async 'ajouter-compte'"));
+    vrai(/cle: 'notes', label: 'Notes', type: 'texte'/.test(f),
+      'la fenêtre offre la note');
+    vrai(/valeur\('notes', c\.notes \|\| ''\)/.test(f),
+      'pré-remplie avec celle du compte');
+    vrai(/if \('notes' in v\) pose\('notes', String\(v\.notes \|\| ''\)\.trim\(\)\);/.test(f),
+      'et la réécrit, un champ vide effaçant plutôt qu’écrivant du vide');
+    /* DEUX PORTES SUR LE MEME CHAMP, ce qui est sain ; deux champs pour une
+       même valeur ne le serait pas. Les autres fiches gardent leur saisie à
+       découvert, et c'est bien le même `comptes.N.notes`. */
+    vrai(/data-path="comptes\.\$\{idx\}\.notes"/.test(app),
+      'la saisie à découvert reste, sur le même chemin');
+    vrai(/trad\('Nom, dates et notes'\)/.test(app), 'et le lien garde son libellé');
+  });
+});
+
 suite('Le centre d’un anneau sait passer à la ligne', () => {
 
   const src = () => lireSource('assets/charts.js');
@@ -6182,8 +6248,14 @@ suite('Fonds non coté : une valeur publiée, pas estimée', () => {
 
        Le harnais ne charge pas la vue : ces controles-la lisent la source. */
     const app = lireSource('assets/app.js');
-    vrai(/const estime = estDetenuEnDirect\(type\);/.test(app),
+    /* LE PREDICAT S'EST ELARGI, LA REGLE N'A PAS BOUGE. `estValeurEstimee`
+       couvre ce qu'on détient en direct ET la part de société, qui se valorise
+       soi-même autant qu'une montre. Une VL, elle, n'en est toujours pas :
+       c'est ce que la ligne suivante vérifie. */
+    vrai(/const estime = estValeurEstimee\(type\);/.test(app),
       '« estimé » ne vaut que pour ce qu’on apprécie soi-même');
+    vrai(!estValeurEstimee(TYPES_COMPTE.find(t => t.id === 'fondsNonCote')),
+      'et une VL publiée n’est pas une opinion');
     vrai(/const publiee = !!\(type && type\.vl\);/.test(app),
       'et « publié » est une autre question');
     vrai(/const datee = estime \|\| publiee;/.test(app),
@@ -17051,8 +17123,15 @@ suite('Un bien se crée seul, s’estime, et se modifie par un bouton', () => {
     const src = lireSource('assets/app.js');
     vrai(/function champsPlacement\(classe, l = null, prete = false, type = null\)/.test(src),
       'la fenêtre d’un placement reçoit le type, pas seulement la classe');
-    vrai(/const estime = estDetenuEnDirect\(type\);/.test(src),
+    /* Le drapeau a grandi sans changer de question : `estValeurEstimee` se
+       dérive de `direct` et ajoute ce qui se valorise soi-même sans être
+       détenu en direct — une part de société est tenue par un tiers et n'en
+       est pas moins une appréciation. */
+    vrai(/const estime = estValeurEstimee\(type\);/.test(src),
       'et c’est le drapeau qui décide de l’intitulé');
+    for (const t of TYPES_COMPTE.filter(x => x.direct)) {
+      vrai(estValeurEstimee(t), '« ' + t.id + ' » reste couvert');
+    }
     /* Le parcours de creation dit la meme chose, et un mot de plus : la valeur
        saisie est celle du bien ENTIER, ce qui compte des qu'une quote-part
        existe. Les deux intitules passent par le dictionnaire. */
