@@ -1595,7 +1595,7 @@ function viewObjective() {
   <div class="card repart">
     <div class="card-head">
       <h2>${trad('De quoi sera fait ton patrimoine')}</h2>
-      <label class="row" style="gap:8px; font-size:12px; color:var(--text-secondary)">
+      <label class="row" style="gap:8px; font-size:var(--font-sm); color:var(--text-secondary)">
         ${trad('Horizon')}
         ${selecteurHorizon()}
       </label>
@@ -3478,7 +3478,7 @@ function diagnosticRoles(rr) {
   const gros = [...parClasse].sort((a, b) => b[1] - a[1])[0];
   const partGros = gros && sat.value ? gros[1] / sat.value * 100 : 0;
   if (!gros || partGros < 50) return '';
-  return `<p class="plan-phrase" style="font-size:13.5px"><b>${fmtPct(partGros, 0)}</b> ${
+  return `<p class="plan-phrase" style="font-size:var(--font-md)"><b>${fmtPct(partGros, 0)}</b> ${
     trad('de ta part arbitrable est en')} ${esc(gros[0].toLowerCase())}.</p>`;
 }
 
@@ -4010,6 +4010,13 @@ function sousTitreCompte(c, avecEtab = true) {
 function ligneCompte(c, avecEtab = true) {
   const estimee = estValeurEstimee(typeCompte(c.type));
   const v = estimee ? null : variationCompte(c.id);
+  /* « +0 € depuis aout » : un changement nul n'apprend rien, et il prenait la
+     place d'une information sur chaque ligne d'un compte qui n'a pas bouge —
+     un livret, un compte courant releve au meme montant. Une variation ne
+     s'ecrit que si elle en est une ; sinon la place reste, vide, pour que les
+     rangees gardent leur hauteur. Le seuil suit ce que le format montre :
+     `fmtSigned` arrondit a l'euro, et −0,30 € s'ecrivait « −0 € ». */
+  const bouge = v && Math.abs(v.eur) >= 0.5;
   const idx = Store.state.comptes.indexOf(c);
   return `
   <div class="cpt-swipe" data-compte="${esc(c.id)}">
@@ -4022,7 +4029,7 @@ function ligneCompte(c, avecEtab = true) {
         <span class="sub">${esc(sousTitreCompte(c, avecEtab))}</span></span>
       <span class="cpt-val">${fmtEUR(valeurCompte(c))}
         ${estimee ? `<span class="sub">${trad('estimation actuelle')}</span>`
-          : v ? `<span class="sub ${cls(v.eur)}">${fmtSigned(v.eur)} ${trad('depuis')} ${esc(v.depuis)}</span>`
+          : bouge ? `<span class="sub ${cls(v.eur)}">${fmtSigned(v.eur)} ${trad('depuis')} ${esc(v.depuis)}</span>`
             : `<span class="sub">&nbsp;</span>`}</span>
       <span class="cpt-chev">›</span>
     </button>
@@ -5914,7 +5921,7 @@ function viewStrategy() {
     <div class="grid g-2">
       ${st.models.map((m, mi) => `
         <div>
-          <h3 style="margin:0 0 4px;font-size:14px">Allocation ${mi + 1}, ${esc(m.name)}</h3>
+          <h3 style="margin:0 0 4px;font-size:var(--font-base)">Allocation ${mi + 1}, ${esc(m.name)}</h3>
           <p class="small muted" style="margin:0 0 12px">${esc(m.note || '')}</p>
           <table>
             <thead><tr><th>${trad('Classe d\'actif')}</th><th>%</th><th>${trad('Montant')}</th><th style="text-align:left">${trad('Véhicules')}</th></tr></thead>
@@ -5951,6 +5958,27 @@ function budgetAnnee() {
 
 const viewBudgetCadre = () => viewBudget('cadre');
 
+/* LA BRIQUE DU MOIS AVANT LA PREMIERE DEPENSE.
+
+   Sur un profil vierge, l'onglet ouvrait sur « 0 € », puis « Objectif mensuel
+   0 € », « Reste sur l'objectif 0 € », « Moyenne 2026 0 € » : quatre nombres
+   qui disent tous la meme chose — rien n'est saisi — et qui font croire a un
+   tableau casse plutot qu'a un produit qui accompagne. Les tuiles et le
+   graphique avaient deja leur garde, `aDesDepensesSaisies()` ; la brique la
+   recoit, et fait ce que font les autres etats vides de l'application : dire
+   ce que la section permet, et tendre le geste qui la remplit. Un objectif
+   deja regle se lit ; sinon on propose de le regler, jamais « 0 € ». */
+function briqueDepensesVide(f) {
+  return `
+    <div class="card">
+      <p class="empty" style="margin:0 0 4px">${trad('Suis ce que tu dépenses chaque mois. Saisis un premier mois pour découvrir ta moyenne mensuelle et ce qu’il te reste réellement.')}</p>
+      <button type="button" class="btn sm" data-action="saisir-mois-courant" style="margin:4px 0 0">${trad('Saisir les dépenses du mois')}</button>
+      <p class="small muted" style="margin:12px 0 0">${f.target > 0
+        ? `${trad('Objectif mensuel')} : ${fmtEUR0(f.target)} · `
+        : ''}<button type="button" class="lien-nu" data-action="regler-objectif-depenses">${trad('Régler un objectif mensuel')}</button></p>
+    </div>`;
+}
+
 function viewBudget(section = 'depenses') {
   const cadre = section === 'cadre';
   const f = budgetFrame();
@@ -5974,6 +6002,7 @@ function viewBudget(section = 'depenses') {
   return `
   ${cadre ? '' : `
   <div class="grid g-hero">
+    ${aDesDepensesSaisies() ? `
     <div class="hero card-cliquable">
       <button type="button" class="card-couvre" data-action="saisir-mois-courant"
               aria-label="${trad('Saisir les dépenses du mois')}"
@@ -5999,10 +6028,6 @@ function viewBudget(section = 'depenses') {
           <span>${trad('Budget consommé')}</span>
           <b class="${classeDepassement(cur.total, f.target)}">${fmtPct(cur.total / f.target * 100, 0)}</b>
         </div>` : ''}
-        <div class="hero-delta">
-          <span>${trad('Moyenne')} ${esc(year)}</span>
-          <b>${fmtEUR0(stats.average)}</b>
-        </div>
       </div>
       ${cur && cur.note ? `<p class="small muted" style="margin:0">${esc(cur.note)}</p>` : ''}
       ${(() => {
@@ -6030,6 +6055,7 @@ function viewBudget(section = 'depenses') {
         </div>`;
       })()}
     </div>
+` : briqueDepensesVide(f)}
 
     <div class="card">
       <div class="card-head"><h2>${trad('Où va ce que tu gagnes')}</h2><span class="hint">${trad('chaque mois')}</span></div>
@@ -13098,8 +13124,9 @@ function renderSidebar() {
   const netTiroir = $('#navNetWorth');
   if (netTiroir) netTiroir.innerHTML = montant;
   const el = $('#sbDelta');
-  const deltaHtml = d.ytd ? `${arrow(d.ytd.eur)} ${fmtSigned(d.ytd.eur)} ${trad('depuis janvier')}` : '';
-  const deltaCls = 'sb-delta ' + (d.ytd ? cls(d.ytd.eur) : '');
+  const ytdBouge = d.ytd && Math.abs(d.ytd.eur) >= 0.5;
+  const deltaHtml = ytdBouge ? `${arrow(d.ytd.eur)} ${fmtSigned(d.ytd.eur)} ${trad('depuis janvier')}` : '';
+  const deltaCls = 'sb-delta ' + (ytdBouge ? cls(d.ytd.eur) : '');
   el.innerHTML = deltaHtml;
   el.className = deltaCls;
   const dTiroir = $('#navDelta');
@@ -14168,7 +14195,7 @@ function ecranIdentiteManquante() {
     <div style="min-height:100vh;display:grid;place-items:center;padding:24px;text-align:center">
       <div style="max-width:26em">
         <img src="/icon-192.png" alt="" width="56" height="56" style="border-radius:12px">
-        <h1 style="font-size:22px;margin:18px 0 8px">${trad('Session à revérifier')}</h1>
+        <h1 style="font-size:var(--font-xl);margin:18px 0 8px">${trad('Session à revérifier')}</h1>
         <p style="opacity:.75;line-height:1.55">${
           trad('Ton compte n’a pas pu être confirmé. Recharge la page pour te reconnecter.')}</p>
         <p style="margin-top:22px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">

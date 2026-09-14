@@ -987,6 +987,8 @@ const I18N = {
     "Rythme d'accumulation": "Accumulation pace",
     "Récupérer les cours de bourse": "Fetch market prices",
     "Saisir les dépenses du mois": "Enter the month's spending",
+    "Suis ce que tu dépenses chaque mois. Saisis un premier mois pour découvrir ta moyenne mensuelle et ce qu’il te reste réellement.": "Track what you spend each month. Enter a first month to see your monthly average and what you really have left.",
+    "Régler un objectif mensuel": "Set a monthly target",
     "Sans ça, ton patrimoine baisserait du montant vendu": "Without it, your wealth would drop by the amount sold",
     "Sauvegardes automatiques": "Automatic backups",
     "Supprimer cette colonne et tous ses montants": "Delete this column and all its amounts",

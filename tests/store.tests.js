@@ -2773,7 +2773,7 @@ suite('La mention de base est une légende, pas une commande', () => {
     const i = css.indexOf('.tete-legende {');
     vrai(i > 0, 'la légende doit avoir sa règle');
     const regle = css.slice(i, css.indexOf('}', i));
-    vrai(/font-size: 12px/.test(regle) && /color: var\(--muted\)/.test(regle),
+    vrai(/font-size: var\(--font-sm\)/.test(regle) && /color: var\(--muted\)/.test(regle),
       'elle garde l’encre et la taille qu’elle avait dans l’en-tête');
   });
 
@@ -14103,6 +14103,60 @@ suite('Les animations s’éteignent, et se déclenchent au doigt', () => {
     vrai(!/\? 70 : 90/.test(fa), 'et ne porte plus ses deux nombres');
   });
 
+  test('sous le doigt, 40 px : les halos tactiles du téléphone', () => {
+    /* Trente-trois cibles mesuraient moins de 40 px à 375 px de large : boutons
+       compacts à 30, icônes de la barre à 38, « ? » à 27 avec son halo, lien
+       « Voir les positions » à 16, mesures du portefeuille à 18, liens du tiroir
+       à 35. Le pouce ne lit pas le dessin. La zone tactile déborde du dessin par
+       un pseudo-élément transparent : rien ne grossit à l'œil, et le halo reste
+       vertical là où les boutons vont par paires. */
+    const css = (lireSource('assets/styles.css') || '').replace(/\/\*[\s\S]*?\*\//g, '');
+    const tel = css.slice(css.indexOf('@media (max-width: 900px)'));
+    vrai(tel.length > 1000, 'le bloc du téléphone doit être trouvable');
+    vrai(/\.btn, \.segmented button, \.lien-vue, \.data-view summary \{ position: relative; \}/.test(tel),
+      'les cibles compactes portent leur halo');
+    const halo = tel.match(/\.btn::after, \.segmented button::after, \.lien-vue::after, \.data-view summary::after \{([^}]*)\}/);
+    vrai(halo && /left: 0; right: 0; top: -4px; bottom: -4px/.test(halo[1]),
+      'un halo vertical de 4 px : 30 + 8 = 38, et deux boutons en colonne à 8 px d’écart se touchent sans se recouvrir');
+    vrai(/\.btn-rond::after \{[^}]*inset: -3px/.test(tel), 'la cloche, l’œil et le profil : 38 + 6 = 44');
+    vrai(/\.aide::after \{ inset: -10px; \}/.test(tel), 'le « ? » : 15 + 20 = 35');
+    vrai(/\.pf-mesure \{ padding: 8px 0; \}/.test(tel), 'une mesure du portefeuille est une rangée : 34 px');
+    vrai(/\.nav a \{ min-height: 40px; \}/.test(tel), 'un lien du tiroir : 40 px');
+    /* Et le halo ne mord pas : les paires de boutons gardent leurs 8 px d'écart,
+       que deux halos de 4 remplissent exactement. */
+    vrai(/\.pas-actes \{[^}]*gap: 8px/.test(css) && /\.paire-btn \{[^}]*gap: 8px/.test(css),
+      'les paires de boutons sont à 8 px : un halo de plus de 4 px se recouvrirait');
+  });
+
+  test('la sonde de santé rend la main au bout de 2,5 s', () => {
+    /* `init()` attend `CloudSync.probe()` avant de lire le stockage local, et
+       la sonde était un `fetch` sans limite : un réseau qui pend — portail
+       captif, tunnel, serveur muet — laissait l'écran de lancement à l'infini,
+       avec toutes les données locales sous la main. Au-delà de 2,5 s la sonde
+       répond « pas de serveur », le chemin que la panne empruntait déjà :
+       ouverture sur le local, pied du menu « Sauvegardé localement », écran
+       « Session à revérifier » sur une instance à comptes. Aucune course : la
+       synchronisation ne se rejoue pas après l'ouverture. */
+    const q = lireSource('assets/quotes.js');
+    vrai(q, 'assets/quotes.js doit être lisible pour ce contrôle');
+    const d = q.indexOf('function healthData()');
+    const sonde = q.slice(d, q.indexOf('\n  }\n', d) + 5);
+    vrai(/const DELAI_SONDE_MS = 2500;/.test(q), 'le délai est nommé, et vaut 2,5 s');
+    vrai(/new AbortController\(\)/.test(sonde) && /signal: garde\.signal/.test(sonde),
+      'la requête porte un signal d’abandon');
+    vrai(/setTimeout\(\(\) => garde\.abort\(\), DELAI_SONDE_MS\)/.test(sonde), 'armé sur le délai');
+    vrai(/\.catch\(\(\) => null\)/.test(sonde), 'et l’abandon rend null, comme la panne');
+    vrai(/garde\.signal\.aborted\) healthPromise = null/.test(sonde),
+      'une réponse tardive ne se garde pas : le prochain appel resonde');
+    /* L'ordre du démarrage ne bouge pas : l'identité précède la lecture. */
+    const app = lireSource('assets/app.js');
+    const di = app.indexOf('(async function init()');
+    const boot = app.slice(di, di + 6000);
+    vrai(boot.indexOf('await CloudSync.probe()') > 0
+      && boot.indexOf('await CloudSync.probe()') < boot.indexOf('Store.load();'),
+      'la sonde précède toujours la lecture locale : c’est elle qui dit qui regarde');
+  });
+
   test('deux bandes collantes ne se posent pas à la même hauteur', () => {
     /* Le bandeau d'un établissement recouvrait la navigation de la page. Les deux
        sont collants sur téléphone, les deux portaient `top: calc(54px + …)` — la
@@ -15545,7 +15599,15 @@ suite('L’objectif de dépenses se voit comme un réglage', () => {
        ne le seraient pas, et c'est ce qui avait été retiré. */
     const src = lireSource('assets/app.js');
     const portes = src.match(/data-action="regler-objectif-depenses"/g) || [];
-    eq(portes.length, 2, `deux portes attendues, ${portes.length} trouvée·s`);
+    /* Trois dans le code, deux à l'écran : la brique du mois a une version
+       vide, avant la première dépense, qui porte sa propre porte — et ne se
+       rend jamais en même temps que la pleine. Sans elle, un profil vierge
+       sans revenu n'aurait aucun chemin vers l'objectif. */
+    eq(portes.length, 3, `trois portes attendues, ${portes.length} trouvée·s`);
+    const dv = src.indexOf('function briqueDepensesVide(');
+    const vide = src.slice(dv, src.indexOf('\nfunction ', dv + 10));
+    eq((vide.match(/data-action="regler-objectif-depenses"/g) || []).length, 1,
+      'la brique vide porte une porte, et une seule');
     const champs = src.match(/data-path="meta\.monthlyTarget"|budget\.monthlyTarget'/g) || [];
     vrai(champs.length <= 1,
       'un seul champ pour l’objectif : deux ne peuvent pas se vérifier l’un l’autre');
@@ -21337,7 +21399,7 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
     vrai(/grid-template-columns: minmax\(0, 1fr\) auto;/.test(bloc),
       'deux colonnes, pas quatre : quatre redonneraient le tableau replié');
     vrai(/text-overflow: ellipsis/.test(bloc), 'un nom long se coupe proprement');
-    vrai(/font-size: 15px/.test(bloc.slice(bloc.indexOf('.jm-eur'))),
+    vrai(/font-size: var\(--font-lg\)/.test(bloc.slice(bloc.indexOf('.jm-eur'))),
       'et l’effet est le plus gros des deux chiffres');
   });
 
@@ -24554,7 +24616,7 @@ suite('L’interface tient ses seuils', () => {
     const bloc = (css.match(/\.g-tuiles \.t-meta \{[^}]*\}/) || [''])[0];
     vrai(bloc, 'la règle mobile de la base doit être trouvable');
     vrai(!/font-size: 0/.test(bloc), 'la base n’est plus masquée');
-    vrai(/font-size: 10\.5px/.test(bloc), 'elle se serre au lieu de disparaître');
+    vrai(/font-size: var\(--font-xs\)/.test(bloc), 'elle se serre au lieu de disparaître');
     vrai(/grid-auto-rows: 1fr/.test(css),
       'et les hauteurs de tuiles restent égalisées, sinon chacune prend la sienne');
   });
@@ -24686,6 +24748,36 @@ suite('L’interface tient ses seuils', () => {
       'et aucune ne se contente d’un render, qui laissait le fond du corps en arrière');
   });
 
+  test('les tailles viennent de l’échelle', () => {
+    /* Vingt-sept tailles vivaient dans la feuille : 10, 10,5, 11, 11,5, 12,
+       12,5, 13, 13,5... Un demi-pixel entre deux indices n'est pas une nuance,
+       c'est une occasion de diverger, et chaque écran finissait par avoir l'air
+       dessiné à part. Huit paliers, chacun un rôle, déclarés une fois ; les
+       glyphes qui servent d'icônes — chevrons, « ? », flèches de tri — gardent
+       leur taille optique, qui n'est pas de la typographie. */
+    const css = (lireSource('assets/styles.css') || '').replace(/\/\*[\s\S]*?\*\//g, '');
+    const jetons = ['--font-xs', '--font-sm', '--font-md', '--font-base',
+                    '--font-lg', '--font-xl', '--font-2xl', '--font-hero'];
+    const valeurs = jetons.map(j => {
+      const m = css.match(new RegExp(j + ':\\s*([\\d.]+)px'));
+      return m ? +m[1] : null;
+    });
+    vrai(valeurs.every(v => v), 'les huit paliers sont déclarés : ' + valeurs.join(', '));
+    vrai(css.indexOf('--font-xs:') < css.indexOf('@media'), 'et hors de toute requête média');
+    for (let i = 1; i < valeurs.length; i++) {
+      vrai(valeurs[i] > valeurs[i - 1], 'l’échelle monte d’un palier à l’autre');
+    }
+    const glyphe = /(\.|-)ic\b|svg|chev|\.aide(?![\w-])|::after|::before|\.badge\b/;
+    const ecrites = [];
+    for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      if (glyphe.test(m[1])) continue;
+      for (const d of m[2].matchAll(/font-size:\s*([\d.]+)px(?!\s*!important)/g)) {
+        ecrites.push(`${m[1].trim().slice(0, 40)} → ${d[1]}px`);
+      }
+    }
+    eq(ecrites.join(' ; '), '', 'aucune taille de texte écrite en pixels hors de l’échelle');
+  });
+
   test('un titre de carte se distingue du texte qu’il annonce', () => {
     /* A 15 px contre un corps a 13,5, la hierarchie ne tenait que par la
        graisse, et une graisse ne se lit pas de loin. Trois paliers : 20 pour le
@@ -24693,8 +24785,13 @@ suite('L’interface tient ses seuils', () => {
     const css = (lireSource('assets/styles.css') || '').replace(/\/\*[\s\S]*?\*\//g, '');
     const taille = sel => {
       const bloc = (css.match(new RegExp(sel.replace(/[.]/g, '\\.') + ' \\{[^}]*\\}')) || [''])[0];
-      const m = bloc.match(/font-size: ([\d.]+)px/);
-      return m ? +m[1] : null;
+      /* Une taille se lit en pixels ou par son palier : le palier se résout
+         dans la déclaration de `:root`, seul endroit qui porte le nombre. */
+      const m = bloc.match(/font-size: (?:([\d.]+)px|var\((--font-[\w]+)\))/);
+      if (!m) return null;
+      if (m[1]) return +m[1];
+      const jeton = css.match(new RegExp(m[2] + ':\\s*([\\d.]+)px'));
+      return jeton ? +jeton[1] : null;
     };
     const h1 = taille('.topbar h1'), h2 = taille('.card-head h2');
     vrai(h1 && h2, 'les deux règles doivent être trouvables');
@@ -38368,5 +38465,84 @@ suite('Projection : le moteur se réconcilie', () => {
     }
     pres(p.points[10].plat, 120000 + moteurProjection(configProjection({ years: 10 })).capitalRendu,
       'et la part plate vaut le départ plus le capital rendu');
+  });
+});
+
+
+suite('Le Budget avant la première dépense', () => {
+  test('la brique du mois dit ce qu’elle permet, au lieu de quatre zéros', () => {
+    /* Sur un profil vierge, l'onglet Dépenses ouvrait sur « 0 € », puis
+       « Objectif mensuel 0 € », « Reste sur l'objectif 0 € », « Moyenne 2026
+       0 € ». Quatre nombres qui disent tous la même chose — rien n'est saisi —
+       et qui font croire à un tableau cassé plutôt qu'à un produit qui
+       accompagne. Les tuiles et le graphique avaient déjà leur garde ; la
+       brique du haut la reçoit, avec la phrase des autres états vides : ce que
+       la section permet, et le geste qui la remplit. */
+    const app = lireSource('assets/app.js');
+    const dv = app.indexOf('function viewBudget(');
+    const vue = app.slice(dv, app.indexOf('\nfunction ', dv + 10));
+    vrai(/\$\{aDesDepensesSaisies\(\) \? `\s*<div class="hero card-cliquable">/.test(vue),
+      'la brique pleine ne se rend qu’après une première dépense');
+    vrai(/: briqueDepensesVide\(f\)\}/.test(vue),
+      'et la brique vide la remplace, avec le cadre du budget');
+    const db = app.indexOf('function briqueDepensesVide(');
+    const brique = app.slice(db, app.indexOf('\nfunction ', db + 10)).replace(/\/\*[\s\S]*?\*\//g, '');
+    vrai(/data-action="saisir-mois-courant"/.test(brique),
+      'le geste est celui de la brique pleine : saisir le mois');
+    vrai(/Suis ce que tu dépenses chaque mois/.test(brique), 'et elle dit à quoi sert la section');
+    vrai(!/fmtEUR0\(0\)|0 €/.test(brique), 'sans un seul zéro');
+    vrai(/f\.target > 0/.test(brique),
+      'un objectif déjà réglé se lit ; sinon on propose de le régler, jamais « 0 € »');
+    for (const cle of ['Suis ce que tu dépenses chaque mois. Saisis un premier mois pour découvrir ta moyenne mensuelle et ce qu’il te reste réellement.',
+                       'Régler un objectif mensuel', 'Saisir les dépenses du mois']) {
+      vrai(!!I18N.en[cle], '« ' + cle.slice(0, 40) + ' » existe en anglais');
+    }
+  });
+});
+
+
+suite('Le bruit informatif', () => {
+  test('une variation nulle ne prend pas de place', () => {
+    /* « +0 € depuis août 26 » sous un livret qui n'a pas bougé : un changement
+       nul n'apprend rien, et il occupait la place d'une information sur chaque
+       ligne stable. Positive ou négative, la variation s'écrit ; nulle, la
+       place reste vide pour que les rangées gardent leur hauteur. */
+    const app = lireSource('assets/app.js');
+    const dl = app.indexOf('function ligneCompte(');
+    const ligne = app.slice(dl, app.indexOf('\nfunction ', dl + 10));
+    vrai(/const bouge = v && Math\.abs\(v\.eur\) >= 0\.5;/.test(ligne),
+      'la ligne décide sur l’euro affiché : le format arrondit à l’euro, et −0,30 € s’écrivait « −0 € »');
+    vrai(/: bouge \? `<span class="sub \$\{cls\(v\.eur\)\}">/.test(ligne), 'et n’écrit la variation que si elle bouge');
+    vrai(/: `<span class="sub">&nbsp;<\/span>`/.test(ligne), 'sinon la place reste, vide');
+    vrai(/const ytdBouge = d\.ytd && Math\.abs\(d\.ytd\.eur\) >= 0\.5;/.test(app),
+      'le pied du menu suit la même règle pour « depuis janvier »');
+  });
+
+  test('la moyenne des dépenses se lit dans sa tuile, pas trois fois', () => {
+    /* La brique du mois disait « Moyenne 2026 1 166 € » pendant que la tuile
+       donnait « 1 166,25 € » et le pied du graphique « 1 166 € / mois ».
+       Même métrique, deux précisions : on se demandait si c'était la même
+       chose. La tuile la porte avec sa base et sa fiche ; le pied du graphique
+       la garde parce qu'il la met face à l'objectif. La brique parle du mois. */
+    const app = lireSource('assets/app.js');
+    const dv = app.indexOf('function viewBudget(');
+    const vue = app.slice(dv, app.indexOf('\nfunction ', dv + 10)).replace(/<!--[\s\S]*?-->/g, '');
+    const brique = vue.slice(vue.indexOf('<div class="hero card-cliquable">'), vue.indexOf('<!-- Le second champ') > 0 ? vue.indexOf('<!-- Le second champ') : vue.indexOf('class="grid g-4 g-tuiles"'));
+    vrai(brique.length > 500, 'la brique du mois doit être trouvable');
+    vrai(!/trad\('Moyenne'\)/.test(brique), 'la brique du mois ne porte plus la moyenne');
+    eq((vue.match(/\$\{trad\('Moyenne'\)\} \$\{esc\(year\)\}/g) || []).length, 1,
+      '« Moyenne {année} » ne s’écrit plus qu’une fois, sous le graphique, face à l’objectif');
+    vrai(/tile\('Moyenne par mois', stats\.average/.test(vue), 'et la tuile reste la porteuse du chiffre exact');
+  });
+
+  test('un rappel, une couleur', () => {
+    /* Les pastilles des onglets et des sous-onglets sont orange ; celle de la
+       cloche, qui annonce les mêmes rappels, était rouge. Deux couleurs pour un
+       même signal se lisent comme deux signaux. Le rouge reste au critique. */
+    const css = (lireSource('assets/styles.css') || '').replace(/\/\*[\s\S]*?\*\//g, '');
+    const regle = sel => (css.match(new RegExp(sel + '\\s*\\{([^}]*)\\}')) || [])[1] || '';
+    for (const sel of ['\\.badge', '\\.sous-onglets \\.pastille-onglet', '\\.pastille-ronde']) {
+      vrai(/background:\s*var\(--warning\)/.test(regle(sel)), `${sel} porte la couleur du rappel`);
+    }
   });
 });

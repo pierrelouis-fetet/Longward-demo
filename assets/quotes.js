@@ -6,11 +6,34 @@ const Quotes = (() => {
   let online = null;          // null = pas encore testé
   let healthPromise = null;   // mutualisé : un seul appel réseau au démarrage
 
+  /* LA SONDE NE RETIENT PLUS LE DEMARRAGE. `init()` l'attend avant de lire le
+     stockage local — l'identite precede toute lecture — et une requete sans
+     limite laissait l'ecran de lancement a l'infini des que le reseau pendait :
+     portail captif, tunnel, serveur muet. Au-dela de 2,5 s la reponse vaut
+     « pas de serveur », exactement ce qu'un `catch` rendait deja : l'application
+     s'ouvre sur ce qu'elle a en local, le pied du menu dit « Sauvegarde
+     localement », et sur une instance a comptes l'ecran « Session a reverifier »
+     propose de recharger. Aucun chemin nouveau : le retard emprunte celui de
+     la panne.
+
+     Une reponse tardive ne se garde pas en cache. Le prochain appel resonde,
+     parce que le serveur a pu revenir ; la synchronisation, elle, a deja
+     tranche pour cette page — `probe()` ne se rejoue pas — et c'est voulu :
+     adopter le cloud apres que l'ecran s'est ouvert sur le local serait la
+     course que ce demarrage evite. */
+  const DELAI_SONDE_MS = 2500;
   function healthData() {
     if (!healthPromise) {
-      healthPromise = fetch(BASE + '/api/health', { cache: 'no-store' })
+      const garde = new AbortController();
+      const minuteur = setTimeout(() => garde.abort(), DELAI_SONDE_MS);
+      healthPromise = fetch(BASE + '/api/health', { cache: 'no-store', signal: garde.signal })
         .then(r => r.ok ? r.json() : null)
-        .catch(() => null);
+        .catch(() => null)
+        .then(d => {
+          clearTimeout(minuteur);
+          if (d === null && garde.signal.aborted) healthPromise = null;
+          return d;
+        });
     }
     return healthPromise;
   }
