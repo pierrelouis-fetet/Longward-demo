@@ -4385,6 +4385,63 @@ suite('Le centre d’un anneau sait passer à la ligne', () => {
   });
 });
 
+suite('Créer une rentrée offre les mêmes champs que la corriger', () => {
+
+  const fenetre = () => {
+    const app = lireSource('assets/app.js');
+    const d = app.indexOf("trad('Nouvelle source de revenu')");
+    return app.slice(d, app.indexOf('ajoutée aux revenus', d));
+  };
+
+  test('la période se choisit à la création, pas après', () => {
+    /* LA FENETRE IMPOSAIT « mensuel ». Quelqu'un qui saisit une prime annuelle
+       devait la déclarer mensuelle, valider, puis la corriger dans la liste — et
+       une prime laissée mensuelle par mégarde multiplie un budget par douze.
+       Vu à l'écran. */
+    const f = fenetre();
+    vrai(/cle: 'period', label: trad\('Période'\), type: 'liste'/.test(f),
+      'la période est un champ');
+    vrai(/options: CHARGE_PERIODES\.map/.test(f),
+      'et ses options viennent de la même table que la liste des revenus');
+    /* Le motif vise le CODE et non la prose : le commentaire juste au-dessus
+       du champ nomme l'ancien libellé pour dire pourquoi il est parti, et un
+       contrôle qui attrape un commentaire passe au rouge sans rien protéger. */
+    vrai(!/label: trad\('Montant mensuel \(€\)'\)/.test(f),
+      '« Montant mensuel » ne répond plus à la place de la période');
+  });
+
+  test('la case « montant estimé » ne se découvre plus après coup', () => {
+    /* Un formulaire de création qui cache des champs que la correction montre
+       apprend à se méfier de ce qu'on vient de valider. */
+    const f = fenetre();
+    vrai(/cle: 'estime', label: trad\(' montant estimé'\), type: 'case'/.test(f),
+      'la case est offerte dès la création');
+    /* Le meme libelle et la meme aide que dans la liste : deux formulations pour
+       une meme case feraient douter qu'il s'agisse de la meme chose. */
+    const app = lireSource('assets/app.js');
+    eq((app.match(/' montant estimé'/g) || []).length, 3,
+      'un seul libellé, aux trois endroits qui la posent');
+  });
+
+  test('ce qui est saisi est ce qui est écrit', () => {
+    const f = fenetre();
+    vrai(/period: v\.period \|\| 'mois'/.test(f), 'la période choisie part dans l’état');
+    /* `estime` ne s'écrit que s'il est vrai : un faux posé partout alourdirait
+       l'état sans rien dire de plus que son absence. */
+    vrai(/\.\.\.\(v\.estime \? \{ estime: true \} : \{\}\)/.test(f),
+      'et la case ne laisse rien derrière elle quand elle est fausse');
+  });
+
+  test('une période inconnue retombe sur le mois', () => {
+    /* C'est déjà la règle de `chargePeriode()`, et la création ne s'en écarte
+       pas : un montant mensuel est son propre équivalent mensuel. */
+    Fixture.poser();
+    eq(chargePeriode({ period: 'trimestre' }), 'trimestre', 'une période connue tient');
+    eq(chargePeriode({ period: 'bricole' }), 'mois', 'une inconnue retombe');
+    eq(chargePeriode({}), 'mois', 'et une absente aussi');
+  });
+});
+
 suite('Le type proposé à la création suit l’établissement', () => {
 
   const chez = (types, etab = 'e_x') => {

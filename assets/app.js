@@ -9547,11 +9547,22 @@ const ACTIONS = {
       champs: [
         { cle: 'label', label: 'Source', type: 'texte', requis: true, exemple: 'ex. Salaire net',
           suggestions: valeursConnues('source') },
-        { cle: 'amount', label: trad('Montant mensuel (€)'), type: 'nombre', exemple: '0' },
+        { cle: 'amount', label: trad('Montant (€)'), type: 'nombre', exemple: '0' },
+        { cle: 'period', label: trad('Période'), type: 'liste',
+          options: CHARGE_PERIODES.map(([cle, label]) => [cle, trad(label)]),
+          valeur: 'mois' },
+        { cle: 'estime', label: trad(' montant estimé'), type: 'case', valeur: false,
+          aide: trad('un revenu variable déclaré en moyenne : les écrans qui s’en servent le diront') },
       ],
     });
     if (!v) { rafraichirRevenus(); return; }
-    Store.state.budget.income.push({ label: v.label, amount: v.amount });
+    /* `estime` ne s'ecrit que s'il est vrai : un faux pose partout alourdirait
+       l'etat sans rien dire de plus que son absence, et c'est deja la convention
+       de la case de la liste. La periode, elle, s'ecrit toujours — c'est un
+       choix qu'on vient de faire, et `chargePeriode()` retombe sur le mois pour
+       tout ce qu'elle ne connait pas. */
+    Store.state.budget.income.push({ label: v.label, amount: v.amount,
+      period: v.period || 'mois', ...(v.estime ? { estime: true } : {}) });
     Store.save(); render(); rafraichirRevenus();
     toast(`${guill(v.label)} ${trad('ajoutée aux revenus')}`);
   },
