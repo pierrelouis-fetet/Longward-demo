@@ -5759,7 +5759,8 @@ const PREMIERS_PAS = [
       question: 'As-tu enregistré tous tes comptes et avoirs ?',
       detail: 'Banques, livrets, comptes de courtage, biens et crédits : ton patrimoine n’est juste que s’ils y sont tous.',
       oui: 'Oui, je les ai tous',
-      ajouter: 'Ajouter un compte' },
+      ajouter: 'Ajouter un compte',
+      voir: { vue: 'accounts', libelle: 'Voir mes comptes' } },
     fait: () => aUnComptePropre() },
   { cle: 'revenus', titre: 'Ton salaire et tes rentrées d’argent',
     quoi: 'Déclare ton salaire net et tes autres rentrées : c’est d’elles que partent ta capacité d’épargne, ton budget et ce qu’il te reste à vivre.',
@@ -5768,7 +5769,8 @@ const PREMIERS_PAS = [
       question: 'As-tu enregistré toutes tes rentrées d’argent ?',
       detail: 'Salaire, primes, loyers perçus, pensions : ton budget se calcule sur leur somme.',
       oui: 'Oui, tout y est',
-      ajouter: 'Ajouter une rentrée' },
+      ajouter: 'Ajouter une rentrée',
+      voir: { action: 'toggle-revenus', libelle: 'Voir mes rentrées' } },
     fait: () => (B().income || []).length > 0 },
   /* Le releve arrive apres les comptes, et il n'est « a faire » que lorsqu'il
      devient faisable : sans un compte, il n'y a rien a photographier, et
@@ -5810,7 +5812,8 @@ const PREMIERS_PAS = [
       question: 'As-tu enregistré toutes tes charges fixes ?',
       detail: 'Loyer, assurances, abonnements, mensualités de crédit : ce qui part tous les mois sans que tu y penses.',
       oui: 'Oui, tout y est',
-      ajouter: 'Ajouter une charge' },
+      ajouter: 'Ajouter une charge',
+      voir: { vue: 'budget-cadre', libelle: 'Voir mes charges fixes' } },
     fait: () => (B().fixedCharges || []).length > 0 || aDesDepensesSaisies() },
 ];
 const PAS_PAR_CLE = Object.fromEntries(PREMIERS_PAS.map(p => [p.cle, p]));

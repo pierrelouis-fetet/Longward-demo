@@ -542,6 +542,8 @@ body {
 .pas-corps b { font-size: 14px; font-weight: 600; }
 .pas.fait .pas-corps b { color: var(--muted); font-weight: 500; }
 .pas-corps p { margin: 5px 0 10px; line-height: 1.5; }
+.pas-voir { display: inline-block; margin-top: 10px; font-size: 12.5px; }
+
 .pas-retour {
   display: flex; align-items: baseline; gap: 8px; width: 100%;
   padding: 0; border: 0; background: none; font: inherit; color: inherit;

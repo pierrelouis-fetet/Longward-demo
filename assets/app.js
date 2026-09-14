@@ -4559,7 +4559,11 @@ function carteDemarrage() {
             <button type="button" class="btn sm" data-action="declarer-pas"
                     data-cle="${esc(p.declare.cle)}">${trad(p.declare.oui)}</button>
             <button type="button" class="btn sm ghost" data-action="${esc(p.action)}">${trad(p.declare.ajouter)}</button>
-          </span>` : `
+          </span>
+          ${!p.declare.voir ? '' : `
+          <button type="button" class="lien-nu pas-voir" ${p.declare.voir.vue
+            ? `data-action="goto" data-view="${esc(p.declare.voir.vue)}" data-anchor=""`
+            : `data-action="${esc(p.declare.voir.action)}"`}>${trad(p.declare.voir.libelle)}</button>`}` : `
           <p class="small muted">${trad(p.quoi)}</p>
           <button type="button" class="btn sm" data-action="${esc(p.action)}">${trad(p.bouton)}</button>`)}
         </div>

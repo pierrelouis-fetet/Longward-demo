@@ -4039,6 +4039,69 @@ suite('Parts de société : un nombre saisi, deux prix déduits', () => {
 /* ------------------------------------------------------------------
    Le prix d'une part se saisit, et le total reste la verite
    ------------------------------------------------------------------ */
+suite('On ne répond pas « tout y est » sans pouvoir regarder', () => {
+
+  test('chaque pas qui pose la question offre d’aller voir la liste', () => {
+    /* LE GESTE QUI MANQUAIT. Le pas demande une déclaration que l'application
+       ne peut pas déduire, et il n'offrait que deux réponses : oui, ou ajouter.
+       Quelqu'un qui ne se souvient plus de ce qu'il a saisi n'avait donc le
+       choix qu'entre affirmer au hasard et rajouter un doublon. */
+    for (const p of PREMIERS_PAS.filter(x => x.declare)) {
+      vrai(!!p.declare.voir, '« ' + p.cle + ' » sait où envoyer regarder');
+      vrai(!!p.declare.voir.libelle, 'et le renvoi porte un libellé');
+      vrai(!!(p.declare.voir.vue || p.declare.voir.action),
+        'et une destination, page ou fenêtre');
+      vrai(!!I18N.en[p.declare.voir.libelle],
+        '« ' + p.declare.voir.libelle + ' » existe en anglais');
+    }
+  });
+
+  test('le relevé n’en a pas, et c’est voulu', () => {
+    /* UN SEUL RELEVE SUFFIT : rien n'est à vérifier, donc aucune question n'est
+       posée, donc aucun renvoi. Une liste vide n'apprendrait rien à qui n'en a
+       pas encore pris. Le renvoi suit la question, pas le pas. */
+    const r = PREMIERS_PAS.find(p => p.cle === 'releves');
+    vrai(!r.declare, 'le relevé ne demande pas si tout y est');
+    for (const p of PREMIERS_PAS) {
+      if (!p.declare) vrai(!p.voir, '« ' + p.cle + ' » ne porte pas de renvoi hors question');
+    }
+  });
+
+  test('les destinations existent, et portent déjà de quoi ajouter', () => {
+    /* Un renvoi qui mènerait sur une page inconnue ferait pire que rien. Les
+       vues se lisent dans la table des routes, jamais dans une seconde liste
+       écrite à côté. Et la destination doit porter son propre bouton d'ajout,
+       sinon quelqu'un qui découvre un oubli en la lisant s'y retrouve coincé. */
+    const app = lireSource('assets/app.js');
+    const routes = app.slice(app.indexOf('const ROUTES'), app.indexOf('const ROUTES') + 1500);
+    for (const p of PREMIERS_PAS.filter(x => x.declare && x.declare.voir.vue)) {
+      vrai(routes.includes(`'${p.declare.voir.vue}'`) || app.includes(`data-view="${p.declare.voir.vue}"`),
+        '« ' + p.declare.voir.vue + ' » est une route connue');
+    }
+    for (const p of PREMIERS_PAS.filter(x => x.declare && x.declare.voir.action)) {
+      vrai(new RegExp(`'${p.declare.voir.action}'\\(`).test(app),
+        '« ' + p.declare.voir.action + ' » est une action déclarée');
+    }
+  });
+
+  test('c’est un lien, pas un troisième bouton', () => {
+    /* Trois boutons sur une rangée font 107 px chacun à 375 px, et « Voir mes
+       charges fixes » s'y plierait en trois lignes. Trois niveaux, trois
+       traitements : plein pour la réponse, fantôme pour l'ajout, lien pour
+       aller lire. La hiérarchie se dit par le remplissage, jamais par la
+       taille. */
+    const app = lireSource('assets/app.js');
+    const carte = app.slice(app.indexOf('function carteDemarrage()'),
+                            app.indexOf('function ', app.indexOf('function carteDemarrage()') + 10));
+    vrai(/class="lien-nu pas-voir"/.test(carte), 'le renvoi porte le style de lien');
+    vrai(!/paire-btn[\s\S]{0,400}pas-voir[\s\S]{0,80}<\/span>/.test(carte),
+      'et vit hors de la rangée de boutons');
+    vrai(/!p\.declare\.voir \? ''/.test(carte), 'un pas sans renvoi n’en rend aucun');
+    const css = lireSource('assets/styles.css');
+    vrai(/\.pas-voir \{/.test(css), 'il a sa règle');
+  });
+});
+
 suite('Le résumé d’un établissement compte ce qui a une base', () => {
 
   test('le total égale la somme de ses parts', () => {
