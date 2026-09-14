@@ -801,10 +801,10 @@ function viewOverview() {
   ${moisEnAttente.missing && !guide ? `
   <div class="rappel card-cliquable">
     <button type="button" class="card-couvre" data-action="ajouter-releve"
-            aria-label="${trad('Prendre le snapshot de')} ${esc(moisEnAttente.label)}"></button>
+            aria-label="${trad('Enregistrer le relevé de')} ${esc(moisEnAttente.label)}"></button>
     <span class="rappel-pastille"></span>
-    <span class="rappel-texte"><b>${trad('Prendre le snapshot de')} ${esc(moisEnAttente.label)} ›</b><br>
-      <span class="muted">${trad('Enregistre')} ${fmtEUR0(nowTotals().total)} ${trad('dans tes données mensuelles')}</span></span>
+    <span class="rappel-texte"><b>${trad('Enregistrer le relevé de')} ${esc(moisEnAttente.label)} ›</b><br>
+      <span class="muted">${trad('Ajoute ce mois à ta courbe de patrimoine · {v} aujourd’hui').replace('{v}', fmtEUR0(nowTotals().total))}</span></span>
     ${sortiesRappel('releve', moisEnAttente.label)}
   </div>` : ''}
 
@@ -3818,9 +3818,9 @@ function viewHistory() {
     ${invitePremierPas('comptes')}`
     : !tous.length ? `
     <p class="empty" style="margin:0 0 10px">${trad('Aucun relevé mensuel pour le moment.')}
-      ${trad('Un relevé est la photo de tes comptes à une date. C’est lui qui donne la courbe '
-      + 'de ton patrimoine et ton rythme d’accumulation, et il en faut deux pour qu’ils aient '
-      + 'une pente à montrer.')}</p>
+      ${trad('Un relevé est la photo de tes comptes à une date : la valeur de chaque poche, '
+      + 'additionnée en un patrimoine total. Refais-le chaque mois, et la courbe de ton '
+      + 'patrimoine se dessine.')}</p>
     <button class="btn sm" data-action="ajouter-releve">${trad('+ Ajouter ton premier relevé')}</button>`
     : !lignes.length ? `
     <p class="empty" style="margin:0 0 10px">${trad('Aucun relevé en {a}.')
@@ -9836,15 +9836,13 @@ const ACTIONS = {
   },
 
   async 'ajouter-releve'() {
-    if (!inventaireDeclareComplet()) {
-      const pret = await askConfirm(
-        `${trad('As-tu bien rentré tous tes comptes ?')}\n${
-          trad('Un relevé les photographie tels qu’ils sont. Un compte oublié manquera '
-             + 'à celui-ci et à tous les suivants, donc à toute ta courbe.')}`,
-        { danger: false, ok: trad('Oui, je les ai tous'), refus: trad('Voir mes comptes') });
-      if (!pret) { location.hash = '#/accounts'; return; }
-      masquerNotif(CLE_INVENTAIRE);
-      Store.save();
+    if (!aUnRelevePatrimonial()) {
+      const verifier = await askConfirm(
+        `${trad('Avant ton premier relevé')}\n${
+          trad('Commence par ajouter les comptes et actifs qui composent ton patrimoine, tes différentes poches. Chaque mois, Longward additionnera la valeur de toutes ces poches pour enregistrer ton patrimoine total et suivre son évolution dans le temps.')}\n${
+          trad('Tu pourras toujours ajouter d’autres poches plus tard.')}`,
+        { danger: false, ok: trad('Vérifier mes comptes et actifs'), refus: trad('Créer mon relevé') });
+      if (verifier) { location.hash = '#/accounts'; return; }
     }
     await askMonthlySnapshot(indexReleve(currentMonthKey()));
   },
@@ -11421,9 +11419,12 @@ function askMonthlySnapshot(index) {
     apercuOuvert = null;
 
     $('#modalTitle').textContent = `${trad('Relevé de')} ${fmtMonth(r.date)}`;
-    $('#modalSub').innerHTML = escMontant((avant
-      ? `${trad('Dernier relevé,')} ${fmtMonth(avant.date)}${deuxPoints()} ${fmtEUR0(precedent)}`
-      : trad('Aucun relevé avant celui-ci')) + ` · ${trad('valeurs brutes, crédits à part')}`);
+    const premier = !Store.state.monthly.some((x, i) => i !== index && !rowIsEmpty(x));
+    $('#modalSub').innerHTML = escMontant(premier
+      ? `${trad('La photo de ton patrimoine pour {m}.').replace('{m}', fmtMonth(r.date))} ${
+          trad('Renseigne la valeur de chaque poche ; Longward calculera automatiquement ton patrimoine total.')}`
+      : `${trad('Mets à jour la valeur de chaque poche pour enregistrer ton patrimoine de {m}.').replace('{m}', fmtMonth(r.date))}${
+          avant ? ` ${trad('Dernier relevé,')} ${fmtMonth(avant.date)}${deuxPoints()} ${fmtEUR0(precedent)}.` : ''}`);
     $('#modalBody').innerHTML = `
       ${/* Le mois du releve, et il se change ici.
 
@@ -11450,6 +11451,15 @@ function askMonthlySnapshot(index) {
         </select>
       </div>` : ''}
       <div class="dep-total" id="relTotal"></div>
+      ${/* Ton patrimoine est-il complet ? Une NOTE, pas une question : elle
+            informe et ne bloque pas. Elle ne parait qu'au premier releve, et
+            seulement si l'inventaire n'a pas deja ete declare complet dans le
+            guide — repondre la-bas repond ici. Au premier releve enregistre,
+            la question s'eteint d'elle-meme (inventaireDeclareComplet). */''}
+      ${premier && !notifsMasquees().includes(CLE_INVENTAIRE) ? `
+      <p class="avert" style="margin:0 0 14px"><b>${trad('Ton patrimoine est-il complet ?')}</b>
+        ${trad('Ce relevé utilisera uniquement les comptes et actifs déjà ajoutés à Longward. Vérifie qu’il ne manque aucune poche importante avant d’enregistrer ton premier mois.')}
+        <button type="button" class="lien-nu" id="relVerifier">${trad('Vérifier mes poches')}</button></p>` : ''}
       ${/* Sans avoirs saisis, la photo vaut zero : proposer d'ecraser douze
             champs avec des zeros n'aiderait personne. */''}
       ${/* Le bouton de photo est l'action principale, et il ne l'etait pas.
@@ -11465,9 +11475,13 @@ function askMonthlySnapshot(index) {
             champs avec des zeros n'aiderait personne, le bloc disparait. */''}
       ${photo && revolu ? `
       <button class="btn pleine" id="relPhoto" type="button"
-              >⤒ ${trad('Reprendre les montants actuels,')} ${fmtEUR0(photo)}</button>
-      <p class="hint" style="margin:6px 0 14px; text-align:center">${trad('Remplir tous les champs '
-        + 'automatiquement')}${aide(trad("Chaque champ ci-dessous reçoit la valeur actuelle du compte correspondant. Rien n’est enregistré avant que tu ne cliques sur « Enregistrer » : tu peux corriger ce qu’il a écrit, ou renoncer."))}</p>` : ''}
+              >⤒ ${trad('Préremplir avec les montants actuels')} · ${fmtEUR0(photo)}</button>
+      ${/* La phrase d'aide redisait le bouton avec d'autres mots (« remplir
+            automatiquement ») : deux formulations pour un geste. Elle dit
+            maintenant ce que le bouton ne dit pas, d'ou viennent les valeurs,
+            et qu'on peut corriger avant d'enregistrer. */''}
+      <p class="hint" style="margin:6px 0 14px; text-align:center">${
+        trad('Chaque poche reçoit sa valeur d’aujourd’hui ; tu peux corriger un champ avant d’enregistrer.')}</p>` : ''}
       ${revolu ? '' : `
       <p class="avert">${trad('Ce mois n’a pas encore eu lieu. Il n’y a pas de montants à en '
         + 'reprendre, et ce que tu saisirais ici serait lu comme un relevé passé.')}</p>`}
@@ -11518,6 +11532,8 @@ function askMonthlySnapshot(index) {
       const d = precedent && t ? t - precedent : 0;
       const dettes = num($('#relDettes')?.value);
       $('#relTotal').innerHTML = `
+        <span class="dep-libelle">${trad('Total du relevé')}${aide(trad(
+          'La somme des poches renseignées ci-dessous, en valeur brute. Les crédits en cours se notent à part, plus bas ; le total net apparaît alors dessous.'))}</span>
         <span class="dep-somme">${fmtEUR0(t)}</span>
         ${d ? `<span class="dep-ecart ${cls(d)}">
           ${d > 0 ? '▲' : '▼'} ${fmtSigned(d)} ${trad('depuis')} ${esc(fmtMonth(avant.date))}</span>` : ''}
@@ -11559,10 +11575,13 @@ function askMonthlySnapshot(index) {
       photoPrise = true;
       sale = true;
       majTotal();
-      toast(trad('Montants actuels repris, à vérifier puis enregistrer'));
+      toast(trad('Champs préremplis avec les montants d’aujourd’hui : vérifie, puis enregistre'));
     };
 
+    let ouverte = true;
     const fermer = v => {
+      if (!ouverte) return;    // le premier releve ferme depuis « enregistrer », puis « quitter » repasse ici
+      ouverte = false;
       masquerModal(m);      $('#modalClose').onclick = null;
       resolve(v);
     };
@@ -11601,6 +11620,17 @@ function askMonthlySnapshot(index) {
                                dettes: $('#relDettes').value });
       sale = false;
       photoPrise = false;
+      if (premier) {
+        const voir = await askConfirm(
+          `${fmtMonth(r.date)} ${trad('enregistré')}\n${
+            trad('Ton patrimoine de {m} est de {v}.').replace('{m}', fmtMonth(r.date))
+              .replace('{v}', fmtEUR0(rowNet(Store.state.monthly[index])))}\n${
+            trad('Ajoute un nouveau relevé le mois prochain pour suivre ton évolution.')}`,
+          { danger: false, ok: trad('Voir mon historique'), refus: trad('Fermer') });
+        fermer(true);
+        if (voir) location.hash = '#/history';
+        return true;
+      }
       const ligne = Store.state.monthly[index];
       const brut = rowTotal(ligne), net = rowNet(ligne);
       toast(`${fmtMonth(r.date)} · ${Math.abs(brut - net) > 0.005
@@ -11620,6 +11650,10 @@ function askMonthlySnapshot(index) {
     };
     $('#relFermer').onclick = quitter;
     $('#modalClose').onclick = quitter;
+    if ($('#relVerifier')) $('#relVerifier').onclick = async () => {
+      await quitter();
+      if (!ouverte) location.hash = '#/accounts';
+    };
     if ($('#relCloture')) $('#relCloture').onchange = () => {
       historyShowLegacy = $('#relCloture').checked;
       for (const b of $$('#modalBody [data-cloture]')) {

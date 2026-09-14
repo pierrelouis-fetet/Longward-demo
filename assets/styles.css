@@ -2588,6 +2588,7 @@ select.annee {
   display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
   padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid var(--grid);
 }
+.dep-libelle { flex-basis: 100%; font-size: var(--font-xs); font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 .dep-somme { font-size: var(--font-2xl); font-weight: 720; letter-spacing: -.02em; }
 .dep-ecart { font-size: var(--font-md); font-weight: 600; }
 .dep-grille {

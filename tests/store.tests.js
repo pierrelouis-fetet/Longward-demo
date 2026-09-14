@@ -4082,32 +4082,6 @@ suite('Le premier relevé : une seule porte, et une question avant', () => {
       'et « premier » se lit dans le titre et la consigne');
   });
 
-  test('le tout premier relevé demande si les comptes y sont tous', () => {
-    /* UN COMPTE OUBLIE NE MANQUE PAS QU'A CE RELEVE-LA. Il manque à tous les
-       suivants, donc à la courbe entière et au rythme qui s'en déduit : c'est
-       le seul geste dont une omission se propage dans le temps. */
-    const src = app();
-    const a = src.slice(src.indexOf("async 'ajouter-releve'()"),
-                        src.indexOf("async 'ajouter-releve'()") + 2200);
-    vrai(/if \(!inventaireDeclareComplet\(\)\) \{/.test(a),
-      'la question ne se pose qu’avant le premier');
-    vrai(/trad\('As-tu bien rentré tous tes comptes \?'\)/.test(a), 'et elle est posée');
-    vrai(/refus: trad\('Voir mes comptes'\)/.test(a),
-      '« Voir mes comptes » plutôt qu’« Annuler » : refuser n’est pas renoncer');
-    vrai(/if \(!pret\) \{ location\.hash = '#\/accounts'; return; \}/.test(a),
-      'et le refus mène bien aux comptes');
-    /* LA MEME REPONSE QUE CELLE DU GUIDE, SOUS LA MEME CLEF : y repondre ici
-       repond la-bas, et la question ne se repose pas d'un ecran a l'autre. */
-    vrai(/masquerNotif\(CLE_INVENTAIRE\);/.test(a),
-      'répondre ici répond aussi dans le guide');
-    const cle = PREMIERS_PAS.find(p => p.cle === 'comptes').declare.cle;
-    eq(cle, CLE_INVENTAIRE, 'et c’est bien la clef du guide');
-    for (const k of ['As-tu bien rentré tous tes comptes ?', 'Oui, je les ai tous',
-                     'Voir mes comptes']) {
-      vrai(!!I18N.en[k], '« ' + k + ' » existe en anglais');
-    }
-  });
-
   test('déclarer l’inventaire depuis le relevé éteint la question du guide', () => {
     /* Le controle porte sur le MODELE : une seule clef pour un seul fait. */
     Fixture.poser();
@@ -38543,6 +38517,96 @@ suite('Le bruit informatif', () => {
     const regle = sel => (css.match(new RegExp(sel + '\\s*\\{([^}]*)\\}')) || [])[1] || '';
     for (const sel of ['\\.badge', '\\.sous-onglets \\.pastille-onglet', '\\.pastille-ronde']) {
       vrai(/background:\s*var\(--warning\)/.test(regle(sel)), `${sel} porte la couleur du rappel`);
+    }
+  });
+});
+
+
+suite('Le relevé mensuel se comprend en dix secondes', () => {
+  /* Le formulaire s'ouvrait a nu — douze poches, douze champs — et rien ne
+     disait pourquoi on les remplit, pourquoi les comptes viennent avant, ce
+     que l'application en fait, ni pourquoi revenir le mois prochain. Le modele
+     tient en une ligne : creer ses poches → en renseigner la valeur chaque
+     mois → Longward les additionne → la courbe se dessine. Ces controles
+     gardent les endroits ou cette ligne se lit. Aucun calcul ne bouge. */
+  const app = () => lireSource('assets/app.js');
+
+  test('avant le premier relevé, une étape dit le modèle — sans bloquer', () => {
+    const src = app();
+    const d = src.indexOf("async 'ajouter-releve'()");
+    const a = src.slice(d, src.indexOf('\n  },\n', d));
+    vrai(/if \(!aUnRelevePatrimonial\(\)\) \{/.test(a), 'l’étape ne paraît qu’avant le premier relevé');
+    vrai(/trad\('Avant ton premier relevé'\)/.test(a), 'et elle s’annonce comme telle');
+    vrai(/ok: trad\('Vérifier mes comptes et actifs'\)/.test(a), 'le geste principal mène aux poches');
+    vrai(/refus: trad\('Créer mon relevé'\)/.test(a), 'le second ouvre le relevé');
+    vrai(/if \(verifier\) \{ location\.hash = '#\/accounts'; return; \}/.test(a),
+      'vérifier, c’est aller voir la liste');
+    vrai(!/As-tu bien rentré/.test(a), 'la question fermée est partie : on explique, on ne quizze pas');
+    vrai(/await askMonthlySnapshot\(indexReleve\(currentMonthKey\(\)\)\);/.test(a),
+      'et la fenêtre s’ouvre toujours sur le mois en cours');
+  });
+
+  test('la fenêtre du premier relevé dit ce qu’elle photographie, les suivantes vont droit au but', () => {
+    const src = app();
+    const d = src.indexOf('function askMonthlySnapshot(');
+    const f = src.slice(d, src.indexOf('\nfunction ', d + 10));
+    vrai(/const premier = !Store\.state\.monthly\.some\(\(x, i\) => i !== index && !rowIsEmpty\(x\)\);/.test(f),
+      '« premier » : aucun AUTRE mois ne porte de montants');
+    vrai(/trad\('La photo de ton patrimoine pour \{m\}\.'\)/.test(f)
+      && /trad\('Renseigne la valeur de chaque poche ; Longward calculera automatiquement ton patrimoine total\.'\)/.test(f),
+      'le premier relevé se présente en deux phrases');
+    vrai(/trad\('Mets à jour la valeur de chaque poche pour enregistrer ton patrimoine de \{m\}\.'\)/.test(f),
+      'les suivants en une');
+    vrai(!/Aucun relevé avant celui-ci/.test(f) && !/valeurs brutes, crédits à part/.test(f),
+      'le sous-titre technique a disparu');
+    vrai(/<span class="dep-libelle">\$\{trad\('Total du relevé'\)\}/.test(f), 'le total porte son nom');
+    vrai(/trad\('Préremplir avec les montants actuels'\)/.test(f), 'le préremplissage se nomme');
+    vrai(!/Remplir tous les champs/.test(f), 'et n’est plus redit avec d’autres mots');
+    vrai(/premier && !notifsMasquees\(\)\.includes\(CLE_INVENTAIRE\) \? `/.test(f),
+      'la note de complétude ne paraît qu’au premier relevé, hors inventaire déclaré');
+    vrai(/trad\('Ton patrimoine est-il complet \?'\)/.test(f) && /id="relVerifier"/.test(f),
+      'elle informe et offre d’aller vérifier, sans bloquer');
+  });
+
+  test('le premier relevé enregistré se raconte ; les suivants gardent leur toast', () => {
+    const src = app();
+    const d = src.indexOf('function askMonthlySnapshot(');
+    const f = src.slice(d, src.indexOf('\nfunction ', d + 10));
+    const e = f.indexOf('const enregistrer = async () => {');
+    const enr = f.slice(e, f.indexOf('$(\'#relOk\').onclick', e));
+    vrai(/if \(premier\) \{/.test(enr), 'un mot au premier enregistrement');
+    vrai(/trad\('Ton patrimoine de \{m\} est de \{v\}\.'\)/.test(enr), 'qui dit ce que le mois enregistre');
+    vrai(/ok: trad\('Voir mon historique'\)/.test(enr) && /location\.hash = '#\/history'/.test(enr),
+      'et mène là où le point vient de s’inscrire');
+    vrai(enr.indexOf('if (premier) {') < enr.indexOf('toast(`${fmtMonth(r.date)} · '),
+      'le toast reste pour les mois suivants');
+    vrai(/if \(!ouverte\) return;/.test(f), 'fermer deux fois ne ferme qu’une fois');
+  });
+
+  test('« snapshot » a quitté l’interface, le bandeau parle de courbe', () => {
+    const src = app();
+    vrai(!/trad\('[^']*snapshot/i.test(src), 'aucun libellé français ne dit snapshot');
+    vrai(!Object.keys(I18N.en).some(k => /snapshot/i.test(k)), 'ni aucune clef');
+    vrai(/trad\('Enregistrer le relevé de'\)/.test(src), 'le bandeau enregistre un relevé');
+    vrai(/trad\('Ajoute ce mois à ta courbe de patrimoine · \{v\} aujourd’hui'\)/.test(src),
+      'et dit ce qu’il ajoute : un point sur la courbe');
+    const pas = PREMIERS_PAS.find(p => p.cle === 'releves');
+    vrai(/poches additionnées en un patrimoine total/.test(pas.quoi) && /chaque mois/.test(pas.quoi),
+      'le pas du guide raconte le même modèle');
+  });
+
+  test('chaque phrase neuve a son anglais, et les mortes sont parties', () => {
+    for (const cle of ['Avant ton premier relevé', 'Vérifier mes comptes et actifs', 'Créer mon relevé',
+                       'La photo de ton patrimoine pour {m}.', 'Total du relevé',
+                       'Préremplir avec les montants actuels', 'Ton patrimoine est-il complet ?',
+                       'Vérifier mes poches', 'Ton patrimoine de {m} est de {v}.', 'Voir mon historique',
+                       'Enregistrer le relevé de', 'Tu pourras toujours ajouter d’autres poches plus tard.']) {
+      vrai(!!I18N.en[cle], '« ' + cle + ' » existe en anglais');
+    }
+    for (const morte of ['Prendre le snapshot de', 'Reprendre les montants actuels,',
+                         'Remplir tous les champs automatiquement', 'Aucun relevé avant celui-ci',
+                         'As-tu bien rentré tous tes comptes ?']) {
+      vrai(!I18N.en[morte], '« ' + morte + ' » n’a plus d’appelant');
     }
   });
 });

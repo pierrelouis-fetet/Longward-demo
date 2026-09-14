@@ -5800,9 +5800,9 @@ const PREMIERS_PAS = [
      pente demande deux points. Reclamer le second bloquerait le premier pas sur
      un geste qui ne se fait qu'un mois plus tard. */
   { cle: 'releves', titre: 'Ton premier relevé',
-    quoi: 'Enregistre ton premier relevé mensuel : c’est la photo de tes comptes à '
-        + 'une date. Il en faut deux pour que la courbe et le rythme d’accumulation '
-        + 'aient une pente à montrer.',
+    quoi: 'Enregistre ton premier relevé mensuel : la photo de tes comptes à une date, '
+        + 'toutes tes poches additionnées en un patrimoine total. Refais-le chaque mois, '
+        + 'il en faut deux pour une pente, et Longward trace ton évolution.',
     bouton: 'Enregistrer ton premier relevé', action: 'ajouter-releve',
     /* DEUX QUESTIONS, ET ELLES DIFFERENT SUR CE PAS-LA.
 
