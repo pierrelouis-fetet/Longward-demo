@@ -542,7 +542,21 @@ body {
 .pas-corps b { font-size: 14px; font-weight: 600; }
 .pas.fait .pas-corps b { color: var(--muted); font-weight: 500; }
 .pas-corps p { margin: 5px 0 10px; line-height: 1.5; }
-.pas-voir { display: inline-block; margin-top: 10px; font-size: 12.5px; }
+/* IL PASSE A LA LIGNE DE LUI-MEME, ET C'EST AU STYLE DE LE DIRE.
+
+   Les deux branches du pas n'ont pas la meme forme : celle de la question
+   pose une rangee de deux boutons, qui occupe sa ligne, et le renvoi tombait
+   donc dessous ; celle d'un pas rouvert n'a qu'un bouton, reste en ligne, et
+   le renvoi venait se coller a sa droite. Deux places pour un meme element
+   selon l'ecran, sans que rien ne le decide.
+
+   `block` tranche pour les deux. `width: fit-content` garde le souligne sous
+   le seul texte — un bouton en bloc s'etendrait sur toute la largeur, et son
+   libelle se centrerait, ce qui en ferait un troisieme bouton a l'oeil. */
+.pas-voir {
+  display: block; width: fit-content; text-align: left;
+  margin-top: 10px; font-size: 12.5px;
+}
 
 .pas-retour {
   display: flex; align-items: baseline; gap: 8px; width: 100%;

@@ -4172,6 +4172,20 @@ suite('On ne répond pas « tout y est » sans pouvoir regarder', () => {
       'et vit hors de la rangée de boutons');
     const css = lireSource('assets/styles.css');
     vrai(/\.pas-voir \{/.test(css), 'il a sa règle');
+    /* IL PASSE A LA LIGNE DE LUI-MEME. Les deux branches du pas n'ont pas la
+       même forme : celle de la question pose une rangée de deux boutons, qui
+       occupe sa ligne, et le renvoi tombait dessous ; celle d'un pas rouvert
+       n'a qu'un bouton, reste en ligne, et le renvoi venait se coller à sa
+       droite. Deux places pour un même élément selon l'écran, sans que rien ne
+       le décide. Vu à l'écran, sur les pas 1 et 2 l'un au-dessus de l'autre. */
+    const regle = css.slice(css.indexOf('.pas-voir {'),
+                            css.indexOf('}', css.indexOf('.pas-voir {')));
+    vrai(/display: block/.test(regle), 'il occupe sa propre ligne, dans les deux branches');
+    /* `width: fit-content` garde le souligné sous le seul texte : un bouton en
+       bloc s'étendrait sur toute la largeur et centrerait son libellé, ce qui en
+       ferait un troisième bouton à l'œil. */
+    vrai(/width: fit-content/.test(regle), 'sans s’étendre sur toute la largeur');
+    vrai(!/display: inline/.test(regle), 'et plus rien ne le remet en ligne');
   });
 
   test('un pas qu’on rouvre garde son chemin vers la liste', () => {
