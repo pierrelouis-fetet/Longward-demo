@@ -793,9 +793,10 @@ function viewOverview() {
   const moisEnAttente = currentMonthPending();
   const depEnAttente = depensesEnAttente();
   const guide = carteDemarrage();
+  const guideDevant = !aUnComptePropre();
 
   return `
-  ${guide}
+  ${guideDevant ? guide : ''}
 
   ${moisEnAttente.missing && !guide ? `
   <div class="rappel card-cliquable">
@@ -842,6 +843,8 @@ function viewOverview() {
       </div>`;
     })()}
   </div>
+
+  ${guideDevant ? '' : guide}
 
   ${(() => {
     const classes = repartitionClasses({ net: evoNet });
@@ -895,7 +898,7 @@ function viewOverview() {
   : `
   ${!aDesPositionsMarche() ? '' : `
   <div class="card">
-    <div class="card-head"><h2>${trad('Investissements de marché')}</h2>
+    <div class="card-head"><h2>${trad('Tes titres')}</h2>
       <a class="hint lien-vue" href="#/positions">${trad('Voir les positions')} →</a></div>
     <div class="pf-corps">
       <button type="button" class="pf-total" data-action="apercu" data-apercu="portefeuille">
@@ -3236,7 +3239,7 @@ function pochesPatrimoine({ financier = false, net = false } = {}) {
   });
 }
 
-const nomPortefeuille = () => trad('Tes investissements de marché');
+const nomPortefeuille = () => trad('Portefeuille');
 
 const teinterParRang = items =>
   items.map((x, i) => ({ ...x, couleur: x.couleur || x.color || `var(--series-${(i % 8) + 1})` }));
@@ -3380,8 +3383,8 @@ function viewAllocation() {
     const parts = teinterParRang(pf.parts);
     return `
   <div class="card">
-    <div class="card-head"><h2>${trad('Ton portefeuille de marché')}</h2></div>
-    <p class="hint" style="margin:0 0 12px">${trad('La part de chaque ligne dans ton portefeuille.')}${
+    <div class="card-head"><h2>${trad('Ton portefeuille')}</h2></div>
+    <p class="hint" style="margin:0 0 12px">${trad('La part de chaque ligne. Le portefeuille compte tes titres, le cash à investir et les placements sans cours de tes comptes de marché.')}${
       aide(trad('Un fonds compte pour UNE ligne : un portefeuille d’un seul ETF monde donne une part de 100 %, ce qui ne veut pas dire qu’il est concentré. Cette carte répartit des montants, elle ne lit pas ce qu’il y a dans un fonds.'))}</p>
     <div class="chart" id="aPortefeuille"></div>
     ${!pf.regroupees ? '' : `<p class="hint" style="margin:8px 0 0">${
@@ -4540,6 +4543,7 @@ function creditsDuCompte(c) {
    cote. Et elle disparait entierement des que tout est fait, sans que rien ne
    l'eteigne. */
 let pasDeplie = null;
+let guideDeplie = false;
 
 /* LE RENVOI SUIT CE QU'IL Y A A VOIR, PAS LA BRANCHE QUI L'AFFICHE.
 
@@ -4576,11 +4580,23 @@ function carteDemarrage() {
   const fini = !restants.length;
   const premier = fini ? null : (restants.find(p => !p.ouvrable || p.ouvrable()) || restants[0]);
   const faits = PREMIERS_PAS.length - restants.length;
+  const vierge = !aUnComptePropre();
+  if (!vierge && !fini && !guideDeplie) {
+    return `
+  <div class="card demarrage demarrage-barre card-cliquable">
+    <button type="button" class="card-couvre" data-action="basculer-demarrage"
+            aria-expanded="false" aria-label="${trad('Commence ici')}"></button>
+    <b>${trad('Commence ici')}</b>
+    <span class="muted">${trad('{n} sur {t}').replace('{n}', faits).replace('{t}', PREMIERS_PAS.length)}</span>
+    <span class="demarrage-chevron" aria-hidden="true">›</span>
+  </div>`;
+  }
   return `
   <div class="card demarrage">
     <div class="card-head">
       <h2>${trad('Commence ici')}</h2>
-      <span class="muted">${trad('{n} sur {t}').replace('{n}', faits).replace('{t}', PREMIERS_PAS.length)}</span>
+      <span class="muted">${trad('{n} sur {t}').replace('{n}', faits).replace('{t}', PREMIERS_PAS.length)}${
+        vierge || fini ? '' : ` · <button type="button" class="lien-nu" data-action="basculer-demarrage">${trad('Replier')}</button>`}</span>
     </div>
     <ol class="pas-liste">
       ${PREMIERS_PAS.map((p, i) => {
@@ -7581,7 +7597,12 @@ const ACTIONS = {
      franchis, donc rien ne se perd en la fermant. */
   'fermer-demarrage'() {
     masquerNotif(CLE_DEMARRAGE);
+    guideDeplie = false;
     Store.save();
+    render();
+  },
+  'basculer-demarrage'() {
+    guideDeplie = !guideDeplie;
     render();
   },
 
@@ -12713,7 +12734,12 @@ function focusAnchor() {
   const el = cibles.find(x => x.offsetParent !== null) || cibles[0];
   pendingAnchor = null;
   if (!el) return;
-  const bar = window.matchMedia('(max-width: 900px)').matches ? 70 : 90;
+  /* La marge vient de la feuille de style : `scroll-padding-top` sur `html` y
+     dit, pour l'ecran courant, ce qui reste cloue en haut — barre du haut,
+     sous-onglets compris sur telephone. Ce code portait 70 et 90, deux nombres
+     qui approchaient ces bandes sans les lire ; la barre de l'ordinateur en
+     fait 91, et l'ancre se posait un pixel dessous. */
+  const bar = parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0;
   const y = Math.max(0, el.getBoundingClientRect().top + window.scrollY - bar);
   const depart = window.scrollY;
   window.scrollTo({ top: y, behavior: 'smooth' });

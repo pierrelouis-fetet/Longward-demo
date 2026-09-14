@@ -4168,6 +4168,48 @@ suite('On ne répond pas « tout y est » sans pouvoir regarder', () => {
     }
   });
 
+  test('le patrimoine passe avant le guide dès la première donnée', () => {
+    /* LA CARTE ENTIÈRE OCCUPAIT TOUT LE PREMIER ÉCRAN D'UN TÉLÉPHONE, y compris
+       chez quelqu'un qui avait quatre établissements et quarante relevés : son
+       patrimoine passait sous la ligne de flottaison, derrière un tutoriel. Sur
+       une application de patrimoine, c'est l'inverse de la hiérarchie. Mesuré à
+       375 px : le hero finissait à 1 150 px.
+
+       Dès qu'un premier compte existe, le guide se replie en une barre d'une
+       ligne, cliquable, posée SOUS le patrimoine. Sur un état vierge il garde
+       sa pleine taille et sa place devant : il est alors la seule chose à lire.
+       Le guide n'est pas supprimé — c'est sa taille après le début qui l'était. */
+    const app = lireSource('assets/app.js');
+    const carte = app.slice(app.indexOf('function carteDemarrage()'),
+                            app.indexOf('function ', app.indexOf('function carteDemarrage()') + 10));
+    vrai(/const vierge = !aUnComptePropre\(\);/.test(carte), 'le premier compte fait basculer');
+    vrai(/if \(!vierge && !fini && !guideDeplie\) \{/.test(carte),
+      'la barre ne se rend que repliée, hors état vierge, hors fin');
+    vrai(/class="card demarrage demarrage-barre card-cliquable"/.test(carte),
+      'et c’est une carte, pour qu’on la reconnaisse');
+    vrai(/data-action="basculer-demarrage"/.test(carte), 'elle se déplie d’un geste');
+    /* La vue place le guide devant SEULEMENT sur un etat vierge, et derriere le
+       hero sinon : deux emplacements, un seul drapeau, jamais les deux a la fois. */
+    /* La tranche court jusqu'a la fonction suivante : bornee a un nombre de
+       caracteres, elle s'arretait avant le second emplacement du guide et
+       le controle passait au rouge sur du code juste. */
+    const dv = app.indexOf('function viewOverview()');
+    const vue = app.slice(dv, app.indexOf('\nfunction ', dv + 10));
+    const devant = vue.indexOf("${guideDevant ? guide : ''}");
+    const hero = vue.indexOf('<div class="hero">');
+    const derriere = vue.indexOf("${guideDevant ? '' : guide}");
+    vrai(devant > 0 && hero > devant && derriere > hero,
+      'devant le hero sur un état vierge, derrière lui dès qu’il y a un patrimoine');
+    vrai(/const guideDevant = !aUnComptePropre\(\);/.test(vue),
+      'et la même condition décide des deux');
+    /* Les bandeaux d'exploitation attendent toujours que le guide ait fini :
+       replie, il existe encore, et le rappel du releve redoublerait son pas 3. */
+    vrai(/moisEnAttente\.missing && !guide/.test(vue), 'les bandeaux attendent, barre ou carte');
+    vrai(/'basculer-demarrage'\(\) \{\s*\n\s*guideDeplie = !guideDeplie;/.test(app),
+      'la bascule est un état de lecture, rien ne s’enregistre');
+    vrai(!!I18N.en['Replier'], '« Replier » existe en anglais');
+  });
+
   test('rouvrir un pas, c’est redémander sa question', () => {
     /* IL RÉPONDAIT PAR LE MODE D'EMPLOI. Un pas franchi qu'on rouvrait montrait
        sa consigne et son bouton d'ajout, en gardant sa coche : on y revenait
@@ -4615,7 +4657,7 @@ suite('L’anneau du portefeuille : un total qui égale ses parts', () => {
     vrai(/const nomPortefeuille = \(\) => trad\(/.test(app),
       'et ce nom vit à un seul endroit');
     vrai(/Un fonds compte pour UNE ligne/.test(app), 'et ce qu’elle ne sait pas lire');
-    for (const cle of ['Ton portefeuille de marché', 'Tes investissements de marché',
+    for (const cle of ['Ton portefeuille', 'Portefeuille',
                        'Autres', 'À investir']) {
       vrai(!!I18N.en[cle], '« ' + cle + ' » existe en anglais');
     }
@@ -14023,6 +14065,42 @@ suite('Les animations s’éteignent, et se déclenchent au doigt', () => {
     vrai(/body\.haut-cache[^{]*\.cpt-gtitre\s*\{[^}]*var\(--h-barre-dessin\)/.test(nu),
       'et de la hauteur de dessin de la barre, pas d’un nombre écrit à la main : '
       + 'c’est ce qui laisse l’encoche par construction');
+  });
+
+  test('la barre du haut de l’ordinateur a une hauteur déclarée, et ce qui se colle dessous la lit', () => {
+    /* LE BANDEAU D'ÉTABLISSEMENT SE GARAIT 19 PX SOUS LA BARRE DU HAUT. Sur
+       ordinateur, `.topbar` mesurait 91 px — remplissage et texte, une hauteur
+       subie que rien ne déclarait — et le bandeau collant portait `top: 72px`,
+       un nombre écrit à la main. Mesuré sur Actifs à 1 440 px : bandeau collé
+       sur [72, 134], barre sur [0, 91], son titre coupé en deux.
+
+       La hauteur se déclare une fois, `--h-entete` ; la barre la tient par
+       `min-height` ; le bandeau et le défilement vers une ancre la lisent. */
+    const css = (lireSource('assets/styles.css') || '').replace(/\/\*[\s\S]*?\*\//g, '');
+    vrai(css, 'assets/styles.css doit être lisible pour ce contrôle');
+    const decl = css.indexOf('--h-entete:');
+    vrai(decl > 0 && decl < css.indexOf('@media'),
+      '--h-entete est déclarée, hors de toute requête média');
+    const topbar = css.match(/\.topbar\s*\{([^}]*)\}/);
+    vrai(topbar && /min-height:\s*var\(--h-entete\)/.test(topbar[1])
+      && /box-sizing:\s*border-box/.test(topbar[1]), 'la barre tient la hauteur qu’elle déclare');
+    const banderole = css.match(/\.cpt-gtitre\s*\{[^}]*top:\s*([^;]+);/);
+    eq(banderole && banderole[1].trim(), 'var(--h-entete)',
+      'le bandeau se gare sous la barre en la lisant, jamais par un nombre écrit à la main');
+    /* Le défilement vers une ancre — `scrollIntoView`, `focusAnchor` — s'arrête
+       sous les bandes de l'écran courant : `scroll-padding-top` sur `html`, une
+       valeur par barre, et `app.js` la lit au lieu de porter 70 et 90. */
+    vrai(/html\s*\{\s*scroll-padding-top:\s*calc\(var\(--h-entete\)/.test(css),
+      'sur ordinateur, la marge d’ancre vaut la barre du haut');
+    vrai(/html\s*\{\s*scroll-padding-top:\s*calc\(var\(--h-barre\)/.test(css),
+      'sur téléphone, la barre du haut');
+    vrai(/html:has\(\.sous-onglets\)\s*\{\s*scroll-padding-top:\s*calc\(var\(--h-barre\)\s*\+\s*var\(--h-sous-onglets\)/.test(css),
+      'plus les sous-onglets quand la page en a');
+    const app = lireSource('assets/app.js');
+    const dfa = app.indexOf('function focusAnchor()');
+    const fa = app.slice(dfa, app.indexOf('\nfunction ', dfa + 10));
+    vrai(/scrollPaddingTop/.test(fa), 'focusAnchor lit la marge dans la feuille de style');
+    vrai(!/\? 70 : 90/.test(fa), 'et ne porte plus ses deux nombres');
   });
 
   test('deux bandes collantes ne se posent pas à la même hauteur', () => {
@@ -31973,7 +32051,7 @@ suite('La carte du portefeuille raconte une phrase', () => {
   test('les intitulés nouveaux ont leur clé anglaise, et l’ancienne part', () => {
     const en = lireSource('assets/i18n.js');
     vrai(en, 'assets/i18n.js doit être lisible pour ce contrôle');
-    for (const [fr, ang] of [['Investissements de marché', 'Market investments'],
+    for (const [fr, ang] of [['Tes titres', 'Your securities'], ['Ton portefeuille', 'Your portfolio'],
                              ['Voir les positions', 'View holdings'],
                              ['Valeur actuelle', 'Current value'],
                              ['Plus-value latente', 'Unrealised gain'],
@@ -31981,6 +32059,8 @@ suite('La carte du portefeuille raconte une phrase', () => {
       vrai(en.indexOf(`"${fr}": "${ang}"`) > 0, `« ${fr} » doit se traduire`);
     /* Une clef sans appelant est du code mort comme un autre. */
     for (const partie of ['"Portefeuille titres"', '"ce que ces lignes t’ont coûté"',
+                          'Investissements de marché', 'investissements de marché',
+                          'portefeuille de marché',
                           '"tant que tu ne vends pas"', '"aucun prix de revient saisi"',
                           '"Performance"', '"non calculée"',
                           '"Plus / moins-value latente"'])

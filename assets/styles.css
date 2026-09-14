@@ -115,6 +115,12 @@
   --h-barre-dessin: 54px;
   --h-barre: calc(var(--h-barre-dessin) + env(safe-area-inset-top, 0px));
   --h-sous-onglets: 53px;
+  /* La barre du haut de l'ordinateur, `.topbar`. Sa hauteur ne se declarait
+     nulle part et se subissait — 91 px de remplissage et de texte — pendant
+     qu'un bandeau collant la supposait a 72 : il se garait 19 px dessous, le
+     titre coupe en deux. Declaree ici, la barre la tient par `min-height`, et
+     le bandeau comme le defilement vers une ancre la lisent. */
+  --h-entete: 91px;
 
   /* Une troisieme variable a vecu ici, `--h-colle`, qui portait la hauteur
      reellement clouee en haut selon que la barre etait la ou retiree. Les collants
@@ -281,6 +287,12 @@
    les montants gardent la police du systeme. Une deuxieme regle du meme nom
    passait devant et lui faisait lire autre chose que ce qu'il croit lire. */
 html { height: 100%; }
+/* LE DEFILEMENT VERS UNE ANCRE S'ARRETE SOUS CE QUI EST CLOUE EN HAUT.
+   `scrollIntoView` et `focusAnchor` posaient leur cible au bord de la fenetre,
+   donc derriere la barre du haut. `scroll-padding-top` le dit une fois, pour le
+   conteneur qui defile, et chaque ecran le redit avec ses propres bandes plus
+   bas ; `app.js` lit cette valeur au lieu de porter les siennes. */
+html { scroll-padding-top: calc(var(--h-entete) + 8px); }
 html, body { background: var(--page); }
 
 /* Garde-fou : rien ne doit pouvoir élargir la fenêtre.
@@ -528,6 +540,10 @@ body {
    `break-all` parce qu'une adresse longue ne doit pas elargir sa carte. */
 .valeur-fixe { font-size: 15px; padding: 4px 0 2px; word-break: break-all; }
 
+.demarrage-barre { display: flex; align-items: center; gap: 10px; padding: 12px 15px; }
+.demarrage-barre b { font-size: 14px; font-weight: 600; }
+.demarrage-barre .demarrage-chevron { margin-left: auto; color: var(--muted); font-size: 18px; line-height: 1; }
+
 .pas-liste { list-style: none; margin: 0; padding: 0; }
 .pas { display: flex; gap: 12px; padding: 10px 0; }
 .pas + .pas { border-top: 1px solid var(--border); }
@@ -605,6 +621,10 @@ body.nav-open .burger span::after  { transform: translateX(-50%) translateY(-6px
 .topbar {
   display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
   padding: 26px 30px 18px;
+  /* Hauteur declaree et non subie : c'est `--h-entete` que lisent les collants
+     qui se garent dessous. `min-height` et non `height`, pour qu'une police de
+     repli d'un pixel plus haute deborde d'un pixel au lieu de rogner. */
+  min-height: var(--h-entete); box-sizing: border-box;
   border-bottom: 1px solid var(--border);
   background: var(--page);
   position: sticky; top: 0; z-index: 20;
@@ -2117,7 +2137,9 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
     color-mix(in oklab, var(--teinte) 16%, var(--surface-2)),
     var(--surface-2) 65%);
   padding: 0 12px 0 0;
-  position: sticky; top: 72px; z-index: 5;
+  /* Sous la barre du haut, en la lisant : `72px` ecrit ici la supposait plus
+     basse qu'elle n'est, et le bandeau se collait derriere elle. */
+  position: sticky; top: var(--h-entete); z-index: 5;
   border-bottom: 1px solid var(--border);
   box-shadow: inset 3px 0 0 var(--teinte);
 }
@@ -3660,6 +3682,8 @@ td .empty, th .empty { background: none; border: none; }
        avant d'ouvrir le tiroir, ce qui ferme le dernier chemin. */
   }
   .main { padding-top: var(--h-barre); }
+  html { scroll-padding-top: calc(var(--h-barre) + 8px); }
+  html:has(.sous-onglets) { scroll-padding-top: calc(var(--h-barre) + var(--h-sous-onglets) + 8px); }
 
   body.haut-cache .sidebar {
     /* `translate3d` et non `translateY` : la troisieme coordonnee, meme nulle,
