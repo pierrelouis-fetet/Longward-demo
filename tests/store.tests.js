@@ -4273,6 +4273,52 @@ suite('On ne répond pas « tout y est » sans pouvoir regarder', () => {
   });
 });
 
+suite('Le centre d’un anneau sait passer à la ligne', () => {
+
+  const src = () => lireSource('assets/charts.js');
+
+  test('un libellé plus large que le trou se coupe en deux', () => {
+    /* UN `<text>` SVG NE SE REPLIE PAS. « Tes investissements de marché »
+       débordait de l'anneau des deux côtés et se lisait par-dessus les tranches.
+       Vu à l'écran. */
+    const f = src();
+    vrai(/function lignesCentre\(texte, largeur\)/.test(f), 'le découpage existe');
+    vrai(/const etiquette = lignesCentre\(centerLabel \|\| 'Total', 2 \* r \* 0\.92\)/.test(f),
+      'et il reçoit la largeur du trou, marge comprise');
+    vrai(/\$\{etiquette\.map\(\(l, i\) =>/.test(f), 'chaque ligne a son texte');
+  });
+
+  test('la coupe vise le milieu, jamais le premier espace qui déborde', () => {
+    /* Couper au premier espace qui dépasse laisserait « Tes » seul sur une
+       ligne au-dessus de tout le reste. */
+    const f = src();
+    vrai(/Math\.abs\(i - milieu\) < Math\.abs\(coupe - milieu\)/.test(f),
+      'l’espace le plus proche du milieu l’emporte');
+    vrai(/return coupe < 0 \? \[t\] : \[t\.slice\(0, coupe\), t\.slice\(coupe \+ 1\)\]/.test(f),
+      'et deux lignes au plus');
+  });
+
+  test('aucun mot n’est coupé en deux', () => {
+    /* Un nom tronqué ne dit plus ce qu'il nomme : mieux vaut une ligne un peu
+       large qu'un mot en morceaux. Sans espace, le libellé reste entier. */
+    const f = src();
+    vrai(!/slice\(0, parMax\)|substring\(0, parMax\)/.test(f),
+      'jamais de coupe au caractère');
+    vrai(/if \(coupe < 0\) return \[t\];|coupe < 0 \? \[t\]/.test(f),
+      'un libellé d’un seul mot reste entier');
+  });
+
+  test('le bloc reste centré dans le trou', () => {
+    /* Le montant monte d'autant que l'étiquette descend : sinon deux lignes
+       pousseraient le tout vers le bas et le montant sortirait par le haut. */
+    const f = src();
+    vrai(/cy - \(etiquette\.length > 1 \? 10 : 4\)/.test(f),
+      'le montant remonte quand l’étiquette prend deux lignes');
+    vrai(/cy \+ \(etiquette\.length > 1 \? 8 \+ i \* 13 : 16\)/.test(f),
+      'et les lignes se posent sous lui');
+  });
+});
+
 suite('Le type proposé à la création suit l’établissement', () => {
 
   const chez = (types, etab = 'e_x') => {

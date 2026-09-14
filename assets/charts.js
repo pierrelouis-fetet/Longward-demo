@@ -586,6 +586,35 @@ const Charts = (() => {
     });
   }
 
+  /* LE CENTRE SAIT PASSER A LA LIGNE, et c'est au dessin de le savoir.
+
+     Un `<text>` SVG ne se replie pas : un libelle plus large que le trou sort
+     de l'anneau et se lit par-dessus les tranches. « Tes investissements de
+     marche » debordait des deux cotes.
+
+     La coupe se fait a l'espace le PLUS PROCHE DU MILIEU, jamais au premier qui
+     deborde : celui-la laisserait « Tes » seul sur une ligne au-dessus de tout
+     le reste. Deux lignes au plus — au-dela, le centre mangerait l'anneau — et
+     aucun mot n'est coupe : un nom tronque ne dit plus ce qu'il nomme, mieux
+     vaut une ligne un peu large qu'un mot en morceaux.
+
+     La largeur d'un caractere est estimee, pas mesuree : mesurer demanderait un
+     rendu, donc un second passage, pour un reglage que l'oeil ne verifie qu'a
+     deux caracteres pres. */
+  function lignesCentre(texte, largeur) {
+    const t = String(texte || '').trim();
+    if (!t) return [];
+    const parMax = Math.max(6, Math.floor(largeur / 5.9));
+    if (t.length <= parMax) return [t];
+    const milieu = t.length / 2;
+    let coupe = -1;
+    for (let i = 0; i < t.length; i++) {
+      if (t[i] !== ' ') continue;
+      if (coupe < 0 || Math.abs(i - milieu) < Math.abs(coupe - milieu)) coupe = i;
+    }
+    return coupe < 0 ? [t] : [t.slice(0, coupe), t.slice(coupe + 1)];
+  }
+
   function donut(el, opts) {
     /* Meme regle que la pile : le drapeau vit hors du rendu et s'eteint apres
        le premier. `mount` peut rappeler la fonction, et une transition rejouee
@@ -634,12 +663,15 @@ const Charts = (() => {
       }));
       const total = parts.reduce((s, i) => s + i.valeur, 0) || 1;
       const arcs = tracer(parts).map((a, i) => ({ ...a, it: items[i] }));
+      const etiquette = lignesCentre(centerLabel || 'Total', 2 * r * 0.92);
 
       el.innerHTML = `
         <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${trad('Répartition')}">
           ${arcs.map((a, i) => `<path d="${a.d}" fill="${a.it.color}" stroke="${c.surface}" stroke-width="2" class="slice" data-i="${i}"/>`).join('')}
-          <text x="${cx}" y="${cy - 4}" text-anchor="middle" class="donut-val">${kEur(opts.centerValue ?? total)}</text>
-          <text x="${cx}" y="${cy + 16}" text-anchor="middle" class="donut-lab">${esc(centerLabel || 'Total')}</text>
+          <text x="${cx}" y="${cy - (etiquette.length > 1 ? 10 : 4)}" text-anchor="middle" class="donut-val">${kEur(opts.centerValue ?? total)}</text>
+          ${etiquette.map((l, i) => `<text x="${cx}" y="${
+            cy + (etiquette.length > 1 ? 8 + i * 13 : 16)
+          }" text-anchor="middle" class="donut-lab">${esc(l)}</text>`).join('')}
         </svg>`;
 
       const cle = cleTrace(el);
