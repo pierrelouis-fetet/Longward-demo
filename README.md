@@ -92,18 +92,8 @@ accounts: sign in with your e-mail, receive a one-time code, and start from a
 blank dashboard that is yours alone. It is a beta: things will change, so
 export a backup now and then.
 
-**Run it locally.**
-
-```bash
-python serve.py
-```
-
-Then open `http://localhost:8765`. The one-file server, standard library only,
-serves the app and proxies market quotes. The test page is at
-`http://localhost:8765/tests.html`.
-
-**Self-host it.** Any static host serves the app. Cross-device sync and quotes
-run on a single Cloudflare Worker; see [DEPLOY.md](DEPLOY.md).
+Nothing to install on either: Longward is a web app, and on a phone it can be
+added to the home screen like a native one.
 
 ## Under the hood
 
@@ -151,12 +141,7 @@ DOM, which is what makes every figure testable without driving a browser.
 
 **Tested on every push.** Nineteen hundred test cases, no test framework: the
 whole harness is [118 lines](tests/harness.js). They run in a real Chrome on
-every push, and the badge above is that result. Open `/tests.html` locally and
-the tab title gives the verdict, or:
-
-```bash
-python executer-tests.py
-```
+every push, and the badge above is that result.
 
 | | |
 |---|---|
