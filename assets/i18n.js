@@ -198,6 +198,7 @@ const I18N = {
     'view.accounts': 'Assets',
     'view.accounts.sub': 'What you hold, and where it sits',
     'view.data': 'Data',
+    "Cette page n’a pas pu s’afficher": "This page could not be displayed",
     "Personnalise ton expérience Longward.": "Personalise your Longward experience.",
     "Actualisation automatique": "Automatic refresh",
     "Actualise les cours à l’ouverture de Longward": "Refreshes prices when Longward opens",

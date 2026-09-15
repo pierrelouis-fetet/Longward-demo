@@ -28789,7 +28789,8 @@ suite('Le « ? » d’une aide ne tombe jamais seul sur une ligne', () => {
 
   test('le collage s’applique à la sortie du rendu, pas à chaque appel', () => {
     const src = lireSource('assets/app.js');
-    vrai(/host\.innerHTML = collerAides\(v\.render\(\)\)/.test(src),
+    /* Le collage enveloppe le rendu, dans la garde qui attrape une vue qui echoue. */
+    vrai(/html = collerAides\(v\.render\(\)\); \}[\s\S]{0,400}host\.innerHTML = html;/.test(src),
       'les vues passent par le collage : un intitulé ajouté demain en hérite');
     vrai(/\$\('#modalBody'\)\.innerHTML = collerAides\(/.test(src),
       'et les panneaux d’aperçu aussi, qui portent des intitulés eux aussi');
@@ -39142,5 +39143,21 @@ suite('Préférences se lit comme les réglages d’un téléphone', () => {
       vrai(!!I18N.en[cle], '« ' + cle + ' » existe en anglais');
     for (const morte of ['Notifications & rappels', 'Masquées une à une', 'Oui, chercher les cours automatiquement'])
       vrai(!I18N.en[morte], '« ' + morte + ' » n’a plus d’appelant');
+  });
+});
+
+suite('Une page qui échoue le dit', () => {
+  test('render attrape l’exception d’une vue et la montre en toast', () => {
+    /* Sur un telephone, sans console, une vue qui leve une exception se lisait
+       « le bouton ne marche plus » : l'adresse changeait, l'ecran restait. */
+    const src = lireSource('assets/app.js');
+    const r = src.slice(src.indexOf('function render()'), src.indexOf('function render()') + 9000);
+    vrai(/try \{ html = collerAides\(v\.render\(\)\); \}\s*catch \(e\) \{[\s\S]*?toast\(`\$\{trad\('Cette page n’a pas pu s’afficher'\)\}/.test(r),
+      'le rendu est gardé, et le défaut se dit là où l’on est');
+    vrai(/catch \(e\) \{[\s\S]*?return;\s*\}\s*host\.innerHTML = html;/.test(r), 'l’écran précédent reste utilisable');
+    vrai(!!I18N.en['Cette page n’a pas pu s’afficher'], 'le message existe en anglais');
+    const d = src.slice(src.indexOf('function viewData() {'), src.indexOf('function mountData() {'));
+    vrai(/\(\(b\.data && b\.data\.positions\) \|\| \[\]\)\.length/.test(d) && /JSON\.stringify\(b\.data \|\| \{\}\)/.test(d),
+      'et la frise des sauvegardes tolère une entrée sans données');
   });
 });

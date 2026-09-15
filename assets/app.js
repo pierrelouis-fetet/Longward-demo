@@ -6650,8 +6650,8 @@ function viewData() {
       <li class="frise-ligne">
         <div class="frise-quand"><b>${esc(quand(b.at))}</b><span class="sub">${esc(heure(b.at))}</span></div>
         <div class="frise-quoi"><b>${esc(majuscule(b.reason))}</b>
-          <span class="sub">${pluriel((b.data.positions || []).length, 'position', 'positions')} · ${
-            (JSON.stringify(b.data).length / 1024).toFixed(0)} Ko · ${fmtWhen(b.at)}</span></div>
+          <span class="sub">${pluriel(((b.data && b.data.positions) || []).length, 'position', 'positions')} · ${
+            (JSON.stringify(b.data || {}).length / 1024).toFixed(0)} Ko · ${fmtWhen(b.at)}</span></div>
         <button class="btn sm ghost" data-action="restore-backup" data-i="${i}">${trad('Restaurer')} →</button>
       </li>`;
   const recentes = backups.slice(0, 3), anciennes = backups.slice(3);
@@ -13127,7 +13127,19 @@ function render() {
     return i >= 0 ? i : null;
   })();
 
-  host.innerHTML = collerAides(v.render());
+  /* UNE PAGE QUI ECHOUE LE DIT. Une exception dans le rendu d'une vue remontait
+     jusqu'au gestionnaire de `hashchange` et s'y perdait : l'ecran precedent
+     restait en place, l'adresse avait change, et rien ne disait pourquoi — sur un
+     telephone, sans console, cela se lit « le bouton ne marche plus ». Le message
+     s'affiche la ou l'on est, et la page reste utilisable. */
+  let html;
+  try { html = collerAides(v.render()); }
+  catch (e) {
+    console.error(e);
+    toast(`${trad('Cette page n’a pas pu s’afficher')}${deuxPoints()} ${e && e.message ? e.message : e}`);
+    return;
+  }
+  host.innerHTML = html;
 
   if (lavisAvant !== null) {
     const seg = $('.sous-onglets .segmented');
