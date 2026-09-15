@@ -891,10 +891,12 @@ function viewOverview() {
   })()}
 
   ${pasAFaire('comptes') ? `
-  <div class="card">
-    <p class="empty" style="margin:0">${trad('Le reste de cette page se remplit tout seul : '
-      + 'la courbe de ton patrimoine, ton rythme d’accumulation, ce que tu tiendrais sans '
-      + 'revenus, ton portefeuille. Tout part des comptes que tu déclares.')}</p>
+  <p class="apercus-legende">${trad('Le reste de cette page se remplit tout seul, à mesure que tu renseignes tes comptes.')}</p>
+  <div class="apercus-verrous">
+    ${apercuVerrou(trad('Patrimoine net'), trad('Ajoute au moins un compte pour commencer.'), 'barre')}
+    ${apercuVerrou(trad('Répartition de ton patrimoine'), trad('Disponible après tes premiers actifs.'), 'anneau')}
+    ${apercuVerrou(trad('Capacité d’épargne'), trad('Ajoute tes revenus et tes dépenses.'), 'jauge')}
+    ${apercuVerrou(trad('Projection'), trad('Disponible quand ta situation est suffisamment renseignée.'), 'courbe')}
   </div>`
   : `
   ${!aDesPositionsMarche() ? '' : `
@@ -4658,6 +4660,40 @@ function renvoiPas(p) {
           <button type="button" class="lien-nu pas-voir" ${ou}>${trad(v.libelle)}</button>`;
 }
 
+function carteBienvenue({ faits, total, premier, acquis }) {
+  const exemple = typeof SEED_VERSION !== 'undefined' && typeof modeDemo === 'function' && !modeDemo();
+  return `
+  <section class="card bienvenue">
+    <p class="surtitre">${trad('Bienvenue dans Longward')}</p>
+    <h2 class="bienvenue-accroche">${trad('Tout ton patrimoine. Une seule trajectoire.')}</h2>
+    <p class="bienvenue-texte">${trad('Construis ton tableau de bord personnel en quelques minutes.')}</p>
+    <ol class="bienvenue-pas" aria-label="${trad('{n} sur {t}').replace('{n}', faits).replace('{t}', total)}">
+      ${PREMIERS_PAS.map(p => `
+      <li class="${acquis(p) ? 'fait' : ''}${premier && p.cle === premier.cle ? ' courant' : ''}">
+        <span class="bienvenue-point" aria-hidden="true"></span>${esc(motCourtPas(p))}</li>`).join('')}
+    </ol>
+    <div class="bienvenue-actes">
+      ${premier ? `<button type="button" class="btn" data-action="${esc(premier.action)}">${trad('Construire mon Longward')}</button>` : ''}
+      ${exemple ? `<button type="button" class="btn ghost" data-action="charger-demo">${trad('Voir un exemple')}</button>` : ''}
+    </div>
+  </section>`;
+}
+
+const SILHOUETTES = {
+  barre:  '<rect x="0" y="4" width="64" height="10" rx="3"/><rect x="0" y="24" width="120" height="7" rx="3" opacity=".55"/>',
+  anneau: '<circle cx="18" cy="18" r="13" fill="none" stroke-width="5" stroke-dasharray="26 56" opacity=".9"/><rect x="44" y="9" width="60" height="6" rx="3" opacity=".55"/><rect x="44" y="22" width="40" height="6" rx="3" opacity=".35"/>',
+  jauge:  '<rect x="0" y="6" width="120" height="7" rx="3" opacity=".35"/><rect x="0" y="6" width="58" height="7" rx="3"/><rect x="0" y="23" width="120" height="7" rx="3" opacity=".35"/><rect x="0" y="23" width="88" height="7" rx="3" opacity=".7"/>',
+  courbe: '<path d="M0 31 C 24 30, 48 25, 72 17 S 104 8, 120 5" fill="none" stroke-width="2" stroke-dasharray="3 4"/>',
+};
+function apercuVerrou(titre, sous, forme) {
+  return `
+    <div class="card apercu-verrou">
+      <svg class="silhouette" viewBox="0 0 120 36" aria-hidden="true" focusable="false">${SILHOUETTES[forme] || ''}</svg>
+      <b>${esc(titre)}</b>
+      <span class="sub">${esc(sous)}</span>
+    </div>`;
+}
+
 function carteDemarrage() {
   /* `acquis` quand il existe, `fait` sinon : voir la note du pas des releves.
      La liste demande si un pas est FRANCHI, pas s'il faut encore le reclamer,
@@ -4670,13 +4706,15 @@ function carteDemarrage() {
   const premier = fini ? null : (restants.find(p => !p.ouvrable || p.ouvrable()) || restants[0]);
   const faits = PREMIERS_PAS.length - restants.length;
   const vierge = !aUnComptePropre();
+  if (vierge) return carteBienvenue({ faits, total: PREMIERS_PAS.length, premier, acquis });
   if (!vierge && !fini && !guideDeplie) {
     return `
   <div class="card demarrage demarrage-barre card-cliquable">
     <button type="button" class="card-couvre" data-action="basculer-demarrage"
-            aria-expanded="false" aria-label="${trad('Commence ici')}"></button>
-    <b>${trad('Commence ici')}</b>
-    <span class="muted">${trad('{n} sur {t}').replace('{n}', faits).replace('{t}', PREMIERS_PAS.length)}</span>
+            aria-expanded="false" aria-label="${trad('Ton Longward prend forme')}"></button>
+    <span class="demarrage-texte"><b>${trad('Ton Longward prend forme')}</b>
+      <span class="sub">${trad('{n} sur {t}').replace('{n}', faits).replace('{t}', PREMIERS_PAS.length)}${
+        premier ? ` · ${trad('Prochaine étape')}${deuxPoints()} ${esc(motCourtPas(premier))}` : ''}</span></span>
     <span class="demarrage-chevron" aria-hidden="true">›</span>
   </div>`;
   }

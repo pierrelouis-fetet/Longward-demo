@@ -5840,6 +5840,16 @@ const PAS_PAR_CLE = Object.fromEntries(PREMIERS_PAS.map(p => [p.cle, p]));
 
 const pasAFaire = cle => !!PAS_PAR_CLE[cle] && !PAS_PAR_CLE[cle].fait();
 
+function etapesDemarrage() {
+  const franchi = p => p.acquis ? p.acquis() : (!pasAFaire(p.cle) && pasDeclare(p));
+  const restants = PREMIERS_PAS.filter(p => !franchi(p));
+  const prochain = restants.find(p => !p.ouvrable || p.ouvrable()) || restants[0] || null;
+  return { total: PREMIERS_PAS.length, faits: PREMIERS_PAS.length - restants.length,
+           restants, prochain, vierge: !aUnComptePropre(), fini: !restants.length };
+}
+const MOTS_COURTS_PAS = { comptes: 'Comptes et patrimoine', revenus: 'Revenus', releves: 'Relevé mensuel', depenses: 'Dépenses' };
+const motCourtPas = p => trad(MOTS_COURTS_PAS[p.cle] || p.titre);
+
 /* --- ce qu'un bien coute, poste par poste --------------------------------
    La taxe fonciere est due par tout proprietaire, la copropriete par qui detient
    un lot, et la provision pour travaux est celle que tout le monde oublie — or
