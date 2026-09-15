@@ -4745,7 +4745,7 @@ suite('Le résumé d’un établissement compte ce qui a une base', () => {
     /* Elle se lit AVANT la liste des comptes : le grand chiffre, ce qu'il a
        coûté, puis le détail qui le compose. */
     vrai(fiche.indexOf("trad('Investi et plus-value')")
-       < fiche.indexOf("trad('rattachés')"),
+       < fiche.indexOf("<h2>${majuscule(motContenu(e.id, 2))}</h2>"),
       'elle complète le grand chiffre avant d’ouvrir le détail');
     for (const cle of ['Investi et plus-value',
                        'sur les lignes dont le prix de revient est saisi',
@@ -39179,8 +39179,23 @@ suite('Une société ou plateforme contient des placements', () => {
     eq(I18N.en['Ajouter un'] + ' ' + I18N.en['placement'], 'Add an investment', 'et le bouton reste grammatical en anglais');
     const src = lireSource('assets/app.js');
     const fiche = src.slice(src.indexOf('function viewFicheEtab('), src.indexOf("trad('Crédits en cours')", src.indexOf('function viewFicheEtab(')));
-    vrai(/contenantDeLEtab\(e\.id\)\.contenu === 'placement'\s*\? majuscule\(motContenu\(e\.id, 2\)\) : `\$\{majuscule\(motContenu\(e\.id, 2\)\)\} \$\{trad\('rattachés'\)\}`/.test(fiche),
-      'la section se nomme « Placements », sans « rattachés », et les autres contenants gardent le mot');
+    vrai(/<h2>\$\{majuscule\(motContenu\(e\.id, 2\)\)\}<\/h2>/.test(fiche),
+      'la section porte le mot du contenant au pluriel, sans « rattachés », pour tous les contenants');
+    vrai(!/trad\('rattachés'\)/.test(fiche) && !I18N.en['rattachés'], '« rattachés » est parti, de la fiche et du dictionnaire');
+    /* Un assureur tient des contrats, un immeuble des biens : la meme table, la
+       meme fonction, et le compteur, le titre et le bouton disent le meme mot. */
+    Store.state.etabs.push({ id: 'e_ass', nom: 'Essai Vie', notes: '', dettes: [] });
+    Store.state.comptes.push({ id: 'c_ass1', etabId: 'e_ass', type: 'av', cash: [], lignes: [] });
+    refreshAccounts();
+    eq(contenantDeLEtab('e_ass').titre, CONTENANTS.assureur.titre, 'une assurance-vie fait un assureur');
+    eq(motContenu('e_ass', 1), trad('contrat'), 'un contrat');
+    eq(motContenu('e_ass', 2), trad('contrats'), 'deux contrats');
+    Store.state.etabs.push({ id: 'e_imm', nom: 'Essai Immo', notes: '', dettes: [] });
+    Store.state.comptes.push({ id: 'c_imm1', etabId: 'e_imm', type: 'immo', cash: [], lignes: [] });
+    refreshAccounts();
+    eq(motContenu('e_imm', 2), trad('biens'), 'un immeuble tient des biens');
+    for (const cle of ['compte', 'comptes', 'placement', 'placements', 'contrat', 'contrats', 'bien', 'biens'])
+      vrai(!!I18N.en[cle], '« ' + cle + ' » existe en anglais');
     vrai(/\+ \$\{majuscule\(motContenu\(e\.id, 1\)\)\}/.test(fiche), 'le bouton suit : « + Placement »');
     const st = lireSource('assets/store.js');
     vrai(/nouveau: 'Nouvelle société ou plateforme',[\s\S]{0,400}contenu: 'placement' \}/.test(st), 'la table le déclare une fois');

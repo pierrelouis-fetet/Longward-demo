@@ -1793,7 +1793,6 @@ const I18N = {
     "placements": "investments",
     "bien": "asset",
     "biens": "assets",
-    "rattachés": "attached",
     "Ajouter un": "Add an",
     "chez": "at",
     "de crédits": "in loans",
