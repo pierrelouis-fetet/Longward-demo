@@ -13,7 +13,8 @@ with numbers you can trust: <b>how much do I have, where does it sit, and where 
   <img src="https://img.shields.io/badge/PWA-installable-8A2BE2" alt="Installable PWA">
 </p>
 
-<p align="center"><a href="https://longward-demo.pages.dev"><b>Try the live demo</b></a> — fictional data, nothing to install.</p>
+<p align="center"><a href="https://longward-demo.pages.dev"><b>Try the live demo</b></a> — fictional data, nothing to install.<br>
+<a href="https://beta.longward.app"><b>Join the beta</b></a> — real accounts, your own data, sign in with your e-mail.</p>
 
 <p align="center">Designed and built by <b>Pierre-Louis FETET</b>.</p>
 
@@ -85,6 +86,11 @@ this codebase to it, and the test suite enforces every one of them.
 
 **Try it.** The [live demo](https://longward-demo.pages.dev) runs on fictional
 data. Explore every screen, then clear it and start your own.
+
+**Join the beta.** [beta.longward.app](https://beta.longward.app) runs real
+accounts: sign in with your e-mail, receive a one-time code, and start from a
+blank dashboard that is yours alone. It is a beta: things will change, so
+export a backup now and then.
 
 **Run it locally.**
 
