@@ -39809,3 +39809,47 @@ suite('Des enveloppes américaines, sans fiscalité', () => {
       'la page lit la liste de la langue du moment ; « Autre… » ouvre le reste');
   });
 });
+
+/* --- Le site sert l'application, le depot sert le code ---------------------
+
+   Pages publie le depot entier : la suite de tests, le fichier des agents, les
+   scripts de developpement, le schema de la base et le flux d'integration se
+   telechargeaient depuis le domaine de l'application. Aucun secret dedans, et
+   le depot public les porte de toute facon ; mais rien de cela n'a a repondre
+   sur le site. */
+suite('Le site ne sert que l’application', () => {
+  const worker = () => lireSource('_worker.js');
+  const motif = () => {
+    const m = worker().match(/const FICHIERS_DE_DEVELOPPEMENT = (\/.*\/);/);
+    vrai(m, 'le worker déclare la liste des chemins de développement');
+    return new RegExp(m[1].slice(1, m[1].lastIndexOf('/')));
+  };
+
+  test('les fichiers de développement répondent 404 depuis le domaine', () => {
+    const re = motif();
+    for (const p of ['/tests.html', '/tests/store.tests.js', '/tests/harness.js', '/tests/fixture.js',
+                     '/CLAUDE.md', '/README.md', '/DEPLOY.md', '/ICONES.md', '/schema.sql', '/wrangler.json',
+                     '/serve.py', '/executer-tests.py', '/captures.py', '/icones.py', '/.github/workflows/tests.yml']) {
+      vrai(re.test(p), `${p} n’a rien à faire sur le site`);
+    }
+    vrai(/if \(FICHIERS_DE_DEVELOPPEMENT\.test\(path\)\) return new Response\('Not found', \{ status: 404/.test(worker()),
+      'et le worker les refuse avant de servir les fichiers');
+  });
+
+  test('l’application, ses pages publiques et ses assets restent servis', () => {
+    const re = motif();
+    for (const p of ['/', '/index.html', '/assets/app.js', '/assets/store.js', '/assets/styles.css', '/assets/manrope-latin.woff2',
+                     '/sw.js', '/manifest.webmanifest', '/robots.txt', '/privacy.html', '/privacy', '/confidentialite.html',
+                     '/confidentialite', '/icon-192.png', '/apple-touch-icon.png', '/docs/desktop-overview.png', '/LICENSE',
+                     '/api/health', '/api/state']) {
+      vrai(!re.test(p), `${p} doit rester accessible`);
+    }
+  });
+
+  test('une erreur serveur ne raconte pas son intérieur', () => {
+    const w = worker();
+    vrai(!/return json\(\{ error: e\.message \}, 502\);/.test(w), 'le message interne ne part plus au client');
+    vrai(/console\.error\('api', e\);\s*return json\(\{ error: 'service indisponible' \}, 502\);/.test(w),
+      'il se journalise côté serveur et le client reçoit un mot');
+  });
+});
