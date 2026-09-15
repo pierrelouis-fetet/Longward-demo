@@ -891,9 +891,9 @@ function viewOverview() {
   })()}
 
   ${pasAFaire('comptes') ? `
-  <p class="apercus-legende">${trad('Le reste de cette page se remplit tout seul, à mesure que tu renseignes tes comptes.')}</p>
+  <p class="apercus-legende">${trad('Ton tableau de bord s’enrichit à mesure que tu ajoutes tes données.')}</p>
   <div class="apercus-verrous">
-    ${apercuVerrou(trad('Patrimoine net'), trad('Ajoute au moins un compte pour commencer.'), 'barre')}
+    ${apercuVerrou(trad('Patrimoine net'), trad('Ajoute au moins un compte pour commencer.'), 'barre', true)}
     ${apercuVerrou(trad('Répartition de ton patrimoine'), trad('Disponible après tes premiers actifs.'), 'anneau')}
     ${apercuVerrou(trad('Capacité d’épargne'), trad('Ajoute tes revenus et tes dépenses.'), 'jauge')}
     ${apercuVerrou(trad('Projection'), trad('Disponible quand ta situation est suffisamment renseignée.'), 'courbe')}
@@ -4679,15 +4679,23 @@ function carteBienvenue({ faits, total, premier, acquis }) {
   </section>`;
 }
 
+/* UN APERCU VERROUILLE : ce que la page montrera, sans rien inventer. Un titre,
+   une phrase qui dit quelle donnee le debloque, et une silhouette — des traits,
+   pas des chiffres. Aucun montant, aucun pourcentage, aucune courbe pretendument
+   calculee : une donnee inconnue reste inconnue. La carte disparait avec
+   l'accueil vierge, des le premier compte, remplacee par les vraies cartes et
+   leurs propres etats vides. Le premier apercu, le patrimoine net, est marque
+   `principal` : c'est la premiere valeur qui apparaitra, et la feuille de style
+   le dit d'un filet et d'un fond a peine releves, sans changer sa taille. */
 const SILHOUETTES = {
   barre:  '<rect x="0" y="4" width="64" height="10" rx="3"/><rect x="0" y="24" width="120" height="7" rx="3" opacity=".55"/>',
   anneau: '<circle cx="18" cy="18" r="13" fill="none" stroke-width="5" stroke-dasharray="26 56" opacity=".9"/><rect x="44" y="9" width="60" height="6" rx="3" opacity=".55"/><rect x="44" y="22" width="40" height="6" rx="3" opacity=".35"/>',
   jauge:  '<rect x="0" y="6" width="120" height="7" rx="3" opacity=".35"/><rect x="0" y="6" width="58" height="7" rx="3"/><rect x="0" y="23" width="120" height="7" rx="3" opacity=".35"/><rect x="0" y="23" width="88" height="7" rx="3" opacity=".7"/>',
   courbe: '<path d="M0 31 C 24 30, 48 25, 72 17 S 104 8, 120 5" fill="none" stroke-width="2" stroke-dasharray="3 4"/>',
 };
-function apercuVerrou(titre, sous, forme) {
+function apercuVerrou(titre, sous, forme, principal) {
   return `
-    <div class="card apercu-verrou">
+    <div class="card apercu-verrou${principal ? ' principal' : ''}">
       <svg class="silhouette" viewBox="0 0 120 36" aria-hidden="true" focusable="false">${SILHOUETTES[forme] || ''}</svg>
       <b>${esc(titre)}</b>
       <span class="sub">${esc(sous)}</span>

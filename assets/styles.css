@@ -557,9 +557,11 @@ body {
 .bienvenue .surtitre { display: block; margin-bottom: 8px; }
 .bienvenue-accroche { margin: 0; font-size: var(--font-xl); font-weight: 700; letter-spacing: -.02em; line-height: 1.2; color: var(--text-primary); }
 .bienvenue-texte { margin: 8px 0 0; font-size: var(--font-md); color: var(--text-secondary); line-height: 1.5; }
-.bienvenue-pas { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px;
+.bienvenue-pas { list-style: none; margin: 16px 0 0; padding: 0; display: grid;
+                 grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 10px 14px;
                  font-size: var(--font-sm); color: var(--text-secondary); }
-.bienvenue-pas li { display: inline-flex; align-items: center; gap: 7px; }
+.bienvenue-pas li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+@media (min-width: 768px) { .bienvenue-pas { display: flex; flex-wrap: wrap; gap: 6px 18px; } }
 .bienvenue-point { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--border-strong); flex: none; }
 .bienvenue-pas li.courant .bienvenue-point { border-color: var(--accent); }
 .bienvenue-pas li.fait .bienvenue-point { background: var(--good); border-color: var(--good); }
@@ -575,6 +577,12 @@ body {
 .apercu-verrou .silhouette [fill="none"] { fill: none; }
 .apercu-verrou b { font-size: var(--font-md); font-weight: 600; color: var(--text-primary); }
 .apercu-verrou .sub { display: block; line-height: 1.4; }
+.apercu-verrou.principal {
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--text-primary) 3%, var(--surface-1)), var(--surface-1)) padding-box,
+    linear-gradient(180deg, color-mix(in oklab, var(--text-primary) 18%, var(--border)), var(--border-strong) 60%) border-box;
+}
+.apercu-verrou.principal .silhouette { color: color-mix(in oklab, var(--text-primary) 28%, var(--border-strong)); }
 .demarrage-barre b { font-size: var(--font-base); font-weight: 600; }
 .demarrage-barre .demarrage-chevron { margin-left: auto; color: var(--muted); font-size: 18px; line-height: 1; }
 
