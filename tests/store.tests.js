@@ -39164,8 +39164,8 @@ suite('Une page qui échoue le dit', () => {
 
 suite('Une société ou plateforme contient des placements', () => {
   test('le mot du contenu suit le contenant, et la fiche s’en sert', () => {
-    /* « Mozaik shares 2024 » et « 2025 » sont des lignes d'investissement : sous
-       le nom de la societe, « 2 comptes » se lisait comme deux comptes bancaires. */
+    /* « Parts 2024 » et « Parts 2025 » sont des lignes d'investissement : sous le
+       nom de la societe, « 2 comptes » se lisait comme deux comptes bancaires. */
     Fixture.poser();
     Store.state.etabs.push({ id: 'e_soc', nom: 'Essai SAS', notes: '', dettes: [] });
     Store.state.comptes.push({ id: 'c_soc1', etabId: 'e_soc', type: 'pe', cash: [], lignes: [] },
