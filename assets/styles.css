@@ -3400,21 +3400,35 @@ td .empty, th .empty { background: none; border: none; }
   align-items: center;
   position: sticky; top: 0; z-index: 6;
   padding: 6px 0 8px;
-  /* Aucun fond, et aucun flou : seules les pastilles portent une surface.
+  /* Le fond de la page, opaque, et aucun flou.
 
-     Trois etats se sont succede. Un aplat `var(--page)`, #08090b entre des cartes a
-     #101114 : une bande sombre que rien ne demandait, « il y a toujours un truc
-     noir autour des boutons ». Puis du verre a 72 % : un aplat plus discret, mais
-     toujours un aplat, et un flou dessine une bande aussi surement qu'une couleur.
-     Puis rien, ce qui etait la demande — « le fond des boutons onglet, pas les
-     boutons eux memes ».
+     Quatre etats se sont succede. Un aplat `var(--page)`, #08090b entre des cartes
+     a #101114 : « il y a toujours un truc noir autour des boutons ». Puis du verre
+     a 72 % : plus discret, mais toujours un aplat, et un flou dessine une bande
+     aussi surement qu'une couleur. Puis rien, ce qui etait la demande — « le fond
+     des boutons onglet, pas les boutons eux memes ». Et c'est la que les lignes des
+     cartes ont commence a traverser la bande, entre les pastilles et au-dessus
+     d'elles, sur toute une remontee : la barre du haut revient au premier geste
+     vers le haut et les sous-onglets avec elle, donc la fenetre ou une carte passe
+     dessous n'est pas de quatorze pixels, c'est toute la page. Revue du 14
+     septembre 2026, premier point de finition.
 
-     Ce que ce fond servait : masquer le contenu qui defile sous une bande
-     collante. Il n'en reste que les quatorze pixels de remplissage, six en haut et
-     huit en bas, ou une carte peut se montrer en passant. Les pastilles, elles,
-     couvrent toute la largeur sur telephone et gardent leur propre surface : ce
-     qu'on lit ne depend jamais de ce fond. */
-  background: transparent;
+     Retour a la couleur de la page, donc, et c'est un choix a assumer : en haut de
+     page elle est invisible, en cours de defilement elle masque ce qui passe, et
+     c'est ce que fait toute barre d'application. Sans bordure ni flou, pour ne pas
+     redessiner la bande qu'on avait fait disparaitre. La barre du haut fait le
+     meme choix, au meme moment, pour la meme raison.
+
+     Et un fondu sur les dix derniers pixels, parce que la couleur de la page n'a
+     pas de bord. Une carte qui passe dessous etait tranchee net, a quelques
+     pixels sous les pastilles, sans rien qui dise pourquoi : « ca fait bizarre
+     ici », capture a l'appui. Un filet a ete essaye : au repos, un trait qui
+     flotte entre les pastilles et la premiere carte, separe des deux par du vide
+     — « c'est quoi ca ». Sans script, la feuille ne sait pas si une carte passe
+     dessous ; le fondu, lui, ne se voit que dans ce cas : page sur page au repos,
+     et en defilement la carte s'estompe sous la navigation au lieu d'etre coupee.
+     Ni flou, ni ombre, ni trait. */
+  background: linear-gradient(to bottom, var(--page) calc(100% - 10px), transparent);
   min-height: var(--h-sous-onglets); box-sizing: border-box;
 }
 /* La hauteur de ligne est POSEE, et ce n'est pas un detail de style.
@@ -3656,23 +3670,25 @@ td .empty, th .empty { background: none; border: none; }
        C'est le cas qu'on ne voit jamais sur un grand écran, où la barre fait
        toute la hauteur et n'a rien à découper. */
     overflow: visible;
-    /* Plus de bandeau : le logo, le titre et les deux boutons se posent sur la
-       page, et rien ne les encadre.
+    /* Le fond est celui de la page, et rien d'autre.
 
-       Le fond etait `var(--sidebar)`, soit #050506 contre #08090b pour la page :
-       trois valeurs de rouge d'ecart, assez pour dessiner une bande en haut de
-       l'ecran sans qu'aucune bordure ne le demande. « Il y a du noir autour des
-       deux boutons, ça fait bizarre, c'est un bandeau noir. » Et le bas de l'ecran
-       porte du verre pendant que le haut portait un aplat : deux materiaux pour
-       deux bandes du meme ecran.
+       Trois etats se sont succede. `var(--sidebar)`, #050506 contre #08090b pour la
+       page : trois valeurs de rouge d'ecart, assez pour dessiner une bande en haut
+       de l'ecran sans qu'aucune bordure ne le demande — « il y a du noir autour des
+       deux boutons, c'est un bandeau noir ». Puis rien : la barre se retire au
+       defilement, donc le contenu ne la touchait, croyait-on, que pendant les 64 px
+       du seuil, et le titre est redit par l'onglet allume en bas. C'etait
+       sous-estime. Au premier geste vers le haut, la barre revient en pleine page
+       et y reste tant qu'on remonte : les lignes d'une carte traversent alors le
+       titre et les deux icones, sur toute la remontee. Revue du 14 septembre 2026,
+       premier point de finition.
 
-       Ce que ce fond servait — detacher la barre du contenu qui passe dessous — ne
-       vaut plus depuis qu'elle se retire au defilement. Reste une fenetre de 64 px,
-       le seuil avant retrait, pendant laquelle du contenu peut effleurer le titre.
-       Les deux boutons portent leur propre disque, ils ne dependent pas de ce
-       fond ; le titre est ce qui se paie, et il est redit par l'onglet allume en
-       bas de l'ecran. */
-    background: transparent;
+       La couleur de la page, opaque, tient les deux : en haut de page elle se
+       confond avec ce qui l'entoure, aucune bande ; en cours de remontee, les
+       cartes passent dessous et non a travers. Pas de bordure, pas de verre : le
+       bas de l'ecran en porte, mais le haut n'a pas a se detacher, seulement a
+       masquer. */
+    background: var(--page);
     border-right: none; border-bottom: none;
     /* Le mouvement du retour ne se declare pas ici : la regle de bascule de theme
        vit plus loin dans la feuille et ecraserait cette transition, `transform`
@@ -3960,6 +3976,7 @@ td .empty, th .empty { background: none; border: none; }
   .card > table td, .grid > div > table td, .data-view > table td {
     white-space: normal; overflow-wrap: anywhere;
   }
+  .card > table td.pct { white-space: nowrap; overflow-wrap: normal; }
 
   /* Tableau etroit tenu dans sa carte, sans conteneur defilant. Un champ de
      saisie porte une largeur intrinseque — vingt caracteres par defaut — que

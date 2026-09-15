@@ -14,6 +14,15 @@ const CloudSync = (() => {
     try { return localStorage.getItem(COMPTES_KEY) === '1'; } catch (e) { return false; }
   };
   let comptes = litComptes();
+  /* LE CHEMIN LOCAL D'ABORD N'EST OUVERT QU'A QUI S'EST DEJA PRESENTE COMME SANS
+     COMPTES. `'0'` n'est ecrit que par une sonde qui a repondu ; un drapeau
+     absent — premiere visite, ou site qui ne repond jamais — laisse `app.js` sur
+     le chemin prudent, l'identite avant toute lecture. Une demonstration
+     publique revient donc ici a chaque visite apres la premiere ; une instance a
+     comptes n'y passe jamais, son drapeau vaut '1'. */
+  const sansComptesConnu = () => {
+    try { return localStorage.getItem(COMPTES_KEY) === '0'; } catch (e) { return false; }
+  };
   let probed = false;
 
   let available = false;        // /api/state répond
@@ -252,6 +261,7 @@ const CloudSync = (() => {
     getUser: () => user,
     getUserId: () => userId,
     comptesActifs: () => comptes,
+    sansComptesConnu,
     status: () => ({ ...status }),
   };
 })();

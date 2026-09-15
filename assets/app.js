@@ -798,26 +798,7 @@ function viewOverview() {
   return `
   ${guideDevant ? guide : ''}
 
-  ${moisEnAttente.missing && !guide ? `
-  <div class="rappel card-cliquable">
-    <button type="button" class="card-couvre" data-action="ajouter-releve"
-            aria-label="${trad('Enregistrer le relevé de')} ${esc(moisEnAttente.label)}"></button>
-    <span class="rappel-pastille"></span>
-    <span class="rappel-texte"><b>${trad('Enregistrer le relevé de')} ${esc(moisEnAttente.label)} ›</b><br>
-      <span class="muted">${trad('Ajoute ce mois à ta courbe de patrimoine · {v} aujourd’hui').replace('{v}', fmtEUR0(nowTotals().total))}</span></span>
-    ${sortiesRappel('releve', moisEnAttente.label)}
-  </div>` : ''}
-
-  ${depEnAttente.missing && !guide ? `
-  <div class="rappel card-cliquable">
-    <button type="button" class="card-couvre" data-action="saisir-mois-en-attente"
-            aria-label="${trad('Saisir les dépenses de')} ${esc(depEnAttente.label)}"></button>
-    <span class="rappel-pastille"></span>
-    <span class="rappel-texte"><b>${trad('Saisir les dépenses de')} ${esc(depEnAttente.label)} ›</b><br>
-      <span class="muted">${trad('Le mois est clos, ce qu’il a coûté reste à enregistrer')}</span></span>
-    ${sortiesRappel('depenses', depEnAttente.label)}
-  </div>` : ''}
-
+  ${!aUnComptePropre() ? '' : `
   <div class="hero">
     <div>
       ${!aUnComptePropre() ? '' : `
@@ -842,9 +823,29 @@ function viewOverview() {
         ${parts.map(x => `<i style="width:${x.pct.toFixed(2)}%;background:${x.couleur}"></i>`).join('')}
       </div>`;
     })()}
-  </div>
+  </div>`}
 
   ${guideDevant ? '' : guide}
+
+  ${moisEnAttente.missing && !guide ? `
+  <div class="rappel card-cliquable">
+    <button type="button" class="card-couvre" data-action="ajouter-releve"
+            aria-label="${trad('Enregistrer le relevé de')} ${esc(moisEnAttente.label)}"></button>
+    <span class="rappel-pastille"></span>
+    <span class="rappel-texte"><b>${trad('Enregistrer le relevé de')} ${esc(moisEnAttente.label)} ›</b><br>
+      <span class="muted">${trad('Ajoute ce mois à ta courbe de patrimoine · {v} aujourd’hui').replace('{v}', fmtEUR0(nowTotals().total))}</span></span>
+    ${sortiesRappel('releve', moisEnAttente.label)}
+  </div>` : ''}
+
+  ${depEnAttente.missing && !guide ? `
+  <div class="rappel card-cliquable">
+    <button type="button" class="card-couvre" data-action="saisir-mois-en-attente"
+            aria-label="${trad('Saisir les dépenses de')} ${esc(depEnAttente.label)}"></button>
+    <span class="rappel-pastille"></span>
+    <span class="rappel-texte"><b>${trad('Saisir les dépenses de')} ${esc(depEnAttente.label)} ›</b><br>
+      <span class="muted">${trad('Le mois est clos, ce qu’il a coûté reste à enregistrer')}</span></span>
+    ${sortiesRappel('depenses', depEnAttente.label)}
+  </div>` : ''}
 
   ${(() => {
     const classes = repartitionClasses({ net: evoNet });
@@ -3239,7 +3240,7 @@ function pochesPatrimoine({ financier = false, net = false } = {}) {
   });
 }
 
-const nomPortefeuille = () => trad('Portefeuille');
+const nomPortefeuille = () => trad('Comptes de marché');
 
 const teinterParRang = items =>
   items.map((x, i) => ({ ...x, couleur: x.couleur || x.color || `var(--series-${(i % 8) + 1})` }));
@@ -3284,7 +3285,7 @@ function viewAllocation() {
       <tbody>${items.map(i => `<tr><td class="name">${pastilleTeinte(i.couleur || i.color)}${esc(i.label)}
         ${i.note ? `<span class="sub">${escMontant(i.note)}</span>` : ''}</td>
         <td>${fmtEUR(i.value)}</td>
-        <td class="muted">${fmtPct(i.pct)}</td></tr>`).join('')}</tbody>
+        <td class="muted pct">${fmtPct(i.pct)}</td></tr>`).join('')}</tbody>
       <tfoot><tr><td>${esc(totalLabel)}</td><td>${fmtEUR(total)}</td><td></td></tr></tfoot>
     </table>`;
 
@@ -3383,8 +3384,8 @@ function viewAllocation() {
     const parts = teinterParRang(pf.parts);
     return `
   <div class="card">
-    <div class="card-head"><h2>${trad('Ton portefeuille')}</h2></div>
-    <p class="hint" style="margin:0 0 12px">${trad('La part de chaque ligne. Le portefeuille compte tes titres, le cash à investir et les placements sans cours de tes comptes de marché.')}${
+    <div class="card-head"><h2>${trad('Tes comptes de marché')}</h2></div>
+    <p class="hint" style="margin:0 0 12px">${trad('La part de chaque ligne. Tes comptes de marché portent tes titres cotés, leurs placements sans cours et le cash qui y attend d’être investi.')}${
       aide(trad('Un fonds compte pour UNE ligne : un portefeuille d’un seul ETF monde donne une part de 100 %, ce qui ne veut pas dire qu’il est concentré. Cette carte répartit des montants, elle ne lit pas ce qu’il y a dans un fonds.'))}</p>
     <div class="chart" id="aPortefeuille"></div>
     ${!pf.regroupees ? '' : `<p class="hint" style="margin:8px 0 0">${
@@ -3808,7 +3809,7 @@ function viewHistory() {
       })() : ''}
       <div class="row">
         ${annees.length > 1 ? yearControl('history-year', annees, annee) : ''}
-        ${vide ? '' : `<button class="btn sm" data-action="ajouter-releve">${trad('+ Ajouter un relevé')}</button>`}
+        ${vide ? '' : `<button class="btn sm" data-action="ajouter-releve">${trad('Enregistrer un relevé')}</button>`}
       </div>
     </div>
     ${pasAFaire('comptes') ? `
@@ -3821,19 +3822,19 @@ function viewHistory() {
       ${trad('Un relevé est la photo de tes comptes à une date : la valeur de chaque poche, '
       + 'additionnée en un patrimoine total. Refais-le chaque mois, et la courbe de ton '
       + 'patrimoine se dessine.')}</p>
-    <button class="btn sm" data-action="ajouter-releve">${trad('+ Ajouter ton premier relevé')}</button>`
+    <button class="btn sm" data-action="ajouter-releve">${trad('Enregistrer ton premier relevé')}</button>`
     : !lignes.length ? `
     <p class="empty" style="margin:0 0 10px">${trad('Aucun relevé en {a}.')
       .replace('{a}', esc(String(annee)))}
       ${trad('Le journal en compte {n} au total, sur les autres années.')
         .replace('{n}', tous.length)}</p>
-    <button class="btn sm" data-action="ajouter-releve">${trad('+ Ajouter un relevé')}</button>`
+    <button class="btn sm" data-action="ajouter-releve">${trad('Enregistrer un relevé')}</button>`
     : `
     ${annee === anneeCourante && attente.vide && !attente.missing ? `
     <p class="hint" style="margin:0 0 10px">${trad('Aucun relevé pour {m}.')
       .replace('{m}', esc(attente.label))}
       <button type="button" class="lien-nu" data-action="ajouter-releve"
-              >${trad('+ Ajouter le relevé')}</button></p>` : ''}
+              >${trad('Enregistrer le relevé')}</button></p>` : ''}
     <div class="liste-principale">
       ${lignes.map(({ r, i, net, dlt, mois }) => ligneListe({
         action: 'voir-releve', index: i,
@@ -4598,12 +4599,20 @@ function carteDemarrage() {
     <span class="demarrage-chevron" aria-hidden="true">›</span>
   </div>`;
   }
+  if (fini) {
+    return `
+  <div class="card demarrage demarrage-barre demarrage-fini">
+    <b>✓ ${trad('Tout est en place')}</b>
+    <span class="muted">·</span>
+    <button type="button" class="lien-nu" data-action="fermer-demarrage">${trad('Refermer')}</button>
+  </div>`;
+  }
   return `
   <div class="card demarrage">
     <div class="card-head">
       <h2>${trad('Commence ici')}</h2>
       <span class="muted">${trad('{n} sur {t}').replace('{n}', faits).replace('{t}', PREMIERS_PAS.length)}${
-        vierge || fini ? '' : ` · <button type="button" class="lien-nu" data-action="basculer-demarrage">${trad('Replier')}</button>`}</span>
+        vierge ? '' : ` · <button type="button" class="lien-nu" data-action="basculer-demarrage">${trad('Replier')}</button>`}</span>
     </div>
     <ol class="pas-liste">
       ${PREMIERS_PAS.map((p, i) => {
@@ -4635,20 +4644,17 @@ function carteDemarrage() {
       </li>`;
       }).join('')}
     </ol>
-    ${!fini ? '' : `
-    <p class="small muted" style="margin:12px 0 14px">${
-      trad('Tout est en place. Ce guide a fait son travail, tu peux le refermer.')}</p>
-    <div class="fiche-actes centre">
-      <button type="button" class="btn sm" data-action="fermer-demarrage">${trad('Refermer le guide')}</button>
-    </div>`}
   </div>`;
 }
 
-function invitePremierPas(cle) {
+/* `secondaire` : le meme bouton, en fantome. Une page vierge ne porte qu'une
+   action pleine ; quand deux invites se suivent — les depenses puis les
+   revenus, sur Budget — la seconde le dit par sa forme. */
+function invitePremierPas(cle, { secondaire = false } = {}) {
   const p = PAS_PAR_CLE[cle];
   if (!p || !pasAFaire(cle)) return '';
   return `
-      <button type="button" class="btn sm" data-action="${esc(p.action)}"
+      <button type="button" class="btn sm${secondaire ? ' ghost' : ''}" data-action="${esc(p.action)}"
               style="margin:4px 0 0">${trad(p.bouton)}</button>
       <p class="small muted" style="margin:12px 0 0">${trad(p.quoi)}</p>`;
 }
@@ -6073,7 +6079,7 @@ function viewBudget(section = 'depenses') {
         ];
         /* Le motif vient de `PREMIERS_PAS` : il est ne ici, et les deux autres
            invites le reprennent depuis la meme table plutot que de le recopier. */
-        if (!f.income) return invitePremierPas('revenus');
+        if (!f.income) return invitePremierPas('revenus', { secondaire: true });
         const sources = Store.state.budget.income.length;
         return `
         <button type="button" class="flux-total" data-action="toggle-revenus"
@@ -6212,6 +6218,7 @@ function viewBudget(section = 'depenses') {
     </details>
   </div>`}` : ''}
 
+  ${!aDesDepensesSaisies() ? '' : `
   <div class="card" data-anchor="detail-mensuel">
     <div class="card-head">
       <h2>${trad('Détail mensuel')}</h2>
@@ -6358,7 +6365,7 @@ function viewBudget(section = 'depenses') {
         <b>${trad('Retirer')}</b> ${trad("garde l'historique,")} <b>${trad('Supprimer')}</b> ${trad("l'efface.")}${aide(trad("Renommer déplace les montants déjà saisis. Retirer sort la catégorie de la saisie du mois sans toucher aux montants passés : c’est le geste pour un poste dans lequel tu ne dépenses plus. Supprimer retire la colonne et tout ce qu’elle contient. Ctrl+Z annule dans les deux cas."))}
       </p>
     </details>`}
-  </div>`}
+  </div>`}`}
 
   ${!cadre ? '' : `
   <div class="card">
@@ -9841,7 +9848,7 @@ const ACTIONS = {
         `${trad('Avant ton premier relevé')}\n${
           trad('Commence par ajouter les comptes et actifs qui composent ton patrimoine, tes différentes poches. Chaque mois, Longward additionnera la valeur de toutes ces poches pour enregistrer ton patrimoine total et suivre son évolution dans le temps.')}\n${
           trad('Tu pourras toujours ajouter d’autres poches plus tard.')}`,
-        { danger: false, ok: trad('Vérifier mes comptes et actifs'), refus: trad('Créer mon relevé') });
+        { danger: false, ok: trad('Vérifier mes comptes et actifs'), refus: trad('Enregistrer mon relevé') });
       if (verifier) { location.hash = '#/accounts'; return; }
     }
     await askMonthlySnapshot(indexReleve(currentMonthKey()));
@@ -14245,18 +14252,21 @@ function ecranIdentiteManquante() {
     document.documentElement.dataset.theme =
       localStorage.getItem('wealth-dashboard:theme') || 'dark';
   } catch (e) { document.documentElement.dataset.theme = 'dark'; }
-  await CloudSync.probe();
-  const portee = CloudSync.getUserId();
-  if (portee) {
-    setStorageScope(portee);
-    relireMasque();
-  } else if (CloudSync.comptesActifs()) {
-    /* Sans ce refus, la portee reste vide et `Store.load()` lit la clef sans
-       suffixe, celle d'avant les comptes, que tout le monde partage sur ce
-       navigateur. Une coupure reseau au demarrage suffisait a remettre deux
-       personnes sur le meme patrimoine. */
-    ecranIdentiteManquante();
-    return;
+  const localDAbord = CloudSync.sansComptesConnu();
+  if (!localDAbord) {
+    await CloudSync.probe();
+    const portee = CloudSync.getUserId();
+    if (portee) {
+      setStorageScope(portee);
+      relireMasque();
+    } else if (CloudSync.comptesActifs()) {
+      /* Sans ce refus, la portee reste vide et `Store.load()` lit la clef sans
+         suffixe, celle d'avant les comptes, que tout le monde partage sur ce
+         navigateur. Une coupure reseau au demarrage suffisait a remettre deux
+         personnes sur le meme patrimoine. */
+      ecranIdentiteManquante();
+      return;
+    }
   }
   Store.load();
   Store.autoBackup();
@@ -14317,6 +14327,17 @@ function ecranIdentiteManquante() {
     try { localStorage.setItem(cleStockage(), JSON.stringify(Store.state)); } catch (e) {}
     render();
     toast(trad(mot));
+  }
+
+  if (localDAbord) {
+    await CloudSync.probe();
+    const portee = CloudSync.getUserId();
+    if (portee) {
+      setStorageScope(portee);
+      relireMasque();
+      Store.load();
+      render();
+    }
   }
 
   /* `onChange` part du `finally` de chaque envoi, abouti ou non : c'est le seul

@@ -3868,13 +3868,17 @@ suite('Une seule base par mode, et la somme des parts la redonne', () => {
       'et aucun pied ne retranche la dette une seconde fois');
   });
 
-  test('« Placé » est devenu « Investi », partout à la fois', () => {
+  test('« Investi » est devenu « Placements », partout à la fois', () => {
+    /* Trois montants voisins sous trois noms voisins : « Tes titres », « Investi »,
+       « Ton portefeuille ». Celui-ci est tout ce qui n'est pas des liquidites, et
+       « investi » disait aussi le prix de revient d'une ligne. */
     const st = lireSource('assets/store.js');
-    vrai(/place:\s+\{ nom: trad\('Investi'\),\s+de: trad\('de ce qui est investi'\) \}/.test(st),
+    vrai(/place:\s+\{ nom: trad\('Placements'\),\s+de: trad\('de tes placements'\) \}/.test(st),
       'le mot se change à un seul endroit');
-    vrai(!/trad\('Placé'\)/.test(st), 'et l’ancien ne subsiste pas');
-    eq(I18N.en['Investi'], 'Invested', 'la traduction suit');
-    eq(I18N.en['de ce qui est investi'], 'of what is invested', 'et sa forme grammaticale');
+    vrai(!/trad\('Placé'\)/.test(st) && !/nom: trad\('Investi'\)/.test(st), 'et les anciens ne subsistent pas');
+    eq(I18N.en['Placements'], 'Investments', 'la traduction suit');
+    eq(I18N.en['de tes placements'], 'of your investments', 'et sa forme grammaticale');
+    vrai(!I18N.en['de ce qui est investi'], 'la clef morte est partie');
   });
 });
 
@@ -4062,7 +4066,7 @@ suite('Le premier relevé : une seule porte, et une question avant', () => {
     vrai(/if \(!attente\.missing \|\| !tous\.length\) return '';/.test(vue),
       'et le rappel du mois se tait tant qu’aucun relevé n’existe');
     /* Le bouton de l'etat vide, lui, reste : c'est celui qu'on garde. */
-    vrai(/\+ Ajouter ton premier relevé/.test(vue), 'l’état vide garde le sien');
+    vrai(/Enregistrer ton premier relevé/.test(vue), 'l’état vide garde le sien');
   });
 
   test('le bouton dit que c’est le premier', () => {
@@ -4631,7 +4635,7 @@ suite('L’anneau du portefeuille : un total qui égale ses parts', () => {
     vrai(/const nomPortefeuille = \(\) => trad\(/.test(app),
       'et ce nom vit à un seul endroit');
     vrai(/Un fonds compte pour UNE ligne/.test(app), 'et ce qu’elle ne sait pas lire');
-    for (const cle of ['Ton portefeuille', 'Portefeuille',
+    for (const cle of ['Tes comptes de marché', 'Comptes de marché',
                        'Autres', 'À investir']) {
       vrai(!!I18N.en[cle], '« ' + cle + ' » existe en anglais');
     }
@@ -5835,7 +5839,10 @@ suite('Carte Patrimoine : une synthèse, sans porte cachée', () => {
   const carte = () => {
     const app = lireSource('assets/app.js');
     const i = app.indexOf('<div class="hero">');
-    return app.slice(i, app.indexOf('<div class="card repart">', i));
+    /* Jusqu'au guide replie, pas jusqu'a la carte de repartition : les bandeaux
+       d'exploitation vivent desormais entre les deux, et ils portent, eux, une
+       couverture cliquable — c'est leur nature, pas celle du hero. */
+    return app.slice(i, app.indexOf("${guideDevant ? '' : guide}", i));
   };
 
   test('aucune couverture cliquable ne recouvre la carte', () => {
@@ -6619,11 +6626,11 @@ suite('Allocation : une carte de synthèse, sans porte', () => {
     vrai(/label: allocFinancier \? BASES\.place\.nom : trad\('Placements et biens'\)/.test(carte()),
       'le nom dépend du périmètre affiché');
     eq(I18N.en['Placements et biens'], 'Investments & assets', 'et se traduit');
-    eq(I18N.en['Investi'], 'Invested', 'comme son jumeau financier');
+    eq(I18N.en['Placements'], 'Investments', 'comme son jumeau financier');
     /* `BASES.place.nom` ne bouge pas : deux autres fiches le lisent, et il y
-       designe bien de l'investi. */
+       designe bien des placements. */
     const st = lireSource('assets/store.js');
-    vrai(/place:\s+\{ nom: trad\('Investi'\)/.test(st), 'la base garde son nom');
+    vrai(/place:\s+\{ nom: trad\('Placements'\)/.test(st), 'la base garde son nom');
   });
 
   test('aucune des quatre rangées n’ouvre quoi que ce soit', () => {
@@ -14207,25 +14214,35 @@ suite('Les animations s’éteignent, et se déclenchent au doigt', () => {
     vrai(!/will-change/.test(regleBarre),
       'pas de will-change sur la barre du haut : il crée un bloc conteneur pour ses '
       + 'descendants en position fixe, et le tiroir des réglages en est un');
-    /* Et plus de bandeau : le fond de la barre valait #050506 quand la page vaut
-       #08090b, ce qui dessinait une bande en haut de l'écran sans qu'aucune bordure
-       ne le demande. Les deux boutons portent leur propre disque. */
-    vrai(/background:\s*transparent/.test(regleBarre),
-      'la barre du haut ne porte pas de fond : deux noirs voisins dessinent une '
-      + 'bande, et le bas de l’écran est en verre');
+    /* Le fond est celui de la page : ni celui du rail (#050506 contre #08090b, une
+       bande en haut de l'écran), ni rien (les cartes traversaient le titre et les
+       icônes sur toute une remontée, puisque la barre revient au premier geste vers
+       le haut et y reste tant qu'on remonte). */
+    vrai(/background:\s*var\(--page\)/.test(regleBarre),
+      'la barre du haut porte la couleur de la page, opaque : ni le noir du rail, '
+      + 'qui dessine une bande, ni transparent, qui laisse les cartes traverser le titre');
+    vrai(!/background:\s*transparent/.test(regleBarre),
+      'transparente, elle a été essayée : les lignes des cartes traversaient le titre '
+      + 'et les deux icônes à chaque remontée');
     vrai(/border-bottom:\s*none/.test(regleBarre),
       'ni de filet sous elle, qui la redessinerait aussitôt');
 
-    /* Même défaut, même endroit de l'écran, autre bande : les sous-onglets. Leur
-       fond ne peut pas disparaître — la bande est collante, et sans lui les cartes
-       défileraient à travers les onglets — donc il passe en verre. Un aplat opaque
-       de la couleur de la page, pris entre des cartes plus claires, se lit comme un
-       bandeau noir. */
+    /* Même endroit de l'écran, même choix : les sous-onglets. Sans fond, la bande
+       est collante et les cartes défilaient à travers, entre les pastilles et
+       au-dessus d'elles ; avec un flou, elle dessinait une bande. La couleur de la
+       page, opaque, est invisible en haut de page et masque ce qui passe dessous
+       partout ailleurs. */
     const regleOnglets = css.match(/\.sous-onglets\s*\{([^}]*)\}/);
     vrai(regleOnglets, 'la règle des sous-onglets doit être trouvable');
-    vrai(/background:\s*transparent/.test(regleOnglets[1]),
-      'le conteneur des sous-onglets ne porte aucun fond : un aplat de la couleur de '
-      + 'la page, pris entre des cartes plus claires, dessine une bande');
+    vrai(/background:\s*linear-gradient\(to bottom, var\(--page\) calc\(100% - 10px\), transparent\)/.test(regleOnglets[1]),
+      'le conteneur des sous-onglets porte la couleur de la page, opaque sauf un fondu '
+      + 'de dix pixels en bas : sans lui, les cartes défilent à travers la navigation ; '
+      + 'sans le fondu, elles sont tranchées net sous les pastilles');
+    vrai(!/background:\s*transparent/.test(regleOnglets[1]),
+      'et pas transparent : c’est l’état qui laissait passer le contenu');
+    /* Pas de filet : essaye, il flottait au repos entre les pastilles et la
+       premiere carte. Le fondu ne se voit que quand une carte passe dessous. */
+    vrai(!/border-bottom/.test(regleOnglets[1]), 'aucun trait sous la bande : au repos il flottait dans le vide');
     vrai(!/backdrop-filter/.test(regleOnglets[1]),
       'ni de flou, qui dessine une bande aussi sûrement qu’une couleur — c’est '
       + 'l’étape intermédiaire qui n’a pas suffi. Seules les pastilles ont une surface');
@@ -20084,7 +20101,7 @@ suite('Une application vide dit quoi faire', () => {
 
   test('les invites viennent de la table, elles ne se réécrivent pas', () => {
     const src = lireSource('assets/app.js');
-    vrai(/function invitePremierPas\(cle\)/.test(src), 'une seule fonction les rend');
+    vrai(/function invitePremierPas\(cle, \{ secondaire = false \} = \{\}\)/.test(src), 'une seule fonction les rend');
     for (const cle of ['comptes', 'revenus', 'depenses']) {
       vrai(new RegExp(`invitePremierPas\\('${cle}'\\)`).test(src),
         `l’invite « ${cle} » est posée quelque part`);
@@ -25087,7 +25104,7 @@ suite('Le journal patrimonial ne montre que des relevés', () => {
       'l’invitation du mois en cours cède le pas au bandeau de rappel');
   });
 
-  test('« Ajouter un relevé » ouvre la saisie du mois en cours', () => {
+  test('« Enregistrer un relevé » ouvre la saisie du mois en cours', () => {
     /* L'action posait une ancre et faisait defiler la page jusqu'a la ligne du
        mois, ou un ⤒ attendait un second clic. Le journal n'a plus de ligne pour
        un mois vide, donc plus d'ancre a viser — et la jumelle des depenses ouvre
@@ -32122,7 +32139,7 @@ suite('La carte du portefeuille raconte une phrase', () => {
   test('les intitulés nouveaux ont leur clé anglaise, et l’ancienne part', () => {
     const en = lireSource('assets/i18n.js');
     vrai(en, 'assets/i18n.js doit être lisible pour ce contrôle');
-    for (const [fr, ang] of [['Tes titres', 'Your securities'], ['Ton portefeuille', 'Your portfolio'],
+    for (const [fr, ang] of [['Tes titres', 'Your securities'], ['Tes comptes de marché', 'Your market accounts'],
                              ['Voir les positions', 'View holdings'],
                              ['Valeur actuelle', 'Current value'],
                              ['Plus-value latente', 'Unrealised gain'],
@@ -38538,7 +38555,7 @@ suite('Le relevé mensuel se comprend en dix secondes', () => {
     vrai(/if \(!aUnRelevePatrimonial\(\)\) \{/.test(a), 'l’étape ne paraît qu’avant le premier relevé');
     vrai(/trad\('Avant ton premier relevé'\)/.test(a), 'et elle s’annonce comme telle');
     vrai(/ok: trad\('Vérifier mes comptes et actifs'\)/.test(a), 'le geste principal mène aux poches');
-    vrai(/refus: trad\('Créer mon relevé'\)/.test(a), 'le second ouvre le relevé');
+    vrai(/refus: trad\('Enregistrer mon relevé'\)/.test(a), 'le second ouvre le relevé');
     vrai(/if \(verifier\) \{ location\.hash = '#\/accounts'; return; \}/.test(a),
       'vérifier, c’est aller voir la liste');
     vrai(!/As-tu bien rentré/.test(a), 'la question fermée est partie : on explique, on ne quizze pas');
@@ -38596,7 +38613,7 @@ suite('Le relevé mensuel se comprend en dix secondes', () => {
   });
 
   test('chaque phrase neuve a son anglais, et les mortes sont parties', () => {
-    for (const cle of ['Avant ton premier relevé', 'Vérifier mes comptes et actifs', 'Créer mon relevé',
+    for (const cle of ['Avant ton premier relevé', 'Vérifier mes comptes et actifs', 'Enregistrer mon relevé',
                        'La photo de ton patrimoine pour {m}.', 'Total du relevé',
                        'Préremplir avec les montants actuels', 'Ton patrimoine est-il complet ?',
                        'Vérifier mes poches', 'Ton patrimoine de {m} est de {v}.', 'Voir mon historique',
@@ -38608,5 +38625,206 @@ suite('Le relevé mensuel se comprend en dix secondes', () => {
                          'As-tu bien rentré tous tes comptes ?']) {
       vrai(!I18N.en[morte], '« ' + morte + ' » n’a plus d’appelant');
     }
+  });
+});
+
+/* ------------------------------------------------------------------
+   Dernière passe avant les utilisateurs — 15 septembre 2026
+   ------------------------------------------------------------------ */
+suite('Premier écran : le patrimoine d’abord, et rien de vide', () => {
+
+  const vue = () => {
+    const app = lireSource('assets/app.js');
+    const d = app.indexOf('function viewOverview()');
+    return app.slice(d, app.indexOf('\nfunction ', d + 10));
+  };
+
+  test('le hero ne se rend pas sans compte : pas de coquille vide sous le guide', () => {
+    /* Sur un profil vierge, tout ce que la carte porte se taisait deja — sauf la
+       carte : un cadre de cinquante pixels, vide, entre le guide et l'explication.
+       Mesure a 375 px. La garde englobe la carte entiere, et c'est la meme que
+       celle de l'intitule et du montant : un seul fait decide. */
+    const v = vue();
+    vrai(/\$\{!aUnComptePropre\(\) \? '' : `\s*<div class="hero">/.test(v),
+      'la carte entière attend le premier compte, pas seulement son contenu');
+    /* Le commentaire HTML est optionnel : le depot public est servi sans
+       commentaires, et ce controle doit etre vert des deux cotes. */
+    vrai(/<\/div>`\}\s*(?:<!--[^>]*-->\s*)?\$\{guideDevant \? '' : guide\}/.test(v),
+      'et la garde se ferme juste avant le guide replié');
+  });
+
+  test('les bandeaux d’exploitation passent sous le patrimoine', () => {
+    /* « Enregistrer le releve de sept. 26 » etait la premiere ligne de l'ecran des
+       que le guide etait referme : un rappel d'exploitation au-dessus du chiffre
+       que l'application existe pour montrer. Les deux bandeaux se lisent sous le
+       hero et sous le guide replie, qui ne coexistent jamais avec eux. */
+    const v = vue();
+    const hero = v.indexOf('<div class="hero">');
+    const guideDerriere = v.indexOf("${guideDevant ? '' : guide}");
+    const releve = v.indexOf("${moisEnAttente.missing && !guide ?");
+    const depenses = v.indexOf("${depEnAttente.missing && !guide ?");
+    const repart = v.indexOf('<div class="card repart">');
+    vrai(hero > 0 && guideDerriere > hero, 'les repères existent, dans l’ordre connu');
+    vrai(releve > guideDerriere && depenses > releve,
+      'le relevé puis les dépenses, tous deux après le guide replié');
+    vrai(depenses < repart, 'et avant la répartition, qui détaille le chiffre');
+    vrai(v.indexOf('class="rappel card-cliquable"') > hero, 'aucun bandeau au-dessus du hero');
+  });
+
+  test('à quatre pas sur quatre, le guide tient en une ligne', () => {
+    /* Il redevenait une pleine carte au dernier pas — 335 px a 375 — pour dire
+       « c'est fait ». La barre repliee existait deja ; l'etat final l'emprunte,
+       avec le seul geste qui reste. Il ne se ferme pas tout seul : disparaitre a
+       l'instant ou l'on vient d'agir ressemble a une perte. */
+    const app = lireSource('assets/app.js');
+    const d = app.indexOf('function carteDemarrage()');
+    const carte = app.slice(d, app.indexOf('\nfunction ', d + 10));
+    const fini = carte.slice(carte.indexOf('if (fini) {'), carte.indexOf('return `\n  <div class="card demarrage">'));
+    vrai(fini.length > 50, 'la branche finie existe avant la pleine carte');
+    vrai(/class="card demarrage demarrage-barre demarrage-fini"/.test(fini), 'et c’est la barre d’une ligne');
+    vrai(/✓ \$\{trad\('Tout est en place'\)\}/.test(fini), 'une coche et trois mots');
+    vrai(/data-action="fermer-demarrage"/.test(fini), 'le seul geste qui reste : refermer');
+    vrai(!/Refermer le guide/.test(app) && !/Ce guide a fait son travail/.test(app),
+      'la pleine carte ne félicite plus : elle n’a plus d’état fini');
+    vrai(!!I18N.en['Tout est en place'] && !!I18N.en['Refermer'], 'les deux mots existent en anglais');
+    vrai(!I18N.en['Refermer le guide'], 'et l’ancien bouton n’a plus de clef');
+  });
+});
+
+suite('Démarrage : le local d’abord, là où il n’y a personne à confondre', () => {
+
+  test('la sonde ne précède la lecture que si le site peut tenir des comptes', () => {
+    /* 3,3 s mesurees avant le premier pixel sur la demonstration avec des donnees
+       locales et une passerelle qui pend, pour une sonde dont la reponse ne
+       changeait rien a la lecture. La page se rend d'abord, la sonde part apres.
+       Mais seulement sur un fait deja constate — le site a repondu « sans
+       comptes » — jamais sur une supposition : premiere visite, site muet et
+       instance a comptes gardent l'identite avant toute lecture. */
+    const app = lireSource('assets/app.js');
+    const d = app.indexOf('(async function init()');
+    const init = app.slice(d, app.indexOf('CloudSync.setOnChange', d));
+    vrai(/const localDAbord = CloudSync\.sansComptesConnu\(\);/.test(init), 'un seul fait décide');
+    const garde = init.indexOf('if (!localDAbord) {');
+    const sonde = init.indexOf('await CloudSync.probe();');
+    const lecture = init.indexOf('Store.load();');
+    const rendu = init.indexOf('\n  render();');
+    const differee = init.indexOf('if (localDAbord) {');
+    vrai(garde > 0 && sonde > garde && lecture > sonde, 'hors chemin local, la sonde précède toujours la lecture');
+    vrai(/if \(!localDAbord\) \{\s*await CloudSync\.probe\(\);/.test(init), 'et c’est la garde qui la tient');
+    vrai(rendu > lecture && differee > rendu, 'sur le chemin local, la page est rendue avant la sonde différée');
+    vrai(/if \(localDAbord\) \{\s*await CloudSync\.probe\(\);\s*const portee = CloudSync\.getUserId\(\);\s*if \(portee\) \{\s*setStorageScope\(portee\);\s*relireMasque\(\);\s*Store\.load\(\);\s*render\(\);/.test(init),
+      'une identité qui apparaîtrait quand même recadre la lecture et redessine');
+    vrai(/else if \(CloudSync\.comptesActifs\(\)\) \{[\s\S]*?ecranIdentiteManquante\(\);\s*return;/.test(init),
+      'le refus sans identité, sur un site à comptes, ne bouge pas');
+  });
+
+  test('« sans comptes connu » est un fait écrit par une sonde, jamais une absence', () => {
+    const cs = lireSource('assets/cloudsync.js');
+    vrai(/const sansComptesConnu = \(\) => \{\s*try \{ return localStorage\.getItem\(COMPTES_KEY\) === '0'; \}/.test(cs),
+      'le drapeau doit valoir exactement « 0 » : absent, il ne dit rien');
+    vrai(/sansComptesConnu,/.test(cs.slice(cs.lastIndexOf('return {'))), 'et il est exporté');
+    vrai(/if \(d && typeof d\.accounts === 'boolean'\) \{\s*comptes = d\.accounts;\s*try \{ localStorage\.setItem\(COMPTES_KEY, comptes \? '1' : '0'\)/.test(cs),
+      'seule une réponse du serveur l’écrit');
+  });
+});
+
+suite('Vocabulaire : un relevé, un verbe', () => {
+
+  test('le geste se dit « Enregistrer », en français comme en anglais', () => {
+    /* Quatre verbes pour un meme geste — ajouter, creer, enregistrer, prendre —
+       et un cinquieme mot en anglais, « snapshot », qui designait aussi la vue
+       d'ensemble et l'export. Un mot, un geste. */
+    const app = lireSource('assets/app.js');
+    for (const mort of ['+ Ajouter un relevé', '+ Ajouter le relevé', '+ Ajouter ton premier relevé', 'Créer mon relevé'])
+      vrai(!app.includes(`trad('${mort}')`) && !I18N.en[mort], '« ' + mort + ' » n’a plus d’appelant ni de clef');
+    for (const [fr, en] of [['Enregistrer un relevé', 'Record a statement'], ['Enregistrer le relevé', 'Record the statement'],
+                            ['Enregistrer ton premier relevé', 'Record your first statement'],
+                            ['Enregistrer mon relevé', 'Record my statement'],
+                            ['Enregistrer un relevé pour {m} ?', 'Record a statement for {m}?']])
+      eq(I18N.en[fr], en, '« ' + fr + ' » se dit avec le même verbe');
+    vrai(!Object.values(I18N.en).some(v => /snapshot/i.test(v)), 'aucune valeur anglaise ne dit snapshot');
+    vrai(!Object.keys(I18N.en).some(k => /snapshot/i.test(k)), 'ni aucune clef');
+    /* Le nom technique de la fenetre reste : c'est du code, il ne s'affiche pas. */
+    vrai(/function askMonthlySnapshot\(index\)/.test(app), 'la fenêtre garde son nom de code');
+  });
+});
+
+suite('Le pourcentage tient sur sa ligne', () => {
+
+  test('la colonne des parts ne se coupe pas au téléphone', () => {
+    /* « 32,09 » puis « % » a la ligne, a 390 px, dans le tableau sous l'anneau du
+       portefeuille : la regle du telephone autorise la coupure n'importe ou dans
+       une cellule, et la colonne des parts est la plus etroite. */
+    const app = lireSource('assets/app.js');
+    const css = lireSource('assets/styles.css');
+    vrai(/<td class="muted pct">\$\{fmtPct\(i\.pct\)\}<\/td>/.test(app), 'la cellule se nomme');
+    vrai(/\.card > table td\.pct \{ white-space: nowrap; overflow-wrap: normal; \}/.test(css),
+      'et la feuille la tient sur une ligne, plus fort que la règle de repli');
+    const repli = css.indexOf('white-space: normal; overflow-wrap: anywhere;');
+    vrai(repli > 0 && css.indexOf('td.pct { white-space: nowrap') > repli,
+      'déclarée après la règle qu’elle contredit, pour gagner à spécificité égale ou non');
+  });
+});
+
+suite('Trois montants voisins, trois noms qui disent leur périmètre', () => {
+
+  test('chaque total se décompose en parts nommées, et aucun calcul ne bouge', () => {
+    /* Mesure sur la demonstration : « Tes titres » 48 586, « Investi » 51 586,
+       « Ton portefeuille » 52 177. Les trois etaient justes et personne ne pouvait
+       dire pourquoi ils differaient. Les relations ci-dessous sont celles que les
+       noms doivent laisser deviner :
+         titres            = positions cotees
+         comptes de marche = titres + lignes sans cours des comptes de marche + cash a investir
+         placements        = comptes de marche - cash a investir + autres placements hors liquidites */
+    const titres = latentPnl().value;
+    const lignesSansCours = comptesOuverts()
+      .filter(c => typeCompte(c.type).groupe === 'bourse')
+      .flatMap(c => c.lignes || []).reduce((s, l) => s + num(l.valeur), 0);
+    const aInvestir = poches().investir;
+    const pf = repartitionPortefeuille();
+    if (pf) pres(pf.total, titres + lignesSansCours + aInvestir, 'les comptes de marché : titres, sans cours, à investir');
+    const autres = comptesOuverts()
+      .filter(c => !estHorsPerimetreFinancier(c) && !['cash', 'bourse'].includes(typeCompte(c.type).groupe))
+      .reduce((s, c) => s + valeurCompte(c), 0);
+    pres(nowTotals().invested - horsFinancierTotal(), titres + lignesSansCours + autres,
+      'les placements : tout ce qui n’est pas des liquidités, dans le périmètre financier');
+  });
+
+  test('les trois noms sont trois périmètres, et se lisent sans deviner', () => {
+    const app = lireSource('assets/app.js');
+    vrai(/<h2>\$\{trad\('Tes titres'\)\}<\/h2>/.test(app), 'les positions cotées gardent leur nom');
+    vrai(/<h2>\$\{trad\('Tes comptes de marché'\)\}<\/h2>/.test(app), 'l’anneau porte le périmètre qu’il additionne');
+    vrai(!/trad\('Ton portefeuille'\)/.test(app), 'et « Ton portefeuille », qui valait un autre montant que « Portefeuille », est parti');
+    vrai(/const nomPortefeuille = \(\) => trad\('Comptes de marché'\);/.test(app), 'le centre de l’anneau et le pied du tableau disent la même chose');
+    vrai(/Tes comptes de marché portent tes titres cotés, leurs placements sans cours et le cash qui y attend d’être investi\./.test(app),
+      'et la phrase dessous décompose le total');
+    eq(BASES.place.nom, trad('Placements'), 'la ligne d’Allocation ne dit plus « Investi »');
+    for (const cle of ['Tes comptes de marché', 'Comptes de marché', 'Placements', 'de tes placements'])
+      vrai(!!I18N.en[cle], '« ' + cle + ' » existe en anglais');
+    vrai(!I18N.en['Ton portefeuille'], 'l’ancienne clef est partie');
+  });
+});
+
+suite('Budget vierge : une explication, une action, pas de tableau vide', () => {
+
+  test('le détail mensuel attend la première dépense', () => {
+    /* 761 px de structure a 375 px — douze mois vides, neuf categories, trois
+       commandes — sous une page qui n'avait encore rien a corriger. */
+    const src = lireSource('assets/app.js');
+    const i = src.indexOf('data-anchor="detail-mensuel"');
+    const avant = src.slice(i - 400, i);
+    vrai(/\$\{!aDesDepensesSaisies\(\) \? '' : `\s*<div class="card" data-anchor="detail-mensuel">/.test(src.slice(i - 200, i + 60)),
+      'la carte entière est gardée par la première dépense saisie');
+    vrai(/<\/details>`\}\s*<\/div>`\}`\}/.test(src), 'et la garde se referme avec la carte');
+    vrai(avant.length > 0, 'tranche trouvée');
+  });
+
+  test('une seule action pleine : les revenus se proposent en second', () => {
+    const src = lireSource('assets/app.js');
+    vrai(/function invitePremierPas\(cle, \{ secondaire = false \} = \{\}\)/.test(src), 'l’invite sait se faire discrète');
+    vrai(/class="btn sm\$\{secondaire \? ' ghost' : ''\}"/.test(src), 'par la forme fantôme, celle des gestes secondaires');
+    vrai(/if \(!f\.income\) return invitePremierPas\('revenus', \{ secondaire: true \}\);/.test(src),
+      'sur Budget, « Entrer ton salaire net » passe en second derrière « Saisir les dépenses du mois »');
+    vrai(/invitePremierPas\('revenus'\)\}/.test(src), 'ailleurs, l’invite garde sa forme pleine');
   });
 });

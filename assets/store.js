@@ -120,7 +120,7 @@ const BASES = {
                       de: trad('de tes avoirs financiers') },
   netFinancier:     { nom: trad('Patrimoine financier net'),
                       de: trad('de ton patrimoine financier net') },
-  place:       { nom: trad('Investi'),            de: trad('de ce qui est investi') },  // nowTotals().invested
+  place:       { nom: trad('Placements'),         de: trad('de tes placements') },  // nowTotals().invested
   placeBourse: { nom: trad('Placé en bourse'),    de: trad('de ce qui est placé en bourse') },
   baseCibles:  { nom: trad('Base de tes cibles'), de: trad('de la base de tes cibles') },
   liquidites:  { nom: trad('Liquidités'),         de: trad('de tes liquidités') },      // les quatre poches
