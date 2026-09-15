@@ -39161,3 +39161,28 @@ suite('Une page qui échoue le dit', () => {
       'et la frise des sauvegardes tolère une entrée sans données');
   });
 });
+
+suite('Une société ou plateforme contient des placements', () => {
+  test('le mot du contenu suit le contenant, et la fiche s’en sert', () => {
+    /* « Parts 2024 » et « Parts 2025 » sont des lignes d'investissement : sous
+       le nom de la societe, « 2 comptes » se lisait comme deux comptes bancaires. */
+    Fixture.poser();
+    Store.state.etabs.push({ id: 'e_soc', nom: 'Essai SAS', notes: '', dettes: [] });
+    Store.state.comptes.push({ id: 'c_soc1', etabId: 'e_soc', type: 'pe', cash: [], lignes: [] },
+                             { id: 'c_soc2', etabId: 'e_soc', type: 'pe', cash: [], lignes: [] });
+    refreshAccounts();
+    eq(contenantDeLEtab('e_soc').titre, 'Société ou plateforme', 'le contenant est une société');
+    eq(motContenu('e_soc', 1), trad('placement'), 'un placement');
+    eq(motContenu('e_soc', 2), trad('placements'), 'deux placements');
+    eq(motContenu('e_bq', 2), trad('comptes'), 'une banque tient toujours des comptes');
+    vrai(!!I18N.en['placement'] && !!I18N.en['placements'], 'les deux formes existent en anglais');
+    eq(I18N.en['Ajouter un'] + ' ' + I18N.en['placement'], 'Add an investment', 'et le bouton reste grammatical en anglais');
+    const src = lireSource('assets/app.js');
+    const fiche = src.slice(src.indexOf('function viewFicheEtab('), src.indexOf("trad('Crédits en cours')", src.indexOf('function viewFicheEtab(')));
+    vrai(/contenantDeLEtab\(e\.id\)\.contenu === 'placement'\s*\? majuscule\(motContenu\(e\.id, 2\)\) : `\$\{majuscule\(motContenu\(e\.id, 2\)\)\} \$\{trad\('rattachés'\)\}`/.test(fiche),
+      'la section se nomme « Placements », sans « rattachés », et les autres contenants gardent le mot');
+    vrai(/\+ \$\{majuscule\(motContenu\(e\.id, 1\)\)\}/.test(fiche), 'le bouton suit : « + Placement »');
+    const st = lireSource('assets/store.js');
+    vrai(/nouveau: 'Nouvelle société ou plateforme',[\s\S]{0,400}contenu: 'placement' \}/.test(st), 'la table le déclare une fois');
+  });
+});
