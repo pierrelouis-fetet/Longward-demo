@@ -550,6 +550,31 @@ body {
 .valeur-fixe { font-size: var(--font-lg); padding: 4px 0 2px; word-break: break-all; }
 
 .demarrage-barre { display: flex; align-items: center; gap: 10px; padding: 12px 15px; }
+.demarrage-texte { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.demarrage-texte .sub { display: block; }
+
+.bienvenue { padding: 22px 18px 18px; }
+.bienvenue .surtitre { display: block; margin-bottom: 8px; }
+.bienvenue-accroche { margin: 0; font-size: var(--font-xl); font-weight: 700; letter-spacing: -.02em; line-height: 1.2; color: var(--text-primary); }
+.bienvenue-texte { margin: 8px 0 0; font-size: var(--font-md); color: var(--text-secondary); line-height: 1.5; }
+.bienvenue-pas { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 14px;
+                 font-size: var(--font-sm); color: var(--text-secondary); }
+.bienvenue-pas li { display: inline-flex; align-items: center; gap: 7px; }
+.bienvenue-point { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--border-strong); flex: none; }
+.bienvenue-pas li.courant .bienvenue-point { border-color: var(--accent); }
+.bienvenue-pas li.fait .bienvenue-point { background: var(--good); border-color: var(--good); }
+.bienvenue-pas li.fait { color: var(--muted); }
+.bienvenue-actes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.bienvenue-actes .btn { flex: 1 1 12em; }
+@media (max-width: 420px) { .bienvenue-actes .btn { flex-basis: 100%; } }
+.apercus-legende { margin: 2px 4px 0; font-size: var(--font-sm); color: var(--muted); line-height: 1.45; }
+.apercus-verrous { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.apercu-verrou { padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.apercu-verrou .silhouette { display: block; width: 100%; height: 34px; color: var(--border-strong); }
+.apercu-verrou .silhouette * { fill: currentColor; stroke: currentColor; }
+.apercu-verrou .silhouette [fill="none"] { fill: none; }
+.apercu-verrou b { font-size: var(--font-md); font-weight: 600; color: var(--text-primary); }
+.apercu-verrou .sub { display: block; line-height: 1.4; }
 .demarrage-barre b { font-size: var(--font-base); font-weight: 600; }
 .demarrage-barre .demarrage-chevron { margin-left: auto; color: var(--muted); font-size: 18px; line-height: 1; }
 

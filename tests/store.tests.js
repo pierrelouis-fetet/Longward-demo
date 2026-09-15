@@ -39201,3 +39201,125 @@ suite('Une société ou plateforme contient des placements', () => {
     vrai(/nouveau: 'Nouvelle société ou plateforme',[\s\S]{0,400}contenu: 'placement' \}/.test(st), 'la table le déclare une fois');
   });
 });
+
+/* ------------------------------------------------------------------
+   Premier lancement : une activation, pas un produit vide
+   ------------------------------------------------------------------ */
+suite('Premier lancement : Longward prend vie sous les yeux', () => {
+
+  const src = () => lireSource('assets/app.js');
+  const declarer = (...cles) => { Store.state.meta.notifsMasquees = cles.map(c => PAS_PAR_CLE[c].declare.cle); };
+  const compte = () => {
+    Store.state.etabs.push({ id: 'e_act', nom: 'Essai', notes: '', dettes: [] });
+    Store.state.comptes.push({ id: 'c_act', etabId: 'e_act', type: 'courant', cash: [{ montant: 1500, libelle: 'courant', affectation: 'courant' }], lignes: [] });
+    refreshAccounts();
+  };
+  const vierge = () => { Store.state = blankState(); Store.migrate(); refreshAccounts(); };
+
+  test('1. un utilisateur vierge voit l’activation, et aucun zéro de substitution', () => {
+    vierge();
+    const e = etapesDemarrage();
+    eq(e.vierge, true, 'aucun compte propre : vierge');
+    eq(e.faits, 0, 'aucun pas franchi');
+    eq(e.prochain && e.prochain.cle, 'comptes', 'le premier geste est le compte');
+    const s = src();
+    vrai(/if \(vierge\) return carteBienvenue\(\{ faits, total: PREMIERS_PAS\.length, premier, acquis \}\);/.test(s),
+      'le guide vierge est l’écran d’activation, pas un second parcours');
+    const b = s.slice(s.indexOf('function carteBienvenue('), s.indexOf('const SILHOUETTES'));
+    vrai(/trad\('Bienvenue dans Longward'\)/.test(b) && /trad\('Tout ton patrimoine\. Une seule trajectoire\.'\)/.test(b), 'le titre et l’accroche');
+    vrai(/data-action="\$\{esc\(premier\.action\)\}">\$\{trad\('Construire mon Longward'\)\}/.test(b), 'le CTA mène à l’action du premier pas existant');
+    vrai(/PREMIERS_PAS\.map\(p => `[\s\S]*?motCourtPas\(p\)/.test(b), 'la progression se dérive des quatre pas du guide');
+    /* Aucun chiffre inventé dans l’accueil vierge : ni montant, ni appel de format. */
+    /* Les bornes sont du code, pas des commentaires : l'arbre publie n'en garde aucun. */
+    const debut = s.indexOf("${pasAFaire('comptes') ? `");
+    const v = s.slice(debut, s.indexOf("${!aDesPositionsMarche() ? '' : `", debut)).replace(/<!--[\s\S]*?-->/g, '');
+    vrai(!/\d\s?€/.test(v) && !/fmtEUR|fmtPct|fmtSigned/.test(v), 'les aperçus ne portent aucun montant ni pourcentage');
+    vrai(/apercuVerrou\(trad\('Patrimoine net'\)/.test(v) && /apercuVerrou\(trad\('Projection'\)/.test(v), 'quatre aperçus verrouillés disent ce qui viendra');
+    vrai(/Le reste de cette page se remplit tout seul/.test(v), 'et la phrase reste');
+    vrai(!/<text/.test(s.slice(s.indexOf('const SILHOUETTES'), s.indexOf('function apercuVerrou('))), 'les silhouettes n’écrivent rien');
+  });
+
+  test('2. un seul compte : la vraie valeur remplace l’aperçu, l’activation se replie', () => {
+    vierge(); compte();
+    const e = etapesDemarrage();
+    eq(e.vierge, false, 'plus vierge');
+    eq(e.faits, 0, 'le compte existe mais la liste n’est pas déclarée complète : le pas reste courant');
+    eq(e.prochain.cle, 'comptes', 'le prochain pas demande la déclaration');
+    declarer('comptes');
+    eq(etapesDemarrage().faits, 1, 'déclaré, le pas est franchi');
+    eq(etapesDemarrage().prochain.cle, 'revenus', 'et le suivant est le revenu');
+    const s = src();
+    vrai(/\$\{!aUnComptePropre\(\) \? '' : `\s*<div class="hero">/.test(s), 'le hero se rend dès le premier compte, l’aperçu Patrimoine disparaît avec l’accueil vierge');
+    vrai(/if \(!vierge && !fini && !guideDeplie\) \{/.test(s), 'et le guide passe en barre repliée');
+  });
+
+  test('3. compte + revenu : la barre annonce la prochaine étape', () => {
+    vierge(); compte(); declarer('comptes');
+    Store.state.budget.income = [{ label: 'Salaire', amount: 3000 }];
+    eq(etapesDemarrage().prochain.cle, 'revenus', 'le revenu saisi attend sa déclaration');
+    declarer('comptes', 'revenus');
+    const e = etapesDemarrage();
+    eq(e.faits, 2, 'deux pas sur quatre');
+    eq(e.prochain.cle, 'releves', 'le relevé, ouvrable puisqu’un compte existe');
+    eq(motCourtPas(e.prochain), trad('Relevé mensuel'), 'dit en un mot court');
+    const s = src();
+    vrai(/trad\('Ton Longward prend forme'\)/.test(s) && /trad\('Prochaine étape'\)\}\$\{deuxPoints\(\)\} \$\{esc\(motCourtPas\(premier\)\)\}/.test(s),
+      'la barre repliée dit « Ton Longward prend forme » et la prochaine étape');
+    vrai(!/'Ton Longward est complété à/.test(s), 'aucun pourcentage de complétion inventé');
+  });
+
+  test('4. compte + revenu + dépenses : le pas des dépenses est franchi', () => {
+    vierge(); compte(); declarer('comptes', 'revenus', 'depenses');
+    Store.state.budget.income = [{ label: 'Salaire', amount: 3000 }];
+    Store.state.budget.expenses = [{ month: '2026-08-01', v: { Loyer: 900 }, note: '' }];
+    const e = etapesDemarrage();
+    eq(pasAFaire('depenses'), false, 'des dépenses saisies franchissent le pas');
+    eq(e.faits, 3, 'trois pas sur quatre');
+    eq(e.prochain.cle, 'releves', 'il ne reste que le relevé');
+  });
+
+  test('5. un état riche ne montre ni activation ni aperçu parasite', () => {
+    Fixture.poser();
+    const e = etapesDemarrage();
+    eq(e.vierge, false, 'le fixture a des comptes');
+    vrai(!pasAFaire('comptes'), 'donc la branche des aperçus ne se rend pas');
+    const s = src();
+    vrai(/if \(demarrageMasque\(\)\) return '';/.test(s.slice(s.indexOf('function carteDemarrage()'))), 'et le guide refermé ne revient pas');
+  });
+
+  test('6-8. le mode exemple : des données fictives, isolées, jamais envoyées', () => {
+    const s = src();
+    if (typeof modeDemo !== 'function') { vrai(!/data-action="charger-demo"/.test(lireSource('index.html')), 'sans mode démonstration, rien à proposer'); return; }
+    vrai(/typeof SEED_VERSION !== 'undefined' && typeof modeDemo === 'function' && !modeDemo\(\)/.test(s),
+      '« Voir un exemple » n’existe que là où une graine de démonstration existe, hors du mode lui-même');
+    const action = s.slice(s.indexOf("async 'charger-demo'()"), s.indexOf("'quitter-demo'()"));
+    vrai(/setModeDemo\(true\);\s*Store\.state = structuredClone\(SEED\);/.test(action), 'l’exemple est la graine, sous son propre mode');
+    const st = lireSource('assets/store.js');
+    vrai(/cleParUtilisateur\(modeDemo\(\) \? CLE_DEMO : CLE_REELLE\)/.test(st), 'le mode a sa propre clef de stockage');
+    vrai(/if \(typeof CloudSync !== 'undefined' && !modeDemo\(\)\) \{\s*if \(opts\.differe\) CloudSync\.schedulePush\(\); else CloudSync\.push\(\);/.test(st),
+      'et rien ne part au cloud en mode démonstration');
+    vrai(/const cloud = modeDemo\(\) \? \{ available: false \} : await CloudSync\.init\(\);/.test(s), 'ni à l’ouverture');
+    const html = lireSource('index.html');
+    vrai(/id="bandeauDemo"[^>]*hidden/.test(html) && /data-i18n="demo.badge"/.test(html) && /data-action="quitter-demo"/.test(html),
+      'le bandeau dit que c’est fictif et offre la sortie');
+    vrai(/bandeau\.hidden = !modeDemo\(\);/.test(s), 'render le montre en mode démonstration seulement');
+    vrai(!!I18N.en['demo.badge'] && !!I18N.en['demo.quitter'], 'traduit');
+    /* Entrer et sortir du mode ne touche pas la clef reelle. */
+    const reelle = cleStockage(); const avant = localStorage.getItem(reelle);
+    try {
+      setModeDemo(true);
+      vrai(cleStockage() !== reelle, 'en mode exemple, on écrit ailleurs');
+      eq(localStorage.getItem(reelle), avant, 'la vraie clef n’a pas bougé');
+    } finally { setModeDemo(false); }
+    eq(cleStockage(), reelle, 'et l’on revient à son espace');
+  });
+
+  test('9. la feuille tient les aperçus et l’activation sur 375 px', () => {
+    const css = lireSource('assets/styles.css');
+    vrai(/\.apercus-verrous \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); gap: 10px; \}/.test(css), 'deux colonnes compactes');
+    vrai(/\.apercu-verrou \{[^}]*min-width: 0;/.test(css), 'les tuiles ne débordent pas');
+    vrai(/\.bienvenue-actes \.btn \{ flex: 1 1 12em; \}/.test(css) && /max-width: 420px\) \{ \.bienvenue-actes \.btn \{ flex-basis: 100%; \}/.test(css),
+      'les deux gestes s’empilent sous 420 px');
+    vrai(/\.demarrage-texte \{ flex: 1 1 auto; min-width: 0;/.test(css), 'la barre repliée replie son texte');
+  });
+});
