@@ -11181,8 +11181,10 @@ suite('Les paliers d’autonomie couvrent tout, dans le bon ordre', () => {
        retraite, y compris pour le cash qui y dort. Ce n'est pas une question de
        délai de virement, c'est une question de droit d'y toucher. */
     for (const t of TYPES_COMPTE) {
-      const attendu = t.id === 'per' ? 'bloque'
-        : t.groupe === 'cash' ? 'immediat' : 'differe';
+      /* Un type peut déclarer sa disponibilité (PER fermé, enveloppes de
+         retraite américaines lentes) ; sinon le groupe décide. Le test lit la
+         même propriété que le code, il ne recopie plus un identifiant. */
+      const attendu = t.disponibilite || (t.groupe === 'cash' ? 'immediat' : 'differe');
       eq(mobilisabilite('liquidites', t.id), attendu,
         `${t.label} : liquidités ${attendu}`);
     }
@@ -18644,8 +18646,12 @@ suite('Un type de compte peut naître à la main', () => {
        fenêtre doit exister dans l'autre. Les deux passent par
        typesCompteChoix(), et chacune offre le type libre. */
     const src = lireSource('assets/app.js');
-    const appels = src.match(/typesCompteChoix\(\)\.map/g) || [];
+    /* La source est groupée par rubriques depuis les enveloppes américaines ;
+       les deux fenêtres la partagent, et plus aucune n'aplatit la liste. */
+    const appels = src.match(/options: \[\.\.\.typesCompteParRubrique\(\),/g) || [];
     eq(appels.length, 2, 'la fiche et l’assistant, personne d’autre à la main');
+    eq((src.match(/typesCompteChoix\(\)\.map\(\w+ => \[\w+\.id, \w+\.label\]\)/g) || []).length, 0,
+      'aucune liste à plat ne survit');
     const libres = src.match(/\['__nouveau', trad\('\+ Autre type…'\)\]/g) || [];
     eq(libres.length, 2, 'et le type libre s’offre dans les deux');
     vrai(!/TYPES_COMPTE\.filter\([^)]*\)\.map\(\w+ => \[\w+\.id, \w+\.label\]\)/.test(src),
@@ -31711,7 +31717,9 @@ suite('Chercher un titre, c’est en ajouter un', () => {
     /* Et l'assistant ne pose plus les trois questions du cash. */
     vrai(/\.\.\.\(t\.sansCash \? \[\] : \[/.test(src),
       'les trois champs du cash sautent à la création');
-    vrai(/t\.sansCash \? trad\('Nommer le contrat'\)/.test(src),
+    /* « Contrat » chez un assureur, « plan » chez un teneur de compte : le mot
+       suit le contenant déclaré depuis les enveloppes américaines. */
+    vrai(/t\.sansCash \? trad\(enContrat\(t\) \? 'Nommer le contrat' : 'Nommer le plan'\)/.test(src),
       'et l’étape dit ce qu’elle demande vraiment');
   });
 
@@ -39387,7 +39395,7 @@ suite('Aucun ecran vide ne ment, aucun ne se tait', () => {
        l’écran — livret, PEA, assurance-vie, PER, prêt participatif, SCPI, bien
        de valeur. Toute sélection écrite à la main se remet à diverger. */
     const f = s.slice(s.indexOf('function famillesDActifs()'), s.indexOf('function viewAccounts()'));
-    vrai(/const dispo = FAMILLES_EN_VUE\.map\(id => choix\.find\(t => t\.id === id\)\)\.filter\(Boolean\);/.test(f),
+    vrai(/const dispo = famillesEnVue\(\)\.map\(id => choix\.find\(t => t\.id === id\)\)\.filter\(Boolean\);/.test(f),
       'une famille retirée de la table disparaît d’ici, elle n’est pas recopiée');
     /* AUCUN TYPE N’EST HORS D’ATTEINTE. La table s’allonge avec le temps et la
        grille ne peut pas la suivre : « Autre… » ouvre la même fenêtre sans type
@@ -39631,5 +39639,173 @@ suite('Audit pré-bêta : les dix premières minutes', () => {
     const s = app();
     vrai(/'fermer-demarrage'\(\) \{\s*masquerNotif\(CLE_DEMARRAGE\);/.test(s), 'Refermer se retient dans l’état, donc survit au rechargement');
     vrai(!/window\.onload[^;]*askMonthlySnapshot|DOMContentLoaded[^;]*askForm/.test(s), 'aucune fenêtre ne s’ouvre au chargement');
+  });
+});
+
+/* --- Des enveloppes americaines, sans fiscalite -----------------------------
+
+   Quatre contenants de plus, pas une regle fiscale : un 401(k), deux IRA et un
+   HSA se comportent comme les enveloppes de placement qui existaient. Les
+   identifiants francais ne bougent pas, la langue ne change jamais une donnee,
+   et aucun seuil americain n'entre dans le code. */
+suite('Des enveloppes américaines, sans fiscalité', () => {
+  const app = () => lireSource('assets/app.js');
+  const store = () => lireSource('assets/store.js');
+  const US = ['us401k', 'traditionalIra', 'rothIra', 'hsa'];
+  const poser = () => {
+    Store.state = blankState(); Store.migrate();
+    Store.state.etabs.push({ id: 'e_us', nom: 'Plan provider', notes: '', dettes: [] });
+    Store.state.comptes.push(
+      { id: 'c_401k', etabId: 'e_us', type: 'us401k', cash: [], lignes: [] },
+      { id: 'c_tira', etabId: 'e_us', type: 'traditionalIra', cash: [{ montant: 3000, libelle: 'cash', affectation: 'investir' }], lignes: [] },
+      { id: 'c_roth', etabId: 'e_us', type: 'rothIra', cash: [{ montant: 2000, libelle: 'cash', affectation: 'investir' }], lignes: [] },
+      { id: 'c_hsa',  etabId: 'e_us', type: 'hsa', cash: [{ montant: 1200, libelle: 'cash', affectation: 'precaution' }], lignes: [] });
+    refreshAccounts();
+  };
+
+  test('1-3. en anglais, les trois enveloppes de base portent leur nom naturel', () => {
+    eq(I18N.en['Compte courant'], 'Checking account', 'courant');
+    eq(I18N.en['Livret'], 'Savings account', 'livret');
+    eq(I18N.en['Compte-titres (CTO)'], 'Brokerage account', 'cto, sans le sigle français');
+    for (const id of ['courant', 'livret', 'cto']) eq(typeCompte(id).id, id, 'l’identifiant ne bouge pas');
+  });
+
+  test('4-5. les quatre types existent, se proposent à la création, et gardent leur nom dans les deux langues', () => {
+    for (const id of US) {
+      const t = TYPES_COMPTE.find(x => x.id === id);
+      vrai(t, `${id} est dans la table`);
+      vrai(typesCompteChoix().some(x => x.id === id), `${id} se choisit`);
+      eq(I18N.en[t.label], t.label, `« ${t.label} » se lit pareil en anglais`);
+      vrai(!t.interne && !t.bienImmo && !t.direct && !t.prete && !t.parts && !t.vl, `${id} est une enveloppe, ni un bien ni un prêt`);
+      eq(t.groupe, 'bourse', `${id} est du groupe des placements`);
+      vrai(!t.dateSensible, `${id} ne porte aucun seuil d’ancienneté`);
+    }
+    eq(TYPES_COMPTE[TYPES_COMPTE.length - 1].id, 'especes', 'les espèces restent dernières');
+  });
+
+  test('6-8. 401(k) et IRA portent des placements compatibles, et rien d’autre', () => {
+    for (const id of ['us401k', 'traditionalIra', 'rothIra']) {
+      const t = typeCompte(id);
+      vrai(t.titres, `${id} porte des titres`);
+      vrai(t.classes.includes('actions') && t.classes.includes('obligations') && t.classes.includes('liquidites'),
+        `${id} : actions, obligations, liquidités`);
+      vrai(!t.classes.includes('immobilier') && !t.classes.includes('nonCote') && !t.classes.includes('crypto'),
+        `${id} ne s’invente ni immobilier, ni non coté, ni crypto`);
+    }
+    vrai(typeCompte('us401k').classes.includes('garanti') && typeCompte('us401k').melange && typeCompte('us401k').sansCash,
+      'le 401(k) est un plan de fonds : support garanti possible, pas de poche de cash à investir');
+    /* Marchés retient les types qui peuvent porter une action ou une obligation. */
+    const porteurs = TYPES_COMPTE.filter(t => (t.classes || []).some(c => ['actions', 'obligations', 'crypto'].includes(c))).map(t => t.id);
+    for (const id of US) vrai(porteurs.includes(id), `${id} est éligible à Marchés`);
+  });
+
+  test('9. le HSA est une enveloppe patrimoniale, sans logique médicale ni fiscale', () => {
+    const t = typeCompte('hsa');
+    eq(t.classes.join(','), 'liquidites,actions,obligations');
+    eq(t.defaut, 'precaution', 'son cash est une réserve par défaut');
+    vrai(!t.disponibilite, 'aucune règle de disponibilité propre : il suit ses classes');
+    vrai(!/qualified medical|triple tax|d[ée]penses m[ée]dicales|frais m[ée]dicaux/i.test(store() + app()),
+      'aucune règle médicale ou fiscale du HSA dans le modèle');
+  });
+
+  test('10-12. patrimoine, allocation et projection les comptent comme les autres', () => {
+    poser();
+    const p = patrimoine();
+    eq(Math.round(p.brut), 6200, 'le brut additionne les quatre poches');
+    vrai(p.classes.liquidites >= 6200 - 0.01, 'leur cash est classé en liquidités');
+    const avant = patrimoine().brut;
+    /* Un fonds de plan sans cours : une ligne manuelle, valorisée par `value`. */
+    Store.state.positions.push({ id: 'p_us', name: 'Index fund', qty: 10, buyPrice: 90, price: 100, fx: 1, fxBuy: 1,
+      currency: 'EUR', assetClass: 'actions', role: 'core', account: 'c_401k', manual: true, value: 1000 });
+    refreshAccounts();
+    vrai(patrimoine().brut > avant + 999, 'une ligne posée sur le 401(k) entre dans le patrimoine');
+    vrai(patrimoine().classes.actions >= 1000 - 0.01, 'et dans la classe actions de l’allocation');
+    vrai(num(objectiveStatus().total) >= 6200, 'la projection part de ce total');
+  });
+
+  test('13. un relevé mensuel les conserve', () => {
+    poser();
+    const ligne = { date: '2026-09-01', comment: '', v: { c_401k: 1000, c_hsa: 1200 } };
+    eq(Math.round(rowTotal(ligne)), 2200, 'les poches américaines s’additionnent comme les autres');
+  });
+
+  test('14. export puis import : mêmes types, même total', () => {
+    poser();
+    const brut = patrimoine().brut;
+    const dump = JSON.stringify(Store.state);
+    Store.state = JSON.parse(dump); Store.migrate(); refreshAccounts();
+    eq(COMPTES().filter(c => !typeCompte(c.type).interne).map(c => c.type).join(), 'us401k,traditionalIra,rothIra,hsa', 'les identifiants survivent au voyage');
+    eq(Math.round(patrimoine().brut), Math.round(brut), 'et le total aussi');
+  });
+
+  test('15. l’archivage fonctionne', () => {
+    poser();
+    const avant = patrimoine().brut;
+    COMPTES().find(c => c.id === 'c_hsa').statut = 'archive';
+    refreshAccounts();
+    vrai(!comptesOuverts().some(c => c.id === 'c_hsa'), 'le HSA archivé quitte les comptes ouverts');
+    eq(Math.round(patrimoine().brut), Math.round(avant - 1200), 'et le total');
+  });
+
+  test('16-18. la langue ne change jamais une donnée : un PER reste un PER, un PEA un PEA', () => {
+    eq(typeCompte('per').id, 'per'); eq(typeCompte('pea').id, 'pea');
+    vrai(/PER/.test(I18N.en['Plan d’épargne retraite (PER)']) && !/401/.test(I18N.en['Plan d’épargne retraite (PER)']),
+      'le PER se traduit, il ne devient pas un 401(k)');
+    vrai(!/Roth|IRA/.test(I18N.en['Assurance-vie'] || ''), 'l’assurance-vie ne devient pas un IRA');
+    /* Les deux ne partagent qu'une propriété générale, déclarée : la disponibilité. */
+    eq(mobilisabilite('liquidites', 'per'), 'bloque', 'un PER est fermé jusqu’à la retraite');
+    eq(mobilisabilite('actions', 'us401k'), 'lent', 'une enveloppe de retraite américaine se casse, lentement et avec décote');
+    eq(mobilisabilite('liquidites', 'hsa'), 'differe', 'le HSA suit ses classes');
+  });
+
+  test('19. aucun calcul fiscal américain n’existe', () => {
+    const tout = store() + app();
+    vrai(!/RMD|59 ?½|59\.5|\bIRS\b|contribution limit|plafond de contribution|early withdrawal|retrait anticipé|vesting|employer match|qualified medical/i.test(tout),
+      'ni seuil d’âge, ni plafond, ni pénalité, ni abondement');
+  });
+
+  test('la disponibilité se déclare sur le type, plus jamais par un identifiant français', () => {
+    vrai(!/^\s*if \(typeId === 'per'\)/m.test(store()), 'le `if (typeId === \'per\')` est parti');
+    vrai(/const declaree = typeCompte\(typeId\)\.disponibilite;/.test(store()), 'le type dit sa disponibilité');
+    eq(typeCompte('per').disponibilite, 'bloque');
+  });
+
+  test('le contenant se déclare aussi : un 401(k) est chez un teneur de compte, pas chez un assureur', () => {
+    for (const id of US) eq(contenantDuType(id).titre, 'Banque ou courtier', `${id}`);
+    /* Et son vocabulaire suit : un plan, pas un contrat, à l'étape 3 comme sur la fiche. */
+    vrai(!enContrat(typeCompte('us401k')) && enContrat(typeCompte('av')) && enContrat(typeCompte('per')),
+      'le 401(k) est un plan, l’assurance-vie et le PER des contrats');
+    const s = app();
+    vrai(/trad\(enContrat\(t\) \? 'Nommer le contrat' : 'Nommer le plan'\)/.test(s)
+      && /enContrat\(t\) \? 'Nom du contrat' : 'Nom du plan'/.test(s),
+      'l’étape 3 nomme un plan quand le contenant n’est pas un assureur');
+    eq(contenantDuType('per').titre, 'Assureur ou courtier', 'le PER ne change pas');
+    eq(contenantDuType('av').titre, 'Assureur ou courtier', 'l’assurance-vie non plus');
+  });
+
+  test('le sélecteur se lit par rubriques, et rien ne s’y perd', () => {
+    const rub = typesCompteParRubrique();
+    const titres = rub.map(([t]) => t);
+    eq(titres.join(' | '), 'Comptes bancaires | Investissements | Retraite et épargne avantagée | Biens et autres');
+    const dans = titre => rub.find(([t]) => t === titre)[1].map(([id]) => id);
+    eq(dans('Comptes bancaires').join(), 'courant,livret');
+    eq(dans('Investissements').join(), 'pea,cto,av,crypto');
+    eq(dans('Retraite et épargne avantagée').join(), 'per,us401k,traditionalIra,rothIra,hsa');
+    eq(dans('Biens et autres').join(), 'pe,fondsNonCote,crowdfunding,immo,scpi,bienValeur');
+    eq(rub.reduce((n, [, l]) => n + l.length, 0), typesCompteChoix().length, 'chaque type choisissable est dans une rubrique');
+    const s = app();
+    vrai(/options: \[\.\.\.typesCompteParRubrique\(\),/.test(s), 'la création s’en sert');
+    vrai(/Array\.isArray\(l\)/.test(s) && /<optgroup label="\$\{esc\(trad\(v\)\)\}">/.test(s), 'et la fenêtre sait rendre des groupes');
+  });
+
+  test('sur Actifs vierge, un Américain trouve ses portes, un Français les siennes', () => {
+    const m = app().match(/const FAMILLES_EN_VUE = \{\s*fr: \[([^\]]*)\],\s*en: \[([^\]]*)\],/);
+    vrai(m, 'deux listes de portes, une par langue');
+    const ids = s => s.split(',').map(x => x.trim().replace(/'/g, ''));
+    eq(ids(m[1]).join(), 'courant,livret,pea,av,cto,immo,crypto', 'un lecteur francophone');
+    eq(ids(m[2]).join(), 'courant,livret,cto,us401k,rothIra,immo,crypto', 'un lecteur anglophone');
+    for (const id of [...ids(m[1]), ...ids(m[2])]) vrai(TYPES_COMPTE.some(t => t.id === id), `${id} existe`);
+    vrai(/const dispo = famillesEnVue\(\)\.map\(id => choix\.find\(t => t\.id === id\)\)\.filter\(Boolean\);/.test(app()),
+      'la page lit la liste de la langue du moment ; « Autre… » ouvre le reste');
   });
 });

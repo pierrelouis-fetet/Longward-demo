@@ -191,7 +191,30 @@ const TYPES_COMPTE = [
      aussi a accepter un support monetaire, qui est un placement et non du cash.
      Deux choses sous un seul mot, d'ou deux reglages. */
   { id: 'av',      label: 'Assurance-vie',  classes: ['liquidites', 'garanti', 'actions', 'obligations', 'immobilier', 'nonCote'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, dateSensible: true },
-  { id: 'per',     label: 'Plan d’épargne retraite (PER)', classes: ['liquidites', 'garanti', 'actions', 'obligations', 'immobilier', 'nonCote'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, dateSensible: true },
+  { id: 'per',     label: 'Plan d’épargne retraite (PER)', classes: ['liquidites', 'garanti', 'actions', 'obligations', 'immobilier', 'nonCote'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, dateSensible: true, disponibilite: 'bloque', rubrique: 'retraite' },
+  /* ENVELOPPES AMERICAINES. Quatre contenants, pas une fiscalite : aucun seuil
+     d'age, aucun plafond, aucune penalite, aucun abondement n'entre ici. Ce
+     sont des enveloppes de placement comme celles qui existent, et elles
+     reutilisent leurs classes.
+
+     Le 401(k) est un plan de fonds : on y choisit des supports, il n'y a pas
+     de poche de cash a investir, et un fonds stable y tient lieu de garanti,
+     d'ou la forme du PER (`melange`, `sansCash`). Il est chez un teneur de
+     compte, pas chez un assureur : `contenant` le declare, sinon `melange`
+     l'aurait envoye chez un « assureur ou courtier ».
+
+     Les deux IRA sont des comptes de courtage : la forme du CTO. Le HSA aussi,
+     avec son cash en reserve par defaut : c'est une epargne de sante avant
+     d'etre un placement, et son affectation reste modifiable.
+
+     `disponibilite: 'lent'` sur les trois enveloppes de retraite dit ce qui est
+     vrai sans modeler la regle : cet argent se casse, en quelques semaines et
+     avec une decote. Un PER, lui, est ferme (`bloque`). Le HSA suit ses classes.
+     `rubrique` ne sert qu'au selecteur : elle range, elle ne calcule rien. */
+  { id: 'us401k',  label: '401(k)',          classes: ['liquidites', 'garanti', 'actions', 'obligations'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, disponibilite: 'lent', contenant: 'banque', rubrique: 'retraite' },
+  { id: 'traditionalIra', label: 'Traditional IRA', classes: ['liquidites', 'actions', 'obligations'], defaut: 'investir', groupe: 'bourse', titres: true, disponibilite: 'lent', rubrique: 'retraite' },
+  { id: 'rothIra', label: 'Roth IRA',        classes: ['liquidites', 'actions', 'obligations'], defaut: 'investir', groupe: 'bourse', titres: true, disponibilite: 'lent', rubrique: 'retraite' },
+  { id: 'hsa',     label: 'HSA',             classes: ['liquidites', 'actions', 'obligations'], defaut: 'precaution', groupe: 'bourse', titres: true, rubrique: 'retraite' },
   { id: 'crypto',  label: 'Portefeuille de cryptomonnaies', classes: ['crypto'], defaut: 'investir', groupe: 'bourse', titres: true },
   /* Deux metiers que le mot « crowdfunding » melange, et qui n'ont pas les memes
      champs. On prete, ou on prend des parts.
@@ -324,6 +347,28 @@ const FORME_POCHE = {
 
 function typesCompteChoix() {
   return [...TYPES_COMPTE.filter(t => !t.interne), ...typesPerso()];
+}
+
+/* LE SELECTEUR SE LIT PAR RUBRIQUES. Dix-sept types en une seule liste, c'est
+   une liste qu'on ne lit plus. Quatre rubriques les rangent, dans l'ordre ou
+   un patrimoine se construit : la banque, les placements, la retraite et
+   l'epargne avantagee, les biens. La rubrique se derive du groupe, sauf la ou
+   le type la declare (`rubrique`) : un PER ou un 401(k) est du groupe des
+   placements, mais on le cherche a la retraite. Un type personnel suit son
+   groupe. Rien ici ne calcule : c'est un rangement d'ecran. */
+const RUBRIQUES_TYPE = [
+  ['banque',     'Comptes bancaires'],
+  ['placements', 'Investissements'],
+  ['retraite',   'Retraite et épargne avantagée'],
+  ['biens',      'Biens et autres'],
+];
+const rubriqueDuType = t => t.rubrique
+  || (t.groupe === 'cash' ? 'banque' : t.groupe === 'bourse' ? 'placements' : 'biens');
+function typesCompteParRubrique() {
+  const choix = typesCompteChoix();
+  return RUBRIQUES_TYPE
+    .map(([cle, titre]) => [titre, choix.filter(t => rubriqueDuType(t) === cle).map(t => [t.id, t.label])])
+    .filter(([, liste]) => liste.length);
 }
 
 function typeParDefautChez(etabId) {
@@ -464,8 +509,10 @@ function motContenu(etabId, n) {
   return trad(`${mot}${n > 1 ? 's' : ''}`);
 }
 
+const enContrat = t => contenantDuType(t.id).contenu === 'contrat';
 const contenantDuType = typeId => {
   const t = typeCompte(typeId);
+  if (t.contenant && CONTENANTS[t.contenant]) return CONTENANTS[t.contenant];
   return t.bienImmo ? CONTENANTS.bien
     : (typeId === 'pe' || typeId === 'crowdfunding') ? CONTENANTS.societe
     : t.melange ? CONTENANTS.assureur
@@ -1011,7 +1058,13 @@ function ancienneteCompte(c) {
 }
 
 function mobilisabilite(classe, typeId) {
-  if (typeId === 'per') return 'bloque';
+  /* LA DISPONIBILITE SE DECLARE SUR LE TYPE quand elle ne se deduit pas de la
+     classe : un PER est ferme jusqu'a la retraite (« bloque »), une enveloppe de
+     retraite americaine se casse en quelques semaines avec une decote
+     (« lent »). La regle vivait ici sous `typeId === 'per'` : un identifiant
+     francais decidait d'une propriete generale. */
+  const declaree = typeCompte(typeId).disponibilite;
+  if (declaree) return declaree;
   if (classe === 'nonCote' || classe === 'immobilier') return 'lent';
   if (classe === 'bienValeur') return 'lent';
   /* Les liquidites sont immediates si le compte qui les porte est un compte de

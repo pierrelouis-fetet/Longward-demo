@@ -4349,10 +4349,15 @@ function lignePlacement(l, compte, editable = false, sansNom = false) {
    appelant se garde sans se maintenir, et finit par decrire un ecran qui
    n'existe plus.*/
 
-const FAMILLES_EN_VUE = ['courant', 'livret', 'pea', 'av', 'cto', 'immo', 'crypto'];
+const FAMILLES_EN_VUE = {
+  fr: ['courant', 'livret', 'pea', 'av', 'cto', 'immo', 'crypto'],
+  en: ['courant', 'livret', 'cto', 'us401k', 'rothIra', 'immo', 'crypto'],
+};
+const famillesEnVue = () => FAMILLES_EN_VUE[
+  typeof currentLang === 'function' && String(currentLang() || '').toLowerCase().startsWith('fr') ? 'fr' : 'en'];
 function famillesDActifs() {
   const choix = typesCompteChoix();
-  const dispo = FAMILLES_EN_VUE.map(id => choix.find(t => t.id === id)).filter(Boolean);
+  const dispo = famillesEnVue().map(id => choix.find(t => t.id === id)).filter(Boolean);
   if (!dispo.length) return '';
   const reste = choix.length > dispo.length;
   return `
@@ -4360,7 +4365,7 @@ function famillesDActifs() {
       <div class="familles">
         ${dispo.map(t => `
         <button type="button" class="famille" data-action="ajouter-compte" data-type="${esc(t.id)}">
-          <span class="famille-nom">${esc(t.label)}</span>
+          <span class="famille-nom">${esc(trad(t.label))}</span>
           <span class="famille-plus" aria-hidden="true">+</span>
         </button>`).join('')}
         ${!reste ? '' : `
@@ -5787,7 +5792,7 @@ function viewFicheCompte(id) {
 
   ${estBien(t) || seule || (!t.classes.some(x => x !== 'liquidites') && !lignes.length) ? '' : `
   <div class="card">
-    <div class="card-head"><h2>${trad(t.melange ? 'Supports du contrat'
+    <div class="card-head"><h2>${trad(t.melange ? (t.contenant === 'banque' ? 'Supports du plan' : 'Supports du contrat')
       : t.titres ? 'Lignes de titres' : 'Placements détenus')}</h2>
       <span class="hint">${trad('Disponibilité')}${aide(trad("Sous combien de temps chaque placement redevient de l’argent disponible. Elle alimente la carte « Autonomie financière » de l’accueil. « Auto » suit la règle du type de compte : un PEA de moins de cinq ans est bloqué, un compte-titres se vend en séance. La règle se trompe parfois : un non coté peut se revendre sur un marché secondaire, c’est pourquoi chaque ligne peut la contredire."))}</span>
       ${t.titres ? `<button class="btn sm ghost" data-action="ajouter-ligne" data-compte="${esc(c.id)}"
@@ -5798,7 +5803,9 @@ function viewFicheCompte(id) {
     ${lignes.length ? lignes.map(l => lignePlacement(l, c, true)).join('')
       : `<div class="empty">
           <p style="margin:0 0 12px">${trad('Aucun placement pour l’instant.')} ${trad(t.melange
-            ? 'Un contrat porte ce qu’il propose : un ETF qui cote, un fonds euros qui ne cote nulle part, une SCPI. Les deux boutons ci-dessus mènent chacun à l’un des deux.'
+            ? (t.contenant === 'banque'
+              ? 'Un plan porte ce qu’il propose : un fonds qui cote, un fonds stable qui ne cote nulle part. Les deux boutons ci-dessus mènent chacun à l’un des deux.'
+              : 'Un contrat porte ce qu’il propose : un ETF qui cote, un fonds euros qui ne cote nulle part, une SCPI. Les deux boutons ci-dessus mènent chacun à l’un des deux.')
             : t.titres
             ? 'Les lignes se créent dans l’onglet Marchés, rattachées à ce compte.'
             : 'Un prêt participatif, une part de société, un projet : chacun sa ligne, avec son échéance.')}</p>
@@ -8045,7 +8052,7 @@ const ACTIONS = {
         valeur: valeur('libelle', c.libelle || ''), exemple: t.label }];
 
       if (!t.interne) champs.push({ cle: 'type', label: `${trad('Type de')} ${motCompte(t)}`, type: 'liste',
-        options: [...typesCompteChoix().map(x => [x.id, x.label]),
+        options: [...typesCompteParRubrique(),
                   ['__nouveau', trad('+ Autre type…')]],
         valeur: valeur('type', c.type),
         aide: trad('il commande la poche du patrimoine et la disponibilité') });
@@ -8262,6 +8269,9 @@ const ACTIONS = {
   /* `data-etab` : depuis la fiche d'un établissement, le contenant est déjà
      connu. On saute l'étape 2 plutôt que de faire rechoisir son établissement
      à quelqu'un qui est justement sur la page de cet établissement. */
+  /* Une enveloppe sans poche de cash (`sansCash`) se souscrit chez un assureur,
+     ou s'ouvre chez un teneur de compte : un 401(k) est un PLAN, pas un
+     contrat. Le mot suit le contenant declare, comme la fiche du compte. */
   async 'ajouter-compte'(btn) {
     const etabImpose = btn?.dataset?.etab && etabById(btn.dataset.etab) ? btn.dataset.etab : null;
     let etapes = etabImpose ? 2 : 3;
@@ -8272,7 +8282,7 @@ const ACTIONS = {
         : `, ${trad('cela détermine les placements possibles')}`}`,
       ok: 'Continuer',
       champs: [{ cle: 'type', label: 'Type', type: 'liste',
-        options: [...typesCompteChoix().map(t => [t.id, t.label]),
+        options: [...typesCompteParRubrique(),
                   ['__nouveau', trad('+ Autre type…')]],
         /* Le defaut suit l'etablissement plutot que d'etre pose en dur : voir
            `typeParDefautChez`. Chez une societe qui ne porte que des parts, la
@@ -8358,7 +8368,7 @@ const ACTIONS = {
     const e3 = await askForm({
       titre: bien ? (estDetenuEnDirect(t) ? 'Valeur estimée'
                   : `Valeur ${t.classes.includes('nonCote') ? 'de la participation' : 'du bien'}`)
-                  : t.sansCash ? trad('Nommer le contrat')
+                  : t.sansCash ? trad(enContrat(t) ? 'Nommer le contrat' : 'Nommer le plan')
                   : `${BASES.liquidites.nom} ${trad('sur ce compte')}`,
       sous: `${trad('Étape')} ${etapes} ${trad('sur.etape', 'sur')} ${etapes}${bien
         ? `, ${trad('la valeur actuelle se compare au coût d’acquisition')}`
@@ -8516,10 +8526,11 @@ const ACTIONS = {
         ];
         })()),
       ] : [
-        { cle: 'libelle', label: trad(t.sansCash ? 'Nom du contrat' : 'Nom du compte'), type: 'texte',
+        { cle: 'libelle', label: trad(!t.sansCash ? 'Nom du compte' : enContrat(t) ? 'Nom du contrat' : 'Nom du plan'), type: 'texte',
           valeur: `${t.label} ${nomContenant()}`.trim(),
-          aide: trad(t.sansCash ? 'c’est lui qui distingue deux contrats du même type'
-                                : 'c’est lui qui distingue deux comptes du même type') },
+          aide: trad(!t.sansCash ? 'c’est lui qui distingue deux comptes du même type'
+                   : enContrat(t) ? 'c’est lui qui distingue deux contrats du même type'
+                   : 'c’est lui qui distingue deux plans du même type') },
         ...(t.sansCash ? [] : [
         { cle: 'montant', label: trad('Montant (€)'), type: 'nombre', exemple: '0' },
         { cle: 'usage', label: trad('À quoi sert cet argent ?'), type: 'liste',
@@ -10398,9 +10409,15 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
          alors la frappe au-dela, ce qui vaut mieux qu'un message apres coup —
          on n'ecrit pas trente-cinq caracteres pour se les voir refuser. */
       const dl = (c.suggestions || []).length ? `dl_${c.cle}` : '';
+      /* Une option est `[valeur, libelle]` ; un groupe est `[titre, options]`,
+         et se rend en optgroup. La liste des types de compte s'en sert : dix-sept
+         entrees a plat ne se lisaient plus. */
+      const option = ([v, l]) =>
+        `<option value="${esc(String(v))}" ${String(v) === String(c.valeur ?? '') ? 'selected' : ''}>${esc(trad(l))}</option>`;
       const saisie = c.type === 'liste'
-        ? `<select id="${id}">${(c.options || []).map(([v, l]) =>
-            `<option value="${esc(String(v))}" ${String(v) === String(c.valeur ?? '') ? 'selected' : ''}>${esc(trad(l))}</option>`).join('')}</select>`
+        ? `<select id="${id}">${(c.options || []).map(([v, l]) => Array.isArray(l)
+            ? `<optgroup label="${esc(trad(v))}">${l.map(option).join('')}</optgroup>`
+            : option([v, l])).join('')}</select>`
         : `<input id="${id}" type="${c.type === 'nombre' ? 'number' : c.type === 'date' ? 'date' : 'text'}"
               ${c.type === 'nombre' ? 'step="any" inputmode="decimal"' : 'autocomplete="off"'}
               ${dl ? `list="${dl}"` : ''}
