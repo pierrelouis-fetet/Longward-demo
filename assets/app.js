@@ -703,6 +703,17 @@ function carteAccumulation() {
     <div class="card-head"><h2>${trad('Accumulation ce mois-ci')}</h2></div>
     ${invitePremierPas('revenus')}
   </div>`;
+  const ligneRevenus = `<dt>${trad('Revenus fixes')}</dt><dd>${fmtEUR0(rec.income)}</dd>`;
+  if (chargesInconnues()) return `
+  <div class="card">
+    <div class="card-head"><h2>${trad('Accumulation ce mois-ci')}</h2>
+      <span class="hint">${trad('Comment tes revenus se transforment en patrimoine')}</span></div>
+    <dl class="kv kv-accumul">
+      ${ligneRevenus}
+    </dl>
+    <p class="empty" style="margin:12px 0 0">${trad('Ta capacité d’épargne se calculera dès que tes charges fixes seront connues.')}</p>
+    ${invitePremierPas('depenses', { secondaire: true })}
+  </div>`;
   const aEcran = v => montantSigne(v);
   const enTexte = v => montantSigne(v, fmtEUR0Texte);
   /* Le troisieme terme porte le nom de la branche prise : `savingsReconciliation`
@@ -728,7 +739,7 @@ function carteAccumulation() {
     <div class="card-head"><h2>${trad('Accumulation ce mois-ci')}</h2>
       <span class="hint">${trad('Comment tes revenus se transforment en patrimoine')}</span></div>
     <dl class="kv kv-accumul">
-      <dt>${trad('Revenus fixes')}</dt><dd>${fmtEUR0(rec.income)}</dd>
+      ${ligneRevenus}
       <dt>${trad('− Charges fixes')}</dt><dd>${aEcran(-rec.fixed)}</dd>
       <dt>${esc(nomDepenses)}<span class="sub">${esc(sousDepenses)}</span></dt>
         <dd>${aEcran(-rec.spend)}</dd>
@@ -955,8 +966,8 @@ function viewOverview() {
   <div class="grid g-2-1">
     <div class="card">
       <div class="card-head"><h2>${trad('Rythme d\'accumulation')}</h2>
-        ${aUnRelevePatrimonial() ? rangeControl('pace-range', paceRange) : ''}</div>
-      ${aUnRelevePatrimonial() ? `<div class="chart" id="chartPace"></div>`
+        ${relevesRenseignes() >= 2 ? rangeControl('pace-range', paceRange) : ''}</div>
+      ${relevesRenseignes() >= 2 ? `<div class="chart" id="chartPace"></div>`
         : `<p class="empty" style="margin:0">${trad('Il faut deux relevés pour une pente : le premier ouvre la courbe, le second donne le rythme.')}</p>`}
       ${(() => {
         const p = statsRythme(limitRange(monthlyPace().points, paceRange, { ecarts: true }));
@@ -3899,7 +3910,7 @@ function viewHistory() {
           (lignes.length > 1 ? trad('{n} relevés en {a}') : trad('{n} relevé en {a}'))
             .replace('{n}', lignes.length).replace('{a}', esc(String(annee)))}</span>` : ''}
       </div>
-      ${lignes.length ? (() => {
+      ${lignes.some(x => x.mois > 0) ? (() => {
           /* Un seul calcul, lu deux fois : la couleur et le montant venaient de
              deux `reduce` identiques, et deux ecritures d'un meme nombre
              finissent par diverger le jour ou l'une est modifiee seule. */
@@ -4766,8 +4777,8 @@ function carteDemarrage() {
     <button type="button" class="card-couvre" data-action="basculer-demarrage"
             aria-expanded="false" aria-label="${trad('Ton Longward prend forme')}"></button>
     <span class="demarrage-texte"><b>${trad('Ton Longward prend forme')}</b>
-      <span class="sub">${trad('{n} sur {t}').replace('{n}', faits).replace('{t}', PREMIERS_PAS.length)}${
-        premier ? ` · ${trad('Prochaine étape')}${deuxPoints()} ${esc(motProchainPas(premier))}` : ''}</span></span>
+      <span class="sub">${faits ? `${trad('{n} sur {t}').replace('{n}', faits).replace('{t}', PREMIERS_PAS.length)} · ` : ''}${
+        premier ? `${trad('Prochaine étape')}${deuxPoints()} ${esc(motProchainPas(premier))}` : ''}</span></span>
     <span class="demarrage-chevron" aria-hidden="true">›</span>
   </div>`;
   }
@@ -4783,8 +4794,8 @@ function carteDemarrage() {
   <div class="card demarrage">
     <div class="card-head">
       <h2>${trad('Commence ici')}</h2>
-      <span class="muted">${trad('{n} sur {t}').replace('{n}', faits).replace('{t}', PREMIERS_PAS.length)}${
-        vierge ? '' : ` · <button type="button" class="lien-nu" data-action="basculer-demarrage">${trad('Replier')}</button>`}</span>
+      <span class="muted">${faits ? `${trad('{n} sur {t}').replace('{n}', faits).replace('{t}', PREMIERS_PAS.length)} · ` : ''}${
+        vierge ? '' : `<button type="button" class="lien-nu" data-action="basculer-demarrage">${trad('Replier')}</button>`}</span>
     </div>
     <ol class="pas-liste">
       ${PREMIERS_PAS.map((p, i) => {
@@ -6257,6 +6268,15 @@ function viewBudget(section = 'depenses') {
         /* Le motif vient de `PREMIERS_PAS` : il est ne ici, et les deux autres
            invites le reprennent depuis la meme table plutot que de le recopier. */
         if (!f.income) return invitePremierPas('revenus', { secondaire: true });
+        if (chargesInconnues()) return `
+        <button type="button" class="flux-total" data-action="toggle-revenus"
+                title="${trad('Voir et modifier les sources de revenus')}">
+          <b>${revenuEstime() ? '≈ ' : ''}${fmtEUR0(f.income)}</b>
+          <span class="muted">${Store.state.budget.income.length} ${Store.state.budget.income.length > 1 ? trad('sources de revenus') : trad('source de revenus')}</span>
+          <span class="flux-chev" aria-hidden="true">›</span>
+        </button>
+        <p class="empty" style="margin:12px 0 0">${trad('Le partage de ce revenu se dessinera dès que tes charges fixes seront connues.')}</p>
+        ${invitePremierPas('depenses', { secondaire: true })}`;
         const sources = Store.state.budget.income.length;
         return `
         <button type="button" class="flux-total" data-action="toggle-revenus"
@@ -11715,7 +11735,7 @@ function askMonthlySnapshot(index) {
     const premier = !Store.state.monthly.some((x, i) => i !== index && !rowIsEmpty(x));
     $('#modalSub').innerHTML = escMontant(premier
       ? `${trad('La photo de ton patrimoine pour {m}.').replace('{m}', fmtMonth(r.date))} ${
-          trad('Renseigne la valeur de chaque poche ; Longward calculera automatiquement ton patrimoine total.')}`
+          trad('Chaque poche est préremplie avec sa valeur d’aujourd’hui : vérifie, corrige si besoin, puis enregistre.')}`
       : `${trad('Mets à jour la valeur de chaque poche pour enregistrer ton patrimoine de {m}.').replace('{m}', fmtMonth(r.date))}${
           avant ? ` ${trad('Dernier relevé,')} ${fmtMonth(avant.date)}${deuxPoints()} ${fmtEUR0(precedent)}.` : ''}`);
     $('#modalBody').innerHTML = `
@@ -11870,6 +11890,7 @@ function askMonthlySnapshot(index) {
       majTotal();
       toast(trad('Champs préremplis avec les montants d’aujourd’hui : vérifie, puis enregistre'));
     };
+    if (premier && $('#relPhoto') && !champs.some(c => String(c.value ?? '').trim() !== '')) { $('#relPhoto').onclick(); sale = false; }
 
     let ouverte = true;
     const fermer = v => {
@@ -11894,6 +11915,10 @@ function askMonthlySnapshot(index) {
         const brut = String(c.value ?? '').trim();
         if (brut === '') continue;
         v[c.dataset.compte] = round2(num(brut));
+      }
+      if (!Object.keys(v).length && String($('#relDettes').value ?? '').trim() === '') {
+        toast(trad('Aucun montant saisi. Renseigne au moins une poche, ou préremplis avec les montants d’aujourd’hui.'));
+        return false;
       }
 
       if (!revolu && !await askConfirm(

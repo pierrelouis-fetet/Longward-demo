@@ -6786,8 +6786,10 @@ suite('Variation de l’année : la somme des écarts qu’on a sous les yeux', 
   test('sans relevé dans l’année, rien ne s’affiche', () => {
     /* Un « +0 € » sous une liste vide se lirait comme une mesure. */
     const app = lireSource('assets/app.js');
-    vrai(/\$\{lignes\.length \? \(\(\) => \{/.test(app),
-      'le bloc ne se rend qu’avec des lignes');
+    /* Plus strict qu'« avec des lignes » : un seul relevé, sans précédent,
+       affichait « +0 € », une variation inventée. Il faut un relevé qui ait un avant. */
+    vrai(/\$\{lignes\.some\(x => x\.mois > 0\) \? \(\(\) => \{/.test(app),
+      'le bloc ne se rend qu’avec un relevé qui ait un précédent');
   });
 
   test('un seul calcul, lu deux fois', () => {
@@ -38608,7 +38610,7 @@ suite('Le relevé mensuel se comprend en dix secondes', () => {
     vrai(/const premier = !Store\.state\.monthly\.some\(\(x, i\) => i !== index && !rowIsEmpty\(x\)\);/.test(f),
       '« premier » : aucun AUTRE mois ne porte de montants');
     vrai(/trad\('La photo de ton patrimoine pour \{m\}\.'\)/.test(f)
-      && /trad\('Renseigne la valeur de chaque poche ; Longward calculera automatiquement ton patrimoine total\.'\)/.test(f),
+      && /trad\('Chaque poche est préremplie avec sa valeur d’aujourd’hui : vérifie, corrige si besoin, puis enregistre\.'\)/.test(f),
       'le premier relevé se présente en deux phrases');
     vrai(/trad\('Mets à jour la valeur de chaque poche pour enregistrer ton patrimoine de \{m\}\.'\)/.test(f),
       'les suivants en une');
@@ -39505,7 +39507,7 @@ suite('Les cinq premières minutes après le premier compte', () => {
     vrai(/\$\{!aUnRelevePatrimonial\(\) \? '' : `\s*<div class="evo-commandes">/.test(s)
       && /<div class="chart" id="chartEvo"><\/div>`\}/.test(s),
       'la courbe d’évolution et ses plages attendent le premier relevé');
-    vrai(/\$\{aUnRelevePatrimonial\(\) \? `<div class="chart" id="chartPace"><\/div>`/.test(s)
+    vrai(/\$\{relevesRenseignes\(\) >= 2 \? `<div class="chart" id="chartPace"><\/div>`/.test(s)
       && /trad\('Il faut deux relevés pour une pente/.test(s),
       'le rythme dit en une phrase ce qu’il attend');
     vrai(/if \(\$\('#chartPace'\)\) Charts\.deltaBars/.test(s), 'et son montage supporte l’absence de l’élément');
@@ -39566,5 +39568,68 @@ suite('Les cinq premières minutes après le premier compte', () => {
     const c = categoriesParDefaut();
     vrai(c.length === EXPENSE_CATEGORIES.length && (c.every((x, i) => x === EXPENSE_CATEGORIES[i]) || c.every((x, i) => x === EXPENSE_CATEGORIES_FR[i])),
       'elle rend l’une des deux listes, entière, jamais un mélange');
+  });
+});
+
+/* --- Audit pre-beta : les dix premieres minutes ---------------------------
+
+   Le parcours a ete rejoue en vrai, du compte vierge a la fin du guide. Ce qui
+   a ete corrige se tient ici, et chaque garde se derive de l'etat. */
+suite('Audit pré-bêta : les dix premières minutes', () => {
+  const app = () => lireSource('assets/app.js');
+  const store = () => lireSource('assets/store.js');
+  const vierge = () => { Store.state = blankState(); Store.migrate(); refreshAccounts(); };
+
+  test('1. le compteur du guide attend d’avoir quelque chose à compter', () => {
+    const s = app();
+    eq((s.match(/\$\{faits \? `\$\{trad\('\{n\} sur \{t\}'\)\.replace\('\{n\}', faits\)\.replace\('\{t\}', PREMIERS_PAS\.length\)\} · ` : ''\}/g) || []).length, 2,
+      '« 0 sur 4 » ne s’écrit ni dans la barre repliée ni dans l’en-tête déplié');
+    vrai(!/<span class="sub">\$\{trad\('\{n\} sur \{t\}'\)/.test(s), 'la barre ne commence plus par le compte');
+    /* Le compte reste juste : rien ici ne compte un pas non déclaré. */
+    vierge(); eq(etapesDemarrage().faits, 0, 'un état vierge n’a rien franchi');
+  });
+
+  test('2. le premier relevé arrive prérempli, et un relevé vide ne s’enregistre pas', () => {
+    const s = app();
+    const f = s.slice(s.indexOf('function askMonthlySnapshot('), s.indexOf('function askMonthlySnapshot(') + 26000);
+    vrai(/if \(premier && \$\('#relPhoto'\) && !champs\.some\(c => String\(c\.value \?\? ''\)\.trim\(\) !== ''\)\) \{ \$\('#relPhoto'\)\.onclick\(\); sale = false; \}/.test(f),
+      'la photo s’applique d’elle-même au premier relevé, sans salir la saisie');
+    vrai(/if \(!Object\.keys\(v\)\.length && String\(\$\('#relDettes'\)\.value \?\? ''\)\.trim\(\) === ''\) \{/.test(f)
+      && /trad\('Aucun montant saisi\. Renseigne au moins une poche/.test(f),
+      'sans une poche saisie, « Enregistrer » refuse au lieu de féliciter');
+    vrai(/trad\('Chaque poche est préremplie avec sa valeur d’aujourd’hui/.test(f), 'et le sous-titre dit ce qu’il y a à faire');
+  });
+
+  test('3. une pente demande deux relevés : rythme et variation annuelle se taisent avant', () => {
+    const s = app();
+    eq((s.match(/relevesRenseignes\(\) >= 2/g) || []).length, 2, 'les plages et le graphique du rythme attendent le second relevé');
+    vrai(/\$\{lignes\.some\(x => x\.mois > 0\) \? \(\(\) => \{/.test(s), 'la variation annuelle attend un relevé qui ait un précédent');
+    vierge(); eq(relevesRenseignes(), 0, 'aucun relevé sur un état vierge');
+    Store.state.monthly[0].v = { courant: 1500 };
+    eq(relevesRenseignes(), 1, 'un mois avec un montant compte pour un');
+  });
+
+  test('4. des charges inconnues ne valent pas zéro : la capacité et le partage attendent', () => {
+    vierge();
+    vrai(chargesInconnues(), 'rien saisi, rien déclaré : inconnues');
+    Store.state.meta.notifsMasquees = [CLE_CHARGES];
+    vrai(!chargesInconnues(), 'déclarées complètes sans une ligne : un zéro déclaré, pas une inconnue');
+    vierge(); Store.state.budget.fixedCharges.push({ label: 'Loyer', amount: 900, period: 'mois' });
+    vrai(!chargesInconnues(), 'une charge saisie les rend connues');
+    const s = app();
+    const acc = s.slice(s.indexOf('function carteAccumulation()'), s.indexOf('function carteAccumulation()') + 9000);
+    vrai(/if \(chargesInconnues\(\)\) return `/.test(acc) && /trad\('Ta capacité d’épargne se calculera dès que tes charges fixes seront connues\.'\)/.test(acc),
+      'l’accueil montre le revenu et dit que la capacité attend');
+    const bud = s.slice(s.indexOf("trad('Où va ce que tu gagnes')"), s.indexOf("trad('Où va ce que tu gagnes')") + 6000);
+    vrai(/if \(chargesInconnues\(\)\) return `/.test(bud) && /trad\('Le partage de ce revenu se dessinera dès que tes charges fixes seront connues\.'\)/.test(bud),
+      'Budget montre le revenu et dit que le partage attend, sans « 100 % investissable »');
+  });
+
+  test('5. abandon et reprise : rien ne se perd, rien ne se rouvre tout seul', () => {
+    vierge();
+    vrai(!demarrageMasque(), 'le guide n’est pas fermé d’avance');
+    const s = app();
+    vrai(/'fermer-demarrage'\(\) \{\s*masquerNotif\(CLE_DEMARRAGE\);/.test(s), 'Refermer se retient dans l’état, donc survit au rechargement');
+    vrai(!/window\.onload[^;]*askMonthlySnapshot|DOMContentLoaded[^;]*askForm/.test(s), 'aucune fenêtre ne s’ouvre au chargement');
   });
 });

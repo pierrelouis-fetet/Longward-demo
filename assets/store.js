@@ -3505,9 +3505,15 @@ const inventaireDeclareComplet = () =>
    porte deja, et c'est elle que la page des releves emploie. */
 const aUnRelevePatrimonial = () =>
   (Store.state.monthly || []).some(r => !rowIsEmpty(r));
+const relevesRenseignes = () =>
+  (Store.state.monthly || []).filter(r => !rowIsEmpty(r)).length;
 
 const aDesDepensesSaisies = () =>
   (B().expenses || []).some(r => Object.values(r.v || {}).some(v => num(v) !== 0));
+
+const chargesInconnues = () =>
+  !(B().fixedCharges || []).length && !aDesDepensesSaisies()
+  && !notifsMasquees().includes(CLE_CHARGES);
 
 const aDejaServi = () => aDesDepensesSaisies() || aUnRelevePatrimonial();
 
