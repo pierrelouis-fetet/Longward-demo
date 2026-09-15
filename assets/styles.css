@@ -3436,6 +3436,24 @@ td .empty, th .empty { background: none; border: none; }
   background: linear-gradient(to bottom, var(--page) calc(100% - 10px), transparent);
   min-height: var(--h-sous-onglets); box-sizing: border-box;
 }
+/* L'ENCOCHE SE PEINT QUAND LA BARRE EST PARTIE.
+
+   En application installee, la barre du haut porte l'encoche dans son
+   remplissage : retiree de toute sa hauteur, elle emporte ce fond avec elle, et
+   la bande des sous-onglets, qui ne remonte que du dessin de la barre, s'arrete
+   sous l'heure. Entre les deux, la zone de l'encoche n'a plus que la page : le
+   contenu y defilait a travers, sous la batterie et le reseau. Vu sur un
+   iPhone, pas dans un navigateur de bureau, ou cette zone mesure zero.
+
+   Le fond vient de la bande, par un pseudo-element pose juste au-dessus d'elle,
+   de la hauteur de l'encoche et plus large que l'ecran (les gouttieres
+   comprises). Barre en place, il vit derriere elle et ne se voit pas ; barre
+   partie, il ferme le trou. `env()` vaut zero hors application installee, et
+   le pseudo-element n'a alors aucune hauteur. */
+.sous-onglets::before {
+  content: ''; position: absolute; left: -50vw; right: -50vw; bottom: 100%;
+  height: env(safe-area-inset-top, 0px); background: var(--page);
+}
 /* La hauteur de ligne est POSEE, et ce n'est pas un detail de style.
 
    En `normal`, elle depend de ce que la pilule contient : la pastille de rappel,

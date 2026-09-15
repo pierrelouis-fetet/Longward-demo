@@ -14243,6 +14243,17 @@ suite('Les animations s’éteignent, et se déclenchent au doigt', () => {
     /* Pas de filet : essaye, il flottait au repos entre les pastilles et la
        premiere carte. Le fondu ne se voit que quand une carte passe dessous. */
     vrai(!/border-bottom/.test(regleOnglets[1]), 'aucun trait sous la bande : au repos il flottait dans le vide');
+    /* L'encoche : barre partie, la bande ne remonte que du dessin de la barre et
+       la zone sous l'heure n'avait plus de fond. Le contenu y defilait a travers,
+       en application installee. Un pseudo-element de la hauteur de l'encoche,
+       plus large que l'ecran, la peint depuis la bande. */
+    const encoche = css.match(/\.sous-onglets::before\s*\{([^}]*)\}/);
+    vrai(encoche, 'la bande porte un pseudo-élément au-dessus d’elle');
+    vrai(/bottom:\s*100%/.test(encoche[1]) && /height:\s*env\(safe-area-inset-top, 0px\)/.test(encoche[1]),
+      'posé juste au-dessus, de la hauteur de l’encoche, et nul hors application installée');
+    vrai(/background:\s*var\(--page\)/.test(encoche[1]), 'de la couleur de la page, comme la bande');
+    vrai(/left:\s*-50vw/.test(encoche[1]) && /right:\s*-50vw/.test(encoche[1]),
+      'et plus large que l’écran : les gouttières aussi laissaient passer');
     vrai(!/backdrop-filter/.test(regleOnglets[1]),
       'ni de flou, qui dessine une bande aussi sûrement qu’une couleur — c’est '
       + 'l’étape intermédiaire qui n’a pas suffi. Seules les pastilles ont une surface');
