@@ -587,7 +587,7 @@ function seriesUtiles(points, { financier = false } = {}) {
 }
 function legendeSeries(series, avecTotal = false) {
   return series.map(s => `<span><i style="background:${s.color}"></i>${esc(s.label)}</span>`).join('')
-    + (avecTotal ? `<span><i style="background:var(--text-secondary)"></i>Total</span>` : '');
+    + (avecTotal ? `<span><i style="background:var(--text-secondary)"></i>${trad('Total')}</span>` : '');
 }
 
 /* `pointsEvolution()` a quitte ce fichier pour `store.js`.
@@ -1964,7 +1964,7 @@ function viewObjective() {
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>Horizon</th>
+          <th>${trad('Horizon')}</th>
           <th class="large-seulement">${trad('Apports')}</th>
           <th class="large-seulement">${trad('Gains cumulés')}</th>
           <th>${trad('Patrimoine')}</th><th>${trad('Après inflation')}</th>
@@ -2655,7 +2655,7 @@ function viewPositions() {
       <div class="row">
         <button class="btn sm ghost" data-action="sell-position"
                 ${ps.length ? '' : 'disabled'}
-                title="${trad('Enregistrer une vente et sa plus-value')}">− Vendre</button>
+                title="${trad('Enregistrer une vente et sa plus-value')}">− ${trad('Vendre')}</button>
         <button class="btn sm" data-action="ajouter-ligne">${trad('+ Ajouter une ligne')}</button>
       </div>
       <div class="row" style="margin:8px 0 0">
@@ -2710,9 +2710,9 @@ function viewPositions() {
             + 'investir inclus. Le même calcul que la colonne « Poids » de la carte du jour '
             + 'et que la fiche de la ligne.')}
         </tr></thead>
-        <tbody>${rows || `<tr><td colspan="9" class="empty">Aucune position</td></tr>`}</tbody>
+        <tbody>${rows || `<tr><td colspan="9" class="empty">${trad('Aucune position')}</td></tr>`}</tbody>
         <tfoot><tr>
-          <td class="sticky-col">Total</td><td colspan="3"></td>
+          <td class="sticky-col">${trad('Total')}</td><td colspan="3"></td>
           <td>${fmtEUR(pnl.value)}</td><td>${fmtEUR(pnl.invested)}</td>
           <td class="${cls(pnl.pnl)}">${fmtSigned(pnl.pnl)}</td>
           <td class="${cls(pnl.pnl)}">${pnl.pct == null ? '' : fmtSignedPct(pnl.pct)}</td>
@@ -3209,7 +3209,7 @@ function mountSymbolSearch() {
            .replace('{n}', res.length)}</p>` : ''}
         <table class="table-serree cols-nom-action"><tbody>${res.map(r => `
         <tr>
-          <td class="name">${esc(r.symbol)}${r.symbol === bestSymbol ? ' <span class="tag">retenu</span>' : ''}
+          <td class="name">${esc(r.symbol)}${r.symbol === bestSymbol ? ` <span class="tag">${trad('retenu')}</span>` : ''}
               <span class="sub">${esc(r.name)}${[r.exchange, r.type].filter(Boolean).length
                 ? ` · ${esc([r.exchange, r.type].filter(Boolean).join(' · '))}` : ''}</span></td>
           <td><button class="btn sm assign-target" data-symbol="${esc(r.symbol)}"
@@ -3703,13 +3703,13 @@ function viewRebalance() {
       })()}
       <div class="reeq-bas">
         <span class="reeq-part">${fmtPct(row.pct, 1)}
-          ${key ? `<span class="muted">· cible</span>
+          ${key ? `<span class="muted">· ${trad('cible')}</span>
             <select class="cible-champ" data-path="targets.${key}" data-type="num"
                     aria-label="Cible pour ${esc(row.label)}">${
               paliersCible(valeurCible(key)).map(v =>
                 `<option value="${v}" ${v === valeurCible(key) ? 'selected' : ''}>${v}</option>`).join('')
             }</select><span class="u">%</span>`
-                : `<span class="muted">· cible ${fmtPct(row.targetPct, 0)}</span>`}</span>
+                : `<span class="muted">· ${trad('cible')} ${fmtPct(row.targetPct, 0)}</span>`}</span>
         <span class="reeq-ecart ${ecartFait ? 'muted' : 'a-faire'}">${ecartFait
           ? trad('à la cible')
           : `<b class="${row.delta > 0 ? 'renfort' : ''}">${
@@ -3848,7 +3848,7 @@ ${trad('Le périmètre : tes comptes d’investissement (PEA, compte-titres, ass
           <div class="role-legende">${parts.map(p =>
             `<span><i class="${p.nature === 'fonds' ? '' : 'raye'}" style="--c:${p.couleur}"></i>${
               esc(p.label)} ${fmtEUR0(p.value)}</span>`).join('')
-            || '<span class="muted">aucune ligne</span>'}</div>`}
+            || `<span class="muted">${trad('aucune ligne')}</span>`}</div>`}
         </li>`;
       }).join('')}
     </ul>
@@ -3995,7 +3995,7 @@ function viewHistory() {
       + 'une seule fois se note ici, avec sa date : le rythme d’accumulation sait alors que '
       + 'ce mois-là ne dit rien de ton épargne.')}</p>`
     : !liste.length ? `
-    <p class="small muted" style="margin:0">Aucune ligne en ${esc(String(annee))}.
+    <p class="small muted" style="margin:0">${trad('Aucune ligne en {a}.').replace('{a}', esc(String(annee)))}
       Le journal en compte ${tout.length} au total : change l’année en tête de page.</p>`
     : `<details class="data-view" id="journalApports" ${journalOuvert ? 'open' : ''}>
       <summary>${trad('Voir le journal')}</summary>
@@ -4014,7 +4014,7 @@ function viewHistory() {
     <dl class="kv" style="margin-top:12px">
       ${d.entrees ? `<dt>${trad('Entrées')}</dt><dd class="up">${fmtSigned(d.entrees)}</dd>` : ''}
       ${d.sorties ? `<dt>${trad('Sorties')}</dt><dd class="down">${fmtSigned(d.sorties)}</dd>` : ''}
-      <dt>Net${aide(trad("La somme de tes entrées et de tes sorties exceptionnelles sur l’année affichée. Elle ne s’ajoute à aucun total de patrimoine : ces montants sont déjà passés sur tes comptes, c’est leur origine que ce journal garde en mémoire. Le rythme d’accumulation s’en sert pour distinguer ce que tu as mis de côté de ce qui t’est tombé du ciel, ou de ce qui est parti d’un coup. Une grosse dépense se note ici et non dans les dépenses du mois : là-bas elle gonflerait ta moyenne toute l’année, et avec elle le coût de la vie qui sert à ton autonomie financière et à ta cible d’épargne de précaution."))}</dt>
+      <dt>${trad('Net')}${aide(trad("La somme de tes entrées et de tes sorties exceptionnelles sur l’année affichée. Elle ne s’ajoute à aucun total de patrimoine : ces montants sont déjà passés sur tes comptes, c’est leur origine que ce journal garde en mémoire. Le rythme d’accumulation s’en sert pour distinguer ce que tu as mis de côté de ce qui t’est tombé du ciel, ou de ce qui est parti d’un coup. Une grosse dépense se note ici et non dans les dépenses du mois : là-bas elle gonflerait ta moyenne toute l’année, et avec elle le coût de la vie qui sert à ton autonomie financière et à ta cible d’épargne de précaution."))}</dt>
         <dd class="${cls(d.net)}">${fmtSigned(d.net)}</dd>
     </dl>`}
   </div>`;
@@ -4434,7 +4434,7 @@ function viewAccounts() {
       || `<p class="empty">${trad('Tes comptes et tes biens vivront ici.')}</p>`}
       ${famillesDActifs()}</div>`;
   } else if (!ouverts.length && !archives.length) {
-    corps = `<div class="card"><p class="empty">Rien ne correspond à ${guill(esc(compteRecherche))}.
+    corps = `<div class="card"><p class="empty">${trad('Rien ne correspond à {q}.').replace('{q}', guill(esc(compteRecherche)))}
       Essaie avec le nom de la banque ou du placement.</p></div>`;
   } else if (compteVue === 'banque') {
     /* Deux sections, et la frontiere se derive des comptes.
@@ -5561,7 +5561,7 @@ function espaceBien(c, idx, t) {
               ${USAGES_BIEN.map(([cle, label]) => `<option value="${cle}"
                 ${usageLigne(l) === cle ? 'selected' : ''}>${trad(label)}</option>`).join('')}
             </select></div>`}
-          ${!estBienEnDirect(c) ? '' : `<div class="field"><label>Surface (m²)${aide(trad("Elle donne le prix au mètre carré, le seul chiffre qui permette de confronter ton estimation aux annonces du quartier. Sans elle, « 150 000 € » ne se vérifie contre rien."))}</label>
+          ${!estBienEnDirect(c) ? '' : `<div class="field"><label>${trad('Surface (m²)')}${aide(trad("Elle donne le prix au mètre carré, le seul chiffre qui permette de confronter ton estimation aux annonces du quartier. Sans elle, « 150 000 € » ne se vérifie contre rien."))}</label>
             <input type="number" step="any" class="champ-large"
                    data-path="comptes.${idx}.lignes.${i}.surface" value="${num(l.surface) || ''}"></div>`}
         </div>
@@ -5573,7 +5573,7 @@ function espaceBien(c, idx, t) {
             ${partEstValide(l.part) ? '' : `<p class="hint" style="margin:4px 0 0">${
               trad('La quote-part doit être comprise entre 0 et 100 %.')}</p>`}</div>
         </div>
-        ${!estBienEnDirect(c) ? '' : `<div class="field"><label>Adresse</label>
+        ${!estBienEnDirect(c) ? '' : `<div class="field"><label>${trad('Adresse')}</label>
           <textarea rows="3" data-path="comptes.${idx}.lignes.${i}.adresse"
                     placeholder="${trad('facultatif')}"
                     style="text-align:left">${esc(l.adresse || '')}</textarea></div>`}
@@ -5617,7 +5617,7 @@ function espaceBien(c, idx, t) {
   ${carteUsageBien(c, idx)}
 
   <div class="card">
-    <div class="card-head"><h2>Financement</h2>
+    <div class="card-head"><h2>${trad('Financement')}</h2>
       <button class="btn sm ghost" data-action="ajouter-credit" data-id="${esc(c.etabId)}">${trad('+ Crédit')}</button></div>
     ${!dettes.length ? `
       <div class="empty">
@@ -5737,7 +5737,7 @@ function viewFicheCompte(id) {
           </div>
           <span class="sub">${p.plein
             ? `Plafond de ${fmtEUR0(p.plafond)} atteint`
-            : `Il reste <b>${fmtEUR0(p.reste)}</b> à verser sur ${fmtEUR0(p.plafond)}`}</span>
+            : trad('Il reste <b>{v}</b> à verser sur {p}').replace('{v}', fmtEUR0(p.reste)).replace('{p}', fmtEUR0(p.plafond))}</span>
         </div>`;
       })()}
       ${(() => {
@@ -5864,7 +5864,7 @@ function viewFicheCompte(id) {
       <dt>${trad('Crédits chez')} ${esc(etab.nom)}</dt><dd class="dette">−${fmtEUR(total)}</dd>
       <dt><b>${trad('Ce que tu possèdes')}</b>${aide(trad("La valeur du compte moins ce que tu dois à cet établissement. C’est ce montant qui compte dans ton patrimoine net. Si l’établissement tient plusieurs comptes, le crédit est déduit une seule fois du patrimoine, pas une fois par compte."))}</dt>
       <dd class="${valeur - total < 0 ? 'dette' : ''}"><b>${fmtEUR(valeur - total)}</b></dd>
-      ${valeur - total > 0.005 ? `<dt>Effet de levier${aide(trad("Ce que tu contrôles rapporté à ce qui est vraiment à toi sur ce compte. À 150 %, une baisse de 10 % des titres coûte 15 % de tes capitaux propres. Ce chiffre ne dit rien de la marge d’appel : l’application ne connaît pas les règles de ton courtier."))}</dt>
+      ${valeur - total > 0.005 ? `<dt>${trad('Effet de levier')}${aide(trad("Ce que tu contrôles rapporté à ce qui est vraiment à toi sur ce compte. À 150 %, une baisse de 10 % des titres coûte 15 % de tes capitaux propres. Ce chiffre ne dit rien de la marge d’appel : l’application ne connaît pas les règles de ton courtier."))}</dt>
         <dd>${fmtPct(valeur / (valeur - total) * 100, 0)}
           <span class="muted">${trad('de tes capitaux propres')}</span></dd>` : ''}
     </dl>
@@ -5909,7 +5909,7 @@ function viewFicheCompte(id) {
               : `<span class="muted">${trad('non renseignée')}</span>`}</dd>` : ''}
         ${!t.interne && c.numero ? `<dt>${trad('Numéro de compte')}</dt><dd>${esc(c.numero)}</dd>` : ''}
       </dl>
-      <div class="field" style="margin-top:12px"><label>Notes</label>
+      <div class="field" style="margin-top:12px"><label>${trad('Notes')}</label>
         <input data-path="comptes.${idx}.notes" value="${esc(c.notes || '')}"
                placeholder="${trad('facultatif')}" style="text-align:left"></div>
       ${barreValiderFiche()}
@@ -6099,11 +6099,11 @@ function viewStrategy() {
   <div class="grid g-2-1">
     <div class="card">
       <div class="card-head"><h2>${trad('Déploiement par seuil')}</h2>
-        <span class="hint">Réserve tactique de ${fmtEUR0(st.reserveMonthly)} ${trad('/ mois')}</span></div>
+        <span class="hint">${trad('Réserve tactique de {v}').replace('{v}', fmtEUR0(st.reserveMonthly))} ${trad('/ mois')}</span></div>
       <table>
-        <thead><tr><th>Seuil</th><th>${trad('% de la réserve')}</th><th>${trad('À déployer')}</th><th>${trad('Cumul si tout déclenché')}</th></tr></thead>
+        <thead><tr><th>${trad('Seuil')}</th><th>${trad('% de la réserve')}</th><th>${trad('À déployer')}</th><th>${trad('Cumul si tout déclenché')}</th></tr></thead>
         <tbody>${thr}</tbody>
-        <tfoot><tr><td>Total</td><td>${fmtPct(st.thresholds.reduce((s, t) => s + t.pct, 0), 0)}</td>
+        <tfoot><tr><td>${trad('Total')}</td><td>${fmtPct(st.thresholds.reduce((s, t) => s + t.pct, 0), 0)}</td>
           <td>${fmtEUR0(cum)}</td><td></td></tr></tfoot>
       </table>
     </div>
@@ -6128,7 +6128,7 @@ function viewStrategy() {
     <div class="grid g-2">
       ${st.models.map((m, mi) => `
         <div>
-          <h3 style="margin:0 0 4px;font-size:var(--font-base)">Allocation ${mi + 1}, ${esc(m.name)}</h3>
+          <h3 style="margin:0 0 4px;font-size:var(--font-base)">${trad('Allocation {n}, {nom}').replace('{n}', mi + 1).replace('{nom}', esc(m.name))}</h3>
           <p class="small muted" style="margin:0 0 12px">${esc(m.note || '')}</p>
           <table>
             <thead><tr><th>${trad('Classe d\'actif')}</th><th>%</th><th>${trad('Montant')}</th><th style="text-align:left">${trad('Véhicules')}</th></tr></thead>
@@ -6138,7 +6138,7 @@ function viewStrategy() {
               <td>${fmtEUR0(capital * l.pct / 100)}</td>
               <td style="text-align:left" class="muted small">${esc(l.vehicles)}</td>
             </tr>`).join('')}</tbody>
-            <tfoot><tr><td>Total</td><td>${fmtPct(m.lines.reduce((s, l) => s + l.pct, 0), 0)}</td>
+            <tfoot><tr><td>${trad('Total')}</td><td>${fmtPct(m.lines.reduce((s, l) => s + l.pct, 0), 0)}</td>
               <td>${fmtEUR0(capital)}</td><td></td></tr></tfoot>
           </table>
         </div>`).join('')}
@@ -6393,7 +6393,7 @@ function viewBudget(section = 'depenses') {
     <details class="data-view">
       <summary>${trad('Voir les données')}</summary>
       <table>
-        <thead><tr><th>${trad('Mois')}</th><th>${trad('Dépensé')}</th><th>${trad('vs objectif')}</th><th style="text-align:left">Note</th></tr></thead>
+        <thead><tr><th>${trad('Mois')}</th><th>${trad('Dépensé')}</th><th>${trad('vs objectif')}</th><th style="text-align:left">${trad('Note')}</th></tr></thead>
         <tbody>${expenseSeriesVisible(year).map(r => `<tr>
           <td class="name">${esc(r.label)}</td>
           <td>${r.total ? fmtEUR0(r.total) : ''}</td>
@@ -6530,7 +6530,7 @@ function viewBudget(section = 'depenses') {
           </tr>`;
         }).join('')}</tbody>
         <tfoot><tr>
-          <td class="sticky-col">Total ${esc(year)}</td>
+          <td class="sticky-col">${trad('Total {a}').replace('{a}', esc(year))}</td>
           <td>${fmtEUR0(stats.total)}</td><td></td>
           ${sansDistinction() ? '' : expenseCategories().map(c => {
             const v = cats.find(x => x.label === c);
@@ -6551,7 +6551,7 @@ function viewBudget(section = 'depenses') {
           return `<tr${retiree ? ' class="cat-retiree"' : ''}>
             <td class="name"><input value="${esc(c)}" data-action-change="rename-category"
                 data-cat="${esc(c)}" title="${trad('Modifie le nom puis quitte le champ')}">
-              ${retiree ? '<span class="tag">retirée</span>' : ''}</td>
+              ${retiree ? `<span class="tag">${trad('retirée')}</span>` : ''}</td>
             <td class="${total ? '' : 'muted'}">${total ? fmtEUR0(total) : ''}</td>
             <td class="cat-actions">
               <span class="large-seulement">
@@ -6677,7 +6677,7 @@ function viewBudget(section = 'depenses') {
             <th class="sticky-col">${trad('Poste')}</th><th>${trad('Montant')}</th><th>${trad('Facturé')}</th>
             <th title="${trad('Ce que la ligne pèse chaque mois, quelle que soit sa périodicité')}">${trad('€ / mois')}</th>
             <th>${trad('% charges')}</th>
-            <th>Organisme</th><th></th>
+            <th>${trad('Organisme')}</th><th></th>
           </tr></thead>
           <tbody id="chargesTable">${chargesOrdonnees().map(({ c, i }) => `<tr class="ligne-ouvre"
               data-action="edit-charge" data-i="${i}"
@@ -6692,7 +6692,7 @@ function viewBudget(section = 'depenses') {
             <td><button class="btn icon" data-action="del-charge" data-i="${i}" title="${trad('Supprimer')}">✕</button></td>
           </tr>`).join('')}</tbody>
           <tfoot><tr>
-            <td class="sticky-col">Total / mois</td><td colspan="2"></td>
+            <td class="sticky-col">${trad('Total / mois')}</td><td colspan="2"></td>
             <td><b>${fmtEUR(brut)}</b></td><td>${fmtPct(100)}</td>
             <td colspan="2"></td>
           </tr></tfoot>
@@ -6900,7 +6900,7 @@ function viewData() {
   <details class="data-view diagnostic">
     <summary>${trad('Diagnostic')}</summary>
     <dl class="kv" style="margin-top:12px">
-      <dt>Positions</dt><dd>${Store.state.positions.length}</dd>
+      <dt>${trad('Positions')}</dt><dd>${Store.state.positions.length}</dd>
       <dt>${trad('Relevés enregistrés')}</dt><dd>${nbReleves}</dd>
       <dt>${trad('Comptes suivis')}</dt><dd>${ACCOUNTS.length}</dd>
       <dt>${trad('Taille du stockage')}</dt><dd>${(JSON.stringify(Store.state).length / 1024).toFixed(1)} Ko</dd>
@@ -10860,18 +10860,18 @@ function askSale(indexInitial) {
         <div class="field" data-vente="passee" hidden><label>${trad('Plus ou moins-value réalisée (€)')}</label>
           <input type="number" step="any" id="vePasPnl" autocomplete="off">
           <span class="hint">${trad('négative si la vente a perdu : le prix de revient s’en déduit')}</span></div>
-        <div class="field"><label>Date</label>
+        <div class="field"><label>${trad('Date')}</label>
           <input type="date" id="veDate" value="${todayISO()}">
           <span class="hint" data-vente="passee" hidden>${trad('même approximative : elle range la vente dans son année')}</span></div>
         <div class="field" data-vente="reelle"><label>${trad('Le produit va sur')}</label>
           <select id="veCash"></select>
           <span class="hint">${trad('Sans ça, ton patrimoine baisserait du montant vendu')}</span></div>
-        <div class="field"><label>Note</label>
+        <div class="field"><label>${trad('Note')}</label>
           <input id="veNote" placeholder="${trad('Pourquoi cette vente ?')}" autocomplete="off"></div>
       </div>
       <div id="veApercu" style="margin-top:4px"></div>`;
     $('#modalFoot').innerHTML =
-      `<button class="btn ghost" id="veCancel" type="button">Annuler</button>
+      `<button class="btn ghost" id="veCancel" type="button">${trad('Annuler')}</button>
        <button class="btn" id="veOk" type="button">${trad('Enregistrer la vente')}</button>`;
     montrerModal(m);
 
@@ -11159,7 +11159,7 @@ function askPosition(index) {
           <input type="date" data-path="positions.${index}.dateAchat" value="${esc(p.dateAchat || '')}"></div>
         <div class="field"><label>${trad('Nature')}${aide(trad("Un fonds répartit le risque sur des centaines de lignes, un titre en direct le concentre sur une société. La classe d'actif ne le dit pas (un MSCI World et une action Meta sont tous deux des actions), et c'est pourtant ce qui distingue un socle d'un pari. Déduit de l'instrument, corrigeable ici."))}</label>
           <select data-path="positions.${index}.nature">
-            <option value="" ${!p.nature ? 'selected' : ''}>Auto, ${esc(trad(NATURES[natureDe({ ...p, nature: '' })]))}</option>
+            <option value="" ${!p.nature ? 'selected' : ''}>${trad('Auto,')} ${esc(trad(NATURES[natureDe({ ...p, nature: '' })]))}</option>
             ${Object.entries(NATURES).map(([v, l]) =>
               `<option value="${v}" ${p.nature === v ? 'selected' : ''}>${esc(trad(l))}</option>`).join('')}
           </select></div>
@@ -12574,7 +12574,7 @@ const APERCUS = {
             <dd class="${cls(v.realised)}"><b>${fmtSigned(v.realised)}</b></dd>
           ${depuis ? `<dt>${trad('Ligne vendue sur')}</dt><dd>${esc(depuis)}</dd>` : ''}
           ${vers ? `<dt>${trad('Encaissé sur')}</dt><dd>${esc(vers)}</dd>` : ''}
-          ${v.note ? `<dt>Note</dt><dd>${esc(v.note)}</dd>` : ''}
+          ${v.note ? `<dt>${trad('Note')}</dt><dd>${esc(v.note)}</dd>` : ''}
         </dl>
         <div class="row" style="margin-top:12px">
           <button class="btn sm" data-action="edit-sale" data-i="${idx}">${trad('Modifier')}</button>
