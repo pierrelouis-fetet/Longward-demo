@@ -217,6 +217,7 @@ const I18N = {
     "Tes loyers, assurances et abonnements viendront ici, chacun avec sa cadence.": "Your rent, insurance and subscriptions will appear here, each with its own cycle.",
     "Tes comptes et tes biens vivront ici.": "Your accounts and belongings will live here.",
     "Ce que Longward sait suivre": "What Longward can track",
+    "Autre…": "Other…",
     "versement à définir": "contribution to be set",
     "Suis tes placements cotés": "Follow your listed investments",
     "Les comptes que tu clôtures se rangeront ici.": "The accounts you close will be filed here.",

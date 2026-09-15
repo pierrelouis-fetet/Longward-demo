@@ -4336,11 +4336,12 @@ function lignePlacement(l, compte, editable = false, sansNom = false) {
    appelant se garde sans se maintenir, et finit par decrire un ecran qui
    n'existe plus.*/
 
-const FAMILLES_ACTIF = ['courant', 'cto', 'immo', 'crypto', 'pe', 'fondsNonCote'];
+const FAMILLES_EN_VUE = ['courant', 'livret', 'pea', 'av', 'cto', 'immo', 'crypto'];
 function famillesDActifs() {
   const choix = typesCompteChoix();
-  const dispo = FAMILLES_ACTIF.map(id => choix.find(t => t.id === id)).filter(Boolean);
+  const dispo = FAMILLES_EN_VUE.map(id => choix.find(t => t.id === id)).filter(Boolean);
   if (!dispo.length) return '';
+  const reste = choix.length > dispo.length;
   return `
       <p class="familles-titre">${trad('Ce que Longward sait suivre')}</p>
       <div class="familles">
@@ -4349,6 +4350,11 @@ function famillesDActifs() {
           <span class="famille-nom">${esc(t.label)}</span>
           <span class="famille-plus" aria-hidden="true">+</span>
         </button>`).join('')}
+        ${!reste ? '' : `
+        <button type="button" class="famille" data-action="ajouter-compte">
+          <span class="famille-nom">${trad('Autre…')}</span>
+          <span class="famille-plus" aria-hidden="true">+</span>
+        </button>`}
       </div>`;
 }
 

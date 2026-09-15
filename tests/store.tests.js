@@ -39377,12 +39377,23 @@ suite('Aucun ecran vide ne ment, aucun ne se tait', () => {
       'la page sait qu’elle n’a aucun compte réel');
     vrai(/\$\{sansCompte && !filtre \? '' : `<dl class="kv cpt-resume">/.test(s),
       'et « Tes avoirs : 0,00 € » ne s’affiche pas avant le premier compte');
-    /* Les familles se dérivent de la table des types : aucune n’est écrite à côté. */
-    vrai(/const FAMILLES_ACTIF = \['courant', 'cto', 'immo', 'crypto', 'pe', 'fondsNonCote'\];/.test(s),
-      'six familles, prises par identifiant');
+    /* Les familles se dérivent de la table des types : aucune n’est écrite à
+       côté. Une liste de six identifiants a vécu ici, et il en manquait sept à
+       l’écran — livret, PEA, assurance-vie, PER, prêt participatif, SCPI, bien
+       de valeur. Toute sélection écrite à la main se remet à diverger. */
     const f = s.slice(s.indexOf('function famillesDActifs()'), s.indexOf('function viewAccounts()'));
-    vrai(/typesCompteChoix\(\)/.test(f) && /\.filter\(Boolean\)/.test(f),
+    vrai(/const dispo = FAMILLES_EN_VUE\.map\(id => choix\.find\(t => t\.id === id\)\)\.filter\(Boolean\);/.test(f),
       'une famille retirée de la table disparaît d’ici, elle n’est pas recopiée');
+    /* AUCUN TYPE N’EST HORS D’ATTEINTE. La table s’allonge avec le temps et la
+       grille ne peut pas la suivre : « Autre… » ouvre la même fenêtre sans type
+       imposé, donc la liste entière. Sans cette porte, un type ajouté demain
+       n’aurait plus aucun chemin depuis une page vierge. */
+    vrai(/const reste = choix\.length > dispo\.length;/.test(f)
+      && /\$\{!reste \? '' : `\s*<button type="button" class="famille" data-action="ajouter-compte">\s*<span class="famille-nom">\$\{trad\('Autre…'\)\}/.test(f),
+      'et tout ce qui n’a pas sa porte reste atteignable par « Autre… »');
+    for (const id of ['courant', 'livret', 'pea', 'av', 'cto', 'immo', 'crypto']) {
+      vrai(TYPES_COMPTE.some(t => t.id === id), `la famille ${id} existe dans la table`);
+    }
     vrai(/data-action="ajouter-compte" data-type="\$\{esc\(t\.id\)\}"/.test(f),
       'et chaque porte ouvre la fenêtre d’ajout existante');
     vrai(/famillesDActifs\(\)/.test(s.slice(s.indexOf('if (sansCompte && !filtre) {'),
