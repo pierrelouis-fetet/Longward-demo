@@ -3329,7 +3329,7 @@ suite('Les champs prennent la place de ce qu’ils portent', () => {
        fiche d'un bien, qui ne portent que des nombres et un menu. */
     const t = app();
     const bloc = t.slice(t.indexOf("<div class=\"field\"><label>${trad('Nom du bien')}</label>"),
-                         t.indexOf('<div class="field"><label>Adresse</label>'));
+                         t.indexOf('<div class="field"><label>${trad(\'Adresse\')}</label>'));
     vrai(bloc.length > 500, 'le bloc du bien doit être trouvable');
     eq((bloc.match(/<div class="grid g-2 g-paire">/g) || []).length, 3,
       'les trois grilles du bien la portent');
@@ -3598,7 +3598,7 @@ suite('Apport, capital restant et valeur nette ne se mélangent jamais', () => {
     vrai(i > 0, 'le champ doit exister');
     const finZone = app.indexOf('${carteUsageBien(c, idx)}');
     vrai(finZone > i, 'le champ vit avant la carte d’exploitation');
-    const financement = app.indexOf("<h2>Financement</h2>");
+    const financement = app.indexOf("<h2>${trad('Financement')}</h2>");
     vrai(financement > i, 'et avant la carte du financement courant');
   });
 });
@@ -34664,9 +34664,9 @@ suite('La frontière entre pierre et papier passe aussi par les champs', () => {
     /* Les trois champs se tiennent a la MEME frontiere de modele. Une seule
        question posee trois fois : ce bien, le detient-on physiquement. */
     const e = espace();
-    vrai(/\$\{!estBienEnDirect\(c\) \? '' : `<div class="field"><label>Surface \(m²\)/.test(e),
+    vrai(/\$\{!estBienEnDirect\(c\) \? '' : `<div class="field"><label>\$\{trad\('Surface \(m²\)'\)\}/.test(e),
       'la surface ne s’écrit que pour un bien détenu en direct');
-    vrai(/\$\{!estBienEnDirect\(c\) \? '' : `<div class="field"><label>Adresse<\/label>/.test(e),
+    vrai(/\$\{!estBienEnDirect\(c\) \? '' : `<div class="field"><label>\$\{trad\('Adresse'\)\}<\/label>/.test(e),
       'l’adresse non plus');
     vrai(/\$\{!estBienEnDirect\(c\) \? '' : `<div class="field"><label>\$\{trad\('Usage'\)\}/.test(e),
       'et l’usage résidentiel pas davantage');
@@ -34713,9 +34713,9 @@ suite('La frontière entre pierre et papier passe aussi par les champs', () => {
        demandait un niveau d'echappement de plus a chaque etage, et c'est
        exactement la que celui de l'usage s'etait perdu : il cherchait
        `<label>trad('Usage')` quand la source ecrit `<label>${trad('Usage')}`. */
-    vrai(/estBienEnDirect\(c\) \? '' : `<div class="field"><label>Surface \(m²\)/.test(e),
+    vrai(/estBienEnDirect\(c\) \? '' : `<div class="field"><label>\$\{trad\('Surface \(m²\)'\)\}/.test(e),
       'la surface reste offerte au bien physique');
-    vrai(/estBienEnDirect\(c\) \? '' : `<div class="field"><label>Adresse<\/label>/.test(e),
+    vrai(/estBienEnDirect\(c\) \? '' : `<div class="field"><label>\$\{trad\('Adresse'\)\}<\/label>/.test(e),
       'l’adresse aussi');
     vrai(/estBienEnDirect\(c\) \? '' : `<div class="field"><label>\$\{trad\('Usage'\)\}/.test(e),
       'et l’usage résidentiel');
@@ -39940,5 +39940,59 @@ suite('La page de connexion se choisit sa langue', () => {
       'la demande de code emporte la langue');
     vrai(/action="\/api\/auth\/verify-code\?lang=\$\{T\.lang\}"/.test(w),
       'la vérification aussi : sans elle, la page du code repasserait à la langue du navigateur');
+  });
+});
+
+/* --- Rien ne s'affiche hors du dictionnaire -------------------------------
+
+   Trente-quatre textes francais etaient ecrits en dur dans le balisage : un
+   bouton « − Vendre » a cote de son jumeau traduit, des en-tetes de colonnes
+   entre des en-tetes traduits, des etiquettes de champs, des phrases entieres.
+   L'interface anglaise les rendait en francais, et rien ne le disait — la
+   moitie des clefs existaient deja dans le dictionnaire, elles n'etaient
+   simplement pas appelees.
+
+   Ce controle lit le balisage et refuse tout texte porteur de lettres pose
+   juste apres une balise, qu'il soit suivi d'une fermeture ou d'une
+   interpolation. C'est la deuxieme forme qui avait laisse passer
+   « Surface (m²) », colle a son infobulle. */
+suite('Rien ne s’affiche hors du dictionnaire', () => {
+  test('aucun texte français n’est écrit en dur dans le balisage', () => {
+    let src = lireSource('assets/app.js');
+    /* Les commentaires ne s'affichent pas : on les ecarte avant de lire. */
+    src = src.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/<!--[\s\S]*?-->/g, ' ');
+    /* Ce qui a le droit de rester litteral : une entite, un extrait de code, et
+       les fragments d'une phrase deja traduite qui porte son propre balisage. */
+    const permis = new Set(['&nbsp;', 'python serve.py', 'données à caractère personnel',
+      'chez Cloudflare', 'pas chiffrées de bout en bout',
+      'uniquement dans le navigateur de cette machine', 'Lancer-Dashboard.cmd']);
+    const fautifs = [];
+    for (const m of src.matchAll(/>([^<>{}$`\n]{2,60})(?=<\/|\$\{)/g)) {
+      const texte = m[1].trim();
+      if (!/[A-Za-zÀ-ÿ]{3,}/.test(texte) || permis.has(texte)) continue;
+      fautifs.push(texte);
+    }
+    eq(fautifs.length, 0, 'texte(s) hors dictionnaire : ' + [...new Set(fautifs)].join(' | '));
+  });
+
+  test('et chaque clef appelée porte sa traduction', () => {
+    for (const cle of ['Aucune position', 'retenu', 'aucune ligne', 'Aucune ligne en {a}.',
+                       'Rien ne correspond à {q}.', 'Surface (m²)', 'Adresse', 'Effet de levier',
+                       'Réserve tactique de {v}', 'Seuil', 'Allocation {n}, {nom}', 'Total {a}',
+                       'retirée', 'Positions', 'Il reste <b>{v}</b> à verser sur {p}',
+                       'Vendre', 'Horizon', 'Total', 'Net', 'Note', 'Notes', 'Organisme',
+                       'Total / mois', 'Date', 'Annuler', 'Financement', 'cible', 'Auto,']) {
+      vrai(!!I18N.en[cle], `« ${cle} » a sa traduction`);
+    }
+    /* Un gabarit interpole doit survivre a la traduction, sinon le nombre
+       disparait de la phrase anglaise sans que rien ne tombe. */
+    for (const [cle, marques] of [['Aucune ligne en {a}.', ['{a}']], ['Rien ne correspond à {q}.', ['{q}']],
+                                  ['Réserve tactique de {v}', ['{v}']], ['Total {a}', ['{a}']],
+                                  ['Allocation {n}, {nom}', ['{n}', '{nom}']],
+                                  ['Il reste <b>{v}</b> à verser sur {p}', ['{v}', '{p}']]]) {
+      for (const marque of marques) {
+        vrai(I18N.en[cle].includes(marque), `« ${cle} » garde ${marque} en anglais`);
+      }
+    }
   });
 });
