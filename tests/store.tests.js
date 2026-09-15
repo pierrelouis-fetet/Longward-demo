@@ -24128,8 +24128,8 @@ suite('Une page s’ouvre sur son sujet, et se corrige à la fin', () => {
     const vue = src.slice(src.indexOf('function viewData('), src.indexOf('function mountData('));
     const l = positions(vue,
       "trad('Contrôles de cohérence')",
-      "trad('Exporter')",
-      "trad('Sauvegardes automatiques')",
+      "trad('Sauvegarde et restauration')",
+      "trad('Historique des sauvegardes')",
       "trad('Diagnostic')",
       'data-action="start-blank"');
     vrai(croissant(l),
@@ -24655,7 +24655,9 @@ suite('L’interface tient ses seuils', () => {
     const vue = src.slice(i, src.indexOf('function mountData'));
     vrai(!/class="btn pleine" data-action="undo"/.test(vue),
       'le bouton d’annulation prend la taille des autres');
-    vrai(/class="btn" data-action="undo"/.test(vue), 'et reste plein, seul dans sa carte');
+    /* Sobre, desormais : une securite pratique dans sa section, pas l'action
+       principale de la page. Le remplissage dit la hierarchie. */
+    vrai(/class="btn sm ghost" data-action="undo"/.test(vue), 'et se fait discret : une sécurité pratique, pas l’acte principal');
     /* `pleine` garde son unique emploi documente : la photo du releve. */
     vrai(/class="btn pleine" id="relPhoto"/.test(src),
       'la classe pleine reste réservée à l’action qui remplace douze saisies');
@@ -24667,9 +24669,9 @@ suite('L’interface tient ses seuils', () => {
        les boutons d'une carte portent sur le sujet de cette carte. */
     const src = lireSource('assets/app.js');
     const vue = src.slice(src.indexOf('function viewData'), src.indexOf('function mountData'));
-    const iImport = vue.indexOf("trad('Importer')");
+    const iImport = vue.indexOf("trad('Importer une sauvegarde')");
     const iBouton = vue.indexOf('data-action="start-blank"');
-    const iTitre = vue.indexOf("trad('Repartir de zéro')");
+    const iTitre = vue.indexOf("trad('Réinitialiser Longward')");
     vrai(iBouton > 0 && iTitre > 0, 'la carte doit être trouvable');
     vrai(iTitre < iBouton, 'son titre annonce ce que son bouton fait');
     vrai(iBouton > iImport + 2000,
@@ -24678,7 +24680,7 @@ suite('L’interface tient ses seuils', () => {
       'et le bouton porte le rouge de ce qu’il détruit');
     /* Dernier de la page : le doigt ne traverse pas le rouge pour atteindre le
        reste, comme sur la fiche d'un compte. */
-    vrai(iBouton > vue.indexOf("trad('Sauvegardes automatiques')"),
+    vrai(iBouton > vue.indexOf("trad('Historique des sauvegardes')"),
       'elle se rend après les sauvegardes : ce qui répare vient avant ce qui détruit');
   });
 
@@ -25477,8 +25479,8 @@ suite('Un intitulé dit exactement ce qu’il regroupe', () => {
     const dico = lireSource('assets/i18n.js');
     vrai(!/'view\.data\.sub': 'Export, import/.test(dico),
       'le sous-titre ne se limite plus à trois des sept gestes');
-    vrai(/'view\.data\.sub': 'Sauvegarde, import, export et synchronisation'/.test(dico)
-      && /'view\.data\.sub': 'Backup, import, export and sync'/.test(dico),
+    vrai(/'view\.data\.sub': 'Sauvegarde, synchronisation et contrôle de tes données'/.test(dico)
+      && /'view\.data\.sub': 'Backup, sync and control of your data'/.test(dico),
       'et il est traduit dans les deux langues');
   });
 
@@ -38932,5 +38934,127 @@ suite('Actif non coté : la formule montre pourquoi les montants sont liés', ()
       'le champ du prix est étroit : six caractères suffisent, le total au-dessus porte la largeur');
     vrai(/\.champ-par-part \.formule-val \{[^}]*white-space: nowrap/.test(css), 'un terme ne se coupe pas en deux');
     vrai(/\.champ-par-part \.formule-sous \{[^}]*flex: 1 0 100%/.test(css), 'le sous-titre prend sa propre ligne');
+  });
+});
+
+/* ------------------------------------------------------------------
+   Données : un centre de données, pas un panneau technique
+   ------------------------------------------------------------------ */
+suite('Données se lit comme un centre de données', () => {
+
+  const vue = () => { const s = lireSource('assets/app.js'); return s.slice(s.indexOf('function viewData() {'), s.indexOf('function mountData() {')); };
+  const positions = (s, ...ancres) => ancres.map(a => s.indexOf(a));
+  const croissant = l => l.every((v, i) => v > 0 && (i === 0 || v > l[i - 1]));
+
+  test('l’ordre va du rassurant au dangereux, et rien n’a disparu', () => {
+    /* Sept cartes de meme poids, un avertissement d'un ecran entier en tete :
+       la question « mes donnees sont-elles en securite ? » n'avait pas de reponse
+       avant deux mille pixels. Le meme contenu, dans l'ordre de la question. */
+    const v = vue();
+    const l = positions(v, 'class="page-tete"', 'class="card tight etat-donnees',
+      "trad('Contrôles de cohérence')", "trad('Sauvegarde et restauration')", "trad('Exporter pour analyse')",
+      'data-action="undo"', "trad('Historique des sauvegardes')", "trad('Confidentialité et stockage')",
+      "trad('Diagnostic')", "trad('Réinitialiser Longward')");
+    vrai(croissant(l), 'en-tête, état, contrôles, sauvegarde, export, annuler, historique, confidentialité, diagnostic, réinitialiser : ' + l.join(' < '));
+    for (const action of ['cloud-push', 'cloud-pull', 'cloud-force', 'export-json', 'export-xlsx-all', 'undo',
+                          'make-backup', 'restore-backup', 'start-blank'])
+      vrai(v.includes(`data-action="${action}"`), `l’action « ${action} » est toujours servie`);
+    vrai(/id="importFile"/.test(v) && /<label class="btn ghost" for="importFile">/.test(v),
+      'l’import reste un champ fichier, ouvert par un bouton qui le nomme');
+    vrai(/Un export JSON ou Excel sort de ce cadre/.test(v) && /pas chiffrées de bout en bout/.test(v),
+      'l’avertissement sur les données personnelles est entier, derrière « En savoir plus »');
+    vrai(/<details class="data-view">\s*<summary>\$\{trad\('En savoir plus'\)\}/.test(v), 'et replié par défaut');
+    for (const mesure of ['Positions', "trad('Relevés enregistrés')", "trad('Comptes suivis')", "trad('Taille du stockage')", "trad('Version')"])
+      vrai(v.includes(mesure), `le diagnostic garde ${mesure}`);
+  });
+
+  test('l’état se dit en un point de couleur, et le vert ne ment pas', () => {
+    const v = vue();
+    vrai(/if \(!cloud\) \{[\s\S]*?niveau: 'ok'/.test(v), 'sans cloud, la donnée vit ici : un état sain');
+    vrai(/s\.conflict\) \{[\s\S]*?niveau: 'alerte'/.test(v), 'un conflit est orange');
+    vrai(/s\.error\) \{[\s\S]*?niveau: 'erreur'/.test(v), 'un envoi refusé est rouge');
+    vrai(/s\.pushing \|\| !CloudSync\.aJour\(\)\) \{[\s\S]*?niveau: 'attente'/.test(v), 'ce qui reste à envoyer est orange');
+    vrai(/niveau: 'ok', titre: trad\('Données synchronisées'\)/.test(v), 'et le vert n’arrive qu’une fois tout envoyé');
+    vrai(/pluriel\(nbComptes, 'compte', 'comptes'\)/.test(v) && /c\.type !== 'especes' \|\| valeurCompte\(c\) > 0\.005/.test(v) && /'relevé', 'relevés'/.test(v) && /'position', 'positions'/.test(v),
+      'comptes, relevés, positions se comptent sous l’état');
+    vrai(/cloud && s\.conflict \? `<div class="paire-btn etat-conflit">[\s\S]*?cloud-pull[\s\S]*?cloud-force/.test(v),
+      'en conflit, les deux arbitrages restent offerts');
+    const src = lireSource('assets/app.js');
+    vrai(/async 'cloud-push'\(btn\) \{[\s\S]*?btn\.disabled = true; btn\.classList\.add\('en-cours'\)/.test(src),
+      'le bouton dit qu’il synchronise et ne se reclique pas');
+  });
+
+  test('les premiers pas ne sont pas des anomalies', () => {
+    /* « Commence par tes comptes » est une invitation : la presenter en jaune,
+       parmi les chiffres faux, apprend a ignorer le jaune. */
+    const v = vue();
+    vrai(/const premiersPas = checks\.filter\(c => c\.level === 'action' && c\.sujet === 'saisies'\);/.test(v),
+      'les invitations de démarrage se séparent des contrôles');
+    vrai(/const anomalies = checks\.filter\(c => !premiersPas\.includes\(c\)\);/.test(v), 'et le compte ne porte que sur le reste');
+    vrai(/anomalies\.length \? 'controles-alerte' : 'controles-ok'/.test(v), 'le point passe au jaune sur les seules anomalies');
+    vrai(/trad\('Tout semble cohérent'\)/.test(v) && /'\{n\} point à vérifier'/.test(v) && /'\{n\} points à vérifier'/.test(v),
+      'le titre compte, au singulier comme au pluriel');
+    vrai(/class="controles-debut">[\s\S]*?trad\('Saisies en attente'\)/.test(v), 'les saisies en attente ont leur propre groupe, neutre, au nom de leur famille');
+    vrai(/trad\('Examiner'\)/.test(v), 'et une anomalie s’examine');
+  });
+
+  test('sauvegarde et lecture ne sont pas au même niveau', () => {
+    const v = vue();
+    const json = v.indexOf('data-action="export-json"'), xlsx = v.indexOf('data-action="export-xlsx-all"');
+    vrai(json > 0 && xlsx > json, 'le JSON, qui restaure, vient avant l’Excel, qui se lit');
+    vrai(/<button class="btn" data-action="export-json">/.test(v), 'la sauvegarde est le bouton plein');
+    vrai(/<button class="btn ghost" data-action="export-xlsx-all">/.test(v), 'l’export de lecture est fantôme');
+    vrai(v.indexOf("trad('Exporter pour analyse')") > json, 'et il a sa propre section');
+    vrai(/trad\('Le JSON permet de restaurer entièrement Longward\.'\)\}\$\{aide\(/.test(v),
+      'une phrase courte, le manuel dans la bulle');
+  });
+
+  test('l’historique des sauvegardes est une frise, trois lignes visibles', () => {
+    const v = vue();
+    vrai(/const recentes = backups\.slice\(0, 3\), anciennes = backups\.slice\(3\);/.test(v), 'trois récentes, le reste replié');
+    vrai(/<details class="data-view frise-reste">[\s\S]*?trad\('Voir les \{n\} sauvegardes'\)/.test(v), 'derrière « Voir les N sauvegardes »');
+    vrai(/ligneSauvegarde\(b, i \+ recentes\.length\)/.test(v), 'et les index de restauration restent ceux de la liste entière');
+    vrai(!/<table class="large-seulement">/.test(v), 'plus de tableau à cinq colonnes : la frise vaut pour toutes les largeurs');
+    vrai(/class="frise-quand"><b>\$\{esc\(quand\(b\.at\)\)\}<\/b><span class="sub">\$\{esc\(heure\(b\.at\)\)\}/.test(v),
+      'la date et l’heure distinguent deux sauvegardes de même motif');
+    const src = lireSource('assets/app.js');
+    vrai(/async 'restore-backup'\(btn\) \{[\s\S]{0,300}askConfirm\(/.test(src), 'restaurer demande confirmation');
+  });
+
+  test('la réinitialisation ferme la page, sobre et confirmée', () => {
+    const v = vue();
+    vrai(/<section class="card zone-danger">[\s\S]*?class="btn ghost danger" data-action="start-blank">\$\{trad\('Tout effacer'\)\}/.test(v),
+      'un bouton rouge secondaire, dans sa zone');
+    vrai(v.indexOf('zone-danger') > v.indexOf("trad('Diagnostic')"), 'tout en bas');
+    const src = lireSource('assets/app.js');
+    const action = src.slice(src.indexOf("async 'start-blank'()"), src.indexOf("async 'start-blank'()") + 900);
+    vrai(/trad\('Réinitialiser Longward \?'\)/.test(action) && /\{p\} positions, \{c\} comptes/.test(action)
+      && /Une sauvegarde est prise avant, et Ctrl\+Z annule\./.test(action) && /ok: 'Tout effacer', danger: true/.test(action),
+      'la confirmation dit ce qui part, et qu’une sauvegarde est prise avant');
+  });
+
+  test('les mots neufs existent en anglais, les morts sont partis', () => {
+    for (const cle of ['Données synchronisées', 'Enregistrées sur cet appareil', 'Conflit de synchronisation',
+                       'Tout semble cohérent', '{n} point à vérifier', 'Examiner', 'Saisies en attente',
+                       'Sauvegarde et restauration', 'Importer une sauvegarde', 'Exporter pour analyse',
+                       'Historique des sauvegardes', 'Voir les {n} sauvegardes', 'Confidentialité et stockage',
+                       'En savoir plus', 'Réinitialiser Longward', 'Tout effacer', 'Synchronisation…'])
+      vrai(!!I18N.en[cle], '« ' + cle + ' » existe en anglais');
+    for (const morte of ['Revenir en arrière', 'Sauvegardes automatiques', 'Repartir de zéro', 'Tout effacer et repartir',
+                         'Synchronisation en ligne', 'Données personnelles.'])
+      vrai(!I18N.en[morte], '« ' + morte + ' » n’a plus d’appelant');
+  });
+
+  test('la feuille tient les nouveaux composants sur un téléphone', () => {
+    const css = lireSource('assets/styles.css');
+    vrai(/\.etat-donnees \{ display: grid; grid-template-columns: 10px minmax\(0, 1fr\) auto;/.test(css), 'l’état : un point, deux lignes, une icône');
+    vrai(/\.etat-erreur \.etat-point \{ background: var\(--critical\)/.test(css) && /\.etat-alerte \.etat-point[^}]*var\(--warning\)/.test(css),
+      'les couleurs d’état sont celles de la maison');
+    vrai(/\.frise-ligne \{ display: grid; grid-template-columns: 62px minmax\(0, 1fr\) auto;/.test(css), 'la frise en trois colonnes');
+    vrai(/\.fichier-cache \{ position: absolute; width: 1px; height: 1px; opacity: 0;/.test(css), 'le champ fichier se cache sans disparaître');
+    vrai(/\.zone-danger \{ box-shadow: var\(--shadow\), inset 0 0 0 1px color-mix\(in oklab, var\(--critical\) 28%/.test(css),
+      'la zone de danger se distingue d’un filet rouge léger, pas d’un aplat');
+    vrai(/@keyframes tourne/.test(css) && /prefers-reduced-motion: reduce\) \{ \.btn\.en-cours \{ animation: none; \}/.test(css),
+      'l’icône tourne pendant l’envoi, sauf mouvement réduit');
   });
 });

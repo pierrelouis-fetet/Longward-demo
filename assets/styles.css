@@ -3147,6 +3147,84 @@ th .u {
 }
 tr.flash-target td { animation: flash-row 1.6s ease; }
 
+/* --- Donnees : le centre de donnees -------------------------------------
+   Un point de couleur et deux lignes pour l'etat, des sections separees par un
+   filet plutot que sept cartes de meme poids, une frise pour les sauvegardes.
+   Le jaune ne reste que sur ce qui merite d'etre verifie. Aucune couleur neuve :
+   `--good`, `--warning`, `--critical` disent l'etat comme partout ailleurs. */
+.page-tete { margin: 2px 0 2px; }
+.page-tete h2 { margin: 0; font-size: var(--font-xl); font-weight: 700; letter-spacing: -.02em; color: var(--text-primary); }
+.page-tete p { margin: 3px 0 0; font-size: var(--font-sm); color: var(--muted); }
+
+.etat-donnees { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 2px 12px; align-items: start; }
+.etat-point { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; background: var(--good);
+              box-shadow: 0 0 0 4px color-mix(in oklab, var(--good) 16%, transparent); }
+.etat-attente .etat-point, .etat-alerte .etat-point, .controles-alerte .etat-point {
+  background: var(--warning); box-shadow: 0 0 0 4px color-mix(in oklab, var(--warning) 16%, transparent); }
+.etat-erreur .etat-point { background: var(--critical); box-shadow: 0 0 0 4px color-mix(in oklab, var(--critical) 16%, transparent); }
+.etat-texte { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.etat-texte > b { font-size: var(--font-md); font-weight: 650; color: var(--text-primary); }
+.etat-texte .sub { display: block; }
+.etat-compte { margin-top: 5px; font-size: var(--font-sm); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.etat-sync { align-self: start; margin: -4px -6px 0 0; font-size: var(--font-xl); line-height: 1; }
+.etat-conflit { grid-column: 1 / -1; margin-top: 10px; }
+.btn.en-cours { opacity: .55; animation: tourne 1s linear infinite; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .btn.en-cours { animation: none; } }
+
+.surtitre { font-size: var(--font-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.controles-tete { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 1px 12px; align-items: center; }
+.controles-tete .etat-point { grid-row: 1 / span 2; margin-top: 0; }
+.controles-tete > b { font-size: var(--font-md); font-weight: 650; color: var(--text-primary); }
+.controles-liste { list-style: none; margin: 8px 0 0; padding: 0; }
+.controle { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+            padding: 10px 0; border-top: 1px solid var(--grid); }
+.controle-texte { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.controle-texte b, .controle-texte h2 { margin: 0; font-size: var(--font-md); font-weight: 600; color: var(--text-primary); }
+.controle-texte .sub { display: block; overflow-wrap: anywhere; }
+.controle-ic { text-align: center; font-size: var(--font-md); color: var(--warning); }
+.controle-error .controle-ic { color: var(--critical); }
+.controle-info .controle-ic { color: var(--muted); }
+.controle .btn { flex: none; text-decoration: none; }
+.controles-debut { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--grid); }
+.controle-debut { grid-template-columns: minmax(0, 1fr) auto; border-top: none; padding-top: 6px; }
+
+.donnees-sections { padding-top: 4px; padding-bottom: 4px; }
+.donnees-section { padding: 12px 0; border-top: 1px solid var(--grid); }
+.donnees-section:first-child { border-top: none; }
+.donnees-section .paire-btn, .donnees-section > .btn { max-width: 34em; }
+.donnees-section > h2 { margin: 0 0 10px; font-size: var(--font-md); font-weight: 650; letter-spacing: -.01em; color: var(--text-primary); }
+.donnees-section .small { margin: 10px 0 0; line-height: 1.5; }
+.donnees-annuler { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; }
+.demo-bascule { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--grid); gap: 8px 12px; }
+.demo-bascule .sub { flex: 1 1 12em; }
+.fichier-cache { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+
+.frise-compte { display: block; margin: -6px 0 2px; }
+.frise { list-style: none; margin: 6px 0 0; padding: 0; }
+.frise-ligne { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 12px; align-items: center;
+               padding: 9px 0; border-top: 1px solid var(--grid); }
+.frise-quand { display: flex; flex-direction: column; }
+.frise-quand b { font-size: var(--font-sm); font-weight: 650; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.frise-quand .sub, .frise-quoi .sub { display: block; font-variant-numeric: tabular-nums; }
+.frise-quoi { min-width: 0; }
+.frise-quoi b { font-size: var(--font-md); font-weight: 600; color: var(--text-primary); }
+.frise-reste { margin-top: 4px; border-top: none; padding-top: 0; }
+.frise-reste .frise { margin-top: 4px; }
+
+.confidentialite-tete { display: flex; gap: 10px; align-items: flex-start; }
+.confidentialite-tete > span { font-size: var(--font-lg); line-height: 1.5; }
+.confidentialite-tete b { font-size: var(--font-md); font-weight: 650; color: var(--text-primary); }
+.confidentialite-tete .sub { display: block; margin-top: 2px; line-height: 1.45; }
+.confidentialite .data-view { margin-top: 10px; }
+.confidentialite-detail { margin: 10px 0 0; line-height: 1.55; }
+.diagnostic { margin-top: 0; padding: 4px 2px 0; }
+
+.zone-danger { box-shadow: var(--shadow), inset 0 0 0 1px color-mix(in oklab, var(--critical) 28%, transparent); }
+.zone-danger .card-head { margin-bottom: 6px; }
+.zone-danger .small { margin: 0; line-height: 1.5; }
+.zone-danger .btn { margin-top: 12px; }
+
 .checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .chk {
   display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 11px; align-items: center;

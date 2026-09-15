@@ -6530,182 +6530,184 @@ function mountBudget() {
 
 function viewData() {
   const checks = healthChecks();
-  const backups = Store.backups();
-  /* Les icones et le classement viennent du modele, ils ne sont plus recopies
-     ici. Cette copie locale ignorait le niveau `action`, ajoute avec la cloche :
-     son icone valait `undefined` a l'ecran, et son rang `NaN` — donc un ordre de
-     tri indefini. Le defaut exact que ce projet corrige sans arret : deux listes
-     du meme fait, dont une seule est tenue a jour. */
   checks.sort((a, b) => RANG_NOTIF[a.level] - RANG_NOTIF[b.level]);
+  const premiersPas = checks.filter(c => c.level === 'action' && c.sujet === 'saisies');
+  const anomalies = checks.filter(c => !premiersPas.includes(c));
+  const backups = Store.backups();
+  const cloud = CloudSync.isAvailable() && !modeDemo();
+  const s = cloud ? CloudSync.status() : null;
+  const u = cloud ? CloudSync.getUser() : null;
+  const savedAt = Store.state.meta.savedAt;
+  const nbReleves = Store.state.monthly.filter(r => !rowIsEmpty(r)).length;
+  const pluriel = (n, un, des) => `${n} ${trad(n > 1 ? des : un)}`;
+  const nbComptes = comptesOuverts().filter(c => c.type !== 'especes' || valeurCompte(c) > 0.005).length;
+  const compteurs = `${pluriel(nbComptes, 'compte', 'comptes')} · ${
+    pluriel(nbReleves, 'relevé', 'relevés')} · ${pluriel(Store.state.positions.length, 'position', 'positions')}`;
+
+  let etat;
+  if (!cloud) {
+    etat = { niveau: 'ok', titre: trad('Enregistrées sur cet appareil'),
+             sous: savedAt ? trad('Dernière modification {q}').replace('{q}', fmtWhen(savedAt))
+                           : trad('Aucune modification enregistrée pour l’instant') };
+  } else if (s.conflict) {
+    etat = { niveau: 'alerte', titre: trad('Conflit de synchronisation'),
+             sous: trad('La version en ligne ({d}) est plus récente que celle de cet appareil.')
+               .replace('{d}', new Date(s.conflict.remoteSavedAt).toLocaleString(locale())) };
+  } else if (s.error) {
+    etat = { niveau: 'erreur', titre: trad('Dernier envoi refusé'), sous: s.error };
+  } else if (s.pushing || !CloudSync.aJour()) {
+    etat = { niveau: 'attente', titre: trad('Modifications en attente d’envoi'),
+             sous: trad('Elles partent quelques secondes après chaque changement.') };
+  } else {
+    etat = { niveau: 'ok', titre: trad('Données synchronisées'),
+             sous: trad('Dernière synchronisation {q}').replace('{q}', fmtWhen(s.lastPush || savedAt)) };
+  }
+
+  const quand = iso => new Date(iso).toLocaleString(locale(), { day: 'numeric', month: 'short' });
+  const heure = iso => new Date(iso).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
+  const ligneSauvegarde = (b, i) => `
+      <li class="frise-ligne">
+        <div class="frise-quand"><b>${esc(quand(b.at))}</b><span class="sub">${esc(heure(b.at))}</span></div>
+        <div class="frise-quoi"><b>${esc(majuscule(b.reason))}</b>
+          <span class="sub">${pluriel((b.data.positions || []).length, 'position', 'positions')} · ${
+            (JSON.stringify(b.data).length / 1024).toFixed(0)} Ko · ${fmtWhen(b.at)}</span></div>
+        <button class="btn sm ghost" data-action="restore-backup" data-i="${i}">${trad('Restaurer')} →</button>
+      </li>`;
+  const recentes = backups.slice(0, 3), anciennes = backups.slice(3);
 
   return `
-  <div class="card">
-    <div class="card-head">
-      <h2>${trad('Contrôles de cohérence')}</h2>
-      <span class="hint">${checks.length
-        ? FAMILLES_NOTIF.map(([cle, nom]) => [nom, checks.filter(c => c.sujet === cle).length])
-            .filter(([, n]) => n).map(([nom, n]) => `${n} ${nom.toLowerCase()}`).join(' · ')
-        : trad('Tout est cohérent')}</span>
+  <header class="page-tete">
+    <h2>${trad('Données')}</h2>
+    <p>${trad('Sauvegarde, synchronisation et contrôle de tes données.')}</p>
+  </header>
+
+  <section class="card tight etat-donnees etat-${etat.niveau}">
+    <span class="etat-point" aria-hidden="true"></span>
+    <div class="etat-texte">
+      <b>${esc(etat.titre)}</b>
+      <span class="sub">${esc(etat.sous)}</span>
+      <span class="etat-compte">${compteurs}</span>
     </div>
-    ${checks.length ? `<ul class="checks">${checks.map(c => `
-      <li class="chk chk-${c.level}">
-        <span class="chk-ic">${ICONE_NOTIF[c.level] || '•'}</span>
-        <div><b>${esc(c.title)}</b><br><span class="muted">${escMontant(c.detail)}</span></div>
+    ${cloud && !s.conflict ? `<button class="btn icon etat-sync" data-action="cloud-push" type="button"
+        title="${trad('Synchroniser maintenant')}" aria-label="${trad('Synchroniser maintenant')}">↻</button>` : ''}
+    ${cloud && s.conflict ? `<div class="paire-btn etat-conflit">
+      <button class="btn sm" data-action="cloud-pull">${trad('Prendre la version en ligne')}</button>
+      <button class="btn sm ghost" data-action="cloud-force">${trad('Imposer celle de cet appareil')}</button>
+    </div>` : ''}
+  </section>
+
+  <section class="card tight controles ${anomalies.length ? 'controles-alerte' : 'controles-ok'}">
+    <div class="controles-tete">
+      <span class="etat-point" aria-hidden="true"></span>
+      <span class="surtitre">${trad('Contrôles de cohérence')}</span>
+      <b>${anomalies.length
+        ? trad(anomalies.length > 1 ? '{n} points à vérifier' : '{n} point à vérifier').replace('{n}', anomalies.length)
+        : trad('Tout semble cohérent')}</b>
+    </div>
+    ${anomalies.length ? `<ul class="controles-liste">${anomalies.map(c => `
+      <li class="controle controle-${c.level}">
+        <span class="controle-ic" aria-hidden="true">${ICONE_NOTIF[c.level] || '•'}</span>
+        <div class="controle-texte"><b>${esc(c.title)}</b><span class="sub">${escMontant(c.detail)}</span></div>
+        <a href="#/${c.view}" class="btn ghost sm">${trad('Examiner')}</a>
+      </li>`).join('')}</ul>` : ''}
+    ${premiersPas.length ? `<div class="controles-debut">
+      <span class="surtitre">${trad('Saisies en attente')}</span>
+      ${premiersPas.map(c => `
+      <div class="controle controle-debut">
+        <div class="controle-texte"><b>${esc(c.title)}</b><span class="sub">${escMontant(c.detail)}</span></div>
         <a href="#/${c.view}" class="btn ghost sm">${trad('Voir')}</a>
-      </li>`).join('')}</ul>`
-      : `<p class="empty">${trad('✓ Aucune incohérence détectée.')}</p>`}
-  </div>
+      </div>`).join('')}
+    </div>` : ''}
+  </section>
 
-  <div class="note">
-    🔒 <span><b>${trad('Données personnelles.')}</b> ${trad('Ce tableau de bord contient des informations financières qui te concernent directement : au sens du RGPD, ce sont des <b>données à caractère personnel</b>, et tu en es responsable.')}
-    ${CloudSync.isAvailable()
-      ? trad('Elles sont enregistrées <b>chez Cloudflare</b> (stockage KV, Europe), en plus de ce navigateur. Elles n’y sont <b>pas chiffrées de bout en bout</b> : techniquement, Cloudflare peut y accéder. L’accès est protégé par ton mot de passe, change-le s’il a pu fuiter, cela déconnecte aussitôt tous les appareils. Pour tout retirer : supprime l’espace KV et le projet Pages.')
-      : trad('Elles restent <b>uniquement dans le navigateur de cette machine</b>, rien n’est envoyé sur un serveur.')}
-    ${trad('Un export JSON ou Excel sort de ce cadre : évite de le déposer sur un service tiers non maîtrisé ou de l’envoyer par e-mail non chiffré, et efface ceux dont tu n’as plus besoin.')}</span>
-  </div>
-
-  <div class="grid g-2">
-    <div class="card">
-      <div class="card-head"><h2>${trad('Exporter')}</h2><span class="hint">${trad('Toutes tes données')}</span></div>
-      <div class="row">
-        <button class="btn ghost" data-action="export-xlsx-all">${trad('⤓ Classeur Excel')}</button>
-        <button class="btn" data-action="export-json">${trad('⤓ Sauvegarde JSON')}</button>
+  <section class="card donnees-sections">
+    <div class="donnees-section">
+      <h2>${trad('Sauvegarde et restauration')}</h2>
+      <div class="paire-btn">
+        <button class="btn" data-action="export-json">⤓ ${trad('Sauvegarde JSON')}</button>
+        <label class="btn ghost" for="importFile">⤒ ${trad('Importer une sauvegarde')}</label>
       </div>
-      <dl class="kv" style="margin-top:12px">
-        <dt><b>JSON</b>, sauvegarde</dt><dd class="up">${trad('réimportable ✓')}</dd>
-        <dt><b>Excel</b>, lecture</dt><dd class="muted">${trad('non réimportable')}</dd>
-      </dl>
-      <p class="small muted" style="margin:12px 0 0">
-        ${trad('Le <b>JSON</b> pour restaurer, l’<b>Excel</b> pour lire ailleurs.')}${aide(trad("Le JSON restitue ton tableau de bord à l’identique : c’est celui à garder pour restaurer ou changer de machine. L’Excel est une photo pour lire et retravailler ailleurs : une feuille par thème, montants au format €, pourcentages calculables. Le découpage d’une catégorie de dépenses y a sa propre feuille, une ligne par montant. Il ne contient pas tous les réglages, il ne peut donc pas être rechargé ici."))}
-      </p>
-    </div>
-
-    <div class="card">
-      <div class="card-head"><h2>${trad('Importer')}</h2><span class="hint">${trad('Fichier JSON uniquement')}</span></div>
-      <input type="file" id="importFile" accept="application/json,.json">
-      <p class="small muted" style="margin:12px 0 0">
-        <b>${trad('Fichier JSON uniquement')}</b>${trad(', celui produit par « Sauvegarde JSON ». L’import écrase l’état enregistré ; une confirmation est demandée. Exporte d’abord si tu as un doute.')}
-      </p>
-      <div class="row" style="margin-top:14px; padding-top:14px; border-top:1px solid var(--grid)">
+      <input type="file" id="importFile" class="fichier-cache" accept="application/json,.json">
+      <p class="small muted">${trad('Le JSON permet de restaurer entièrement Longward.')}${aide(trad('Le JSON restitue ton tableau de bord à l’identique : c’est celui à garder pour restaurer ou changer de machine. Importer remplace l’état enregistré dans ce navigateur, après confirmation, et une sauvegarde de l’état actuel est prise avant. Exporte d’abord si tu as un doute.'))}</p>
+      <div class="row demo-bascule">
         ${modeDemo()
-          ? `<button class="btn sm" data-action="quitter-demo">← ${trad('Revenir à mes données')}</button>
-             <span class="hint">${trad('La démonstration reste disponible')}</span>`
-          : `<button class="btn ghost sm" data-action="charger-demo">▷ ${trad('Voir la démonstration')}</button>
-             <span class="hint">${trad('Des chiffres fictifs, sans toucher aux tiennes')}</span>`}
+          ? `<button class="btn sm ghost" data-action="quitter-demo">← ${trad('Revenir à mes données')}</button>
+             <span class="sub">${trad('La démonstration reste disponible')}</span>`
+          : `<button class="btn sm ghost" type="button" data-action="charger-demo">▷ ${trad('Voir la démonstration')}</button>
+             <span class="sub">${trad('Des chiffres fictifs, sans toucher aux tiennes')}</span>`}
       </div>
     </div>
-  </div>
-
-  ${(() => {
-    if (!CloudSync.isAvailable()) return '';
-    const s = CloudSync.status();
-    const u = CloudSync.getUser();
-    return `
-    <div class="card">
-      <div class="card-head">
-        <h2>${trad('Synchronisation en ligne')}</h2>
-        <span class="hint">${u ? `${trad('connecté en tant que')} <b>${esc(u)}</b>` : 'Cloudflare KV'}</span>
+    <div class="donnees-section">
+      <h2>${trad('Exporter pour analyse')}</h2>
+      <button class="btn ghost" data-action="export-xlsx-all">⤓ ${trad('Exporter vers Excel')}</button>
+      <p class="small muted">${trad('Consulte tes données dans Excel ou un tableur.')}${aide(trad("L’Excel est une photo pour lire et retravailler ailleurs : une feuille par thème, montants au format €, pourcentages calculables. Le découpage d’une catégorie de dépenses y a sa propre feuille, une ligne par montant. Il ne contient pas tous les réglages, il ne peut donc pas être rechargé ici : pour restaurer, c’est la sauvegarde JSON."))}</p>
+    </div>
+    <div class="donnees-section donnees-annuler">
+      <div class="controle-texte">
+        <h2>${trad('Dernière modification')}</h2>
+        <span class="sub">${Store.undoCount()
+          ? pluriel(Store.undoCount(), 'modification annulable', 'modifications annulables')
+          : trad('rien à annuler pour l’instant')}</span>
       </div>
-      <dl class="kv">
-        <dt>${trad('État')}</dt><dd class="up">✓ ${trad('active')}</dd>
-        <dt>${trad('Dernier envoi')}</dt><dd>${s.lastPush ? fmtWhen(s.lastPush) : ''}</dd>
-        ${s.error ? `<dt>Erreur</dt><dd class="down">${esc(s.error)}</dd>` : ''}
-      </dl>
-      ${s.conflict ? `<div class="note" style="margin-top:12px">⚠ <span>
-        <b>${trad('Conflit.')}</b> ${trad('La version en ligne ({d}) est plus récente '
-        + 'que celle de cet appareil. Choisis laquelle garder.')
-        .replace('{d}', new Date(s.conflict.remoteSavedAt).toLocaleString(locale()))}</span></div>
-        <div class="row" style="margin-top:12px">
-          <button class="btn sm" data-action="cloud-pull">${trad('↓ Prendre la version en ligne')}</button>
-          <button class="btn sm ghost" data-action="cloud-force">${trad('↑ Imposer celle-ci')}</button>
-        </div>` : `
-        <div class="row" style="margin-top:12px">
-          <button class="btn sm ghost" data-action="cloud-push">${trad('↻ Synchroniser maintenant')}</button>
-        </div>`}
-      <p class="small muted" style="margin:12px 0 0">
-        ${trad('La synchronisation est automatique : tout est envoyé quelques secondes '
-          + 'après chaque modification, et tes appareils partagent le même état. Ce bouton '
-          + 'ne sert qu’à forcer l’envoi avant de fermer.')}
-      </p>
-    </div>`;
-  })()}
+      <button class="btn sm ghost" data-action="undo" ${Store.undoCount() ? '' : 'disabled'}
+        title="${trad('Annule le dernier changement effectué. Ctrl+Z fait la même chose.')}">↶ ${trad('Annuler')}</button>
+    </div>
+  </section>
 
-  <div class="card">
+  <section class="card">
     <div class="card-head">
-      <h2>${trad('Revenir en arrière')}</h2>
-      <span class="hint">${Store.undoCount()
-        ? `${Store.undoCount()} ${Store.undoCount() > 1 ? trad('modifications annulables') : trad('modification annulable')}`
-        : trad('rien à annuler pour l’instant')}</span>
+      <h2>${trad('Historique des sauvegardes')}</h2>
+      <button class="btn sm ghost" data-action="make-backup">${trad('+ Sauvegarder maintenant')}</button>
     </div>
-    <button class="btn" data-action="undo" ${Store.undoCount() ? '' : 'disabled'}
-      >${trad('↶ Annuler la dernière modification')}</button>
-    <p class="small muted" style="margin:12px 0 0">
-      ${trad('Défait le dernier changement enregistré, quel qu’il soit : un relevé écrasé, un montant corrigé, une ligne supprimée. Au clavier, Ctrl+Z fait la même chose. Pour remonter plus loin qu’un geste, prends une sauvegarde ci-dessous.')}
-    </p>
-  </div>
+    <p class="sub frise-compte">${backups.length
+      ? pluriel(backups.length, 'sauvegarde disponible sur cet appareil', 'sauvegardes disponibles sur cet appareil')
+      : trad('Aucune sauvegarde pour l\'instant.')}${aide(trad('Une sauvegarde est prise automatiquement au premier chargement de la journée, et avant tout import, restauration ou réinitialisation. Restaurer sauvegarde d’abord l’état actuel : rien n’est perdu d’un seul geste. Les {n} plus récentes sont conservées dans ce navigateur.').replace('{n}', BACKUP_LIMIT))}</p>
+    ${recentes.length ? `<ol class="frise">${recentes.map(ligneSauvegarde).join('')}</ol>` : ''}
+    ${anciennes.length ? `<details class="data-view frise-reste">
+      <summary>${trad('Voir les {n} sauvegardes').replace('{n}', backups.length)}</summary>
+      <ol class="frise">${anciennes.map((b, i) => ligneSauvegarde(b, i + recentes.length)).join('')}</ol>
+    </details>` : ''}
+  </section>
 
-  <div class="card">
-    <div class="card-head">
-      <h2>${trad('Sauvegardes automatiques')}</h2>
-      <div class="row">
-        <span class="hint">${backups.length} / ${BACKUP_LIMIT} ${trad('conservées dans ce navigateur')}</span>
-        <button class="btn sm ghost" data-action="make-backup">${trad('+ Sauvegarder maintenant')}</button>
+  <section class="card tight confidentialite">
+    <div class="confidentialite-tete">
+      <span aria-hidden="true">🔒</span>
+      <div>
+        <b>${trad('Confidentialité et stockage')}</b>
+        <span class="sub">${cloud
+          ? trad('Tes données financières sont stockées en Europe, chez Cloudflare, et sur cet appareil.')
+          : trad('Tes données financières restent uniquement sur cet appareil.')}</span>
       </div>
     </div>
-    ${backups.length ? `
-      <table class="large-seulement">
-        <thead><tr><th>${trad('Date')}</th><th>${trad('Motif')}</th><th>${trad('Patrimoine')}</th><th>${trad('Taille')}</th><th></th></tr></thead>
-        <tbody>${backups.map((b, i) => {
-          const t = (b.data.positions || []).length;
-          return `<tr>
-            <td class="name">${new Date(b.at).toLocaleString(locale(), { dateStyle: 'short', timeStyle: 'short' })}
-              <span class="sub">${fmtWhen(b.at)}</span></td>
-            <td class="muted">${esc(b.reason)}</td>
-            <td>${t} positions</td>
-            <td class="muted">${(JSON.stringify(b.data).length / 1024).toFixed(0)} Ko</td>
-            <td><button class="btn ghost sm" data-action="restore-backup" data-i="${i}">${trad('Restaurer')}</button></td>
-          </tr>`;
-        }).join('')}</tbody>
-      </table>
-      <div class="liste-mobile">
-        ${backups.map((b, i) => ligneListe({
-          action: 'restore-backup', index: i,
-          titre: new Date(b.at).toLocaleString(locale(), { dateStyle: 'short', timeStyle: 'short' }),
-          sous: `${b.reason} · ${fmtWhen(b.at)} · ${(JSON.stringify(b.data).length / 1024).toFixed(0)} Ko`,
-          valeur: `${(b.data.positions || []).length} positions`,
-          second: trad('Restaurer'),
-        })).join('')}
-      </div>
-      <p class="small muted" style="margin:12px 0 0">
-        ${trad('Une sauvegarde est prise automatiquement au premier chargement de la journée, et avant toute réinitialisation ou restauration. Restaurer crée d’abord une sauvegarde de l’état actuel, rien n’est jamais perdu d’un seul clic.')}
-      </p>`
-      : `<p class="empty">${trad('Aucune sauvegarde pour l\'instant.')}</p>`}
-  </div>
+    <details class="data-view">
+      <summary>${trad('En savoir plus')}</summary>
+      <p class="small muted confidentialite-detail">${trad('Ce tableau de bord contient des informations financières qui te concernent directement : au sens du RGPD, ce sont des <b>données à caractère personnel</b>, et tu en es responsable.')}
+      ${cloud
+        ? trad('Elles sont enregistrées <b>chez Cloudflare</b> (stockage KV, Europe), en plus de ce navigateur. Elles n’y sont <b>pas chiffrées de bout en bout</b> : techniquement, Cloudflare peut y accéder. L’accès est protégé par ton mot de passe, change-le s’il a pu fuiter, cela déconnecte aussitôt tous les appareils. Pour tout retirer : supprime l’espace KV et le projet Pages.')
+        : trad('Elles restent <b>uniquement dans le navigateur de cette machine</b>, rien n’est envoyé sur un serveur.')}
+      ${trad('Un export JSON ou Excel sort de ce cadre : évite de le déposer sur un service tiers non maîtrisé ou de l’envoyer par e-mail non chiffré, et efface ceux dont tu n’as plus besoin.')}</p>
+    </details>
+  </section>
 
-  <details class="data-view" style="margin-top:12px">
+  <details class="data-view diagnostic">
     <summary>${trad('Diagnostic')}</summary>
     <dl class="kv" style="margin-top:12px">
       <dt>Positions</dt><dd>${Store.state.positions.length}</dd>
-      <dt>${trad('Relevés enregistrés')}</dt>
-        <dd>${Store.state.monthly.filter(r => !rowIsEmpty(r)).length}</dd>
+      <dt>${trad('Relevés enregistrés')}</dt><dd>${nbReleves}</dd>
       <dt>${trad('Comptes suivis')}</dt><dd>${ACCOUNTS.length}</dd>
       <dt>${trad('Taille du stockage')}</dt><dd>${(JSON.stringify(Store.state).length / 1024).toFixed(1)} Ko</dd>
+      ${u ? `<dt>${trad('Compte')}</dt><dd class="phrase">${esc(u)}</dd>` : ''}
       <dt>${trad('Version')}${aide(trad("La version du code que tu es en train d’exécuter, lue sur la balise du script. Si elle ne change pas après un déploiement, c’est que le navigateur ressert l’ancienne : ferme complètement l’application et rouvre-la, un simple rechargement ne suffit pas toujours."))}</dt>
         <dd style="font-family:var(--font-nb)">${esc(VERSION_APP)}</dd>
     </dl>
   </details>
 
-  <div class="card">
-    <div class="card-head"><h2>${trad('Repartir de zéro')}</h2>
-      <span class="hint">${trad('Pour qu\'une autre personne parte de ses propres chiffres')}</span>
-    </div>
-    <button class="btn ghost danger" data-action="start-blank">${trad('Tout effacer et repartir')}</button>
-    <p class="small muted" style="margin:12px 0 0">
-      ${trad('Efface les comptes, les relevés, le budget et les dépenses, et laisse un tableau de bord vierge. Une sauvegarde est prise avant, et Ctrl+Z annule.')}
-    </p>
-  </div>`;
+  <section class="card zone-danger">
+    <div class="card-head"><h2>${trad('Réinitialiser Longward')}</h2></div>
+    <p class="small muted">${trad('Supprime les comptes, relevés, budgets et dépenses pour repartir avec un espace vierge. Une sauvegarde est prise avant, et Ctrl+Z annule.')}</p>
+    <button class="btn ghost danger" data-action="start-blank">${trad('Tout effacer')}</button>
+  </section>`;
 }
-
 function mountData() {
   const f = $('#importFile');
   if (!f) return;
@@ -7716,14 +7718,14 @@ const ACTIONS = {
   },
 
   async 'start-blank'() {
-    if (!await askConfirm(trad('Repartir de zéro ?') + '\n'
+    if (!await askConfirm(trad('Réinitialiser Longward ?') + '\n'
       + trad('Toutes les données actuelles seront effacées : {p} positions, {c} comptes, '
         + '{m} mois de relevés, le budget et les dépenses.')
         .replace('{p}', Store.state.positions.length)
         .replace('{c}', ACCOUNTS.length)
         .replace('{m}', Store.state.monthly.filter(r => !rowIsEmpty(r)).length)
       + '\n\n' + trad('Une sauvegarde est prise avant, et Ctrl+Z annule.'),
-      { ok: 'Tout effacer et repartir', danger: true })) return;
+      { ok: 'Tout effacer', danger: true })) return;
 
     Store.addBackup('avant remise à zéro');
     Store.state = blankState();
@@ -9757,7 +9759,10 @@ const ACTIONS = {
       toast(trad('Échec :') + ' ' + e.message);
     }
   },
-  async 'cloud-push'() {
+  async 'cloud-push'(btn) {
+    /* Le bouton dit qu'il travaille et ne se reclique pas : un second appui
+       pendant l'envoi lancerait un second `PUT`. Le rendu qui suit le remplace. */
+    if (btn) { btn.disabled = true; btn.classList.add('en-cours'); btn.setAttribute('aria-label', trad('Synchronisation…')); }
     const r = await CloudSync.push({ force: false });
     render();
     toast(r.ok ? trad('Envoyé en ligne') : r.skipped ? trad('Déjà à jour') : r.conflict ? trad('Conflit détecté') : trad('Échec'));
@@ -9788,7 +9793,8 @@ const ACTIONS = {
   async 'restore-backup'(btn) {
     const i = +btn.dataset.i, b = Store.backups()[i];
     if (!b) return;
-    if (!await askConfirm(trad('Restaurer la sauvegarde du {d} ?').replace('{d}', new Date(b.at).toLocaleString(locale()))
+    if (!await askConfirm(trad('Restaurer la sauvegarde du {d} ?').replace('{d}',
+        new Date(b.at).toLocaleString(locale(), { dateStyle: 'long', timeStyle: 'short' }))
       + '\n\n' + trad("L'état actuel sera d'abord sauvegardé, tu pourras donc revenir en arrière."))) return;
     Store.restoreBackup(i);
     render(); toast(trad('Sauvegarde restaurée'));
