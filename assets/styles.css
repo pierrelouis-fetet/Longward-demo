@@ -1,3 +1,9 @@
+/*! Longward — personal wealth dashboard
+ *  Copyright (C) 2026 Longward
+ *  Licensed under the GNU Affero General Public License, version 3 or later.
+ *  Source: https://github.com/pierrelouis-fetet/Longward-demo
+ *  Distributed WITHOUT ANY WARRANTY. See the LICENSE file for the full terms.
+ */
 
 /* ---------------------------------------------------------------
    Manrope, et elle seule pour les titres.
@@ -542,7 +548,7 @@ body {
 .sb-delta.up { color: var(--good-text); }
 .sb-delta.down { color: var(--critical); }
 .saved { font-size: var(--font-xs); color: #5d6875; text-align: center; transition: color .2s; }
-.compte-liens { display: flex; justify-content: center; gap: 12px; font-size: var(--font-xs); }
+.compte-liens { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; font-size: var(--font-xs); }
 .compte-liens a { color: var(--sidebar-faible); }
 /* Une valeur qu'on lit et qu'on ne modifie pas. Un champ desactive dirait
    « modifiable, mais pas maintenant » ; celle-ci n'est simplement pas a saisir.
@@ -3839,6 +3845,7 @@ td .empty, th .empty { background: none; border: none; }
   .burger { position: relative; z-index: 70; }
   .nav a { white-space: nowrap; padding: 7px 10px; }
   .sidebar-foot { display: none; }
+  .compte-liens { padding: 16px 12px 6px; gap: 8px 18px; }
   /* 10px : le retrait reellement applique aux liens ici — `.nav a` est
      redeclare plus bas dans ce meme bloc, et c'est cette valeur qui gagne. */
   .nav-outils { --nav-retrait: 10px; --oeil-marge: 10px; padding-top: 10px; padding-bottom: 4px; }

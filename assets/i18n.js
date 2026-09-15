@@ -1,3 +1,9 @@
+/*! Longward — personal wealth dashboard
+ *  Copyright (C) 2026 Longward
+ *  Licensed under the GNU Affero General Public License, version 3 or later.
+ *  Source: https://github.com/pierrelouis-fetet/Longward-demo
+ *  Distributed WITHOUT ANY WARRANTY. See the LICENSE file for the full terms.
+ */
 /* ======================================================   I18N — français par défaut, anglais en option.
 
    Deux principes :
@@ -89,6 +95,7 @@ const I18N = {
     'nav.notifications': 'Notifications',
     'nav.networth': 'Net worth',
     'account.privacy': 'Privacy',
+    'account.licence': 'AGPL-3.0',
     'account.signout': 'Sign out',
     'nav.theme': 'Theme',
 
@@ -2792,6 +2799,7 @@ const FR = {
   'nav.notifications': 'Notifications',
   'nav.networth': 'Patrimoine net',
   'account.privacy': 'Confidentialité',
+  'account.licence': 'AGPL-3.0',
   'account.signout': 'Se déconnecter',
   'nav.profil': 'Profil',
   'nav.theme': 'Thème',

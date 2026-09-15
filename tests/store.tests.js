@@ -39853,3 +39853,47 @@ suite('Le site ne sert que l’application', () => {
       'il se journalise côté serveur et le client reçoit un mot');
   });
 });
+
+/* --- On doit pouvoir sortir de chez soi --------------------------------- */
+suite('Se déconnecter existe aussi sur téléphone', () => {
+  const html = () => lireSource('index.html');
+  const absent = () => {
+    if (/class="compte-liens"/.test(html())) return false;
+    vrai(true, 'cette instance n’a pas de comptes, donc pas de barre de liens');
+    return true;
+  };
+
+  test('les liens vivent dans le menu, le seul bloc qui devient le tiroir', () => {
+    if (absent()) return;
+    const src = html();
+    const nav = src.slice(src.indexOf('<nav'), src.indexOf('</nav>'));
+    vrai(/class="compte-liens"/.test(nav),
+      'le pied devient la barre du haut sur téléphone : les liens seraient hors d’écran');
+    const pied = src.slice(src.indexOf('class="sidebar-foot"'), src.indexOf('</aside>'));
+    vrai(!/class="compte-liens"/.test(pied), 'et ils ne sont plus dans le pied');
+    const outils = nav.indexOf('class="nav-outils"');
+    vrai(outils > 0 && nav.indexOf('class="compte-liens"') > outils, 'ils ferment le tiroir, sous les deux réglages');
+  });
+
+  test('la sortie de session est atteignable, et nommée', () => {
+    if (absent()) return;
+    const src = html();
+    vrai(/<a href="\/api\/logout" id="btnLogout" data-i18n="account.signout">/.test(src), 'la sortie existe');
+    eq(I18N.en['account.signout'], 'Sign out');
+    eq(FR['account.signout'], 'Se déconnecter');
+    /* Le pied reste masqué sur téléphone : il ne porte plus que des doublons. */
+    vrai(/\.sidebar-foot \{ display: none; \}/.test(lireSource('assets/styles.css')),
+      'le pied, lui, n’a toujours rien à montrer là-haut');
+  });
+
+  test('la licence se lit à côté de la confidentialité', () => {
+    if (absent()) return;
+    const src = html();
+    const liens = src.slice(src.indexOf('class="compte-liens"'), src.indexOf('</div>', src.indexOf('class="compte-liens"')));
+    const ordre = ['account.privacy', 'account.licence', 'account.signout'].map(k => liens.indexOf(k));
+    vrai(ordre.every((v, i) => v > 0 && (i === 0 || v > ordre[i - 1])), 'confidentialité, licence, sortie');
+    vrai(/<a href="\/LICENSE" data-i18n="account.licence">AGPL-3\.0<\/a>/.test(liens), 'et elle mène au texte servi');
+    eq(I18N.en['account.licence'], 'AGPL-3.0', 'un nom propre ne se traduit pas');
+    eq(FR['account.licence'], 'AGPL-3.0');
+  });
+});
