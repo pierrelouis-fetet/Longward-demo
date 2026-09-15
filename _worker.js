@@ -759,7 +759,11 @@ label{display:block;font-size:13px;margin:22px 0 7px}input{width:100%;font:inher
 padding:13px 14px;border-radius:11px;border:1px solid #35353e;background:#0e0e12;color:#fff}
 button{width:100%;font:inherit;font-weight:650;padding:13px;margin-top:18px;border:0;border-radius:11px;
 color:#fff;background:linear-gradient(135deg,#7E4DFF,#9A63FF);cursor:pointer}.err{color:#ff7770}
-.legal{font-size:11.5px;text-align:center;margin-top:18px}.legal a{color:#b98cff}</style>`;
+.legal{font-size:11.5px;text-align:center;margin-top:18px}.legal a{color:#b98cff}
+ .langues{font-size:11.5px;text-align:center;margin-top:14px;display:flex;justify-content:center;gap:10px}
+ .langues a{color:#6F6D76;text-decoration:none;padding:4px 2px}
+ .langues a.on{color:#B9B7B0;font-weight:620}
+ .langues span{color:#3A3A42}</style>`;
 
 /* LES PAGES DU WORKER PARLENT LA LANGUE DU VISITEUR.
 
@@ -827,7 +831,9 @@ const AUTH_TEXTES = {
 /* `Accept-Language` est une liste ponderee, pas un code : `en-US,en;q=0.9,fr;q=0.8`
    annonce un anglophone qui comprend le francais. Chercher « fr » quelque part
    dedans le prendrait pour un francophone. On lit donc les poids. */
-function langueDemandee(request) {
+function langueDemandee(request, url) {
+  const choisie = url && String(url.searchParams.get('lang') || '').slice(0, 2).toLowerCase();
+  if (AUTH_TEXTES[choisie]) return choisie;
   const brut = request.headers.get('Accept-Language') || '';
   let meilleure = { code: 'en', q: -1 };
   for (const morceau of brut.split(',')) {
@@ -848,22 +854,28 @@ const TURNSTILE_WIDGET = siteKey => !siteKey ? '' :
   `<div class="cf-turnstile" data-sitekey="${escHtml(siteKey)}" data-theme="dark"></div>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>`;
 
+const CHOIX_LANGUE = lang => `<p class="langues">`
+  + [['fr', 'Français'], ['en', 'English']].map(([code, nom]) => lang === code
+    ? `<a href="?lang=${code}" class="on" aria-current="page">${nom}</a>`
+    : `<a href="?lang=${code}">${nom}</a>`).join('<span aria-hidden="true">·</span>')
+  + `</p>`;
+
 const EMAIL_LOGIN_PAGE = (error, siteKey = '', T = AUTH_TEXTES.en) => `<!DOCTYPE html><html lang="${T.lang}"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>${T.titreConnexion}</title>${AUTH_STYLE}
-<form method="POST" action="/api/auth/request-code"><div class="brand"><img src="/icon-192.png" alt="" width="34" height="34">Longward</div>
+<form method="POST" action="/api/auth/request-code?lang=${T.lang}"><div class="brand"><img src="/icon-192.png" alt="" width="34" height="34">Longward</div>
 <h1>${T.h1}</h1><p>${T.intro}</p>
 ${error ? `<p class="err">${escHtml(error)}</p>` : ''}<label for="email">${T.labelEmail}</label>
 <input id="email" name="email" type="email" autocomplete="email" required autofocus>
 ${TURNSTILE_WIDGET(siteKey)}
-<button type="submit">${T.bouton}</button><p class="legal">${T.legalAvant}<a href="${T.confidentialite}">${T.legalLien}</a>.</p></form></html>`;
+<button type="submit">${T.bouton}</button><p class="legal">${T.legalAvant}<a href="${T.confidentialite}">${T.legalLien}</a>.</p>${CHOIX_LANGUE(T.lang)}</form></html>`;
 
 const VERIFY_PAGE = (email, error = '', T = AUTH_TEXTES.en) => `<!DOCTYPE html><html lang="${T.lang}"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>${T.titreCode}</title>${AUTH_STYLE}
-<form method="POST" action="/api/auth/verify-code"><div class="brand"><img src="/icon-192.png" alt="" width="34" height="34">Longward</div>
+<form method="POST" action="/api/auth/verify-code?lang=${T.lang}"><div class="brand"><img src="/icon-192.png" alt="" width="34" height="34">Longward</div>
 <h1>${T.h1Code}</h1><p>${T.introAvant}<b>${escHtml(email)}</b>.</p>
 ${error ? `<p class="err">${escHtml(error)}</p>` : ''}<input name="email" type="hidden" value="${escHtml(email)}">
 <label for="code">${T.labelCode}</label><input id="code" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,8}" required autofocus>
-<button type="submit">${T.boutonCode}</button></form></html>`;
+<button type="submit">${T.boutonCode}</button>${CHOIX_LANGUE(T.lang)}</form></html>`;
 
 /* LA PORTE D'ENTREE MERITE LE SOIN DU RESTE.
 
@@ -1034,7 +1046,7 @@ export default {
       && (env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY)
       && env.DB
     );
-    const T = AUTH_TEXTES[langueDemandee(request)];
+    const T = AUTH_TEXTES[langueDemandee(request, url)];
     const pageConnexion = error => EMAIL_LOGIN_PAGE(error, env.TURNSTILE_SITE_KEY || '', T);
     const pageCode = (adresse, erreur) => VERIFY_PAGE(adresse, erreur, T);
 

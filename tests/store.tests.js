@@ -454,8 +454,8 @@ suite('Comptes séparés et authentification', () => {
        Cet en-tete est une liste PONDEREE : « en-US,en;q=0.9,fr;q=0.8 » annonce
        un anglophone qui comprend le francais. Chercher « fr » dedans le
        prendrait pour un francophone, d'ou la lecture des poids. */
-    vrai(/function langueDemandee\(request\)/.test(worker),
-      'le worker déduit la langue de l’en-tête du navigateur');
+    vrai(/function langueDemandee\(request, url\)/.test(worker),
+      'le worker déduit la langue de l’en-tête du navigateur, à défaut de choix explicite');
     vrai(/q=\(\[\\d\.\]\+\)/.test(worker) || /q=\(\[\\d.\]\+\)/.test(worker),
       'et il lit les pondérations plutôt que de chercher un code au hasard');
 
@@ -39895,5 +39895,50 @@ suite('Se déconnecter existe aussi sur téléphone', () => {
     vrai(/<a href="\/LICENSE" data-i18n="account.licence">AGPL-3\.0<\/a>/.test(liens), 'et elle mène au texte servi');
     eq(I18N.en['account.licence'], 'AGPL-3.0', 'un nom propre ne se traduit pas');
     eq(FR['account.licence'], 'AGPL-3.0');
+  });
+});
+
+/* --- La porte se choisit sa langue ---------------------------------------
+   La page de connexion suivait l'en-tete du navigateur, sans recours. Un
+   francais sur un telephone regle en anglais, ou l'inverse, n'avait aucun moyen
+   de changer : l'application, elle, porte ce choix, mais on ne l'atteint
+   qu'apres s'etre connecte. */
+suite('La page de connexion se choisit sa langue', () => {
+  const worker = () => lireSource('_worker.js');
+
+  test('un choix explicite prime sur la détection du navigateur', () => {
+    const w = worker();
+    vrai(/function langueDemandee\(request, url\) \{/.test(w), 'la fonction reçoit l’adresse');
+    const f = w.slice(w.indexOf('function langueDemandee(request, url) {'),
+                      w.indexOf('\n}', w.indexOf('function langueDemandee(request, url) {')));
+    vrai(/const choisie = url && String\(url\.searchParams\.get\('lang'\) \|\| ''\)\.slice\(0, 2\)\.toLowerCase\(\);/.test(f)
+      && /if \(AUTH_TEXTES\[choisie\]\) return choisie;/.test(f),
+      '« ?lang=fr » gagne, et seulement s’il désigne une langue connue');
+    vrai(/Accept-Language/.test(f), 'sinon l’en-tête du navigateur décide, comme avant');
+    vrai(/const T = AUTH_TEXTES\[langueDemandee\(request, url\)\];/.test(w), 'et l’appel passe l’adresse');
+  });
+
+  test('les deux langues se proposent, et la page dit laquelle est active', () => {
+    const w = worker();
+    vrai(/const CHOIX_LANGUE = lang => `/.test(w), 'un seul gabarit pour les deux pages');
+    const bloc = w.slice(w.indexOf('const CHOIX_LANGUE = lang => `'), w.indexOf('const EMAIL_LOGIN_PAGE'));
+    vrai(/\[\['fr', 'Français'\], \['en', 'English'\]\]/.test(bloc),
+      'deux langues, chacune nommée dans la sienne');
+    eq((bloc.match(/href="\?lang=\$\{code\}"/g) || []).length, 2, 'un lien par langue, dérivé du code');
+    vrai(/aria-current="page"/.test(bloc), 'la langue affichée se signale');
+    vrai(/\.langues\{/.test(w), 'et elle a son style');
+    /* Les deux pages le portent : celle qui demande l'adresse, et celle du code. */
+    const login = w.slice(w.indexOf('const EMAIL_LOGIN_PAGE'), w.indexOf('const VERIFY_PAGE'));
+    const verif = w.slice(w.indexOf('const VERIFY_PAGE'), w.indexOf('const LOGIN_PAGE'));
+    vrai(/\$\{CHOIX_LANGUE\(T\.lang\)\}/.test(login), 'la page de connexion');
+    vrai(/\$\{CHOIX_LANGUE\(T\.lang\)\}/.test(verif), 'la page du code');
+  });
+
+  test('le choix survit à l’envoi du formulaire', () => {
+    const w = worker();
+    vrai(/action="\/api\/auth\/request-code\?lang=\$\{T\.lang\}"/.test(w),
+      'la demande de code emporte la langue');
+    vrai(/action="\/api\/auth\/verify-code\?lang=\$\{T\.lang\}"/.test(w),
+      'la vérification aussi : sans elle, la page du code repasserait à la langue du navigateur');
   });
 });
