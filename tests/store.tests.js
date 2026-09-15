@@ -4517,7 +4517,9 @@ suite('Le type proposé à la création suit l’établissement', () => {
 
   test('la fenêtre de création s’en sert', () => {
     const app = lireSource('assets/app.js');
-    vrai(/valeur: typeParDefautChez\(etabImpose\) \}\]/.test(app),
+    /* Une porte d’entrée d’Actifs peut présélectionner sa famille ; le défaut
+       reste demandé à la même fonction dès qu’aucune n’est imposée. */
+    vrai(/: typeParDefautChez\(etabImpose\) \}\]/.test(app),
       'l’assistant demande le défaut plutôt que de l’écrire');
     vrai(!/\], valeur: 'courant' \}\]/.test(app), 'et plus rien n’est posé en dur');
   });
@@ -20184,7 +20186,7 @@ suite('Une application vide dit quoi faire', () => {
     /* La fenetre se lit jusqu'a la fin de l'etat vide, et non sur un nombre de
        caracteres arbitraire : la carte de recherche s'y est ajoutee, et le
        compte rond d'avant coupait la phrase qu'on verifie. */
-    const debut = src.indexOf("trad('Aucun titre coté')");
+    const debut = src.indexOf("trad('Suis tes placements cotés')");
     const bloc = src.slice(debut, src.indexOf('${barreEtatCours()}', debut));
     vrai(/Un titre se pose sur le compte qui le détient/.test(bloc),
       'l’écran dit le prérequis, pas seulement la frontière avec Actifs');
@@ -32421,7 +32423,7 @@ suite('Marchés s’ouvre à tout le monde, et dit ce qui la remplirait', () => 
     const i = src.indexOf('if (!Store.state.positions.length) {');
     vrai(i > 0, 'la vue sort tôt quand il n’y a rien à montrer');
     const vide = src.slice(i, src.indexOf('\n  }', i));
-    vrai(/trad\('Aucun titre coté'\)/.test(vide), 'et la carte se nomme');
+    vrai(/trad\('Suis tes placements cotés'\)/.test(vide), 'et la carte se nomme');
     vrai(/Créer un compte-titres|data-action="ajouter-compte"/.test(vide),
       'sans compte éligible, elle propose d’en créer un');
     /* Les types se derivent de leur table : celui qu'on ajoutera demain entre
@@ -32895,7 +32897,7 @@ suite('Les anciens comptes se gèrent depuis Actifs, et nulle part ailleurs', ()
     const entree = app().match(/const anciens = comptesAnciens\(\);[\s\S]*?\n  \}\)\(\)\}/);
     vrai(/if \(!vus\.length\) return '';/.test(entree[0]),
       'et l’entrée ne se rend pas');
-    vrai(/Aucun compte archivé\./.test(ecran()),
+    vrai(/Les comptes que tu clôtures se rangeront ici\./.test(ecran()),
       'quant à l’écran, il le dit plutôt que de rester vide');
   });
 });
@@ -39331,5 +39333,137 @@ suite('Premier lancement : Longward prend vie sous les yeux', () => {
     eq((app.match(/, 'barre', true\)\}/g) || []).length, 1, 'un seul aperçu principal, le patrimoine net');
     vrai(/\.apercu-verrou\.principal \{/.test(css) && !/\.apercu-verrou\.principal[^{]*\{[^}]*(font-size|padding:|grid-column)/.test(css),
       'il se distingue par le filet et le fond, pas par la taille');
+  });
+});
+
+/* --- Aucun ecran ne se donne pour vide, aucun ne ment ----------------------
+
+   Le parcours de reference est l'accueil : rien d'invente, une promesse, un
+   geste. Cette suite verifie que les ecrans qui s'en ecartaient le tiennent, et
+   surtout que leurs gardes se DERIVENT de l'etat plutot que d'etre poses en
+   dur — un profil rempli ne doit pas voir passer un seul de ces textes. */
+suite('Aucun ecran vide ne ment, aucun ne se tait', () => {
+  const app = () => lireSource('assets/app.js');
+  const css = () => lireSource('assets/styles.css');
+
+  test('1. Marchés > Cible sans base : la page le dit au lieu de féliciter', () => {
+    const s = app();
+    vrai(/if \(!\(r\.base > 0\.005\)\) \{/.test(s),
+      'une base vide rend un écran d’attente, pas trois cartes de zéros');
+    const garde = s.slice(s.indexOf('if (!(r.base > 0.005)) {'),
+                          s.indexOf('/* Profondeur libre'));
+    vrai(/trad\('Les cibles répartissent ce que tu as placé\./.test(garde), 'et il dit ce qu’il attend');
+    vrai(/data-action="ajouter-compte"/.test(garde) && /invitePremierPas\('comptes'\)/.test(garde),
+      'avec une seule action, celle du premier pas quand il reste à faire');
+    /* La félicitation demande une cible réelle : sans un pourcentage visé,
+       chaque écart vaut zéro et « tout est à sa cible » se lit tout seul. */
+    vrai(/\? `<p class="empty">\$\{trad\('✓ Chaque classe est à sa cible/.test(s)
+      && /sumT > 0\.005/.test(s), 'et elle demande qu’une cible existe');
+  });
+
+  test('2. Budget > Charges fixes sans ligne : ni total nul, ni tableau d’en-têtes', () => {
+    const s = app();
+    vrai(/if \(!b\.fixedCharges\.length\) return `\s*<p class="empty"/.test(s),
+      'sans une ligne, une phrase remplace le tableau');
+    vrai(/\$\{!b\.fixedCharges\.length \? '' : `<span class="hint">\$\{fmtEUR\(f\.fixed\)\}/.test(s),
+      'et le total ne s’écrit pas avant la première charge');
+    vrai(/return n \? `<span class="hint">\$\{n\} \$\{n > 1 \? trad\('postes'\) : trad\('poste'\)\}<\/span>` : '';/.test(s),
+      '« 0 poste » ne se compte pas');
+  });
+
+  test('3. Actifs vierge : aucun total inventé, et les familles en portes d’entrée', () => {
+    const s = app();
+    vrai(/const sansCompte = !ouverts\.some\(c => !typeCompte\(c\.type\)\.interne\);/.test(s),
+      'la page sait qu’elle n’a aucun compte réel');
+    vrai(/\$\{sansCompte && !filtre \? '' : `<dl class="kv cpt-resume">/.test(s),
+      'et « Tes avoirs : 0,00 € » ne s’affiche pas avant le premier compte');
+    /* Les familles se dérivent de la table des types : aucune n’est écrite à côté. */
+    vrai(/const FAMILLES_ACTIF = \['courant', 'cto', 'immo', 'crypto', 'pe', 'fondsNonCote'\];/.test(s),
+      'six familles, prises par identifiant');
+    const f = s.slice(s.indexOf('function famillesDActifs()'), s.indexOf('function viewAccounts()'));
+    vrai(/typesCompteChoix\(\)/.test(f) && /\.filter\(Boolean\)/.test(f),
+      'une famille retirée de la table disparaît d’ici, elle n’est pas recopiée');
+    vrai(/data-action="ajouter-compte" data-type="\$\{esc\(t\.id\)\}"/.test(f),
+      'et chaque porte ouvre la fenêtre d’ajout existante');
+    vrai(/famillesDActifs\(\)/.test(s.slice(s.indexOf('if (sansCompte && !filtre) {'),
+                                             s.indexOf('} else if (!ouverts.length'))),
+      'elles ne paraissent que sur la page vierge');
+  });
+
+  test('4. la fenêtre d’ajout s’ouvre sur la famille choisie, sans sauter d’étape', () => {
+    const s = app();
+    const acte = s.slice(s.indexOf("async 'ajouter-compte'(btn)"), s.indexOf("if (!e1) return;"));
+    vrai(/btn\?\.dataset\?\.type && typesCompteChoix\(\)\.some\(t => t\.id === btn\.dataset\.type\)/.test(acte),
+      'le type proposé vient de la table, jamais du seul attribut');
+    vrai(/Étape'\) \} 1/.test(acte) || /trad\('Étape'\)/.test(acte),
+      'et la première étape reste posée');
+  });
+
+  test('5. Projection : une capacité d’épargne inconnue n’est pas une capacité nulle', () => {
+    const s = app();
+    vrai(/const versementInconnu = !\(num\(s\.monthly\) > 0\) && pasAFaire\('revenus'\);/.test(s),
+      'inconnue veut dire : pas de revenu déclaré');
+    vrai(/const ditVersement = versementInconnu\s*\n?\s*\? trad\('versement à définir'\)/.test(s),
+      'et la page le dit au lieu d’écrire zéro');
+    const vue = s.slice(s.indexOf('function viewObjective()'), s.indexOf('function viewPositions()'));
+    eq((vue.match(/\$\{ditVersement\}/g) || []).length, 3, 'les trois affichages passent par là');
+    vrai(!/fmtEUR0\(s\.monthly\)\} \$\{trad\('\/ mois'\)\}/.test(vue)
+      || /champ\('Versement mensuel'/.test(vue),
+      'seul le réglage garde le montant brut');
+  });
+
+  test('6. Historique vierge : pas de journal d’exception avant le premier compte', () => {
+    const s = app();
+    vrai(/if \(!aUnComptePropre\(\) && !tout\.length\) return '';/.test(s),
+      'la carte s’efface tant qu’il n’y a ni compte ni mouvement');
+    /* `!tout.length` et non le seul compte : un mouvement déjà saisi doit rester
+       visible, la carte ne se referme pas sur une donnée réelle. */
+    vrai(/&& !tout\.length\) return '';/.test(s), 'mais jamais sur un mouvement existant');
+  });
+
+  test('7. Marchés vierge : la carte se nomme par sa valeur', () => {
+    const s = app();
+    vrai(/trad\('Suis tes placements cotés'\)/.test(s), 'le titre dit ce que la page suit');
+    vrai(!/trad\('Aucun titre coté'\)/.test(s), 'et non ce qu’elle n’a pas');
+    const vide = s.slice(s.indexOf("trad('Suis tes placements cotés')"), s.indexOf('function viewAllocation'));
+    const i = vide.indexOf("data-action=\"ajouter-ligne\"");
+    const j = vide.indexOf('data-view="accounts"');
+    vrai(i > -1 && j > -1 && i < j, 'poser un titre passe devant retourner à Actifs');
+  });
+
+  test('8. les archives disent ce qu’elles recevront', () => {
+    const s = app();
+    vrai(/trad\('Les comptes que tu clôtures se rangeront ici\.'\)/.test(s),
+      'un tiroir vide annonce son contenu futur');
+    vrai(!/trad\('Aucun compte archivé\.'\)/.test(s), 'plutôt que son absence');
+  });
+
+  test('9. un profil rempli ne voit aucun de ces écrans', () => {
+    const s = app();
+    /* Chaque garde est une condition sur l'etat, jamais un drapeau pose a la
+       main : c'est ce qui les fait disparaitre tout seuls. */
+    for (const garde of [/if \(!\(r\.base > 0\.005\)\) \{/, /if \(!b\.fixedCharges\.length\) return/,
+                         /\$\{sansCompte && !filtre \? ''/, /if \(!aUnComptePropre\(\) && !tout\.length\) return/]) {
+      vrai(garde.test(s), `la garde ${garde.source.slice(0, 28)} se dérive de l’état`);
+    }
+    vrai(!/etatVideForce|DEBUG_VIDE|forcerEtatVide/.test(s), 'aucun drapeau d’affichage ne les retient');
+  });
+
+  test('10. les portes d’entrée tiennent deux colonnes à 375 px, sans texte coupé', () => {
+    const c = css();
+    vrai(/\.familles \{ display: grid; grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); gap: 8px; \}/.test(c),
+      'deux colonnes compactes');
+    vrai(/\.famille-nom \{ min-width: 0; line-height: 1\.25; \}/.test(c)
+      && !/\.famille-nom[^}]*text-overflow: ellipsis/.test(c),
+      'un nom de famille passe à la ligne, il ne se tronque pas');
+  });
+
+  test('11. les nouveaux textes passent tous par le dictionnaire', () => {
+    for (const cle of ['Suis tes placements cotés', 'Ce que Longward sait suivre',
+                       'versement à définir', 'cibles à fixer',
+                       'Les comptes que tu clôtures se rangeront ici.',
+                       'Tes comptes et tes biens vivront ici.']) {
+      vrai(!!I18N.en[cle], `« ${cle} » a sa traduction`);
+    }
   });
 });

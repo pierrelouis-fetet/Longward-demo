@@ -583,6 +583,17 @@ body {
     linear-gradient(180deg, color-mix(in oklab, var(--text-primary) 18%, var(--border)), var(--border-strong) 60%) border-box;
 }
 .apercu-verrou.principal .silhouette { color: color-mix(in oklab, var(--text-primary) 28%, var(--border-strong)); }
+
+.familles-titre { margin: 18px 0 8px; font-size: var(--font-xs); font-weight: 600;
+                  letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.familles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.famille { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+           min-width: 0; min-height: 46px; padding: 9px 12px; border-radius: var(--radius-sm); cursor: pointer;
+           border: 1px solid var(--border-strong); background: transparent;
+           font: inherit; font-size: var(--font-sm); color: var(--text-primary); text-align: left; }
+@media (hover: hover) { .famille:hover { border-color: var(--accent); } }
+.famille-nom { min-width: 0; line-height: 1.25; }
+.famille-plus { flex: none; color: var(--muted); font-size: var(--font-md); }
 .demarrage-barre b { font-size: var(--font-base); font-weight: 600; }
 .demarrage-barre .demarrage-chevron { margin-left: auto; color: var(--muted); font-size: 18px; line-height: 1; }
 

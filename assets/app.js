@@ -1572,6 +1572,9 @@ function viewObjective() {
   }
   const g = objectiveStatus();
   const s = projectionSettings();
+  const versementInconnu = !(num(s.monthly) > 0) && pasAFaire('revenus');
+  const ditVersement = versementInconnu
+    ? trad('versement à définir') : `${fmtEUR0(s.monthly)} ${trad('/ mois')}`;
   const p = capitalisation({ years: projHorizon });
   const dernier = p.points[p.points.length - 1];
   const anneeAtteinte = p.targetReached;
@@ -1723,7 +1726,7 @@ function viewObjective() {
         <span class="hint">${trad('hypothèses de simulation, pas prévisions de marché')}</span></div>
       <details class="pli-reglages" ${hypoOuvert ? 'open' : ''} id="hypoDetail">
         <summary>
-          <span class="pli-valeurs">${fmtEUR0(s.monthly)} ${trad('/ mois')} ·
+          <span class="pli-valeurs">${ditVersement} ·
             ${trad('scénario')} ${trad(nomScenario(s.scenario)).toLowerCase()}${
               num(s.target) ? ` · ${trad('cible')} ${fmtEUR0(s.target)}` : ''}</span>
           <span class="pli-action">${trad('Régler')}</span>
@@ -1866,8 +1869,7 @@ function viewObjective() {
     <div class="card">
       <div class="card-head">
         <h2>${trad('Trajectoire')}</h2>
-        <span class="hint">${trad('Sur')} ${projHorizon} ${trad('ans, jusqu’en')} ${dernier.year} · ${
-          fmtEUR0(s.monthly)} ${trad('/ mois')}</span>
+        <span class="hint">${trad('Sur')} ${projHorizon} ${trad('ans, jusqu’en')} ${dernier.year} · ${ditVersement}</span>
       </div>
       <div class="chart" id="chartProjection"></div>
       <div class="legend">
@@ -1937,7 +1939,7 @@ function viewObjective() {
   <div class="card">
     <div class="card-head">
       <h2>${trad('Par horizon')}</h2>
-      <span class="hint">${fmtEUR0(s.monthly)} ${trad('/ mois')} ·
+      <span class="hint">${ditVersement} ·
         ${trad('scénario')} ${trad(nomScenario(s.scenario)).toLowerCase()}</span>
     </div>
     <div class="table-wrap">
@@ -2457,7 +2459,7 @@ function viewPositions() {
   if (!Store.state.positions.length) {
     return `
   <div class="card">
-    <div class="card-head"><h2>${trad('Aucun titre coté')}</h2>
+    <div class="card-head"><h2>${trad('Suis tes placements cotés')}</h2>
       <span class="hint">${trad('actions, ETF, obligations, crypto')}</span></div>
     <p class="empty" style="margin:0 0 12px">${trad('Cette page suit les placements '
       + 'dont le cours arrive tout seul, du marché. Tes placements non cotés, ton '
@@ -2471,8 +2473,8 @@ function viewPositions() {
         porteurs.some(t => t.id === c.type));
       if (eligibles.length) return `
     <div class="row" style="gap:8px">
-      <button class="btn" data-action="goto" data-view="accounts" data-anchor="">${trad('Aller à Actifs')}</button>
-      <button class="btn ghost" data-action="ajouter-ligne">${trad('+ Un titre coté')}</button>
+      <button class="btn" data-action="ajouter-ligne">${trad('+ Un titre coté')}</button>
+      <button class="btn ghost" data-action="goto" data-view="accounts" data-anchor="">${trad('Aller à Actifs')}</button>
     </div>`;
       return `
     <div class="row" style="gap:8px">
@@ -3573,6 +3575,18 @@ function viewRebalance() {
   const tg = Store.state.targets;
   const sumT = sommeCibles();
 
+  if (!(r.base > 0.005)) {
+    return `
+  <div class="card">
+    <p class="empty" style="margin:0 0 4px">${trad('Les cibles répartissent ce que tu as placé. '
+      + 'Elles attendent un compte d’investissement et ce qu’il contient : PEA, compte-titres, '
+      + 'assurance-vie, PER ou portefeuille de cryptomonnaies.')}</p>
+    ${invitePremierPas('comptes') || `
+    <button type="button" class="btn sm" data-action="ajouter-compte" data-type="cto"
+            style="margin:4px 0 0">${trad('Ajouter un compte d’investissement')}</button>`}
+  </div>`;
+  }
+
   const dehorsDetail = (() => {
     const p = patrimoine();
     return [
@@ -3694,9 +3708,12 @@ function viewRebalance() {
 
   <div class="card plan">
     <div class="card-head"><h2>${trad('Ce qu’il y a à faire')}${aide(trad("Les mouvements qui ramènent chaque classe à sa cible. Quand tes pourcentages totalisent 100 %, ce qu’il faut vendre finance exactement ce qu’il faut acheter."))}</h2>
-      <span class="hint">${mouvements.length ? `${mouvements.length} ${mouvements.length > 1 ? trad('mouvements') : trad('mouvement')}` : trad('rien à faire')}</span></div>
+      <span class="hint">${mouvements.length ? `${mouvements.length} ${mouvements.length > 1 ? trad('mouvements') : trad('mouvement')}` : sumT > 0.005 ? trad('rien à faire') : trad('cibles à fixer')}</span></div>
     ${!mouvements.length
-      ? `<p class="empty">${trad('✓ Chaque classe est à sa cible. Rien à arbitrer.')}</p>`
+      ? (sumT > 0.005
+        ? `<p class="empty">${trad('✓ Chaque classe est à sa cible. Rien à arbitrer.')}</p>`
+        : `<p class="empty">${trad('Fixe le pourcentage que tu vises par classe : '
+            + 'le plan d’arbitrage s’écrira en face de ce que tu détiens.')}</p>`)
       : `
       <div class="plan-cols">
         ${alleger.length ? `<div>
@@ -3937,6 +3954,7 @@ function viewHistory() {
     const bornes = [`${annee}-01-01`, `${annee}-12-31`];
     const liste = tout.filter(a => String(a.date || '').startsWith(String(annee)));
     const d = apportsDetail(...bornes);
+    if (!aUnComptePropre() && !tout.length) return '';
     return `
   <div class="card">
     <div class="card-head"><h2>${trad('Entrées et sorties exceptionnelles')}</h2>
@@ -4318,6 +4336,22 @@ function lignePlacement(l, compte, editable = false, sansNom = false) {
    appelant se garde sans se maintenir, et finit par decrire un ecran qui
    n'existe plus.*/
 
+const FAMILLES_ACTIF = ['courant', 'cto', 'immo', 'crypto', 'pe', 'fondsNonCote'];
+function famillesDActifs() {
+  const choix = typesCompteChoix();
+  const dispo = FAMILLES_ACTIF.map(id => choix.find(t => t.id === id)).filter(Boolean);
+  if (!dispo.length) return '';
+  return `
+      <p class="familles-titre">${trad('Ce que Longward sait suivre')}</p>
+      <div class="familles">
+        ${dispo.map(t => `
+        <button type="button" class="famille" data-action="ajouter-compte" data-type="${esc(t.id)}">
+          <span class="famille-nom">${esc(t.label)}</span>
+          <span class="famille-plus" aria-hidden="true">+</span>
+        </button>`).join('')}
+      </div>`;
+}
+
 function viewAccounts() {
   const pat = patrimoine();
   const d = deltas();
@@ -4362,10 +4396,13 @@ function viewAccounts() {
   const titreSection = (t, sous) => `
       <h3 class="cpt-section">${esc(trad(t))}<span class="sub">${esc(trad(sous))}</span></h3>`;
 
+  const sansCompte = !ouverts.some(c => !typeCompte(c.type).interne);
+
   let corps = '';
-  if (!ouverts.some(c => !typeCompte(c.type).interne) && !filtre) {
+  if (sansCompte && !filtre) {
     corps = `<div class="card">${invitePremierPas('comptes')
-      || `<p class="empty">${trad('Aucun compte pour l’instant.')}</p>`}</div>`;
+      || `<p class="empty">${trad('Tes comptes et tes biens vivront ici.')}</p>`}
+      ${famillesDActifs()}</div>`;
   } else if (!ouverts.length && !archives.length) {
     corps = `<div class="card"><p class="empty">Rien ne correspond à ${guill(esc(compteRecherche))}.
       Essaie avec le nom de la banque ou du placement.</p></div>`;
@@ -4450,15 +4487,15 @@ function viewAccounts() {
     ['banque', 'Comptes et avoirs'], ['type', 'Type'],
   ], compteVue, 'compte-vue', 'vue')}
 
-  <dl class="kv cpt-resume">
+  ${sansCompte && !filtre ? '' : `<dl class="kv cpt-resume">
     <dt>${BASES.avoirs.nom}${aide(trad("La somme des comptes ouverts de cette page. Le même nombre que sur l’accueil : si les deux diffèrent, c’est qu’un compte est archivé ou qu’un montant vient d’être corrigé."))}</dt><dd>${fmtEUR(pat.brut)}</dd>
     ${pat.dettes ? `
     <dt>${trad('Crédits en cours')}${aide(trad("Le capital qu’il te reste à rembourser. Les comptes archivés ne comptent pas."))}</dt>
       <dd class="dette">−${fmtEUR(pat.dettes)}</dd>
     <dt><b>${trad('Patrimoine net')}</b></dt><dd><b>${fmtEUR(pat.net)}</b></dd>` : ''}
-  </dl>
+  </dl>`}
 
-  <div class="card" style="padding:12px 16px">
+  ${sansCompte && !filtre ? '' : `<div class="card" style="padding:12px 16px">
     <div class="row" style="gap:10px">
       <input id="chercheCompte" type="search" placeholder="${trad('Rechercher…')}" value="${esc(compteRecherche)}"
              style="max-width:12em; text-align:left" aria-label="${trad('Rechercher un compte ou un placement')}">
@@ -4469,7 +4506,7 @@ function viewAccounts() {
         >${groupesRendus.every(c => compteReplies.has(c)) ? trad('Tout déplier') : trad('Tout replier')}</button>` : ''}
       <button class="btn sm" data-action="ajouter-compte">${trad('+ Ajouter')}</button>
     </div>
-  </div>
+  </div>`}
 
   <div class="cpt-liste">${corps}</div>
 
@@ -4563,7 +4600,7 @@ function viewComptesArchives() {
   <h3 class="cpt-section arch-titre">${trad('Comptes archivés')}<span class="sub">${
     trad('hors de tous les totaux, conservés pour l’historique')}</span></h3>
   ${archives.length || clos.length ? '' : `<div class="card"><p class="empty">${
-    trad('Aucun compte archivé.')}</p></div>`}
+    trad('Les comptes que tu clôtures se rangeront ici.')}</p></div>`}
   ${section('Archivés',
     'Ils gardent leur fiche et tout ce qu’ils portaient. Les restaurer les remet dans tes totaux.',
     archives)}
@@ -6504,7 +6541,7 @@ function viewBudget(section = 'depenses') {
     <div class="card-head"><h2>${trad('Ce qui sort chaque mois')}</h2>
       ${(() => {
         const n = b.fixedCharges.filter(c => chargeMensuelle(c) > 0).length;
-        return `<span class="hint">${n} ${n > 1 ? trad('postes') : trad('poste')}</span>`;
+        return n ? `<span class="hint">${n} ${n > 1 ? trad('postes') : trad('poste')}</span>` : '';
       })()}</div>
     ${(() => {
       /* CE QUI EST DEBITE, comme `f.fixed` juste au-dessus : les deux viennent de
@@ -6545,11 +6582,14 @@ function viewBudget(section = 'depenses') {
     <div class="card" data-anchor="charges">
       <div class="card-head"><h2>${trad('Charges fixes')}</h2>
         <div class="row">
-          <span class="hint">${fmtEUR(f.fixed)} ${trad('/ mois')}${f.fixedPct == null ? '' : ` · ${fmtPct(f.fixedPct, 1)} ${trad('des revenus')}`}</span>
+          ${!b.fixedCharges.length ? '' : `<span class="hint">${fmtEUR(f.fixed)} ${trad('/ mois')}${f.fixedPct == null ? '' : ` · ${fmtPct(f.fixedPct, 1)} ${trad('des revenus')}`}</span>`}
           <button class="btn sm ghost" data-action="add-charge">${trad('+ Ligne')}</button>
         </div>
       </div>
       ${(() => {
+        if (!b.fixedCharges.length) return `
+      <p class="empty" style="margin:0">${trad('Tes loyers, assurances et abonnements '
+        + 'viendront ici, chacun avec sa cadence.')}</p>`;
         const brut = b.fixedCharges.reduce((s, c) => s + chargeMensuelle(c), 0);
         return `
       <div class="liste-mobile" id="chargesListe">
@@ -8208,7 +8248,8 @@ const ACTIONS = {
         /* Le defaut suit l'etablissement plutot que d'etre pose en dur : voir
            `typeParDefautChez`. Chez une societe qui ne porte que des parts, la
            fenetre proposait d'ouvrir un compte courant. */
-        valeur: typeParDefautChez(etabImpose) }],
+        valeur: (btn?.dataset?.type && typesCompteChoix().some(t => t.id === btn.dataset.type))
+          ? btn.dataset.type : typeParDefautChez(etabImpose) }],
     });
     if (!e1) return;
     if (e1.type === '__nouveau') {
