@@ -4689,6 +4689,8 @@ suite('Le résumé d’un établissement compte ce qui a une base', () => {
     pres(sans.investi, 4000, 'le coût manquant quitte l’investi');
     pres(sans.valeur, 5000, 'et sa valeur quitte la valeur');
     pres(sans.horsBase, 3000, 'elle se retrouve entièrement hors base');
+    pres(sans.sansBase, 3000, 'et le résumé dit que c’est une ligne sans prix de revient');
+    pres(sans.cash, 0, 'pas du cash');
     /* LE PIEGE QUE CE CONTROLE GARDE : comptée à zéro, la seconde ligne aurait
        fait « +4 000 » d'écart au lieu de « +1 000 ». */
     pres(sans.pnl, 1000, 'l’écart ne gonfle pas du montant de la ligne écartée');
@@ -4705,6 +4707,9 @@ suite('Le résumé d’un établissement compte ce qui a une base', () => {
     pres(apres.investi, avant.investi, 'l’investi ne bouge pas');
     pres(apres.valeur, avant.valeur, 'la valeur non plus');
     pres(apres.horsBase - avant.horsBase, 1234, 'et le liquide passe hors base');
+    pres(apres.cash, 1234, 'nommé pour ce qu’il est : du cash');
+    pres(apres.sansBase, avant.sansBase, 'sans être confondu avec une ligne sans prix de revient');
+    pres(apres.horsBase, apres.cash + apres.sansBase, 'les deux parts font le total écarté');
   });
 
   test('aucune base, aucun résumé', () => {
@@ -4744,9 +4749,18 @@ suite('Le résumé d’un établissement compte ce qui a une base', () => {
       'elle complète le grand chiffre avant d’ouvrir le détail');
     for (const cle of ['Investi et plus-value',
                        'sur les lignes dont le prix de revient est saisi',
-                       'hors de ce calcul, faute de prix de revient']) {
+                       '{v} hors de ce calcul : du cash, qui n’a pas de prix de revient',
+                       '{v} hors de ce calcul : des lignes sans prix de revient saisi',
+                       '{v} hors de ce calcul : {c} de cash et {l} de lignes sans prix de revient saisi']) {
       vrai(!!I18N.en[cle], '« ' + cle + ' » existe en anglais');
     }
+    /* Trois phrases pour trois cas : le cash seul, les lignes seules, les deux.
+       « Faute de prix de revient » accusait des titres la ou il n'y avait que du
+       cash en attente chez le courtier. */
+    vrai(!I18N.en['hors de ce calcul, faute de prix de revient'], 'la phrase qui accusait des titres est partie');
+    vrai(/p\.sansBase < 0\.005\s*\? trad\('\{v\} hors de ce calcul : du cash/.test(fiche)
+      && /p\.cash < 0\.005\s*\? trad\('\{v\} hors de ce calcul : des lignes/.test(fiche),
+      'la vue choisit la phrase selon ce qui est écarté');
   });
 });
 

@@ -3326,12 +3326,18 @@ function prixParPart(ligne) {
 
    Rend `null` quand aucune ligne n'a de base : une banque qui ne porte que des
    especes n'a pas de plus-value, et une carte de zeros ne dirait rien. */
+/* CE QUI SORT DU CALCUL SE DIT EN DEUX PARTS. `horsBase` melangeait le cash
+   des comptes et les lignes sans prix de revient sous une seule phrase, « faute
+   de prix de revient » : chez un courtier ou 1 602 EUR de liquidites attendent
+   d'etre investis, elle accusait des titres qui n'existaient pas. Le cash n'a
+   pas de prix de revient par nature ; une ligne sans le sien, par oubli. Les
+   deux se lisent separement, et `horsBase` reste leur somme. */
 function perfEtab(etabId) {
-  let investi = 0, valeur = 0, horsBase = 0, lignes = 0;
+  let investi = 0, valeur = 0, cash = 0, sansBase = 0, lignes = 0;
   for (const c of COMPTES().filter(x => x.etabId === etabId && x.statut !== 'archive')) {
-    horsBase += cashCompte(c);
+    cash += cashCompte(c);
     for (const l of lignesDe(c)) {
-      if (perfLigne(l).pnl == null) { horsBase += num(l.valeur); continue; }
+      if (perfLigne(l).pnl == null) { sansBase += num(l.valeur); continue; }
       investi += num(l.prixDeRevient);
       valeur += num(l.valeur);
       lignes++;
@@ -3341,7 +3347,7 @@ function perfEtab(etabId) {
   const pnl = round2(valeur - investi);
   return { investi: round2(investi), valeur: round2(valeur), pnl,
            pct: investi > 0 ? (pnl / investi) * 100 : null,
-           horsBase: round2(horsBase), lignes };
+           horsBase: round2(cash + sansBase), cash: round2(cash), sansBase: round2(sansBase), lignes };
 }
 
 function perfLigne(ligne) {

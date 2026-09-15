@@ -5772,7 +5772,12 @@ function viewFicheEtab(id) {
           : ` <span class="muted">·</span> <span class="${cls(p.pnl)}">${fmtSignedPct(p.pct)}</span>`}</dd>
     </dl>
     ${p.horsBase < 0.005 ? '' : `<p class="hint" style="margin:8px 0 0">${
-      fmtEUR0(p.horsBase)} ${trad('hors de ce calcul, faute de prix de revient')}</p>`}
+      p.sansBase < 0.005
+        ? trad('{v} hors de ce calcul : du cash, qui n’a pas de prix de revient').replace('{v}', fmtEUR0(p.horsBase))
+        : p.cash < 0.005
+        ? trad('{v} hors de ce calcul : des lignes sans prix de revient saisi').replace('{v}', fmtEUR0(p.horsBase))
+        : trad('{v} hors de ce calcul : {c} de cash et {l} de lignes sans prix de revient saisi')
+            .replace('{v}', fmtEUR0(p.horsBase)).replace('{c}', fmtEUR0(p.cash)).replace('{l}', fmtEUR0(p.sansBase))}</p>`}
   </div>`;
   })()}
 
