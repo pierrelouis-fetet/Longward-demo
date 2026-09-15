@@ -24763,7 +24763,7 @@ suite('L’interface tient ses seuils', () => {
     vrai(/recharger = false/.test(fn),
       'mais pas au démarrage, sinon la page se recharge en boucle');
     for (const appel of ['applyTheme\\(currentTheme\\(\\) === .dark. \\? .light. : .dark., true\\)',
-                         'applyTheme\\(theme\\.value, true\\)']) {
+                         'applyTheme\\(v, true\\)']) {
       vrai(new RegExp(appel).test(src),
         `les deux commandes de thème demandent le rechargement (${appel.slice(0, 24)}…)`);
     }
@@ -29852,12 +29852,12 @@ suite('Un réglage vit avec les réglages', () => {
     const vue = src.slice(src.indexOf('function viewSettings'),
                           src.indexOf('\n}', src.indexOf('function viewSettings')));
     vrai(vue, 'viewSettings doit être trouvable');
-    const titres = [...vue.matchAll(/<h2>\$\{(?:t|trad)\('([^']+)'\)\}<\/h2>/g)].map(m => m[1]);
-    eq(titres.join(' · '),
-      "settings.appearance · settings.language · settings.behaviour",
-      'l’ordre des trois premières sections');
+    /* Des groupes en surtitre, plus des cartes a en-tete : Général, Marchés,
+       puis les notifications qui portent leurs propres groupes. */
+    const titres = [...vue.matchAll(/<h3 class="surtitre">\$\{(?:t|trad)\('([^']+)'\)\}<\/h3>/g)].map(m => m[1]);
+    eq(titres.join(' · '), "settings.general · settings.behaviour", 'l’ordre des deux premiers groupes');
     vrai(/\$\{viewNotifs\(\)\}/.test(vue),
-      'la quatrième section, les notifications, ferme la page');
+      'les notifications, rappels et alertes ferment la page');
   });
 
   test('les notifications n’ont plus de vue ni d’entrée de menu', () => {
@@ -39056,5 +39056,91 @@ suite('Données se lit comme un centre de données', () => {
       'la zone de danger se distingue d’un filet rouge léger, pas d’un aplat');
     vrai(/@keyframes tourne/.test(css) && /prefers-reduced-motion: reduce\) \{ \.btn\.en-cours \{ animation: none; \}/.test(css),
       'l’icône tourne pendant l’envoi, sauf mouvement réduit');
+  });
+});
+
+/* ------------------------------------------------------------------
+   Préférences : des lignes de réglages, des feuilles de choix
+   ------------------------------------------------------------------ */
+suite('Préférences se lit comme les réglages d’un téléphone', () => {
+
+  const src = () => lireSource('assets/app.js');
+  const vue = () => { const s = src(); return s.slice(s.indexOf('function viewSettings() {'), s.indexOf('function askOptions(')); };
+  const positions = (s, ...ancres) => ancres.map(a => s.indexOf(a));
+  const croissant = l => l.every((v, i) => v > 0 && (i === 0 || v > l[i - 1]));
+
+  test('cinq groupes, dans l’ordre annoncé, et aucun menu déroulant', () => {
+    const v = vue();
+    const l = positions(v, 'class="page-tete"', "t('settings.general')", "t('settings.behaviour')",
+      "trad('Notifications')", "trad('Rappels')", "trad('Alertes')");
+    vrai(croissant(l), 'en-tête, Général, Marchés, Notifications, Rappels, Alertes : ' + l.join(' < '));
+    vrai(!/<select/.test(v), 'plus aucun menu déroulant : une ligne à chevron ouvre une feuille de choix');
+    vrai(!/data-path=/.test(v), 'et aucun champ lié : les réglages passent par des actions nommées');
+    vrai(/\$\{viewNotifs\(\)\}/.test(v), 'la seconde moitié vit dans viewNotifs, comme avant');
+  });
+
+  test('chaque réglage a la forme de son choix', () => {
+    const v = vue();
+    for (const a of ['regl-theme', 'regl-langue', 'regl-place', 'regl-jour', 'alertes-en-cours', 'alertes-masquees'])
+      vrai(v.includes(`action: '${a}'`), `« ${a} » est une ligne à chevron`);
+    vrai(/ligneBascule\(\{ action: 'regl-autorefresh'/.test(v), 'l’actualisation est un interrupteur');
+    vrai(/ligneBascule\(\{\s*action: 'famille-notif', cle,/.test(v), 'chaque famille de notifications aussi, par l’action qui existait');
+    vrai(/role="switch" aria-checked="\$\{on \? 'true' : 'false'\}"/.test(src()), 'un interrupteur se dit tel à qui ne voit pas');
+    vrai(/trad\('\{n\} sur \{t\} activées'\)/.test(v), 'le groupe compte ses familles allumées');
+    vrai(!/rien à signaler/.test(v), 'et ne dit pas « rien à signaler » : c’est un état d’alerte, pas un réglage');
+    vrai(/libellePlace\(m\.preferredExchange \?\? '\.PA'\)/.test(v) && /libelleJour\(jourRappel\(\)\)/.test(v),
+      'la valeur courante se lit sur la ligne, en mots');
+  });
+
+  test('les mêmes clefs de stockage, les mêmes gestionnaires', () => {
+    const s = src();
+    vrai(/'regl-autorefresh'\(\) \{\s*Store\.state\.meta\.autoRefresh = !Store\.state\.meta\.autoRefresh;/.test(s), 'autoRefresh');
+    vrai(/Store\.state\.meta\.preferredExchange = v;/.test(s), 'preferredExchange');
+    vrai(/Store\.state\.meta\.jourRappel = Number\(v\);/.test(s), 'jourRappel');
+    vrai(/if \(v && v !== currentLang\(\)\) \{ setLang\(v\); location\.reload\(\); \}/.test(s), 'la langue recharge, comme avant');
+    vrai(/if \(v && v !== themeChoisi\(\)\) applyTheme\(v, true\);/.test(s), 'le thème aussi');
+    vrai(/'reafficher-notif'\(btn\) \{\s*Store\.state\.meta\.notifsMasquees = notifsMasquees\(\)\.filter\(c => c !== btn\.dataset\.cle\);/.test(s),
+      'une alerte masquée se réaffiche une à une, dans la même liste');
+  });
+
+  test('le thème connaît « Système », et la page peint toujours dark ou light', () => {
+    const s = src();
+    vrai(/function themeChoisi\(\)/.test(s) && /const themeEffectif = choix => choix === 'system' \? themeSysteme\(\) : \(choix \|\| 'dark'\);/.test(s),
+      'le choix et l’effet sont deux choses');
+    vrai(/document\.documentElement\.dataset\.theme = themeEffectif\(nom\);/.test(s), 'applyTheme peint l’effet et range le choix');
+    vrai(/themeEffectif\(localStorage\.getItem\('wealth-dashboard:theme'\) \|\| 'dark'\)/.test(s), 'au démarrage aussi');
+    vrai(/prefers-color-scheme: light/.test(s), 'et « Système » lit l’appareil');
+    vrai(/\{ v: 'system', l: l\.system, sous: trad\('Suit le réglage de l’appareil'\) \}/.test(s), 'la feuille propose Système, Clair, Sombre');
+    for (const cle of ['settings.theme.system', 'settings.general']) vrai(!!I18N.en[cle], cle + ' existe en anglais');
+  });
+
+  test('la feuille de choix se referme sur le choix, et la grille a sept colonnes', () => {
+    const s = src();
+    const f = s.slice(s.indexOf('function askOptions('), s.indexOf('let feuilleCourante'));
+    vrai(/role="radiogroup"/.test(f) && /role="radio" aria-checked=/.test(f), 'les options se disent comme des boutons radio');
+    vrai(/\$\('#modalBody'\)\.onclick = e => \{ const b = e\.target\.closest\('\.choix-ligne'\); if \(b\) \{ retourHaptique\(\); fermer\(b\.dataset\.v\); \} \};/.test(f),
+      'toucher une option choisit et referme, sans bouton Valider');
+    vrai(/grille: true, options: Array\.from\(\{ length: 28 \}/.test(s), 'le jour du rappel s’ouvre en grille de 28');
+    const css = lireSource('assets/styles.css');
+    vrai(/\.choix-grille \{ display: grid; grid-template-columns: repeat\(7, minmax\(0, 1fr\)\);/.test(css), 'sept colonnes, la forme d’un mois');
+    vrai(/\.regl-ligne \{[^}]*min-height: 52px/.test(css) && /\.choix-grille \.choix-ligne \{[^}]*min-height: 44px/.test(css),
+      'les cibles tactiles font au moins 44 px');
+    vrai(/\.regl-ligne:focus-visible \{ outline: 2px solid var\(--accent\)/.test(css), 'le focus se voit');
+  });
+
+  test('les alertes vraies et les familles réglables ne se mélangent pas', () => {
+    const s = src();
+    vrai(/function alertesMasquees\(\)/.test(s) && /perimees: cles\.filter\(c => !toutes\.some\(n => n\.cle === c\)\)\.length/.test(s),
+      'les alertes masquées se listent depuis le modèle, et les clefs orphelines se comptent');
+    vrai(/function feuilleAlertesEnCours\(\)/.test(s) && /function feuilleAlertesMasquees\(\)/.test(s), 'deux feuilles, une par question');
+    vrai(/data-action="alerte-voir" data-view=/.test(s) && /data-action="masquer-notif" data-cle=/.test(s), 'une alerte en cours se visite ou se tait');
+    vrai(/data-action="reafficher-notif" data-cle=/.test(s) && /data-action="rendre-notifs">\$\{trad\('Tout réafficher'\)\}/.test(s),
+      'une alerte masquée se réaffiche seule ou avec les autres');
+    vrai(/if \(currentView\(\) === 'settings'\) \{ render\(\); rafraichirFeuille\(\); \}/.test(s), 'masquer depuis la feuille met la page et la feuille à jour');
+    for (const cle of ['Alertes en cours', 'Alertes masquées', 'Réafficher', 'Ces alertes restent vraies mais ne sont plus affichées.',
+                       'Marché privilégié', 'Actualisation automatique', '{n} sur {t} activées', 'Jour du rappel', '1er du mois', '{j} du mois'])
+      vrai(!!I18N.en[cle], '« ' + cle + ' » existe en anglais');
+    for (const morte of ['Notifications & rappels', 'Masquées une à une', 'Oui, chercher les cours automatiquement'])
+      vrai(!I18N.en[morte], '« ' + morte + ' » n’a plus d’appelant');
   });
 });

@@ -1272,122 +1272,203 @@ function viewProfil() {
   </div>`;
 }
 
+function ligneReglage({ action, label, valeur, sous = '', titre = '' }) {
+  return `
+      <button type="button" class="regl-ligne" data-action="${action}"${titre ? ` title="${esc(titre)}"` : ''}>
+        <span class="regl-txt"><b>${esc(label)}</b>${sous ? `<span class="sub">${esc(sous)}</span>` : ''}</span>
+        <span class="regl-val">${esc(valeur)}</span>
+        <span class="regl-chev" aria-hidden="true">›</span>
+      </button>`;
+}
+function ligneBascule({ action, cle = '', label, sous = '', on, titre = '' }) {
+  return `
+      <button type="button" class="regl-ligne regl-bascule${on ? ' on' : ''}" data-action="${action}"${
+        cle ? ` data-cle="${esc(cle)}"` : ''} role="switch" aria-checked="${on ? 'true' : 'false'}"${
+        titre ? ` title="${esc(titre)}"` : ''}>
+        <span class="regl-txt"><b>${esc(label)}</b>${sous ? `<span class="sub">${esc(sous)}</span>` : ''}</span>
+        <span class="bascule-piste" aria-hidden="true"><i></i></span>
+      </button>`;
+}
+function libellePlace(v) {
+  for (const [, places] of EXCHANGES) for (const [val, l] of places) if (val === v) return l;
+  return v;
+}
+const libelleJour = j => j === 1 ? trad('1er du mois') : trad('{j} du mois').replace('{j}', j);
+const LIBELLES_THEME = () => ({ system: t('settings.theme.system'), light: t('settings.theme.light'), dark: t('settings.theme.dark') });
+
 function viewSettings() {
   const m = Store.state.meta;
+  const langue = (LANGS.find(([c]) => c === currentLang()) || LANGS[0])[1];
   return `
-  <div class="grid g-2">
-    <div class="card">
-      <div class="card-head"><h2>${t('settings.appearance')}</h2></div>
-      <div class="modal-champs">
-        <div class="field">
-          <label>${t('settings.theme')}</label>
-          <select data-action-change="set-theme">
-            <option value="dark" ${currentTheme() === 'dark' ? 'selected' : ''}>${t('settings.theme.dark')}</option>
-            <option value="light" ${currentTheme() === 'light' ? 'selected' : ''}>${t('settings.theme.light')}</option>
-          </select>
-        </div>
-      </div>
+  <header class="page-tete">
+    <h2>${t('view.settings')}</h2>
+    <p>${trad('Personnalise ton expérience Longward.')}</p>
+  </header>
+  <section class="regl-groupe">
+    <h3 class="surtitre">${t('settings.general')}</h3>
+    <div class="regl-liste">
+      ${ligneReglage({ action: 'regl-theme', label: t('settings.theme'), valeur: LIBELLES_THEME()[themeChoisi()] || t('settings.theme.dark') })}
+      ${ligneReglage({ action: 'regl-langue', label: t('settings.language'), valeur: langue, sous: t('settings.language.hint') })}
     </div>
-
-    <div class="card">
-      <div class="card-head"><h2>${t('settings.language')}</h2></div>
-      <div class="modal-champs">
-        <div class="field">
-          <label>${t('settings.language.label')}</label>
-          <select data-action-change="set-lang">
-            ${LANGS.map(([code, nom]) =>
-              `<option value="${code}" ${code === currentLang() ? 'selected' : ''}>${nom}</option>`).join('')}
-          </select>
-          <span class="hint">${t('settings.language.hint')}</span>
-        </div>
-      </div>
+  </section>
+  <section class="regl-groupe">
+    <h3 class="surtitre">${t('settings.behaviour')}</h3>
+    <div class="regl-liste">
+      ${ligneBascule({ action: 'regl-autorefresh', label: trad('Actualisation automatique'),
+          sous: trad('Actualise les cours à l’ouverture de Longward'), on: !!m.autoRefresh,
+          titre: t('settings.autorefresh.hint') })}
+      ${ligneReglage({ action: 'regl-place', label: trad('Marché privilégié'), valeur: libellePlace(m.preferredExchange ?? '.PA'),
+          titre: trad('Départage un titre coté sur plusieurs marchés') })}
     </div>
-  </div>
-
-  <div class="card">
-    <div class="card-head"><h2>${t('settings.behaviour')}</h2></div>
-    <div class="modal-champs">
-      <div class="field">
-        <label>${t('settings.autorefresh')}</label>
-        <select data-path="meta.autoRefresh" data-type="bool">
-          <option value="true" ${m.autoRefresh ? 'selected' : ''}>${t('settings.autorefresh.on')}</option>
-          <option value="false" ${m.autoRefresh ? '' : 'selected'}>${t('settings.autorefresh.off')}</option>
-        </select>
-        <span class="hint">${t('settings.autorefresh.hint')}</span>
-      </div>
-      <div class="field">
-        <label>${t('settings.exchange')}</label>
-        <select class="menu-serre" data-path="meta.preferredExchange">
-          ${EXCHANGES.map(([region, places]) => `<optgroup label="${esc(region)}">${
-            places.map(([v, l]) => `<option value="${v}" ${v === (m.preferredExchange ?? '.PA') ? 'selected' : ''}>${esc(l)}</option>`).join('')
-          }</optgroup>`).join('')}
-        </select>
-        <span class="hint">${t('settings.exchange.hint')}</span>
-      </div>
-    </div>
-  </div>
-
-  ${viewNotifs()}
-`;
+  </section>
+  ${viewNotifs()}`;
 }
 
+function alertesMasquees() {
+  const cles = notifsMasquees();
+  const toutes = healthChecks().map(n => ({ ...n, cle: n.cle || cleNotif(n) }));
+  const visibles = toutes.filter(n => cles.includes(n.cle));
+  return { visibles, perimees: cles.filter(c => !toutes.some(n => n.cle === c)).length };
+}
+
+const SOUS_FAMILLES = () => ({
+  saisies:   trad('Relevés et dépenses à compléter'),
+  cours:     trad('Cours manquant ou périmé'),
+  credits:   trad('Capital restant dû ou mensualité incohérente'),
+  echeances: trad('Remboursement attendu ou retard'),
+  budget:    trad('Objectif ou épargne de précaution'),
+  coherence: trad('Valeur impossible ou incohérente'),
+  synchro:   trad('Modification non synchronisée'),
+});
 function viewNotifs() {
-  const n = notifications();
-  const masquees = notifsMasquees();
+  const reg = reglagesNotifs();
+  const actives = FAMILLES_NOTIF.filter(([c]) => reg[c]).length;
+  const enCours = notifications().length;
+  const masquees = alertesMasquees();
+  const nbMasquees = masquees.visibles.length + masquees.perimees;
+  const sous = SOUS_FAMILLES();
   return `
-  <div class="card">
-    <div class="card-head"><h2>${trad('Notifications & rappels')}</h2>
-      <span class="hint">${n.length ? `${n.length} ${trad('en attente')}` : trad('rien à signaler')}</span></div>
-    <p class="hint" style="margin:0 0 12px">${trad('La cloche de l’en-tête montre les saisies qui restent à faire et les contrôles de cohérence : ce que l’application sait d’incomplet ou de faux. Une famille éteinte ne compte plus dans sa pastille.')}</p>
-    <div class="bascules">
-      ${FAMILLES_NOTIF.map(([cle, nom, quoi]) => {
-        const actif = reglagesNotifs()[cle];
-        return `
-        <button type="button" class="bascule${actif ? ' on' : ''}"
-                data-action="famille-notif" data-cle="${esc(cle)}"
-                role="switch" aria-checked="${actif}">
-          <span class="bascule-txt">${esc(nom)}<span class="sub">${esc(quoi)}</span></span>
-          <span class="bascule-piste" aria-hidden="true"><i></i></span>
-        </button>`;
-      }).join('')}
+  <section class="regl-groupe">
+    <div class="regl-tete">
+      <h3 class="surtitre">${trad('Notifications')}</h3>
+      <span class="regl-compte">${trad('{n} sur {t} activées').replace('{n}', actives).replace('{t}', FAMILLES_NOTIF.length)}</span>
     </div>
-
-    <div class="modal-champs" style="margin-top:12px">
-      <div class="field">
-        <label>${trad('Jour du rappel')}${aide(trad("Avant ce jour, la cloche ne réclame ni relevé ni dépenses. Utile si tu fais tes comptes à date fixe : payé le 15, tu ne veux pas d’une pastille allumée quinze jours pour rien. Les mois, eux, restent calendaires : ce réglage déplace le rappel, pas le calcul."))}</label>
-        <select data-path="meta.jourRappel" data-type="num">
-          ${Array.from({ length: 28 }, (_, i) => i + 1).map(j =>
-            `<option value="${j}" ${j === jourRappel() ? 'selected' : ''}>${
-              j === 1 ? trad('le 1er du mois') : `${trad('le')} ${j} ${trad('du mois')}`}</option>`).join('')}
-        </select>
-        <span class="hint">${jourRappelAtteint()
-          ? trad('Ce jour est passé : les saisies en attente sont réclamées.')
-          : `${trad('La cloche attendra le')} ${jourRappel()} ${trad('pour réclamer les saisies de ce mois.')}`}</span>
-      </div>
+    <div class="regl-liste">
+      ${FAMILLES_NOTIF.map(([cle, nom, quoi]) => ligneBascule({
+        action: 'famille-notif', cle, label: nom, sous: sous[cle] || quoi, on: reg[cle] })).join('')}
     </div>
-  </div>
+    <p class="regl-note">${trad('Une famille éteinte ne compte plus dans la pastille de la cloche.')}</p>
+  </section>
+  <section class="regl-groupe">
+    <h3 class="surtitre">${trad('Rappels')}</h3>
+    <div class="regl-liste">
+      ${ligneReglage({ action: 'regl-jour', label: trad('Jour du rappel'), valeur: libelleJour(jourRappel()),
+          sous: trad('Les saisies mensuelles sont rappelées à partir de cette date.') })}
+    </div>
+  </section>
+  <section class="regl-groupe">
+    <h3 class="surtitre">${trad('Alertes')}</h3>
+    <div class="regl-liste">
+      ${ligneReglage({ action: 'alertes-en-cours', label: trad('Alertes en cours'), valeur: String(enCours),
+          sous: trad('Ce que la cloche affiche en ce moment') })}
+      ${ligneReglage({ action: 'alertes-masquees', label: trad('Alertes masquées'), valeur: String(nbMasquees),
+          sous: trad('Restent vraies, ne s’affichent plus') })}
+    </div>
+  </section>`;
+}
 
-  <div class="card">
-    <div class="card-head"><h2>${trad('Masquées une à une')}</h2>
-      <span class="hint">${trad('par leur croix, dans le panneau')}</span></div>
-    ${masquees.length ? `
-      <p class="hint" style="margin:0 0 12px">${masquees.length} ${masquees.length > 1 ? trad('notifications ne reviendront plus.') : trad('notification ne reviendra plus.')} ${trad('Une alerte masquée reste vraie : elle ne s’affiche plus, elle ne se corrige pas.')}</p>
-      <button class="btn sm ghost" data-action="rendre-notifs">${trad('Tout réafficher')}</button>`
-      : `<p class="empty">${trad('Aucune. La croix d’une ligne du panneau la fait disparaître, et c’est ici qu’on la ramène.')}</p>`}
-  </div>
+/* UNE FEUILLE DE CHOIX : la fenetre de la maison, sans champ ni bouton de
+   validation. Chaque option est une ligne, la courante porte une coche, et
+   toucher une ligne choisit et referme. `grille` range les options en sept
+   colonnes : c'est la forme d'un jour du mois. `groupe` sur une option ouvre
+   un surtitre au-dessus d'elle. Resout la valeur choisie, ou null. */
+function askOptions({ titre, sous = '', options, valeur, grille = false }) {
+  return new Promise(resolve => {
+    const m = $('#modal');
+    apercuOuvert = null;
+    $('#modalTitle').textContent = titre;
+    $('#modalSub').textContent = sous;
+    $('#modalBody').innerHTML = `
+      <div class="choix-liste${grille ? ' choix-grille' : ''}" role="radiogroup">
+        ${options.map(o => `${o.groupe ? `<span class="surtitre choix-groupe">${esc(o.groupe)}</span>` : ''}
+        <button type="button" class="choix-ligne${String(o.v) === String(valeur) ? ' on' : ''}"
+                role="radio" aria-checked="${String(o.v) === String(valeur)}" data-v="${esc(String(o.v))}">
+          <span class="choix-txt"><b>${esc(o.l)}</b>${o.sous ? `<span class="sub">${esc(o.sous)}</span>` : ''}</span>
+          <span class="choix-coche" aria-hidden="true">✓</span>
+        </button>`).join('')}
+      </div>`;
+    $('#modalFoot').innerHTML = `<button class="btn ghost" id="chxCancel" type="button">${trad('Annuler')}</button>`;
+    montrerModal(m);
+    const courant = $('#modalBody .choix-ligne.on') || $('#modalBody .choix-ligne');
+    if (courant) { courant.scrollIntoView({ block: 'nearest' }); focusChamp(courant); }
+    const fermer = v => { masquerModal(m); $('#modalClose').onclick = null; $('#modalBody').onclick = null; resolve(v); };
+    $('#chxCancel').onclick = () => fermer(null);
+    $('#modalClose').onclick = () => fermer(null);
+    $('#modalBody').onclick = e => { const b = e.target.closest('.choix-ligne'); if (b) { retourHaptique(); fermer(b.dataset.v); } };
+  });
+}
 
-  ${n.length ? `
-  <div class="card">
-    <div class="card-head"><h2>${trad('En attente')}</h2></div>
-    ${n.map(x => `
-      <div class="plc-ligne">
-        <span class="cpt-nom">${esc(x.title)}<span class="sub">${escMontant(x.detail)}</span></span>
-        <button class="btn sm ghost" data-action="goto" data-view="${esc(x.view)}"
-                data-anchor="">${trad('Voir')}</button>
-        <button class="btn icon xs" data-action="masquer-notif" data-cle="${esc(x.cle)}"
-                title="${trad('Ne plus signaler')}" aria-label="Ne plus signaler : ${esc(x.title)}">✕</button>
-      </div>`).join('')}
-  </div>` : ''}`;
+/* UNE FEUILLE D'ALERTES : la meme fenetre, avec un corps qui se REDESSINE. Les
+   lignes portent des actions de la page (masquer, reafficher, tout reafficher),
+   et ces actions changent ce que la feuille montre : elles rappellent
+   `rafraichirFeuille()` apres coup, tant que la feuille est ouverte. */
+let feuilleCourante = null;
+function ouvrirFeuille({ titre, sous = '', corps, pied = '' }) {
+  const m = $('#modal');
+  apercuOuvert = null;
+  $('#modalTitle').textContent = titre;
+  $('#modalSub').textContent = sous;
+  feuilleCourante = () => { $('#modalBody').innerHTML = corps(); const f = $('#modalFoot'); f.innerHTML = typeof pied === 'function' ? pied() : pied; };
+  feuilleCourante();
+  montrerModal(m);
+  $('#modalClose').onclick = fermerFeuille;
+}
+function fermerFeuille() {
+  feuilleCourante = null;
+  const m = $('#modal');
+  if (m) { masquerModal(m); $('#modalClose').onclick = null; }
+}
+function rafraichirFeuille() { if (feuilleCourante && !$('#modal').hidden) feuilleCourante(); }
+
+function feuilleAlertesEnCours() {
+  ouvrirFeuille({
+    titre: trad('Alertes en cours'), sous: trad('Ce que la cloche affiche en ce moment'),
+    corps: () => {
+      const n = notifications();
+      if (!n.length) return `<p class="empty">${trad('Aucune alerte en cours.')}</p>`;
+      return `<div class="alertes">${n.map(x => `
+        <div class="alerte-ligne">
+          <span class="controle-ic" aria-hidden="true">${ICONE_NOTIF[x.level] || '•'}</span>
+          <div class="controle-texte"><b>${esc(x.title)}</b><span class="sub">${escMontant(x.detail)}</span></div>
+          <span class="alerte-actes">
+            <button type="button" class="btn sm ghost" data-action="alerte-voir" data-view="${esc(x.view)}">${trad('Voir')}</button>
+            <button type="button" class="btn icon xs" data-action="masquer-notif" data-cle="${esc(x.cle)}"
+                    title="${trad('Ne plus signaler')}" aria-label="${trad('Ne plus signaler')} : ${esc(x.title)}">✕</button>
+          </span>
+        </div>`).join('')}</div>`;
+    },
+    pied: `<button class="btn ghost" type="button" data-action="fermer-feuille">${trad('Fermer')}</button>`,
+  });
+}
+function feuilleAlertesMasquees() {
+  ouvrirFeuille({
+    titre: trad('Alertes masquées'), sous: trad('Ces alertes restent vraies mais ne sont plus affichées.'),
+    corps: () => {
+      const { visibles, perimees } = alertesMasquees();
+      if (!visibles.length && !perimees) return `<p class="empty">${trad('Aucune alerte masquée.')}</p>`;
+      return `<div class="alertes">${visibles.map(x => `
+        <div class="alerte-ligne">
+          <span class="controle-ic" aria-hidden="true">${ICONE_NOTIF[x.level] || '•'}</span>
+          <div class="controle-texte"><b>${esc(x.title)}</b><span class="sub">${escMontant(x.detail)}</span></div>
+          <button type="button" class="btn sm ghost" data-action="reafficher-notif" data-cle="${esc(x.cle)}">${trad('Réafficher')}</button>
+        </div>`).join('')}</div>${perimees ? `<p class="regl-note">${
+          trad(perimees > 1 ? '{n} alertes masquées ne correspondent plus à rien aujourd’hui.' : '{n} alerte masquée ne correspond plus à rien aujourd’hui.').replace('{n}', perimees)}</p>` : ''}`;
+    },
+    pied: () => (alertesMasquees().visibles.length || alertesMasquees().perimees)
+      ? `<button class="btn ghost" type="button" data-action="fermer-feuille">${trad('Fermer')}</button>
+         <button class="btn" type="button" data-action="rendre-notifs">${trad('Tout réafficher')}</button>`
+      : `<button class="btn ghost" type="button" data-action="fermer-feuille">${trad('Fermer')}</button>`,
+  });
 }
 
 const A_PLAT = trad('sans rendement');
@@ -7419,12 +7500,55 @@ const ACTIONS = {
     Store.save();
     rendNotifs();
     majOnglets();
+    if (currentView() === 'settings') { render(); rafraichirFeuille(); }
     toast(trad('Notification masquée. On la ramène depuis Notifications.'));
   },
   'rendre-notifs'() {
     rendreNotifs();
     Store.save(); render();
+    rendNotifs(); majOnglets(); rafraichirFeuille();
     toast(trad('Toutes les notifications sont réaffichées'));
+  },
+  'reafficher-notif'(btn) {
+    Store.state.meta.notifsMasquees = notifsMasquees().filter(c => c !== btn.dataset.cle);
+    Store.save(); render();
+    rendNotifs(); majOnglets(); rafraichirFeuille();
+  },
+  'fermer-feuille'() { fermerFeuille(); },
+  'alerte-voir'(btn) { fermerFeuille(); closeApercu(); location.hash = '#/' + btn.dataset.view; },
+  'alertes-en-cours'() { feuilleAlertesEnCours(); },
+  'alertes-masquees'() { feuilleAlertesMasquees(); },
+  async 'regl-theme'() {
+    const l = LIBELLES_THEME();
+    const v = await askOptions({ titre: t('settings.theme'), valeur: themeChoisi(), options: [
+      { v: 'system', l: l.system, sous: trad('Suit le réglage de l’appareil') },
+      { v: 'light', l: l.light }, { v: 'dark', l: l.dark }] });
+    if (v && v !== themeChoisi()) applyTheme(v, true);
+  },
+  async 'regl-langue'() {
+    const v = await askOptions({ titre: t('settings.language'), sous: t('settings.language.hint'), valeur: currentLang(),
+      options: LANGS.map(([c, nom]) => ({ v: c, l: nom })) });
+    if (v && v !== currentLang()) { setLang(v); location.reload(); }
+  },
+  'regl-autorefresh'() {
+    Store.state.meta.autoRefresh = !Store.state.meta.autoRefresh;
+    Store.save(); render(); retourHaptique();
+  },
+  async 'regl-place'() {
+    const options = [];
+    for (const [region, places] of EXCHANGES) places.forEach(([v, l], i) => options.push({ v, l, groupe: i === 0 ? region : '' }));
+    const v = await askOptions({ titre: trad('Marché privilégié'), sous: trad('Départage un titre coté sur plusieurs marchés'),
+      valeur: Store.state.meta.preferredExchange ?? '.PA', options });
+    if (v == null) return;
+    Store.state.meta.preferredExchange = v;
+    Store.save(); render();
+  },
+  async 'regl-jour'() {
+    const v = await askOptions({ titre: trad('Jour du rappel'), sous: trad('Les saisies mensuelles sont rappelées à partir de cette date.'),
+      valeur: jourRappel(), grille: true, options: Array.from({ length: 28 }, (_, i) => ({ v: i + 1, l: String(i + 1) })) });
+    if (v == null) return;
+    Store.state.meta.jourRappel = Number(v);
+    Store.save(); render();
   },
   /* L'interrupteur bascule ce qu'il trouve, il ne recoit plus une valeur.
      C'etait un `data-action-change` sur une liste deroulante, qui lisait
@@ -14178,12 +14302,11 @@ function bindGlobal() {
     applyTheme(currentTheme() === 'dark' ? 'light' : 'dark', true);
   });
 
-  document.addEventListener('change', e => {
-    const lang = e.target.closest('[data-action-change="set-lang"]');
-    if (lang) { setLang(lang.value); location.reload(); return; }
-    const theme = e.target.closest('[data-action-change="set-theme"]');
-    if (theme) { applyTheme(theme.value, true); }
-  });
+  try {
+    matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+      if (themeChoisi() === 'system') document.documentElement.dataset.theme = themeSysteme();
+    });
+  } catch (e) { /* pas de matchMedia */ }
 }
 
 const THEME_KEY = 'wealth-dashboard:theme';
@@ -14192,6 +14315,13 @@ function currentTheme() {
     || (() => { try { return localStorage.getItem(THEME_KEY); } catch (e) { return null; } })()
     || 'dark';
 }
+function themeChoisi() {
+  try { return localStorage.getItem(THEME_KEY) || 'dark'; } catch (e) { return 'dark'; }
+}
+const themeSysteme = () => {
+  try { return matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; } catch (e) { return 'dark'; }
+};
+const themeEffectif = choix => choix === 'system' ? themeSysteme() : (choix || 'dark');
 /* Le theme s'ecrit, puis la page se recharge. Comme la langue, et pour une
    raison plus betement technique.
 
@@ -14214,7 +14344,7 @@ function currentTheme() {
    donc faux quand on applique le theme lu au chargement, et vrai quand c'est
    quelqu'un qui vient de le changer. */
 function applyTheme(nom, recharger = false) {
-  document.documentElement.dataset.theme = nom;
+  document.documentElement.dataset.theme = themeEffectif(nom);
   try { localStorage.setItem(THEME_KEY, nom); } catch (e) {}
   if (recharger) location.reload();
 }
@@ -14310,7 +14440,7 @@ function ecranIdentiteManquante() {
 (async function init() {
   try {
     document.documentElement.dataset.theme =
-      localStorage.getItem('wealth-dashboard:theme') || 'dark';
+      themeEffectif(localStorage.getItem('wealth-dashboard:theme') || 'dark');
   } catch (e) { document.documentElement.dataset.theme = 'dark'; }
   const localDAbord = CloudSync.sansComptesConnu();
   if (!localDAbord) {
