@@ -16,8 +16,6 @@ with numbers you can trust: <b>how much do I have, where does it sit, and where 
 <p align="center"><a href="https://longward-demo.pages.dev"><b>Try the live demo</b></a> — fictional data, nothing to install.<br>
 <a href="https://beta.longward.app"><b>Join the beta</b></a> — real accounts, your own data, sign in with your e-mail.</p>
 
-<p align="center">Designed and built by <b>Pierre-Louis FETET</b>.</p>
-
 [![Longward, overview on desktop](docs/desktop-overview.png)](https://longward-demo.pages.dev)
 
 <p align="center">

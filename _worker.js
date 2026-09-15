@@ -327,6 +327,10 @@ async function resolveIsin(code, prefer = '') {
 
 const MAX_BYTES = 2 * 1024 * 1024;
 
+/* Les chemins qui appartiennent au depot et non au site : tests, documents de
+   travail, scripts, schema, flux d'integration. Les fichiers a la racine en
+   `.py` aussi. Tout ce qui n'est pas dans cette liste se sert comme avant. */
+const FICHIERS_DE_DEVELOPPEMENT = /^\/(tests(\.html|\/.*)|\.github\/.*|CLAUDE\.md|README\.md|DEPLOY\.md|ICONES\.md|schema\.sql|wrangler\.json|[^/]+\.py)$/;
 const keyFor = email => `state:${email || 'default'}`;
 
 async function handleState(request, env, email, identifie) {
@@ -1185,6 +1189,7 @@ export default {
     }
 
     if (!path.startsWith('/api/')) {
+      if (FICHIERS_DE_DEVELOPPEMENT.test(path)) return new Response('Not found', { status: 404, headers: { 'Cache-Control': 'no-store' } });
       return env.ASSETS.fetch(request);        // le site lui-même
     }
 
@@ -1272,7 +1277,8 @@ export default {
 
       return json({ error: 'route inconnue' }, 404);
     } catch (e) {
-      return json({ error: e.message }, 502);
+      console.error('api', e);
+      return json({ error: 'service indisponible' }, 502);
     }
   },
 };
