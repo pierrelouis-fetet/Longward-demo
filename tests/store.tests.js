@@ -38814,7 +38814,12 @@ suite('Trois montants voisins, trois noms qui disent leur périmètre', () => {
     vrai(/const nomPortefeuille = \(\) => trad\('Comptes de marché'\);/.test(app), 'le centre de l’anneau et le pied du tableau disent la même chose');
     vrai(/Tes comptes de marché portent tes titres cotés, leurs placements sans cours et le cash qui y attend d’être investi\./.test(app),
       'et la phrase dessous décompose le total');
-    eq(BASES.place.nom, trad('Placements'), 'la ligne d’Allocation ne dit plus « Investi »');
+    /* Par la source, et non par `BASES.place.nom` : cette valeur est traduite au
+       chargement, dans la langue du navigateur, et un test qui change de langue
+       la fait diverger de `trad()`. Rouge sur le Chrome anglais de l'integration
+       continue, vert sur un poste francais : le meme code, deux verdicts. */
+    vrai(/place:\s+\{ nom: trad\('Placements'\)/.test(lireSource('assets/store.js')),
+      'la ligne d’Allocation ne dit plus « Investi »');
     for (const cle of ['Tes comptes de marché', 'Comptes de marché', 'Placements', 'de tes placements'])
       vrai(!!I18N.en[cle], '« ' + cle + ' » existe en anglais');
     vrai(!I18N.en['Ton portefeuille'], 'l’ancienne clef est partie');
