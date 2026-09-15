@@ -1583,6 +1583,12 @@ const carteObjectif = () => {
   </button>`;
 };
 
+const ageDetaille = a => !a ? '' : (a.mois === 0
+  ? `${a.annees} ${trad('ans')}`
+  : trad(a.mois === 1 ? '{a} ans et 1 mois' : '{a} ans et {m} mois')
+      .replace('{a}', a.annees).replace('{m}', a.mois));
+const ageCompact = a => !a ? '' : `${a.annees} ${trad('ans')}`;
+
 function viewObjective() {
   if (!(patrimoine().brut > 0.005) && !(num(Store.state.meta.projMonthly) > 0)) {
     return pageAvantDonnees('Une projection part de ce que tu as et de ce que tu mets de '
@@ -1596,6 +1602,7 @@ function viewObjective() {
     ? trad('versement à définir') : `${fmtEUR0(s.monthly)} ${trad('/ mois')}`;
   const p = capitalisation({ years: projHorizon });
   const dernier = p.points[p.points.length - 1];
+  const ageFin = ageAuPoint(dernier);
   const anneeAtteinte = p.targetReached;
 
   const listeChoix = (path, paliers, valeur, format) => {
@@ -1645,6 +1652,11 @@ function viewObjective() {
       ${sous ? `<span class="hint">${sous}</span>` : ''}
     </div>`;
 
+  const champDate = (label, path, valeur, aideTexte) => `
+    <div class="field">
+      <label>${esc(trad(label))}${aideTexte ? aide(aideTexte) : ''}</label>
+      <input type="date" data-path="${path}" value="${esc(valeur || '')}" max="${todayISO()}">
+    </div>`;
   const paliers = (max, pas, depuis = 0) =>
     Array.from({ length: Math.floor((max - depuis) / pas) + 1 }, (_, i) => depuis + i * pas);
 
@@ -1776,6 +1788,9 @@ function viewObjective() {
                      <button type="button" class="mois-lien" data-action="proj-use-budget"
                              >${trad('Reprendre ce montant')}</button>`;
                 })())}
+        ${champDate('Date de naissance', 'meta.naissance', Store.state.meta.naissance,
+                trad('Elle ne sert qu’à afficher ton âge à chaque horizon. Elle reste dans ton '
+                  + 'navigateur, comme le reste, et n’entre dans aucun calcul financier.'))}
         ${champText('Affectation des versements', 'meta.projVersementVers', VERSEMENT_VERS,
                 s.versementVers,
                 trad('Ces euros capitalisent au taux de la poche que tu choisis. '
@@ -1888,7 +1903,8 @@ function viewObjective() {
     <div class="card">
       <div class="card-head">
         <h2>${trad('Trajectoire')}</h2>
-        <span class="hint">${trad('Sur')} ${projHorizon} ${trad('ans, jusqu’en')} ${dernier.year} · ${ditVersement}</span>
+        <span class="hint">${trad('Sur')} ${projHorizon} ${trad('ans, jusqu’en')} ${dernier.year}${
+          ageFin ? ` · ${ageCompact(ageFin)}` : ''} · ${ditVersement}</span>
       </div>
       <div class="chart" id="chartProjection"></div>
       <div class="legend">
@@ -1957,7 +1973,8 @@ function viewObjective() {
 
   <div class="card">
     <div class="card-head">
-      <h2>${trad('Par horizon')}</h2>
+      <h2>${trad('Par horizon')}</h2>${dateNaissance() ? '' : `
+      <span class="hint">${trad('Ajoute ta date de naissance pour voir ton âge dans la projection.')}</span>`}
       <span class="hint">${ditVersement} ·
         ${trad('scénario')} ${trad(nomScenario(s.scenario)).toLowerCase()}</span>
     </div>
@@ -1973,7 +1990,8 @@ function viewObjective() {
           const retenu = j.horizon === projHorizon;
           return `
           <tr class="${retenu ? 'jalon-retenu' : ''}"${retenu ? ' aria-current="true"' : ''}>
-            <td class="name">${j.horizon} ${trad('ans')} <span class="muted">· ${j.year}</span></td>
+            <td class="name">${j.horizon} ${trad('ans')} <span class="muted">· ${j.year}</span>
+              ${ageAuPoint(j) ? `<span class="sub">${ageDetaille(ageAuPoint(j))}</span>` : ''}</td>
             <td class="large-seulement">${fmtEUR0(j.contributed)}</td>
             <td class="up large-seulement">${fmtEUR0(j.gains)}</td>
             <td><b>${fmtEUR0(j.total)}</b></td>
