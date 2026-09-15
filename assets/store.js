@@ -6685,6 +6685,72 @@ function sourceDesTaux() {
   return aDesTaux ? 'perso' : SCENARIO_DEFAUT;
 }
 
+/* --- L'AGE EXACT, PAR LE CALENDRIER --------------------------------------
+
+   « Quel age aurai-je a ce moment-la ? » est la question qu'on se pose devant
+   une projection, et l'annee seule n'y repond pas. Elle se calcule a partir
+   d'une date de naissance et de la date REELLE du point projete, jamais d'une
+   approximation en jours.
+
+   CE QU'ON STOCKE EST LA DATE, PAS L'AGE. Un age range dans l'etat devient faux
+   au premier anniversaire, en silence ; la date, elle, reste vraie pour
+   toujours. C'est la meme regle que partout ici : on garde le fait, on derive
+   l'affichage.
+
+   La date de naissance est une donnee personnelle. Elle vit dans `meta`, sous la
+   meme clef de stockage que le reste du patrimoine, et ne part vers rien
+   d'autre : aucun calcul financier ne la lit, aucune adresse ne la porte. */
+function dateNaissance() {
+  const v = String(Store.state.meta?.naissance || '').trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+}
+
+/* Annees completes et mois supplementaires entre deux dates.
+
+   Le calcul se fait sur les composantes, jamais sur un ecart de millisecondes :
+   « 365 jours = un an » se trompe d'un jour tous les quatre ans, et « 30 jours
+   = un mois » se trompe tout le temps. On compare les annees, les mois, puis les
+   jours, et on emprunte quand l'anniversaire du mois n'est pas encore passe.
+
+   LE 29 FEVRIER. Quelqu'un ne d'un 29 fevrier a son anniversaire le 1er mars les
+   annees non bissextiles : au 28 fevrier il lui manque un jour, donc un mois
+   entier n'est pas revolu, et il a encore l'age de la veille. C'est la convention
+   la plus repandue, et c'est celle qui tombe directement de la comparaison des
+   jours — aucune regle speciale a ecrire.
+
+   Rend `null` plutot que zero quand la date manque ou qu'elle est posterieure a
+   la cible : un age inconnu n'est pas un age nul. */
+function ageALaDate(naissance, cible) {
+  const n = String(naissance || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const c = String(cible || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!n || !c) return null;
+  let annees = +c[1] - +n[1];
+  let mois = +c[2] - +n[2];
+  if (+c[3] < +n[3]) mois -= 1;
+  if (mois < 0) { annees -= 1; mois += 12; }
+  if (annees < 0) return null;
+  return { annees, mois };
+}
+
+function dateApresMois(depart, n) {
+  const d = String(depart || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!d || !Number.isFinite(+n)) return null;
+  const total = (+d[2] - 1) + Math.round(+n);
+  const annee = +d[1] + Math.floor(total / 12);
+  const mois = ((total % 12) + 12) % 12 + 1;
+  const dernier = new Date(Date.UTC(annee, mois, 0)).getUTCDate();
+  const jour = Math.min(+d[3], dernier);
+  return `${annee}-${String(mois).padStart(2, '0')}-${String(jour).padStart(2, '0')}`;
+}
+
+/* L'age au point projete : la date de naissance declaree, la date que le moteur
+   a reellement atteinte. `null` des que l'une des deux manque. */
+function ageAuPoint(point) {
+  const naissance = dateNaissance();
+  if (!naissance || !point || !Number.isFinite(+point.mois)) return null;
+  return ageALaDate(naissance, dateApresMois(todayISO(), point.mois));
+}
+
 function projectionSettings() {
   const m = Store.state.meta;
   const preset = TAUX_SCENARIO[sourceDesTaux()];

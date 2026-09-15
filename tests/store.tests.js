@@ -39996,3 +39996,112 @@ suite('Rien ne s’affiche hors du dictionnaire', () => {
     }
   });
 });
+
+/* --- L'age exact le long de la projection ---------------------------------
+   Une date de naissance, la date reelle de chaque point, et rien d'autre : ni
+   approximation en jours, ni age range dans l'etat. */
+suite('L’âge exact le long de la projection', () => {
+  const app = () => lireSource('assets/app.js');
+
+  test('1. l’âge se calcule sur le calendrier, pas sur une moyenne de jours', () => {
+    /* Les quatre cas du brief, date de naissance 15 septembre 1987. */
+    const n = '1987-09-15';
+    eq(JSON.stringify(ageALaDate(n, '2026-09-15')), '{"annees":39,"mois":0}');
+    eq(JSON.stringify(ageALaDate(n, '2027-09-14')), '{"annees":39,"mois":11}');
+    eq(JSON.stringify(ageALaDate(n, '2027-09-15')), '{"annees":40,"mois":0}');
+    eq(JSON.stringify(ageALaDate(n, '2027-09-16')), '{"annees":40,"mois":0}');
+    eq(JSON.stringify(ageALaDate(n, '2028-01-15')), '{"annees":40,"mois":4}');
+    /* La veille de l'anniversaire du mois : le mois n'est pas revolu. */
+    eq(JSON.stringify(ageALaDate(n, '2026-10-14')), '{"annees":39,"mois":0}');
+    eq(JSON.stringify(ageALaDate(n, '2026-10-15')), '{"annees":39,"mois":1}');
+  });
+
+  test('2. le 29 février : l’anniversaire tombe au 1er mars les années ordinaires', () => {
+    const n = '2000-02-29';
+    eq(JSON.stringify(ageALaDate(n, '2027-02-28')), '{"annees":26,"mois":11}');
+    eq(JSON.stringify(ageALaDate(n, '2027-03-01')), '{"annees":27,"mois":0}');
+    /* Une annee bissextile le rend a sa date. */
+    eq(JSON.stringify(ageALaDate(n, '2028-02-29')), '{"annees":28,"mois":0}');
+    /* Fin de mois : un 31 janvier plus un mois ne saute pas en mars. */
+    eq(dateApresMois('2026-01-31', 1), '2026-02-28');
+    eq(dateApresMois('2028-01-31', 1), '2028-02-29');
+    eq(dateApresMois('2026-09-15', 12), '2027-09-15');
+    eq(dateApresMois('2026-09-15', 240), '2046-09-15');
+  });
+
+  test('3. une date absente ou incohérente ne rend jamais zéro', () => {
+    eq(ageALaDate('', '2026-09-15'), null, 'sans naissance');
+    eq(ageALaDate('1987-09-15', ''), null, 'sans cible');
+    eq(ageALaDate('pas une date', '2026-09-15'), null, 'date illisible');
+    eq(ageALaDate('2030-01-01', '2026-09-15'), null, 'cible avant la naissance');
+    Store.state = blankState(); Store.migrate();
+    eq(dateNaissance(), null, 'un état neuf n’en porte pas');
+    eq(ageAuPoint({ mois: 120 }), null, 'et aucun âge ne s’invente à sa place');
+    Store.state.meta.naissance = '1987-09-15';
+    vrai(dateNaissance() === '1987-09-15', 'une date valide se lit');
+    Store.state.meta.naissance = '15/09/1987';
+    eq(dateNaissance(), null, 'un autre format est refusé plutôt que deviné');
+  });
+
+  test('4. l’âge suit la date réelle du point, pas l’horizon en années', () => {
+    const s = lireSource('assets/store.js');
+    vrai(/return ageALaDate\(naissance, dateApresMois\(todayISO\(\), point\.mois\)\);/.test(s),
+      'le compteur de mois du moteur donne la date, pas une addition d’années');
+    /* Et c'est bien ce compteur que le moteur pose sur chaque point. */
+    Store.state = blankState(); Store.migrate();
+    Store.state.meta.naissance = '1987-09-15';
+    const p = capitalisation({ years: 20 });
+    vrai(p.points.length > 20, 'la projection porte ses points');
+    for (const j of p.jalons) {
+      const a = ageAuPoint(j);
+      vrai(a && a.annees > 0, `le jalon ${j.horizon} porte un âge`);
+      eq(a.annees, ageALaDate('1987-09-15', dateApresMois(todayISO(), j.mois)).annees, 'dérivé de sa date');
+    }
+  });
+
+  test('5. l’âge s’affiche là où la date se lit, en deux longueurs', () => {
+    const a = app();
+    vrai(/const ageDetaille = a => !a \? '' :/.test(a) && /const ageCompact = a => !a \? '' :/.test(a),
+      'deux formes, un seul calcul');
+    /* Le tableau des horizons, sous l'année. */
+    vrai(/<span class="sub">\$\{ageDetaille\(ageAuPoint\(j\)\)\}<\/span>/.test(a),
+      'chaque horizon porte son âge');
+    /* L'en-tête de la trajectoire, en compact. */
+    vrai(/ageFin \? ` · \$\{ageCompact\(ageFin\)\}` : ''/.test(a),
+      'et l’horizon choisi le porte à côté de son année');
+    /* Et le réglage existe, en date. */
+    vrai(/champDate\('Date de naissance', 'meta\.naissance'/.test(a), 'la date se saisit dans les hypothèses');
+    vrai(/<input type="date" data-path="\$\{path\}"/.test(a), 'c’est un vrai champ date');
+  });
+
+  test('6. sans date de naissance, la projection ne change pas d’un euro', () => {
+    Store.state = blankState(); Store.migrate();
+    Store.state.now = { especes: 50000 };
+    refreshAccounts();
+    Store.state.meta.projMonthly = 500;
+    const sans = capitalisation({ years: 20 });
+    Store.state.meta.naissance = '1987-09-15';
+    const avec = capitalisation({ years: 20 });
+    eq(JSON.stringify(avec.points), JSON.stringify(sans.points),
+      'les points sont identiques au centime');
+    eq(JSON.stringify(avec.jalons), JSON.stringify(sans.jalons), 'les jalons aussi');
+    /* Et le moteur ne lit jamais la date. */
+    const s = lireSource('assets/store.js');
+    const moteur = s.slice(s.indexOf('function capitalisation('), s.indexOf('function targetRequirements('));
+    vrai(!/naissance|ageALaDate|ageAuPoint/.test(moteur), 'aucune mention de l’âge dans la capitalisation');
+  });
+
+  test('7. l’invitation est discrète, et mène au bon réglage', () => {
+    const a = app();
+    vrai(/trad\('Ajoute ta date de naissance pour voir ton âge dans la projection\.'\)/.test(a),
+      'la phrase existe');
+    vrai(/dateNaissance\(\) \? '' : `/.test(a), 'elle ne paraît que sans date');
+    vrai(!/askConfirm\([^)]*naissance/.test(a), 'aucune fenêtre ne s’impose');
+    for (const cle of ['Date de naissance', '{a} ans et {m} mois', '{a} ans et 1 mois',
+                       'Ajoute ta date de naissance pour voir ton âge dans la projection.']) {
+      vrai(!!I18N.en[cle], `« ${cle} » a sa traduction`);
+    }
+    vrai(I18N.en['{a} ans et {m} mois'].includes('{a}') && I18N.en['{a} ans et {m} mois'].includes('{m}'),
+      'et les deux marques survivent à l’anglais');
+  });
+});
