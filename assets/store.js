@@ -438,7 +438,7 @@ const CONTENANTS = {
             question: 'À quelle société le rattacher ?',
             aide: 'Une société ou plateforme déjà enregistrée, ou une nouvelle.',
             exemple: 'ex. Plateforme A', nouveau: 'Nouvelle société ou plateforme',
-            contenu: 'compte' },
+            contenu: 'placement' },
   banque: { titre: 'Banque ou courtier', teinte: 'var(--series-1)',
             question: 'Dans quelle banque le tenir ?',
             aide: 'Une banque déjà enregistrée, ou une nouvelle.',

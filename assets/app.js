@@ -5863,7 +5863,8 @@ function viewFicheEtab(id) {
   })()}
 
   <div class="card">
-    <div class="card-head"><h2>${majuscule(motContenu(e.id, 2))} ${trad('rattachés')}</h2>
+    <div class="card-head"><h2>${contenantDeLEtab(e.id).contenu === 'placement'
+      ? majuscule(motContenu(e.id, 2)) : `${majuscule(motContenu(e.id, 2))} ${trad('rattachés')}`}</h2>
       <button class="btn sm ghost" data-action="ajouter-compte" data-etab="${esc(e.id)}"
               title="${trad('Ajouter un')} ${motContenu(e.id, 1)} ${trad('chez')} ${esc(e.nom)}"
               >+ ${majuscule(motContenu(e.id, 1))}</button></div>

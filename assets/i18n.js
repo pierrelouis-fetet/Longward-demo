@@ -1789,6 +1789,8 @@ const I18N = {
     "plus aucun": "no more",
     "compte": "account",
     "comptes": "accounts",
+    "placement": "investment",
+    "placements": "investments",
     "bien": "asset",
     "biens": "assets",
     "rattachés": "attached",
