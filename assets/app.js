@@ -626,10 +626,11 @@ function carteEvolution() {
                   class="${evoFinancier ? '' : 'on'}" aria-pressed="${!evoFinancier}"
                   title="${trad('Tout ton patrimoine')}">${trad('Global')}</button>
         </span>` : ''}</div>
+      ${!aUnRelevePatrimonial() ? '' : `
       <div class="evo-commandes">${rangeControl('evo-range', evoRange)}</div>
-      <div class="chart" id="chartEvo"></div>
+      <div class="chart" id="chartEvo"></div>`}
       ${invitePremierPas('releves')}
-      <div class="legend">${legendeSeries(series, true)}</div>
+      ${!aUnRelevePatrimonial() ? '' : `<div class="legend">${legendeSeries(series, true)}</div>`}
     </div>`;
 }
 
@@ -954,8 +955,9 @@ function viewOverview() {
   <div class="grid g-2-1">
     <div class="card">
       <div class="card-head"><h2>${trad('Rythme d\'accumulation')}</h2>
-        ${rangeControl('pace-range', paceRange)}</div>
-      <div class="chart" id="chartPace"></div>
+        ${aUnRelevePatrimonial() ? rangeControl('pace-range', paceRange) : ''}</div>
+      ${aUnRelevePatrimonial() ? `<div class="chart" id="chartPace"></div>`
+        : `<p class="empty" style="margin:0">${trad('Il faut deux relevés pour une pente : le premier ouvre la courbe, le second donne le rythme.')}</p>`}
       ${(() => {
         const p = statsRythme(limitRange(monthlyPace().points, paceRange, { ecarts: true }));
         if (!p.count) return '';
@@ -1040,7 +1042,7 @@ function mountOverview() {
   const barres = limitRange(pace.points, paceRange, { ecarts: true });
   const moyenne = barres.length
     ? barres.reduce((s, p) => s + p.delta, 0) / barres.length : pace.average;
-  Charts.deltaBars($('#chartPace'), {
+  if ($('#chartPace')) Charts.deltaBars($('#chartPace'), {
     height: 220,
     items: barres.map(p => ({ label: p.label, value: p.delta, note: p.note })),
     average: moyenne,
@@ -4765,7 +4767,7 @@ function carteDemarrage() {
             aria-expanded="false" aria-label="${trad('Ton Longward prend forme')}"></button>
     <span class="demarrage-texte"><b>${trad('Ton Longward prend forme')}</b>
       <span class="sub">${trad('{n} sur {t}').replace('{n}', faits).replace('{t}', PREMIERS_PAS.length)}${
-        premier ? ` · ${trad('Prochaine étape')}${deuxPoints()} ${esc(motCourtPas(premier))}` : ''}</span></span>
+        premier ? ` · ${trad('Prochaine étape')}${deuxPoints()} ${esc(motProchainPas(premier))}` : ''}</span></span>
     <span class="demarrage-chevron" aria-hidden="true">›</span>
   </div>`;
   }
@@ -5469,7 +5471,7 @@ function carteCredit(c, d, i, idxEtab) {
           <div class="field"><label>${trad('Banque / prêteur')}</label>
             <input class="champ-large" style="text-align:left"
                    data-path="etabs.${idxEtab}.dettes.${i}.preteur"
-                   value="${esc(d.preteur || '')}" placeholder="${trad('ex. Crédit Agricole')}"></div>
+                   value="${esc(d.preteur || '')}" placeholder="${trad('ex. Ma banque')}"></div>
         </div>
       </div>`;
 }
@@ -7877,6 +7879,7 @@ const ACTIONS = {
     pasDeplie = null;
     Store.save();
     render();
+    rendNotifs(); majOnglets();
     toast(trad('Ta liste est déclarée complète'));
   },
 
@@ -8323,7 +8326,7 @@ const ACTIONS = {
     }
     if (etabId === '__nouveau') {
       const nom = await askText(trad(mot.nouveau),
-        trad('Son nom, tel qu’il s’affichera partout.'), trad(mot.exemple));
+        `${trad('Étape')} 2 ${trad('sur.etape', 'sur')} ${etapes} · ${trad('Son nom, tel qu’il s’affichera partout.')}`, trad(mot.exemple));
       if (!nom) return;
       nomNouveauContenant = nom;
       etabId = null;
@@ -8470,7 +8473,7 @@ const ACTIONS = {
         { cle: 'initial', label: trad('Capital emprunté au départ (€)'), type: 'nombre',
           exemple: '0', montreSi: avecCredit,
           aide: trad('Le capital emprunté à ta charge au départ, facultatif. Il permet de suivre ce que tu as déjà remboursé.') },
-        { cle: 'preteur', label: 'Prêteur', type: 'texte', exemple: 'ex. Crédit Agricole',
+        { cle: 'preteur', label: 'Prêteur', type: 'texte', exemple: 'ex. Ma banque',
           suggestions: valeursConnues('preteur'), montreSi: avecCredit,
           aide: trad('la banque qui prête, si ce n’est pas toi') },
         { cle: 'mensualite', label: trad('Mensualité facturée (€)'), type: 'nombre', exemple: '0',
@@ -9080,7 +9083,7 @@ const ACTIONS = {
           aide: trad('facultatif, noté pour mémoire') },
         { cle: 'tauxAssurance', label: trad('Taux d’assurance (%)'), type: 'nombre', exemple: '0',
           aide: trad('facultatif, environ 0,3 % du capital emprunte : elle sort de la mensualite sans rembourser') },
-        { cle: 'preteur', label: 'Prêteur', type: 'texte', exemple: 'ex. Crédit Agricole',
+        { cle: 'preteur', label: 'Prêteur', type: 'texte', exemple: 'ex. Ma banque',
           suggestions: valeursConnues('preteur') },
         ...comptesDuPreteur(e.id).length > 1 ? [{ cle: 'bienId',
           label: trad('Ce crédit finance'), type: 'liste',
@@ -9171,7 +9174,7 @@ const ACTIONS = {
           aide: trad('sans lui, ce prêteur tenant plusieurs comptes, aucune fiche '
                    + 'ne peut savoir lequel porte cette dette') }] : [],
         { cle: 'preteur', label: 'Prêteur', type: 'texte', valeur: d.preteur || '',
-          exemple: 'ex. Crédit Agricole', suggestions: valeursConnues('preteur') },
+          exemple: 'ex. Ma banque', suggestions: valeursConnues('preteur') },
         ...(lien ? [] : [{ cle: 'charge', label: trad('Ajouter une charge mensuelle fixe'),
           type: 'case', valeur: true,
           aide: trad('seulement si une mensualité est renseignée. Si cette mensualité est '
@@ -9347,7 +9350,7 @@ const ACTIONS = {
     budgetYear = btn.dataset.year === 'all' ? 'all' : btn.dataset.year;
     render();
   },
-  'toggle-revenus'() { fenetreRevenus(); },
+  'toggle-revenus'() { if (!Store.state.budget.income.length) return ACTIONS['add-income'](); fenetreRevenus(); },
   'revenu-estime'(el) {
     const r = B().income[+el.dataset.i];
     if (!r) return;
@@ -9676,7 +9679,7 @@ const ACTIONS = {
           { cle: 'period', label: 'Facturé', type: 'liste', options: CHARGE_PERIODES, valeur: 'mois' },
           { cle: 'echeanceLe', label: trad('Prochaine échéance'), type: 'date',
             aide: trad('une échéance, passée ou à venir : les suivantes se déduisent de la périodicité') },
-          { cle: 'provider', label: 'Organisme', type: 'texte', exemple: 'ex. MAIF',
+          { cle: 'provider', label: 'Organisme', type: 'texte', exemple: 'ex. Mon assureur',
             suggestions: valeursConnues('organisme') },
           ...(creditsEnCours().lignes.length ? [{ cle: 'creditId', type: 'liste',
             label: trad('Rembourse un crédit ?'), options: creditsRattachables(), valeur: '',
@@ -10076,12 +10079,13 @@ const ACTIONS = {
 
   async 'ajouter-releve'() {
     if (!aUnRelevePatrimonial()) {
-      const verifier = await askConfirm(
+      const enregistrer = await askConfirm(
         `${trad('Avant ton premier relevé')}\n${
           trad('Commence par ajouter les comptes et actifs qui composent ton patrimoine, tes différentes poches. Chaque mois, Longward additionnera la valeur de toutes ces poches pour enregistrer ton patrimoine total et suivre son évolution dans le temps.')}\n${
           trad('Tu pourras toujours ajouter d’autres poches plus tard.')}`,
-        { danger: false, ok: trad('Vérifier mes comptes et actifs'), refus: trad('Enregistrer mon relevé') });
-      if (verifier) { location.hash = '#/accounts'; return; }
+        { danger: false, ok: trad('Enregistrer mon relevé'), refus: trad('Vérifier mes comptes et actifs') });
+      if (enregistrer === false) { location.hash = '#/accounts'; return; }
+      if (!enregistrer) return;
     }
     await askMonthlySnapshot(indexReleve(currentMonthKey()));
   },
@@ -10764,13 +10768,18 @@ function askConfirm(texte, { danger = true, ok = 'Confirmer', refus = 'Annuler' 
       document.removeEventListener('keydown', touche, true);
       resolve(v);
     };
+    /* FERMER N'EST PAS REFUSER. Echap et le fond rendent `null`, le second
+       bouton rend `false` : tous les appelants testent la verite, donc rien ne
+       change pour eux, et celui qui distingue « non » de « laisse-moi » peut
+       le faire. Le premier a en avoir besoin : la fenetre d'avant le premier
+       releve, dont le second bouton mene a une autre page. */
     const touche = e => {
-      if (e.key === 'Escape') { e.stopPropagation(); fermer(false); }
+      if (e.key === 'Escape') { e.stopPropagation(); fermer(null); }
       if (e.key === 'Enter') { e.preventDefault(); fermer(true); }
     };
     oui.onclick = () => fermer(true);
     non.onclick = () => fermer(false);
-    m.onclick = e => { if (e.target === m) fermer(false); };
+    m.onclick = e => { if (e.target === m) fermer(null); };
     document.addEventListener('keydown', touche, true);
   });
 }
@@ -13319,9 +13328,12 @@ function rendNotifs() {
           <span class="notif-ic" aria-hidden="true">${ICONE_NOTIF[x.level] || '•'}</span>
           <span class="notif-txt"><b>${esc(x.title)}</b><span>${escMontant(x.detail)}</span></span>
         </button>
+        ${x.cle === CLE_INVENTAIRE ? `
+        <button type="button" class="btn sm notif-oui" data-action="declarer-pas"
+                data-cle="${esc(x.cle)}">${trad('Oui, tout y est')}</button>` : `
         <button type="button" class="btn icon xs notif-x" data-action="masquer-notif"
                 data-cle="${esc(x.cle)}" title="${trad('Ne plus signaler')}"
-                aria-label="Ne plus signaler : ${esc(x.title)}">✕</button>
+                aria-label="Ne plus signaler : ${esc(x.title)}">✕</button>`}
       </div>`).join('')
     : `<p class="notif-vide">${trad('✓ Rien à signaler.')}</p>`}
     <button type="button" class="notif-fermer" data-action="fermer-notifs"

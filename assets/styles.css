@@ -4315,6 +4315,7 @@ td .empty, th .empty { background: none; border: none; }
   font: inherit; color: inherit; cursor: pointer;
 }
 .notif-x { margin: 6px 5px 0 0; flex: none; opacity: .55; }
+.notif-oui { margin: 6px 6px 0 0; flex: none; white-space: nowrap; }
 @media (hover: hover) { .notif-x:hover { opacity: 1; } }
 @media (hover: hover) {
   .notif-x { opacity: 0; }
