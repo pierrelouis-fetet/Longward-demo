@@ -1,3 +1,9 @@
+/*! Longward — personal wealth dashboard
+ *  Copyright (C) 2026 Longward
+ *  Licensed under the GNU Affero General Public License, version 3 or later.
+ *  Source: https://github.com/pierrelouis-fetet/Longward-demo
+ *  Distributed WITHOUT ANY WARRANTY. See the LICENSE file for the full terms.
+ */
 
 const Quotes = (() => {
 
