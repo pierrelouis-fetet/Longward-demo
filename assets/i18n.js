@@ -209,7 +209,7 @@ const I18N = {
     "Relevé mensuel": "Monthly statement",
     "Ton Longward prend forme": "Your Longward is taking shape",
     "Prochaine étape": "Next step",
-    "Le reste de cette page se remplit tout seul, à mesure que tu renseignes tes comptes.": "The rest of this page fills in by itself as you enter your accounts.",
+    "Ton tableau de bord s’enrichit à mesure que tu ajoutes tes données.": "Your dashboard grows richer as you add your data.",
     "Répartition de ton patrimoine": "Your wealth allocation",
     "Ajoute au moins un compte pour commencer.": "Add at least one account to begin.",
     "Disponible après tes premiers actifs.": "Available after your first assets.",

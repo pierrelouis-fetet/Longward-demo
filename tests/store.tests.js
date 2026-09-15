@@ -20036,7 +20036,7 @@ suite('Une application vide dit quoi faire', () => {
     const src = lireSource('assets/app.js');
     vrai(/\$\{pasAFaire\('comptes'\) \? `/.test(src),
       'la suite de la page attend le premier compte');
-    vrai(/Le reste de cette page se remplit tout seul/.test(src),
+    vrai(/Ton tableau de bord s’enrichit à mesure que tu ajoutes tes données/.test(src),
       'et une phrase dit ce qui viendra, plutôt que six cartes muettes');
   });
 
@@ -39235,7 +39235,7 @@ suite('Premier lancement : Longward prend vie sous les yeux', () => {
     const v = s.slice(debut, s.indexOf("${!aDesPositionsMarche() ? '' : `", debut)).replace(/<!--[\s\S]*?-->/g, '');
     vrai(!/\d\s?€/.test(v) && !/fmtEUR|fmtPct|fmtSigned/.test(v), 'les aperçus ne portent aucun montant ni pourcentage');
     vrai(/apercuVerrou\(trad\('Patrimoine net'\)/.test(v) && /apercuVerrou\(trad\('Projection'\)/.test(v), 'quatre aperçus verrouillés disent ce qui viendra');
-    vrai(/Le reste de cette page se remplit tout seul/.test(v), 'et la phrase reste');
+    vrai(/Ton tableau de bord s’enrichit à mesure que tu ajoutes tes données/.test(v), 'et la phrase reste');
     vrai(!/<text/.test(s.slice(s.indexOf('const SILHOUETTES'), s.indexOf('function apercuVerrou('))), 'les silhouettes n’écrivent rien');
   });
 
@@ -39321,5 +39321,15 @@ suite('Premier lancement : Longward prend vie sous les yeux', () => {
     vrai(/\.bienvenue-actes \.btn \{ flex: 1 1 12em; \}/.test(css) && /max-width: 420px\) \{ \.bienvenue-actes \.btn \{ flex-basis: 100%; \}/.test(css),
       'les deux gestes s’empilent sous 420 px');
     vrai(/\.demarrage-texte \{ flex: 1 1 auto; min-width: 0;/.test(css), 'la barre repliée replie son texte');
+    /* Deux lignes voulues sur téléphone, une seule dès 768 px ; la police ne bouge pas. */
+    vrai(/\.bienvenue-pas \{[^}]*display: grid;\s*grid-template-columns: minmax\(0, 1\.25fr\) minmax\(0, 1fr\)/.test(css)
+      && /min-width: 768px\) \{ \.bienvenue-pas \{ display: flex;/.test(css)
+      && !/\.bienvenue-pas[^{]*\{[^}]*font-size: var\(--font-xs\)/.test(css),
+      'les quatre pas tiennent une grille de deux colonnes sur téléphone, une ligne sur bureau');
+    /* Le patrimoine net est le premier résultat : marqué seul, sans changer de taille. */
+    const app = lireSource('assets/app.js');
+    eq((app.match(/, 'barre', true\)\}/g) || []).length, 1, 'un seul aperçu principal, le patrimoine net');
+    vrai(/\.apercu-verrou\.principal \{/.test(css) && !/\.apercu-verrou\.principal[^{]*\{[^}]*(font-size|padding:|grid-column)/.test(css),
+      'il se distingue par le filet et le fond, pas par la taille');
   });
 });
