@@ -270,7 +270,7 @@ function blankState() {
     accounts: [],
     budget: {
       monthlyTarget: 0,
-      categories: [...EXPENSE_CATEGORIES],
+      categories: categoriesParDefaut(),
       income: [],
       contributors: [],
       fixedCharges: [],

@@ -442,7 +442,7 @@ const CONTENANTS = {
   banque: { titre: 'Banque ou courtier', teinte: 'var(--series-1)',
             question: 'Dans quelle banque le tenir ?',
             aide: 'Une banque déjà enregistrée, ou une nouvelle.',
-            exemple: 'ex. Fortuneo', nouveau: 'Nouvelle banque ou courtier',
+            exemple: 'ex. Ma banque en ligne', nouveau: 'Nouvelle banque ou courtier',
             contenu: 'compte' },
   /* Une assurance-vie ou un PER ne se tiennent pas « dans une banque ». Le
      contrat est chez un assureur, distribue par un courtier, parfois par une
@@ -2069,7 +2069,7 @@ const Store = {
 
     s.budget = Object.assign(structuredClone(SEED.budget), s.budget || {});
     if (!Array.isArray(s.budget.categories) || !s.budget.categories.length) {
-      s.budget.categories = [...EXPENSE_CATEGORIES];
+      s.budget.categories = categoriesParDefaut();
     }
     /* Le calendrier des DÉPENSES, et lui seul.
 
@@ -5847,8 +5847,10 @@ function etapesDemarrage() {
   return { total: PREMIERS_PAS.length, faits: PREMIERS_PAS.length - restants.length,
            restants, prochain, vierge: !aUnComptePropre(), fini: !restants.length };
 }
-const MOTS_COURTS_PAS = { comptes: 'Comptes et patrimoine', revenus: 'Revenus', releves: 'Relevé mensuel', depenses: 'Dépenses' };
+const MOTS_COURTS_PAS = { comptes: 'Comptes et patrimoine', revenus: 'Revenus', releves: 'Relevé mensuel', depenses: 'Charges fixes' };
 const motCourtPas = p => trad(MOTS_COURTS_PAS[p.cle] || p.titre);
+const motProchainPas = p => (p.cle === 'comptes' && aUnComptePropre())
+  ? trad('Confirmer tes comptes') : motCourtPas(p);
 
 /* --- ce qu'un bien coute, poste par poste --------------------------------
    La taxe fonciere est due par tout proprietaire, la copropriete par qui detient
@@ -7186,7 +7188,7 @@ function healthChecks() {
       'accounts', CLE_INVENTAIRE);
   } else if (!inventaireDeclareComplet()) {
     add('action', trad('As-tu enregistré tous tes comptes et avoirs ?'),
-      trad('La croix de cette ligne veut dire oui : le relevé mensuel prendra alors le relais. Sinon, ouvre Actifs pour compléter.'),
+      trad('Quand tout y est, dis-le ici : le relevé mensuel prendra le relais. Sinon, touche la ligne pour compléter dans Actifs.'),
       'accounts', CLE_INVENTAIRE);
   }
   sujet = 'coherence';

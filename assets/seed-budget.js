@@ -16,6 +16,26 @@ const EXPENSE_CATEGORIES = [
   'Shopping', 'Travel', 'Leisure', 'Transport', 'Other',
 ];
 
+/* LES MEMES POSTES, DANS LA LANGUE DE CELUI QUI COMMENCE.
+
+   La liste ci-dessus est celle de la demonstration, en anglais parce qu'elle
+   s'adresse a tout le monde, et elle le reste. Un etat neuf, lui, appartient a
+   une personne : un Francais qui partait de zero recevait « Groceries, Dining,
+   Subscriptions » dans une interface en francais, des son premier formulaire de
+   depenses. Les categories sont des donnees de l'utilisateur -- il les renomme,
+   les retire, en ajoute -- donc elles se posent une fois, dans sa langue du
+   moment, et ne se retraduisent plus ensuite. `currentLang` vient d'i18n.js,
+   charge avant ; le garde-fou rend l'anglais si ce n'etait pas le cas. */
+const EXPENSE_CATEGORIES_FR = [
+  'Courses', 'Restaurants', 'Imprévus', 'Abonnements',
+  'Achats', 'Voyages', 'Loisirs', 'Transport', 'Autre',
+];
+function categoriesParDefaut() {
+  const fr = typeof currentLang === 'function'
+    && String(currentLang() || '').toLowerCase().startsWith('fr');
+  return [...(fr ? EXPENSE_CATEGORIES_FR : EXPENSE_CATEGORIES)];
+}
+
 const SEED_BUDGET = {
   monthlyTarget: 1500,        // objectif : 1 500 € de dépenses max par mois
   categories: [...EXPENSE_CATEGORIES],   // colonnes du tableau, modifiables dans l'app

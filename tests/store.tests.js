@@ -29111,7 +29111,7 @@ suite('Deux montants, deux noms, et le lecteur voit lequel', () => {
     const fautes = [];
     for (const m of src.matchAll(/<dt>([\s\S]{0,400}?)<\/dt><dd>([\s\S]{0,120}?)<\/dd>/g)) {
       const [, libelle, valeur] = m;
-      if (!/\.theoretical/.test(valeur)) continue;
+      if (!/\.theoretical\b/.test(valeur)) continue;
       const nom = (libelle.match(/trad\('([^']+)'\)/) || [])[1] || '';
       if (/pargne/.test(nom) && !/[Aa]ccumulation/.test(nom)) fautes.push(nom);
     }
@@ -38589,10 +38589,13 @@ suite('Le relevé mensuel se comprend en dix secondes', () => {
     const a = src.slice(d, src.indexOf('\n  },\n', d));
     vrai(/if \(!aUnRelevePatrimonial\(\)\) \{/.test(a), 'l’étape ne paraît qu’avant le premier relevé');
     vrai(/trad\('Avant ton premier relevé'\)/.test(a), 'et elle s’annonce comme telle');
-    vrai(/ok: trad\('Vérifier mes comptes et actifs'\)/.test(a), 'le geste principal mène aux poches');
-    vrai(/refus: trad\('Enregistrer mon relevé'\)/.test(a), 'le second ouvre le relevé');
-    vrai(/if \(verifier\) \{ location\.hash = '#\/accounts'; return; \}/.test(a),
+    /* Le bouton plein fait ce qu'on a touche ; verifier ses poches reste
+       propose, en second. L'inverse repondait « non » au geste demande. */
+    vrai(/ok: trad\('Enregistrer mon relevé'\)/.test(a), 'le geste principal enregistre le relevé');
+    vrai(/refus: trad\('Vérifier mes comptes et actifs'\)/.test(a), 'le second mène aux poches');
+    vrai(/if \(enregistrer === false\) \{ location\.hash = '#\/accounts'; return; \}/.test(a),
       'vérifier, c’est aller voir la liste');
+    vrai(/if \(!enregistrer\) return;/.test(a), 'et fermer la fenêtre, c’est rester');
     vrai(!/As-tu bien rentré/.test(a), 'la question fermée est partie : on explique, on ne quizze pas');
     vrai(/await askMonthlySnapshot\(indexReleve\(currentMonthKey\(\)\)\);/.test(a),
       'et la fenêtre s’ouvre toujours sur le mois en cours');
@@ -39265,7 +39268,7 @@ suite('Premier lancement : Longward prend vie sous les yeux', () => {
     eq(e.prochain.cle, 'releves', 'le relevé, ouvrable puisqu’un compte existe');
     eq(motCourtPas(e.prochain), trad('Relevé mensuel'), 'dit en un mot court');
     const s = src();
-    vrai(/trad\('Ton Longward prend forme'\)/.test(s) && /trad\('Prochaine étape'\)\}\$\{deuxPoints\(\)\} \$\{esc\(motCourtPas\(premier\)\)\}/.test(s),
+    vrai(/trad\('Ton Longward prend forme'\)/.test(s) && /trad\('Prochaine étape'\)\}\$\{deuxPoints\(\)\} \$\{esc\(motProchainPas\(premier\)\)\}/.test(s),
       'la barre repliée dit « Ton Longward prend forme » et la prochaine étape');
     vrai(!/'Ton Longward est complété à/.test(s), 'aucun pourcentage de complétion inventé');
   });
@@ -39476,5 +39479,92 @@ suite('Aucun ecran vide ne ment, aucun ne se tait', () => {
                        'Tes comptes et tes biens vivront ici.']) {
       vrai(!!I18N.en[cle], `« ${cle} » a sa traduction`);
     }
+  });
+});
+
+/* --- Les cinq premieres minutes ------------------------------------------
+
+   L'ecran vierge est au niveau ; c'est juste apres le premier compte que
+   l'application se decidait a redevenir un mur : un compteur a zero sous le
+   geste qu'on venait de faire, un graphique a axes nus, une liste vide en
+   guise de formulaire, un dialogue qui repondait « non » au bouton qu'on avait
+   touche. Chaque garde ci-dessous se derive de l'etat ; rien n'est un drapeau. */
+suite('Les cinq premières minutes après le premier compte', () => {
+  const app = () => lireSource('assets/app.js');
+  const store = () => lireSource('assets/store.js');
+
+  test('1. la barre nomme le geste qui reste, pas l’étape qu’on croit finie', () => {
+    vrai(/const motProchainPas = p => \(p\.cle === 'comptes' && aUnComptePropre\(\)\)\s*\n?\s*\? trad\('Confirmer tes comptes'\) : motCourtPas\(p\);/.test(store()),
+      'avec un compte non déclaré, le prochain pas s’appelle « Confirmer tes comptes »');
+    vrai(/\$\{esc\(motProchainPas\(premier\)\)\}/.test(app()), 'et la barre repliée s’en sert');
+    eq(MOTS_COURTS_PAS.depenses, 'Charges fixes', 'le quatrième pas porte le même nom que dans le guide');
+  });
+
+  test('2. avant le premier relevé, aucun graphique à axes nus sur l’accueil', () => {
+    const s = app();
+    vrai(/\$\{!aUnRelevePatrimonial\(\) \? '' : `\s*<div class="evo-commandes">/.test(s)
+      && /<div class="chart" id="chartEvo"><\/div>`\}/.test(s),
+      'la courbe d’évolution et ses plages attendent le premier relevé');
+    vrai(/\$\{aUnRelevePatrimonial\(\) \? `<div class="chart" id="chartPace"><\/div>`/.test(s)
+      && /trad\('Il faut deux relevés pour une pente/.test(s),
+      'le rythme dit en une phrase ce qu’il attend');
+    vrai(/if \(\$\('#chartPace'\)\) Charts\.deltaBars/.test(s), 'et son montage supporte l’absence de l’élément');
+    /* L'invite du releve reste, une seule fois, dans la carte d'evolution. */
+    eq((s.slice(s.indexOf('function carteEvolution'), s.indexOf('function carteAccumulation')).match(/invitePremierPas\('releves'\)/g) || []).length, 1,
+      'un seul bouton pour le relevé sur cette partie de l’accueil');
+  });
+
+  test('3. « Entrer ton salaire net » ouvre la fiche d’une source, pas une liste vide', () => {
+    vrai(/'toggle-revenus'\(\) \{ if \(!Store\.state\.budget\.income\.length\) return ACTIONS\['add-income'\]\(\); fenetreRevenus\(\); \}/.test(app()),
+      'sans source, la fenêtre de la liste n’a rien à lister');
+  });
+
+  test('4. le premier relevé : le bouton plein fait ce qu’on a demandé', () => {
+    const s = app();
+    const d = s.indexOf("async 'ajouter-releve'()");
+    const a = s.slice(d, s.indexOf('\n  },\n', d));
+    vrai(/ok: trad\('Enregistrer mon relevé'\), refus: trad\('Vérifier mes comptes et actifs'\)/.test(a),
+      'enregistrer en plein, vérifier en second');
+    vrai(/if \(enregistrer === false\) \{ location\.hash = '#\/accounts'; return; \}/.test(a)
+      && /if \(!enregistrer\) return;/.test(a),
+      'le second bouton mène aux poches, fermer la fenêtre ne mène nulle part');
+    const c = s.slice(s.indexOf('function askConfirm('), s.indexOf('function askConfirm(') + 2200);
+    vrai(/fermer\(null\)/.test(c) && (c.match(/fermer\(null\)/g) || []).length === 2 && /non\.onclick = \(\) => fermer\(false\)/.test(c),
+      'askConfirm distingue refuser de fermer : Échap et le fond rendent null');
+  });
+
+  test('5. la cloche répond par un bouton qui dit oui, jamais par une croix', () => {
+    const s = app();
+    vrai(/\$\{x\.cle === CLE_INVENTAIRE \? `\s*<button type="button" class="btn sm notif-oui" data-action="declarer-pas"/.test(s),
+      'la question de l’inventaire porte son propre bouton');
+    vrai(!/La croix de cette ligne veut dire oui/.test(store()), 'et le texte ne fait plus deviner la croix');
+    const d = s.slice(s.indexOf("'declarer-pas'(btn)"), s.indexOf("'declarer-pas'(btn)") + 700);
+    vrai(/rendNotifs\(\); majOnglets\(\);/.test(d), 'déclarer depuis la cloche la rafraîchit');
+  });
+
+  test('6. l’assistant compte ses trois étapes, et n’exemplifie aucune marque', () => {
+    const s = app();
+    vrai(/\$\{trad\('Étape'\)\} 2 \$\{trad\('sur\.etape', 'sur'\)\} \$\{etapes\} · \$\{trad\('Son nom, tel qu’il s’affichera partout\.'\)\}/.test(s),
+      'la deuxième marche est numérotée comme les deux autres');
+    /* Le contrôle des noms de tiers vit dans verifier-avant-publication.py, et
+       lui seul : ce test n'en recopie aucun, il vérifie que les exemples sont
+       les nôtres. Une première version les énumérait, et le vérificateur a
+       refusé l'arbre : la liste des noms à ne pas écrire s'était retrouvée écrite. */
+    vrai(/exemple: 'ex\. Ma banque en ligne',/.test(store()) && /exemple: 'ex\. Mon assureur',/.test(s)
+      && (s.match(/ex\. Ma banque'/g) || []).length >= 4,
+      'les exemples de banque et d’assureur sont génériques');
+    for (const cle of ['ex. Ma banque', 'ex. Ma banque en ligne', 'ex. Mon assureur']) {
+      vrai(!!I18N.en[cle] && /^e\.g\. /.test(I18N.en[cle]), `« ${cle} » a sa traduction en « e.g. »`);
+    }
+  });
+
+  test('7. les catégories d’un état neuf suivent la langue, la démo garde les siennes', () => {
+    if (typeof categoriesParDefaut !== 'function') { vrai(!/categoriesParDefaut/.test(store()), 'cet arbre garde ses propres catégories'); return; }
+    eq(EXPENSE_CATEGORIES_FR.length, EXPENSE_CATEGORIES.length, 'les deux listes ont le même nombre de postes');
+    vrai(/categories: categoriesParDefaut\(\),/.test(lireSource('assets/seed.js')), 'un état vierge les demande dans la langue du moment');
+    vrai(/s\.budget\.categories = categoriesParDefaut\(\);/.test(store()), 'et la migration aussi');
+    const c = categoriesParDefaut();
+    vrai(c.length === EXPENSE_CATEGORIES.length && (c.every((x, i) => x === EXPENSE_CATEGORIES[i]) || c.every((x, i) => x === EXPENSE_CATEGORIES_FR[i])),
+      'elle rend l’une des deux listes, entière, jamais un mélange');
   });
 });
