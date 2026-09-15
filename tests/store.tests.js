@@ -19842,8 +19842,13 @@ suite('Une application vide dit quoi faire', () => {
        comportent differemment sans que rien ne le signale. */
     vrai(/parPartSous: 'il donne le nombre de parts'/.test(src),
       'le champ annonce ce qu’il déduit');
-    vrai(/trad\(c\.parPartSous \|\| 'l’un remplit l’autre'\)/.test(src),
-      'et celui qui ne le dit pas garde la phrase commune');
+    /* « L'un remplit l'autre » est parti : la formule montre le calcul reel au
+       lieu de le decrire en abstrait. Le sous-titre qui reste dit un fait que la
+       formule ne montre pas — taper ce prix redonne le nombre de parts. */
+    vrai(!/l’un remplit l’autre/.test(src) && !I18N.en['l’un remplit l’autre'],
+      'la phrase abstraite n’existe plus, ni sa clef');
+    vrai(/\$\{c\.parPartSous \? `<span class="sub formule-sous">/.test(src),
+      'le sous-titre ne se rend que là où il dit quelque chose');
   });
 
   test('la liste de démarrage ne coche pas un pas qu’on ne peut pas avoir franchi', () => {
@@ -38826,5 +38831,76 @@ suite('Budget vierge : une explication, une action, pas de tableau vide', () => 
     vrai(/if \(!f\.income\) return invitePremierPas\('revenus', \{ secondaire: true \}\);/.test(src),
       'sur Budget, « Entrer ton salaire net » passe en second derrière « Saisir les dépenses du mois »');
     vrai(/invitePremierPas\('revenus'\)\}/.test(src), 'ailleurs, l’invite garde sa forme pleine');
+  });
+});
+
+/* ------------------------------------------------------------------
+   Le prix par part est un terme d'une formule, pas un second montant
+   ------------------------------------------------------------------ */
+suite('Actif non coté : la formule montre pourquoi les montants sont liés', () => {
+
+  const src = () => lireSource('assets/app.js');
+  const rendu = () => { const s = src(); const i = s.indexOf('${!c.parPart ? \'\' : `<div class="champ-par-part"'); return s.slice(i, s.indexOf('</div>`}', i)); };
+  const cablage = () => { const s = src(); return s.slice(s.indexOf('const fmtPartsFormule'), s.indexOf("const premier = $('#modalBody')")); };
+
+  test('le montant du jour se lit « parts × prix = total », l’investi « montant ÷ parts = prix »', () => {
+    /* Quatre champs nombre se suivaient, et « l'un remplit l'autre » decrivait
+       la relation en abstrait : lequel remplir, lequel est calcule, lequel fait
+       foi. La formule montre le calcul avec les valeurs reelles. Le sens suit
+       le geste : un prix du jour revalorise le total ; un montant investi se
+       ramene a un prix d'achat. */
+    const r = rendu();
+    const produit = r.slice(r.indexOf('` : `'), );
+    const division = r.slice(0, r.indexOf('` : `'));
+    vrai(/data-role="parts"[\s\S]*×[\s\S]*id="\$\{id\}_part"[\s\S]*€ \/ part[\s\S]*data-role="egal"[\s\S]*data-role="total"/.test(produit),
+      'valeur du jour : parts × [prix] € / part = total');
+    vrai(/data-role="total"[\s\S]*÷[\s\S]*data-role="parts"[\s\S]*=[\s\S]*id="\$\{id\}_part"[\s\S]*€ \/ part/.test(division),
+      'investissement : montant ÷ parts = [prix] € / part');
+    vrai(/c\.parPartDeduitParts \? `/.test(r), 'et c’est le drapeau du champ qui choisit le sens');
+    vrai(/aria-label="\$\{esc\(trad\(c\.parPartLabel\)\)\}"/.test(r), 'le champ garde son nom pour qui ne voit pas la formule');
+    vrai(!!I18N.en['€ / part'] && !!I18N.en['Investissement initial'] && !!I18N.en['Valeur actuelle'],
+      'les mots neufs existent en anglais');
+  });
+
+  test('les termes écrits suivent les champs, formatés comme le reste', () => {
+    const c = cablage();
+    vrai(/maximumFractionDigits: 4/.test(c), 'le nombre de parts garde ses quatre décimales');
+    vrai(/style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 2/.test(c),
+      'le montant en euros, sans décimales inutiles : « 8 223 € »');
+    vrai(/moinsTypographique/.test(c) && /locale\(\)/.test(c), 'séparateurs et signe moins de la langue');
+    vrai(/n\(\) > 0 \? fmtPartsFormule\(n\(\)\) : `… \$\{trad\('parts'\)\}`/.test(c), 'un terme absent s’écrit « … », le tiret cadratin étant proscrit à l’écran');
+    vrai(/egal\.hidden = !aTotal; terme\('total'\)\.hidden = !aTotal;/.test(c),
+      'et le résultat d’un produit attend son total au lieu d’afficher une équation cassée');
+    /* Rafraichie a la suite de chaque ecriture, jamais en calculant elle-meme. */
+    vrai(/const versUnite = \(\) => \{[\s\S]*?majFormule\(\);\s*\};/.test(c), 'après un prix par part recalculé');
+    vrai(/const versTotal = \(\) => \{[\s\S]*?majFormule\(\);\s*\};/.test(c), 'après un total réécrit');
+    vrai(/p\.majFormule\(\);\s*return true;/.test(c), 'après un nombre de parts déduit');
+    vrai(!/formule[\s\S]{0,80}total\.value =/.test(c.slice(c.indexOf('const majFormule'), c.indexOf('const versUnite'))),
+      'la formule n’écrit aucun champ');
+  });
+
+  test('deux groupes nommés, seulement pour les types qui se comptent en parts', () => {
+    const s = src();
+    eq((s.match(/cle: 'section_valeur', label: 'Valeur actuelle', type: 'section'/g) || []).length, 2,
+      '« Valeur actuelle » à la fiche et à la création');
+    eq((s.match(/cle: 'section_invest', label: 'Investissement initial', type: 'section'/g) || []).length, 2,
+      '« Investissement initial » aux deux endroits aussi');
+    vrai(/\.\.\.\(type && type\.parts \? \[\{ cle: 'section_valeur'/.test(s) && /\.\.\.\(t\.parts \? \[\{ cle: 'section_valeur'/.test(s),
+      'et ils suivent le drapeau du type : une montre n’en a pas');
+    const fiche = s.slice(s.indexOf('function champsPlacement('), s.indexOf('\nfunction ', s.indexOf('function champsPlacement(') + 10));
+    const ordre = ["cle: 'parts'", "cle: 'section_valeur'", "cle: 'valeur'", "cle: 'section_invest'", "cle: 'prixDeRevient'", "cle: 'dateAcquisition'"]
+      .map(a => fiche.indexOf(a));
+    vrai(ordre.every((v, i) => v > 0 && (i === 0 || v > ordre[i - 1])),
+      'parts, puis valeur actuelle, puis investissement initial, puis la date : ' + ordre.join(','));
+  });
+
+  test('la formule tient sur un téléphone : en ligne, repliable, champ étroit', () => {
+    const css = lireSource('assets/styles.css');
+    const regle = css.match(/\.champ-par-part \{([^}]*)\}/)[1];
+    vrai(/flex-wrap: wrap/.test(regle) && /align-items: center/.test(regle), 'les termes se replient sans se casser');
+    vrai(/\.champ-par-part input \{[^}]*width: 6\.5em; max-width: 6\.5em; flex: none;/.test(css),
+      'le champ du prix est étroit : six caractères suffisent, le total au-dessus porte la largeur');
+    vrai(/\.champ-par-part \.formule-val \{[^}]*white-space: nowrap/.test(css), 'un terme ne se coupe pas en deux');
+    vrai(/\.champ-par-part \.formule-sous \{[^}]*flex: 1 0 100%/.test(css), 'le sous-titre prend sa propre ligne');
   });
 });

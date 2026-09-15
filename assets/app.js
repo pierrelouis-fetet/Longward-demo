@@ -7172,6 +7172,7 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
     ...(type && type.parts ? [{ cle: 'parts', label: trad('Nombre de parts'),
       type: 'nombre', valeur: l ? (num(l.parts) || '') : '', exemple: '0',
       aide: trad('il se déduit du montant investi, et commande la valeur du jour') }] : []),
+    ...(type && type.parts ? [{ cle: 'section_valeur', label: 'Valeur actuelle', type: 'section' }] : []),
     { cle: 'valeur',
       label: `${estime ? 'Valeur estimée' : 'Valeur aujourd’hui'} (€)`, type: 'nombre',
       valeur: l ? num(l.valeur) : '', exemple: '0',
@@ -7182,6 +7183,7 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
          facon de l'ecrire. Voir le cablage dans `askForm`. */
       ...(type && type.parts
         ? { parPart: 'parts', parPartLabel: 'Prix de la part aujourd’hui (€)' } : {}) },
+    ...(type && type.parts ? [{ cle: 'section_invest', label: 'Investissement initial', type: 'section' }] : []),
     { cle: 'prixDeRevient', label: trad('Montant investi (€)'), type: 'nombre',
       valeur: l ? (num(l.prixDeRevient) || '') : '', exemple: '0',
       aide: trad('facultatif, il donne la plus-value'),
@@ -8165,6 +8167,7 @@ const ACTIONS = {
         ...(t.parts ? [{ cle: 'parts', label: trad('Nombre de parts'),
           type: 'nombre', exemple: '0',
           aide: trad('il se déduit du montant investi, et commande la valeur du jour') }] : []),
+        ...(t.parts ? [{ cle: 'section_valeur', label: 'Valeur actuelle', type: 'section' }] : []),
         { cle: 'valeur', requis: true,
           label: estDetenuEnDirect(t) ? trad('Valeur estimée du bien entier (€)')
                                       : trad('Valeur actuelle (€)'),
@@ -8182,6 +8185,7 @@ const ACTIONS = {
         { cle: 'travauxInitiaux', label: trad('Travaux initiaux (€)'), type: 'nombre',
           exemple: '0', aide: trad('ceux du départ, pour le mettre en état') },
         ] : [
+        ...(t.parts ? [{ cle: 'section_invest', label: 'Investissement initial', type: 'section' }] : []),
         { cle: 'revient', label: trad('Montant investi (€)'), type: 'nombre', exemple: '0',
           aide: trad('prix d’acquisition, frais compris'),
           ...(t.parts ? { parPart: 'parts', parPartLabel: 'Prix d’achat de la part (€)',
@@ -10158,17 +10162,41 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
          datant un mouvement : « ça compte dans quel mois ». Le drapeau est
          explicite, champ par champ : toutes les dates de l'application n'ont
          pas cette question. */
-      /* `parPart` : sous un montant total, le meme montant ramene a une part.
+      /* `parPart` : sous un montant total, LA FORMULE qui le lie au nombre de
+         parts, et le prix par part en est un terme.
+
+         Il etait un second champ sous un second libelle, avec « l'un remplit
+         l'autre » en sous-titre : quatre champs nombre qui se ressemblaient, et
+         la relation entre eux decrite en abstrait. On se demandait lequel
+         remplir, lequel etait calcule, lequel faisait foi. La formule montre le
+         calcul reel, avec les valeurs formatees comme partout ailleurs :
+         « 2 741 parts × [3] € / part = 8 223 € », et pour l'investissement
+         « 5 000 € ÷ 2 741 parts = [1,8242] € / part » — le sens de lecture suit
+         le geste : un prix du jour revalorise le total, un montant investi se
+         ramene a un prix d'achat (et ce prix, tape, redonne le nombre de parts :
+         c'est ce que dit le sous-titre qui reste).
+
          Le champ n'a pas de `cle` et n'entre pas dans `champs` : `valeurs()`
          parcourt les champs declares, donc il ne se lit ni ne se stocke, tout
-         comme le miroir du mois juste au-dessus. */
+         comme le miroir du mois juste au-dessus. Les termes ecrits en texte sont
+         tenus a jour par le cablage d'`askForm`, qui seul connait les valeurs.
+         Un terme absent s'ecrit « — », et le resultat d'un produit dont le total
+         n'est pas encore ecrit ne s'affiche pas : c'est lui que la frappe du
+         prix va remplir. */
       return `<div class="field">
         <label for="${id}">${esc(trad(c.label))}${c.aide ? `<span class="sub">${esc(trad(c.aide))}</span>` : ''}</label>
         ${saisie}
         ${c.mois ? `<span class="hint" id="${id}_mois"></span>` : ''}
-        ${!c.parPart ? '' : `<div class="champ-par-part">
-          <label for="${id}_part">${esc(trad(c.parPartLabel))}<span class="sub">${esc(trad(c.parPartSous || 'l’un remplit l’autre'))}</span></label>
-          <input id="${id}_part" type="number" step="any" inputmode="decimal" placeholder="0">
+        ${!c.parPart ? '' : `<div class="champ-par-part" id="${id}_formule">${c.parPartDeduitParts ? `
+          <span class="formule-val" data-role="total">…</span><span class="formule-op">÷</span>
+          <span class="formule-val" data-role="parts">…</span><span class="formule-op">=</span>
+          <input id="${id}_part" type="number" step="any" inputmode="decimal" placeholder="0"
+                 aria-label="${esc(trad(c.parPartLabel))}"><span class="formule-unite">${esc(trad('€ / part'))}</span>` : `
+          <span class="formule-val" data-role="parts">…</span><span class="formule-op">×</span>
+          <input id="${id}_part" type="number" step="any" inputmode="decimal" placeholder="0"
+                 aria-label="${esc(trad(c.parPartLabel))}"><span class="formule-unite">${esc(trad('€ / part'))}</span>
+          <span class="formule-op" data-role="egal">=</span><span class="formule-val" data-role="total">…</span>`}
+          ${c.parPartSous ? `<span class="sub formule-sous">${esc(trad(c.parPartSous))}</span>` : ''}
         </div>`}
       </div>`;
     };
@@ -10263,6 +10291,11 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
        Quatre decimales au prix par part comme au nombre deduit : une part vaut
        souvent quelques euros, et une division tombe rarement rond. Le chiffre
        obtenu se corrige a la main, il ne se donne pas pour exact. */
+    const fmtPartsFormule = v => `${moinsTypographique(num(v).toLocaleString(locale(),
+      { maximumFractionDigits: 4 }))} ${trad('parts')}`;
+    const fmtMontantFormule = v => moinsTypographique(new Intl.NumberFormat(locale(), {
+      style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 2,
+    }).format(num(v)));
     const paires = [];
     for (const c of champs.filter(x => x.parPart)) {
       const total = $(`#f_${c.cle}`);
@@ -10270,15 +10303,30 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
       const combien = $(`#f_${c.parPart}`);
       if (!total || !unite || !combien) continue;
       const n = () => num(combien.value);
+      /* La formule redit les champs, elle ne calcule rien : ce sont `versUnite`
+         et `versTotal` qui ecrivent, et elle se rafraichit a leur suite. Un
+         terme vide s'ecrit « — » ; le resultat du produit attend son total. */
+      const formule = $(`#f_${c.cle}_formule`);
+      const majFormule = () => {
+        if (!formule) return;
+        const terme = role => formule.querySelector(`[data-role="${role}"]`);
+        terme('parts').textContent = n() > 0 ? fmtPartsFormule(n()) : `… ${trad('parts')}`;
+        const aTotal = total.value !== '';
+        terme('total').textContent = aTotal ? fmtMontantFormule(total.value) : '… €';
+        const egal = terme('egal');
+        if (egal) { egal.hidden = !aTotal; terme('total').hidden = !aTotal; }
+      };
       const versUnite = () => {
         unite.value = n() > 0 && total.value !== ''
           ? String(Math.round((num(total.value) / n()) * 10000) / 10000) : '';
+        majFormule();
       };
       const versTotal = () => {
         if (n() > 0 && unite.value !== '')
           total.value = String(round2(num(unite.value) * n()));
+        majFormule();
       };
-      paires.push({ total, unite, combien, n, versUnite, versTotal,
+      paires.push({ total, unite, combien, n, versUnite, versTotal, majFormule,
                     deduitParts: !!c.parPartDeduitParts });
     }
     for (const p of paires) {
@@ -10292,6 +10340,7 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
           if (autre.total.value === '') autre.versTotal();
           else autre.versUnite();
         }
+        p.majFormule();
         return true;
       };
       unite.addEventListener('input', () => {

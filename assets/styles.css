@@ -902,9 +902,14 @@ textarea { resize: vertical; line-height: 1.45; }
 
 .field { display: flex; flex-direction: column; gap: 5px; }
 .field label { font-size: var(--font-sm); color: var(--text-secondary); font-weight: 550; }
-.champ-par-part { display: flex; flex-direction: column; gap: 4px; margin-top: 7px;
-                  padding-left: 10px; border-left: 2px solid var(--grid); }
-.champ-par-part input { font-size: var(--font-md); padding: 6px 8px; }
+.champ-par-part { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px;
+                  margin-top: 7px; padding-left: 10px; border-left: 2px solid var(--grid);
+                  font-size: var(--font-sm); color: var(--text-secondary); }
+.champ-par-part input { font-size: var(--font-md); padding: 6px 8px; width: 6.5em; max-width: 6.5em; flex: none; }
+.champ-par-part .formule-val { color: var(--text-primary); font-weight: 550; white-space: nowrap; }
+.champ-par-part .formule-op { color: var(--muted); }
+.champ-par-part .formule-unite { color: var(--muted); white-space: nowrap; margin-left: -2px; }
+.champ-par-part .formule-sous { flex: 1 0 100%; margin-top: 1px; }
 .valeur-figee {
   margin: 0; align-self: start; padding: 7px 0;
   font-size: var(--font-md); color: var(--text-secondary); font-style: italic;
