@@ -1,7 +1,9 @@
 <h1 align="center">Longward</h1>
 
-<p align="center"><b>A personal wealth dashboard.</b> It answers three questions:<br>
-how much do I have, where does it sit, and where is it going?</p>
+<p align="center"><b>All your wealth. One trajectory.</b></p>
+
+<p align="center">Longward is a personal wealth dashboard that answers three questions,<br>
+with numbers you can trust: <b>how much do I have, where does it sit, and where is it going?</b></p>
 
 <p align="center">
   <a href="https://github.com/pierrelouis-fetet/Longward-demo/actions/workflows/tests.yml"><img src="https://github.com/pierrelouis-fetet/Longward-demo/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
@@ -11,7 +13,7 @@ how much do I have, where does it sit, and where is it going?</p>
   <img src="https://img.shields.io/badge/PWA-installable-8A2BE2" alt="Installable PWA">
 </p>
 
-<p align="center"><a href="https://longward-demo.pages.dev"><b>Live demo</b></a> : fictional data, nothing to install.</p>
+<p align="center"><a href="https://longward-demo.pages.dev"><b>Try the live demo</b></a> — fictional data, nothing to install.</p>
 
 <p align="center">Designed and built by <b>Pierre-Louis FETET</b>.</p>
 
@@ -23,78 +25,86 @@ how much do I have, where does it sit, and where is it going?</p>
   <img src="docs/mobile-budget.png" width="230" alt="Budget on mobile">
 </p>
 
-Mobile-first by design: install it on a phone (PWA), use it offline, sync
-across devices. No table wider than three columns ever reaches a 375px
-screen; it turns into a tappable list instead.
+## Your dashboard comes alive in four steps
 
-## Engineering principles
+Most wealth tools ask for everything before they show anything. Longward shows
+something after every step, and tells you what the next one unlocks.
 
-A wealth dashboard has one job: showing numbers that are true. Four rules
-govern this codebase, each one earned the hard way.
+1. **Your accounts.** Bank accounts, savings, brokerage, life insurance, property,
+   crypto, private equity. Your net worth appears the moment the first one is in.
+2. **Your income.** Salary and other inflows, once. Your saving capacity follows.
+3. **Your first statement.** A monthly snapshot of every pocket, prefilled with
+   today's values. From the second one, your trajectory is a curve.
+4. **Your fixed costs.** Rent, insurance, subscriptions, loan payments. Now the
+   dashboard knows how many months you could hold if income stopped.
 
-**A total equals the sum of its parts.** It sounds obvious. In practice, six
-screens violated it without anything showing: percentages adding up to
-98.97%, a total column missing two buckets out of five, the same label worth
-two different amounts on two pages, both totals right. The numbers looked
-correct and were wrong. Every derived figure is now guarded by that single
-assertion.
+About four minutes for a simple situation. Stop anywhere, come back later:
+nothing is lost, and the guide picks up exactly where you left it.
 
-**Missing data displays as missing, never invented.** No free source
-publishes a fund's country breakdown. Rather than draw a "World, 100%" pie
-for an MSCI World that is really 70% American, the geographic charts were
-removed. A wrong chart is worse than no chart.
+## What you get
 
-**A fact has one owner.** A loan's monthly payment lives on the fixed charge
-that pays it; the loan links to the charge and reads through it. Lists are
-derived from the data, never written twice. Two fields for one value means
-nobody can prove they agree.
+| | |
+|---|---|
+| **Net worth** | Gross and net, every account and loan, sorted into five liquidity tiers, from cash in hand to a property that takes months to sell |
+| **Allocation** | By asset class, by account type, by availability. Targets per class and a rebalancing plan that says exactly what to sell and what to buy |
+| **Markets** | Live quotes for listed positions, day moves, unrealized gains, and a journal of realized sales |
+| **Budget** | Income, fixed costs with their billing cycle, spending by category and month, and what is left to live on |
+| **History** | One statement a month, entered in a single dialog, feeding every curve and every month-to-month variation |
+| **Projection** | Compound growth to a chosen horizon, in nominal and constant euros, with your own scenario |
+| **Loans** | Monthly payment, rate and insurance declared once: remaining term, interest still to pay and capital repaid each month are all derived |
+| **Two languages** | French and English, switched instantly, every string translated in the same commit that adds it |
+| **Export** | Real `.xlsx` workbooks with money and dates typed as such, plus a JSON backup that restores everything |
 
-**A state is declared, not deduced.** A payment date in the past does not
-mean "late": transfers routinely arrive a few days behind, and painting the
-row red every month teaches the eye to ignore red. The app points, the owner
-decides. The one figure that goes stale by itself, a loan's remaining
-principal, gets projected and asked about, never silently overwritten.
+## Numbers you can trust
 
-## Tested against the defects that actually happened
+A wealth dashboard has one job: showing figures that are true. Four rules hold
+this codebase to it, and the test suite enforces every one of them.
 
-Several hundred test cases, no test framework: the whole harness is
-[118 lines](tests/harness.js). Open `/tests.html`, the browser tab title gives
-the verdict.
+- **A total equals the sum of its parts.** Every percentage, every column,
+  every card that shows a total is checked against what it is made of.
+- **Missing data is shown as missing, never invented.** No zero stands in for
+  a value you have not entered, no chart is drawn from a figure nobody has.
+- **A fact has one owner.** A loan's payment lives on the fixed cost that pays
+  it; everything else reads through it. Nothing is typed twice.
+- **A state is declared, not deduced.** Longward points at what looks off and
+  lets you decide. It never repaints a row red on a guess.
 
-They also run on every push, and the badge above is that result. The runner
-drives a real Chrome and reads the same tab title a human would: what runs in CI
-is what runs on a laptop, with no second code path to keep in step. One command
-locally, too, if you would rather not open a tab:
+## Yours, everywhere
+
+- **Private by design.** Your figures live in your browser. Cross-device sync
+  only exists if you deploy the worker yourself, on infrastructure you control.
+  No analytics, no tracking, no third party reading your numbers.
+- **Installable.** A progressive web app: add it to your phone's home screen,
+  use it offline, open the same dashboard on your laptop.
+- **Mobile first.** Built for a 375 px screen before anything else. No table
+  wider than three columns ever reaches a phone; it becomes a tappable list.
+- **Leave whenever you want.** Export to Excel or JSON at any time. Your data
+  never needs Longward to stay readable.
+
+## Get started
+
+**Try it.** The [live demo](https://longward-demo.pages.dev) runs on fictional
+data. Explore every screen, then clear it and start your own.
+
+**Run it locally.**
 
 ```bash
-python executer-tests.py
+python serve.py
 ```
 
-The whole suite takes about fourteen seconds, so running all of it is the
-default. When you only want the suites that read the file you just changed, or
-the ones that exercise the model on numbers:
+Then open `http://localhost:8765`. The one-file server, standard library only,
+serves the app and proxies market quotes. The test page is at
+`http://localhost:8765/tests.html`.
 
-```bash
-python executer-tests.py --touche assets/app.js
-python executer-tests.py --touche calcul
-```
+**Self-host it.** Any static host serves the app. Cross-device sync and quotes
+run on a single Cloudflare Worker; see [DEPLOY.md](DEPLOY.md).
 
-A targeted run says so, in the tab title and in its exit code: `0` means green
-and complete, `1` red, `2` green but partial. Since a push is guarded by
-`... && git push`, and `&&` only passes on `0`, a partial run cannot authorise
-one, even if you forgot it was partial.
+## Under the hood
 
-Three habits make these tests worth more than their count:
-
-- **Each suite answers a real defect.** The question behind every test is:
-  which assertion would have caught this before I did?
-- **Every suite was validated by breaking it.** A test that has never failed
-  proves nothing, so each one was made to fail on purpose once.
-- **Many tests read the source itself.** They derive the rule from the file
-  instead of copying its current value, so the value someone writes tomorrow
-  is already covered.
-
-## Architecture
+**No build step, no dependencies.** Plain HTML, CSS and JavaScript, served as
+static files. The code that computes your net worth is exactly the code your
+browser runs, and view-source is the audit trail. Charts are hand-drawn SVG.
+The app will run unchanged in a decade.
 
 ```
 index.html         a single page, hash routing
@@ -107,10 +117,6 @@ assets/
 _worker.js         gateway and access control (Cloudflare)
 tests/             118-line harness, synthetic fixture, the suites
 ```
-
-State lives in the browser (`localStorage`) and syncs through Cloudflare KV.
-Calculation is strictly separated from rendering: `store.js` never touches
-the DOM, which is what makes it testable without driving a browser.
 
 ```mermaid
 flowchart LR
@@ -134,90 +140,39 @@ flowchart LR
     worker --> yahoo["Yahoo Finance"]
 ```
 
-## Minimal by design
+Calculation is strictly separated from rendering: `store.js` never touches the
+DOM, which is what makes every figure testable without driving a browser.
 
-Longward has no build step and no runtime dependencies. The application is
-plain HTML, CSS and JavaScript, served as static files.
+**Tested on every push.** Nineteen hundred test cases, no test framework: the
+whole harness is [118 lines](tests/harness.js). They run in a real Chrome on
+every push, and the badge above is that result. Open `/tests.html` locally and
+the tab title gives the verdict, or:
 
-This is a deliberate choice, not a limitation:
-
-- **Inspectable.** The code that computes your net worth is exactly the code
-  your browser runs. View-source is the audit trail.
-- **Portable.** Deploying is copying files. The local server is one Python
-  file using only the standard library; production is any static host.
-- **Durable.** No dependency can break, deprecate, or ship a supply-chain
-  surprise. The app will run unchanged in a decade.
-
-The cost is real and accepted: charts are drawn by hand in SVG, and there is
-no ecosystem to lean on. For a personal financial tool whose figures must
-stay explainable, the trade is worth it.
-
-## Features
+```bash
+python executer-tests.py
+```
 
 | | |
 |---|---|
-| **Net worth** | Accounts, institutions, loans, gross and net, five liquidity tiers |
-| **Markets** | Live quotes through a Yahoo gateway, day moves, unrealized gains |
-| **Allocation** | By asset, by class, by account type, by availability, with targets and a rebalancing plan. One switch drops property and valuables, because a flat at 81% of the total flattens everything else |
-| **Budget** | Income, fixed charges that can be split, spending by category and month |
-| **Projection** | Compound growth to a chosen horizon, in nominal and constant euros |
-| **Loans** | Monthly payment, rate and insurance declared once: the remaining term, the interest still to pay and the capital each instalment repays are all derived from them |
-| **Statements** | One monthly snapshot, entered in a single dialog, feeding every curve |
-| **Two languages** | French and English, switched without a reload of your data. Every displayed string is translated in the same commit that adds it |
-| **Export** | Real `.xlsx` workbooks, money and dates typed as such, written without a library, plus a JSON backup that restores everything |
-
-## By the numbers
-
-| | |
-|---|---|
-| Lines of application JavaScript | 20,000+ |
-| Test cases | 740+, in 145+ suites |
+| Test cases | 1,900+, in 300+ suites |
+| Lines of JavaScript published | 28,000+ |
 | Runtime dependencies | 0 |
 | Build steps | 0 |
 | Pages | 1 |
 
 ## Where your data lives
 
-In this browser's `localStorage`, on this machine. Two consequences worth
-knowing before you rely on it: clearing your browsing data erases the
-dashboard, so export the JSON from time to time; and reaching your figures
-from another machine means exporting here and importing there, or turning on
-the optional cross-device sync.
+In this browser's `localStorage`, on this machine, unless you turn on sync.
+Clearing your browsing data erases the dashboard, so export a JSON backup from
+time to time. Those figures are personal data about you: the moment you export
+a file, you are its custodian.
 
-Those figures are personal data about you. The moment you export a file, you
-become its custodian: keep it off services you do not control, and delete the
-exports you no longer need.
+## Working on the code
 
-## Run it locally
-
-```bash
-python serve.py
-```
-
-Then open `http://localhost:8765`. The one-file server serves the app and
-proxies market quotes, which browsers cannot fetch directly for CORS
-reasons. The test suite lives at `http://localhost:8765/tests.html`.
-
-## Built with Claude, kept honest by the harness
-
-Most of this code is co-authored with Claude, Anthropic's coding agent. That
-is not the interesting part. The interesting part is what it takes to trust
-the result: deciding what is true, checking every displayed figure against
-reality, and turning each defect into a rule plus a test so it cannot come
-back. The engineering principles above are that harness, and the tests are
-why the numbers can be believed.
-
-## Hosting
-
-Cloudflare Pages on the free tier: a dozen requests per visit against a
-hundred-thousand-per-day cap.
-
-## Author
-
-Longward is designed, built and maintained by **Pierre-Louis FETET**: the data
-model, the engineering rules above, and every product decision behind them.
+The rules that keep the figures true, how tests are chosen and written, and
+the traps of this codebase live in [CLAUDE.md](CLAUDE.md). Read it before your
+first change; it is written for whoever works on the code, human or agent.
 
 ## License
 
-AGPL-3.0, copyright © 2026 Pierre-Louis FETET. Any modified version served to
-users must publish its source.
+[AGPL-3.0](LICENSE).
