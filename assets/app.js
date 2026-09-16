@@ -823,10 +823,15 @@ const moisEtAnnee = (annee, mois) => new Intl.DateTimeFormat(locale(),
 
 const PRESENTATION_INSIGHT = {
   liquidity_runway: {
-    titre: 'Réserve disponible',
-    phrase: p => trad('Tes liquidités mobilisables couvrent environ {n} mois de dépenses renseignées.')
-      .replace('{n}', fmtMois(p.months)),
-    cta: { vue: 'overview', ancre: 'autonomie', libelle: 'Voir mon autonomie' },
+    titre: 'Réserve de sécurité',
+    valeur: p => fmtMois(p.months) + ' ' + trad('mois'),
+    phrase: p => trad('d’épargne immédiatement disponible.')
+      + (p.complementMonths >= 0.1
+        ? ' ' + trad('{c} de plus seraient mobilisables, mais cet argent est fléché ou demande une vente.')
+          .replace('{c}', fmtMois(p.complementMonths) + ' ' + trad('mois'))
+        : '')
+      + (p.belowTargetMonths > 0 ? ' ' + trad('L’objectif indicatif retenu dans l’app est de 3 à 6 mois.') : ''),
+    cta: { vue: 'overview', ancre: 'autonomie', libelle: 'Voir ma réserve' },
   },
   allocation_target_gap: {
     titre: 'Allocation et cible',
@@ -859,7 +864,7 @@ const PRESENTATION_INSIGHT = {
     titre: 'Évolution de ta trésorerie',
     phrase: p => trad('Ta trésorerie couvre {a} mois de dépenses, contre {b} il y a trois mois, à dépenses constantes.')
       .replace('{a}', fmtMois(p.months)).replace('{b}', fmtMois(p.previousMonths)),
-    cta: { vue: 'overview', ancre: 'autonomie', libelle: 'Voir mon autonomie' },
+    cta: { vue: 'overview', ancre: 'evolution', libelle: 'Voir l’évolution' },
   },
   pocket_share_shift: {
     titre: 'Poids d’une poche',
@@ -1249,13 +1254,16 @@ function viewOverview() {
       })()}
     </div>
   <div class="card" data-anchor="autonomie">
-    <div class="card-head"><h2>${trad('Autonomie financière')}${aide(trad("Combien de mois tu tiendrais si tes revenus s'arrêtaient demain. La jauge compte ton épargne de précaution ; la liste ajoute ce qui pourrait être mobilisé ensuite, du plus accessible au plus lent, en mois cumulés. L'immobilier et le non coté se vendent, mais en quelques mois et avec une décote si tu es pressé. Ce qui est bloqué jusqu'à son échéance reste affiché mais sort du cumul : cet argent n'arrivera pas, quoi qu'il se passe demain. Un titre coté se vend en séance, mais le virement met deux à trois jours ouvrés à arriver : c'est ce délai, pas la liquidité, qui le range en « quelques jours ». Casser un PEA de moins de cinq ans lui coûte son avantage fiscal, pas son accès. Coût mensuel retenu : charges fixes plus dépenses moyennes."))}</h2>
+    <div class="card-head"><h2>${trad('Réserve de sécurité')}${aide(trad("Combien de mois tu tiendrais si tes revenus s'arrêtaient demain. La jauge compte ton épargne de précaution ; la liste ajoute ce qui pourrait être mobilisé ensuite, du plus accessible au plus lent, en mois cumulés. L'immobilier et le non coté se vendent, mais en quelques mois et avec une décote si tu es pressé. Ce qui est bloqué jusqu'à son échéance reste affiché mais sort du cumul : cet argent n'arrivera pas, quoi qu'il se passe demain. Un titre coté se vend en séance, mais le virement met deux à trois jours ouvrés à arriver : c'est ce délai, pas la liquidité, qui le range en « quelques jours ». Casser un PEA de moins de cinq ans lui coûte son avantage fiscal, pas son accès. Coût mensuel retenu : charges fixes plus dépenses moyennes."))}</h2>
       <span class="hint">${trad('si les revenus s\'arrêtaient')}</span></div>
     ${(() => {
       const r = runway();
+      /* Le coussin reel vit dans `runway()`, ou il se teste : il etait calcule
+         ici, et l'insight de l'accueil en lisait un autre. Deux chiffres justes
+         qui se contredisaient a l'ecran. */
+      const ep = r.reserve;
+      const cover = r.reserveMois;
       const pk = poches();
-      const ep = pk.precaution + pk.courant;
-      const cover = ep / r.burn;
       const state = cover >= 3 ? 'up' : cover >= 1.5 ? '' : 'down';
       if (!r.burn) return `
         <p class="empty" style="margin:0 0 4px">${trad(ep
@@ -1285,7 +1293,7 @@ function viewOverview() {
             <div class="rw-haut"><span class="rw-lab">${esc(trad(x.label))}</span><b class="rw-val">${fmtEUR0(x.value)}</b></div>
             <div class="rw-bas"><span class="rw-note">${esc(trad(x.note))}</span>
               <span class="tag rw-mois">${x.horsCumul
-                ? trad('hors autonomie') : `${fmtMois(x.months)} ${trad('mois cumulés')}`}</span></div>
+                ? trad('hors réserve') : `${fmtMois(x.months)} ${trad('mois cumulés')}`}</span></div>
           </li>`).join('')}</ul>
         <p class="small muted" style="margin:12px 0 0">
           ${trad('Coût de la vie retenu :')} ${fmtEUR0(r.burn)} ${trad('/ mois (charges fixes + dépenses moyennes).')}
@@ -2829,8 +2837,8 @@ function viewPositions() {
     <p class="empty" style="margin:0 0 12px">${trad('Cette page suit les placements '
       + 'dont le cours arrive tout seul, du marché. Tes placements non cotés, ton '
       + 'immobilier et tes liquidités se déclarent dans Actifs, où c’est toi qui en '
-      + 'donnes la valeur : ils comptent dans ton patrimoine, ta répartition et ton '
-      + 'autonomie exactement comme le reste.')}</p>
+      + 'donnes la valeur : ils comptent dans ton patrimoine, ta répartition et ta '
+      + 'réserve exactement comme le reste.')}</p>
     ${(() => {
       const porteurs = TYPES_COMPTE.filter(t =>
         (t.classes || []).some(c => ['actions', 'obligations', 'crypto'].includes(c)));
@@ -3862,7 +3870,7 @@ function viewAllocation() {
     <p class="tete-legende">${mentionBase(baseAvoirsAlloc(), valeurAvoirsAlloc())}</p>
     <p class="hint" style="margin:0 0 12px">${trad('Quand cet argent peut redevenir disponible.')}${aide(allocFinancier
       ? trad("Le délai vient de la classe de la ligne et du type de compte qui la porte, jamais d’une supposition sur ton projet. Tes murs et tes objets de valeur sont écartés de cette vue, et c’est ce qui fait disparaître le palier du logement que tu habites.")
-      : trad("Le délai vient de la classe de la ligne et du type de compte qui la porte, jamais d’une supposition sur ton projet. Le logement que tu habites et ce qui est bloqué jusqu’à une échéance figurent ici parce qu’ils font partie de tes avoirs, mais l’autonomie financière de l’accueil les écarte de son cumul : elle compte ce sur quoi tu peux vivre, pas ce que tu possèdes."))}</p>
+      : trad("Le délai vient de la classe de la ligne et du type de compte qui la porte, jamais d’une supposition sur ton projet. Le logement que tu habites et ce qui est bloqué jusqu’à une échéance figurent ici parce qu’ils font partie de tes avoirs, mais la réserve de sécurité de l’accueil les écarte de son cumul : elle compte ce sur quoi tu peux vivre, pas ce que tu possèdes."))}</p>
     <div class="chart" id="aDispo"></div>
     ${tbl(dispo, baseAvoirsAlloc().nom, dispo.reduce((s, i) => s + i.value, 0))}
   </div>
@@ -4360,7 +4368,7 @@ function viewHistory() {
     <dl class="kv" style="margin-top:12px">
       ${d.entrees ? `<dt>${trad('Entrées')}</dt><dd class="up">${fmtSigned(d.entrees)}</dd>` : ''}
       ${d.sorties ? `<dt>${trad('Sorties')}</dt><dd class="down">${fmtSigned(d.sorties)}</dd>` : ''}
-      <dt>${trad('Net')}${aide(trad("La somme de tes entrées et de tes sorties exceptionnelles sur l’année affichée. Elle ne s’ajoute à aucun total de patrimoine : ces montants sont déjà passés sur tes comptes, c’est leur origine que ce journal garde en mémoire. Le rythme d’accumulation s’en sert pour distinguer ce que tu as mis de côté de ce qui t’est tombé du ciel, ou de ce qui est parti d’un coup. Une grosse dépense se note ici et non dans les dépenses du mois : là-bas elle gonflerait ta moyenne toute l’année, et avec elle le coût de la vie qui sert à ton autonomie financière et à ta cible d’épargne de précaution."))}</dt>
+      <dt>${trad('Net')}${aide(trad("La somme de tes entrées et de tes sorties exceptionnelles sur l’année affichée. Elle ne s’ajoute à aucun total de patrimoine : ces montants sont déjà passés sur tes comptes, c’est leur origine que ce journal garde en mémoire. Le rythme d’accumulation s’en sert pour distinguer ce que tu as mis de côté de ce qui t’est tombé du ciel, ou de ce qui est parti d’un coup. Une grosse dépense se note ici et non dans les dépenses du mois : là-bas elle gonflerait ta moyenne toute l’année, et avec elle le coût de la vie qui sert à ta réserve de sécurité et à sa cible."))}</dt>
         <dd class="${cls(d.net)}">${fmtSigned(d.net)}</dd>
     </dl>`}
   </div>`;
@@ -6146,7 +6154,7 @@ function viewFicheCompte(id) {
   <div class="card">
     <div class="card-head"><h2>${trad(t.melange ? (t.contenant === 'banque' ? 'Supports du plan' : 'Supports du contrat')
       : t.titres ? 'Lignes de titres' : 'Placements détenus')}</h2>
-      <span class="hint">${trad('Disponibilité')}${aide(trad("Sous combien de temps chaque placement redevient de l’argent disponible. Elle alimente la carte « Autonomie financière » de l’accueil. « Auto » suit la règle du type de compte : un PEA de moins de cinq ans est bloqué, un compte-titres se vend en séance. La règle se trompe parfois : un non coté peut se revendre sur un marché secondaire, c’est pourquoi chaque ligne peut la contredire."))}</span>
+      <span class="hint">${trad('Disponibilité')}${aide(trad("Sous combien de temps chaque placement redevient de l’argent disponible. Elle alimente la carte « Réserve de sécurité » de l’accueil. « Auto » suit la règle du type de compte : un PEA de moins de cinq ans est bloqué, un compte-titres se vend en séance. La règle se trompe parfois : un non coté peut se revendre sur un marché secondaire, c’est pourquoi chaque ligne peut la contredire."))}</span>
       ${t.titres ? `<button class="btn sm ghost" data-action="ajouter-ligne" data-compte="${esc(c.id)}"
                    title="${trad('Chercher un titre coté et le poser sur ce compte')}">${trad('+ Titre coté')}</button>` : ''}
       ${!t.titres || t.melange ? `<button class="btn sm ghost" data-action="ajouter-placement" data-id="${esc(c.id)}"
