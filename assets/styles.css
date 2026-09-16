@@ -2399,11 +2399,11 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
   color: var(--critical);
 } }
 
-.repart { padding: 6px 16px; }
+.repart { padding: 4px 16px; }
 .repart-ligne {
-  display: flex; flex-direction: column; gap: 6px; width: 100%;
+  display: flex; flex-direction: column; gap: 5px; width: 100%;
   background: none; border: none; border-bottom: 1px solid var(--border);
-  padding: 13px 0; font: inherit; color: var(--text-primary);
+  padding: 10px 0; font: inherit; color: var(--text-primary);
   text-align: left; cursor: pointer;
 }
 .repart-ligne:last-child { border-bottom: none; }
@@ -2414,7 +2414,13 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 .repart-haut .dot { margin: 0; flex: none; }
 .repart-nom { font-weight: 600; min-width: 0; overflow-wrap: break-word; }
 .repart-haut b { margin-left: auto; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
-.repart-pct { color: var(--muted); font-size: var(--font-sm); min-width: 3.6em; text-align: right; flex: none; }
+/* `tabular-nums` : sans lui, « 1 » et « 4 » n'ont pas la meme largeur et les
+   virgules dansent d'une ligne a l'autre. La colonne se parcourt du regard, il
+   faut qu'elle tombe droit — c'est deja ce que fait le montant juste a cote. */
+.repart-pct {
+  color: var(--muted); font-size: var(--font-sm); min-width: 3.6em;
+  text-align: right; flex: none; font-variant-numeric: tabular-nums;
+}
 .repart-barre {
   display: block; height: 5px; border-radius: var(--radius-pill);
   background: var(--surface-2); overflow: hidden;

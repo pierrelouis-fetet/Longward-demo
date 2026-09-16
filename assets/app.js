@@ -1131,10 +1131,10 @@ function viewOverview() {
         <span class="repart-haut">
           <span class="dot" style="background:${x.couleur}"></span>
           <span class="repart-nom">${esc(trad(x.label))}</span>
-          <b>${fmtEUR(x.value)}</b>
+          <b>${fmtEUR0(x.value)}</b>
           <span class="repart-pct">${fmtPct(x.pct, 1)}</span>
         </span>
-        <span class="repart-barre"><i style="width:${x.pct.toFixed(1)}%;background:${x.couleur}"></i></span>
+        <span class="repart-barre"><i style="width:${largeurPart(x.pct)};background:${x.couleur}"></i></span>
       </button>`).join('')}
     ${(() => {
       const p = patrimoine();
