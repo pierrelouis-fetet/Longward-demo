@@ -41021,8 +41021,12 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
     const cibles = [...p.matchAll(/cta: \{ vue: '([a-z-]+)'/g)].map(m => m[1]);
     eq(cibles.length, 5, 'les cinq insights portent un renvoi');
     for (const c of cibles) vrai(routes.includes(c), `« ${c} » est une route servie`);
-    eq(cibles.join(','), 'budget,rebalance,history,objective,budget',
-      'réserve → Budget, allocation → Cible, rythme → Historique, objectif → Projection, capital → Budget');
+    eq(cibles.join(','), 'overview,rebalance,overview,objective,overview',
+      'réserve → Autonomie, allocation → Cible, rythme → Rythme, objectif → Projection, capital → Accumulation');
+    /* Quatre des cinq visent une carte precise, pas le haut d'une page. */
+    const ancres = [...p.matchAll(/ancre: '([a-z]+)'/g)].map(m => m[1]);
+    eq(ancres.join(','), 'autonomie,rythme,trajectoire,accumulation',
+      'chaque renvoi qui peut viser une carte la vise');
     /* Aucun libelle vague. */
     for (const mot of ['En savoir plus', 'Optimiser', 'Améliorer', 'Découvrir']) {
       vrai(!p.includes(mot), `aucun renvoi ne dit « ${mot} »`);
@@ -41041,7 +41045,8 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
     vrai(!/performance|rendement/i.test(bloc.replace(/\/\*[\s\S]*?\*\//g, '')),
       'le rythme patrimonial garde son nom');
     /* Et la date d'objectif reste au conditionnel. */
-    vrai(/ta cible serait atteinte vers/.test(p), 'la date est projetée, jamais promise');
+    vrai(/Ta cible de \{t\} serait atteinte vers \{d\}/.test(p),
+      'la date est projetée, jamais promise, et la cible porte son montant');
     vrai(!/tu atteindras/i.test(sansCommentaires), 'aucune promesse dans le texte affiché');
   });
 
@@ -41227,5 +41232,201 @@ suite('À retenir se replie, se retire, et s’en souvient', () => {
     /* Aucune hauteur animee : le systeme de design n'en anime nulle part. */
     const bloc = css.slice(css.indexOf('.retenir-tete {'), css.indexOf('.retenir-liste {'));
     vrai(!/max-height|transition: .*height/.test(bloc), 'aucune hauteur ne s’anime');
+  });
+});
+
+/* --- La réserve mène à l'autonomie, pas au budget -------------------------- */
+suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
+  const app = () => lireSource('assets/app.js');
+  const presentation = () => {
+    const a = app();
+    return a.slice(a.indexOf('const PRESENTATION_INSIGHT'), a.indexOf('function carteARetenir()'));
+  };
+
+  test('le renvoi porte une ancre, et cette ancre existe', () => {
+    const p = presentation();
+    const bloc = p.slice(p.indexOf('liquidity_runway: {'), p.indexOf('allocation_target_gap: {'));
+    vrai(/cta: \{ vue: 'overview', ancre: 'autonomie', libelle: 'Voir mon autonomie' \}/.test(bloc),
+      'la réserve vise l’autonomie, sur l’écran où elle se lit');
+    /* La destination existe, et c'est bien la carte qui detaille les mois. */
+    const a = app();
+    vrai(/<div class="card" data-anchor="autonomie">\s*\n\s*<div class="card-head"><h2>\$\{trad\('Autonomie financière'\)\}/.test(a),
+      'la carte « Autonomie financière » porte l’ancre');
+    /* Et elle n'est pas le déclencheur : `focusAnchor` écarte les `goto`, mais
+       une carte ne doit de toute façon porter aucune action. */
+    const carte = a.slice(a.indexOf('<div class="card" data-anchor="autonomie">'), a.indexOf('<div class="card" data-anchor="autonomie">') + 200);
+    vrai(!/data-action="goto"/.test(carte), 'la destination n’est pas un déclencheur');
+  });
+
+  test('il passe par la navigation existante, pas par une adresse', () => {
+    const a = app();
+    const rendu = a.slice(a.indexOf('function carteARetenir()'), a.indexOf('function viewOverview()'));
+    /* Une adresse s'arrete en haut de page : seule `goto` sait viser un endroit
+       dans une vue, et c'est le mecanisme que le reste de l'application emploie. */
+    vrai(/data-action="goto"\s*\n\s*data-view="\$\{esc\(p\.cta\.vue\)\}" data-anchor="\$\{esc\(p\.cta\.ancre\)\}"/.test(rendu),
+      'le renvoi ancré est un bouton goto');
+    vrai(/href="#\/\$\{p\.cta\.vue\}"/.test(rendu), 'et les renvois sans ancre restent des liens');
+    vrai(/'goto'\(btn\) \{/.test(a), 'l’action existait déjà : rien de parallèle n’a été créé');
+    /* Le bouton garde l'allure du lien. */
+    vrai(/class="lien-vue retenir-lien" data-action="goto"/.test(rendu), 'même allure que ses voisins');
+    vrai(/button\.lien-vue \{/.test(lireSource('assets/styles.css')), 'et le style le prévoit');
+  });
+
+  test('les deux langues nomment la carte par son nom de produit', () => {
+    eq(I18N.en['Autonomie financière'], 'Financial runway', 'la carte a déjà son nom anglais');
+    eq(I18N.en['Voir mon autonomie'], 'View my financial runway',
+      'le renvoi reprend ce mot, il n’en invente pas un second');
+    eq(trad('Voir mon autonomie'), 'Voir mon autonomie', 'et le français dit le sien');
+  });
+
+  test('les quatre autres renvois n’ont pas bougé', () => {
+    const p = presentation();
+    for (const [id, attendu] of [['allocation_target_gap', "cta: { vue: 'rebalance', libelle: 'Voir ma cible' }"],
+                                 ['wealth_pace_shift', "cta: { vue: 'overview', ancre: 'rythme', libelle: 'Voir mon rythme' }"],
+                                 ['goal_projected_date', "cta: { vue: 'objective', ancre: 'trajectoire', libelle: 'Voir ma projection' }"],
+                                 ['debt_principal_share', "cta: { vue: 'overview', ancre: 'accumulation', libelle: 'Voir mon accumulation' }"]]) {
+      vrai(p.includes(attendu), `${id} porte son renvoi`);
+    }
+    eq((p.match(/ancre: '/g) || []).length, 4, 'quatre renvois ancrés');
+  });
+
+  test('aucun calcul n’a changé', () => {
+    /* Le moteur ignore les renvois : ils vivent dans la vue. */
+    const m = lireSource('assets/insights.js');
+    vrai(!/autonomie|Voir mon|goto/.test(m), 'le moteur ne connaît pas les destinations');
+    Fixture.poser();
+    const i = construireInsights().find(x => x.id === 'liquidity_runway');
+    if (i) {
+      const r = runway();
+      eq(i.params.months, num(r.liquidMonths), 'les mois viennent toujours de runway()');
+      eq(i.evidence.source, 'runway');
+    }
+    /* Et la carte visée lit le même moteur que l'insight : un seul chiffre. */
+    const a = app();
+    const carte = a.slice(a.indexOf('data-anchor="autonomie"'), a.indexOf('data-anchor="autonomie"') + 1200);
+    vrai(/const r = runway\(\);/.test(carte), 'la carte d’autonomie lit runway(), comme l’insight');
+  });
+});
+
+/* --- Chaque insight se comprend sans rien aller chercher ------------------- */
+suite('Les cinq insights disent de quoi ils parlent', () => {
+  const app = () => lireSource('assets/app.js');
+  const presentation = () => {
+    const a = app();
+    return a.slice(a.indexOf('const PRESENTATION_INSIGHT'), a.indexOf('function carteARetenir()'));
+  };
+
+  test('l’objectif nomme sa cible par son montant', () => {
+    /* « Ta cible serait atteinte vers décembre 2029 » laissait la question
+       « quelle cible ? » sans reponse. Le modele ne porte qu'une cible de
+       projection, un nombre sans intitule : le montant est la seule facon de la
+       nommer, et on n'en invente pas d'autre. */
+    const p = presentation();
+    const bloc = p.slice(p.indexOf('goal_projected_date: {'), p.indexOf('debt_principal_share: {'));
+    vrai(/\.replace\('\{t\}', fmtEUR0\(p\.target\)\)/.test(bloc),
+      'le montant vient des params du moteur et passe par le formateur central');
+    vrai(!/[€$]/.test(bloc.replace(/\/\*[\s\S]*?\*\//g, '')), 'aucun signe monétaire en dur');
+    /* Le moteur le rendait deja : rien de neuf cote calcul. */
+    Fixture.poser(s => { s.meta.projTarget = 200000; s.meta.projHorizon = 30; });
+    const i = construireInsights().find(x => x.id === 'goal_projected_date');
+    vrai(!!i, 'la règle produit');
+    eq(i.params.target, num(projectionSettings().target), 'la cible vient de projectionSettings()');
+    /* Et aucun nom n'est invente : le modele n'en porte pas. */
+    vrai(!/nom|name|label/.test(bloc.replace(/\/\*[\s\S]*?\*\//g, '')),
+      'aucun nom d’objectif n’est fabriqué');
+  });
+
+  test('l’allocation nomme l’écart, et son sens, sans le juger', () => {
+    const p = presentation();
+    const bloc = p.slice(p.indexOf('allocation_target_gap: {'), p.indexOf('wealth_pace_shift: {'));
+    vrai(/p\.deltaPct >= 0/.test(bloc), 'le sens se lit sur le signe de l’écart');
+    vrai(/au-dessus de ta cible/.test(bloc) && /en dessous de ta cible/.test(bloc),
+      'les deux sens ont leur phrase');
+    for (const mot of ['trop', 'excès', 'sous-exposé', 'surexposé', 'réduis', 'augmente ta']) {
+      vrai(!new RegExp(mot, 'i').test(bloc.replace(/\/\*[\s\S]*?\*\//g, '')),
+        `« ${mot} » serait un conseil`);
+    }
+    for (const c of ['{c} : {a} de tes investissements, soit {e} points au-dessus de ta cible de {b}.',
+                     '{c} : {a} de tes investissements, soit {e} points en dessous de ta cible de {b}.']) {
+      vrai(!!I18N.en[c], 'les deux sens ont leur traduction');
+      for (const m of ['{c}', '{a}', '{e}', '{b}']) vrai(I18N.en[c].includes(m), `et gardent ${m}`);
+    }
+  });
+
+  test('le rythme dit laquelle des deux périodes est la récente', () => {
+    const p = presentation();
+    const bloc = p.slice(p.indexOf('wealth_pace_shift: {'), p.indexOf('goal_projected_date: {'));
+    vrai(/sur les \{n\} derniers mois, contre \{b\} sur les \{m\} précédents/.test(bloc),
+      'les deux périodes se nomment');
+    vrai(!/performance|rendement|gain/i.test(bloc.replace(/\/\*[\s\S]*?\*\//g, '')),
+      'et ce n’est ni une performance, ni un rendement, ni un gain');
+  });
+
+  test('le capital remboursé dit de quelle progression il parle', () => {
+    const p = presentation();
+    const bloc = p.slice(p.indexOf('debt_principal_share: {'), p.indexOf('};', p.indexOf('debt_principal_share: {')));
+    vrai(/ta progression patrimoniale/.test(bloc),
+      '« ta progression » pouvait se lire comme celle du budget');
+    vrai(/sur tes crédits/.test(bloc),
+      'le pluriel reste : le montant agrège tous les crédits');
+    /* Et c'est bien une agregation : le moteur somme les credits. */
+    const s = lireSource('assets/store.js');
+    vrai(/function capitalRembourseParMois\(\) \{\s*\n\s*return ETABS\(\)\.reduce/.test(s),
+      'le moteur additionne tous les établissements');
+  });
+
+  test('chaque carte visée existe, et porte bien la réponse', () => {
+    const a = app();
+    /* Les quatre ancres, et la carte qui repond derriere chacune. */
+    for (const [ancre, titre] of [['autonomie', "trad('Autonomie financière')"],
+                                  ['rythme', "trad('Rythme d\\'accumulation')"],
+                                  ['accumulation', "trad('Accumulation ce mois-ci')"],
+                                  ['trajectoire', "trad('De quoi sera fait ton patrimoine')"]]) {
+      const i = a.indexOf(`data-anchor="${ancre}"`);
+      vrai(i > 0, `l’ancre « ${ancre} » est posée`);
+      /* La fenetre est large : une carte peut porter un commentaire de
+         balisage entre son ouverture et son titre. */
+      const suite2 = a.slice(i, i + 1200);
+      vrai(suite2.includes(titre), `et la carte « ${ancre} » porte son titre`);
+      /* Une destination n'est jamais un declencheur. */
+      vrai(!/data-action="goto"/.test(a.slice(i - 80, i + 80)), `« ${ancre} » n’est pas un bouton`);
+    }
+  });
+
+  test('aucun renvoi ne reste générique', () => {
+    const p = presentation();
+    const libelles = [...p.matchAll(/libelle: '([^']+)'/g)].map(m => m[1].replace(/\\'/g, "'"));
+    eq(libelles.length, 5, 'les cinq portent un renvoi');
+    for (const l of libelles) {
+      vrai(!/^Voir le budget$|^Voir le détail$|^En savoir plus$/.test(l),
+        `« ${l} » ne dit pas ce qu’il ouvre`);
+      vrai(!!I18N.en[l], `« ${l} » a sa traduction`);
+    }
+    /* Chacun nomme sa destination, et aucun ne se repete. */
+    eq(new Set(libelles).size, 5, 'cinq renvois distincts');
+  });
+
+  test('les phrases restent courtes, et aucune ne porte de monnaie en dur', () => {
+    const p = presentation().replace(/\/\*[\s\S]*?\*\//g, '');
+    vrai(!/[€$]/.test(p), 'aucun signe monétaire');
+    /* Une phrase de plus de cent quarante caracteres tiendrait mal sur trois
+       lignes a 375 px. On mesure le gabarit, marques comprises. */
+    for (const m of p.matchAll(/trad\('([^']{40,})'\)/g)) {
+      const phrase = m[1].replace(/\\'/g, "'");
+      vrai(phrase.length <= 150, `« ${phrase.slice(0, 44)}… » fait ${phrase.length} caractères`);
+    }
+  });
+
+  test('aucun calcul financier n’a changé', () => {
+    /* Le moteur ne connait ni les phrases, ni les destinations. */
+    /* Le mot « trajectoire » vit dans les commentaires du moteur, qui expliquent
+       precisement qu'il ne la refait pas : on lit le code, pas ses commentaires. */
+    const m = lireSource('assets/insights.js').replace(/\/\*[\s\S]*?\*\//g, '');
+    vrai(!/ancre|autonomie|trajectoire|Voir m/.test(m), 'le moteur ignore la présentation');
+    Fixture.poser();
+    const avant = JSON.stringify(construireInsights());
+    setLang('en');
+    try { eq(JSON.stringify(construireInsights()), avant, 'et la langue ne le change pas'); }
+    finally { setLang('fr'); }
   });
 });
