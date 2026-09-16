@@ -1970,6 +1970,37 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 .tt-note { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--grid); color: var(--muted); font-size: var(--font-sm); white-space: normal; max-width: 260px; }
 .sw { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
 
+/* --- L'infobulle de l'historique, en trois colonnes ------------------------
+
+   Libelle, montant, poids. Les trois colonnes s'alignent d'une ligne a l'autre,
+   ce qu'une rangee en flex ne sait pas faire : chaque rangee y est son propre
+   conteneur, donc sa colonne de montants se cale sur la longueur de son propre
+   libelle, et rien ne s'aligne avec la rangee du dessus. Une seule grille pour
+   toute la bulle, et les rangees s'y fondent par `display: contents`.
+
+   Le filet du total est un element a part, qui traverse les quatre colonnes :
+   une rangee fondue ne peut pas porter de bordure, elle n'a plus de boite.
+
+   LE MONTANT RESTE PRIORITAIRE. Il garde l'encre pleine et la graisse ; le poids
+   passe en encre secondaire, a la meme taille. Le reduire aurait fait une
+   troisieme information a dechiffrer plutot qu'a lire du coin de l'oeil. */
+.tt-parts {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: baseline; column-gap: 7px; row-gap: 4px; color: var(--text-secondary);
+}
+.tt-ligne { display: contents; }
+.tt-parts .sw { align-self: center; }
+.tt-parts b { color: var(--text-primary); font-variant-numeric: tabular-nums; text-align: right; }
+/* `tabular-nums` des deux cotes : sans lui, « 1 » et « 4 » n'ont pas la meme
+   largeur et les virgules des poids dansent d'une ligne a l'autre.
+   `nowrap` : « 23,2 % » ne se coupe pas devant son signe. */
+.tt-poids {
+  color: var(--muted); font-variant-numeric: tabular-nums;
+  text-align: right; white-space: nowrap;
+}
+.tt-filet { grid-column: 1 / -1; border-top: 1px solid var(--grid); margin-top: 1px; }
+.tt-fin { font-weight: 600; }
+
 .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: var(--font-sm); color: var(--text-secondary); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
