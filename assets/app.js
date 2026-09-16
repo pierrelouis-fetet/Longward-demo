@@ -824,16 +824,68 @@ const PRESENTATION_INSIGHT = {
   },
 };
 
+/* --- Repliee, masquee : deux etats, et ils se souviennent ------------------
+
+   Trois lectures et leurs renvois occupent presque un ecran de telephone, et
+   repoussent les cartes qui suivent. La section se replie donc, et peut se
+   retirer tout a fait.
+
+   LE CHOIX VIT DANS `meta`, PAS EN MEMOIRE VIVE. Les autres replis de ce
+   fichier sont des drapeaux de session : un depliant qu'on vient d'ouvrir ne
+   doit pas se refermer au rendu suivant, mais un rechargement le remet a sa
+   place. Celui-ci est l'inverse — c'est une preference, pas une position de
+   lecture. Range dans `meta`, il suit l'etat partout ou il va : le stockage
+   local, la sauvegarde en ligne, l'export. Rouvrir la section a chaque
+   lancement reviendrait a ne pas avoir ecoute.
+
+   PAS DE CROIX. Une croix dit « notification » et promet la disparition d'un
+   objet passager ; cette section est une piece du tableau de bord. Le geste
+   ordinaire est donc « Réduire », et le retrait complet vit un cran plus loin,
+   derriere les trois points, avec sa porte de retour dans les Preferences. */
+const retenirReplie = () => !!Store.state?.meta?.retenirReplie;
+const retenirMasquee = () => !!Store.state?.meta?.retenirMasquee;
+
 function carteARetenir() {
+  if (retenirMasquee()) return '';
   const lus = construireInsights()
     .map(i => [i, PRESENTATION_INSIGHT[i.id]])
     .filter(([, p]) => !!p)
     .slice(0, MAX_A_RETENIR);
   if (!lus.length) return '';
+  const n = lus.length;
+  const replie = retenirReplie();
+  /* Le meme bouton dans les deux etats, donc le meme `aria-controls` et le meme
+     `aria-expanded` : un lecteur d'ecran annonce l'etat, pas une couleur. */
+  const options = `<button type="button" class="retenir-plus" data-action="retenir-options"
+        aria-label="${esc(trad('Options de la section'))}" title="${esc(trad('Options de la section'))}"
+        >···</button>`;
   return `
-  <section class="card retenir" aria-labelledby="retenirTitre">
-    <div class="card-head"><h2 id="retenirTitre">${trad('À retenir')}</h2></div>
-    <ul class="retenir-liste">
+  <section class="card retenir${replie ? ' repliee' : ''}" aria-labelledby="retenirTitre">
+    ${replie ? `
+    <div class="card-head retenir-tete">
+      <h2 id="retenirTitre" class="retenir-tete-pliee">
+        <button type="button" class="retenir-bascule" data-action="retenir-plier"
+                aria-expanded="false" aria-controls="retenirCorps">
+          <span>${trad('À retenir')}</span>
+          <span class="retenir-compte">· ${n === 1 ? trad('1 insight')
+            : trad('{n} insights').replace('{n}', n)}</span>
+          <span class="retenir-chevron" aria-hidden="true">⌄</span>
+        </button>
+      </h2>
+      ${options}
+    </div>` : `
+    <div class="card-head retenir-tete">
+      <h2 id="retenirTitre">${trad('À retenir')}</h2>
+      <div class="retenir-actes">
+        <button type="button" class="retenir-bascule retenir-reduire" data-action="retenir-plier"
+                aria-expanded="true" aria-controls="retenirCorps">
+          <span>${trad('Réduire')}</span>
+          <span class="retenir-chevron haut" aria-hidden="true">⌄</span>
+        </button>
+        ${options}
+      </div>
+    </div>
+    <ul class="retenir-liste" id="retenirCorps">
       ${lus.map(([i, p]) => `
       <li class="retenir-item">
         <b class="retenir-titre">${esc(trad(p.titre))}</b>
@@ -841,7 +893,7 @@ function carteARetenir() {
         ${p.cta ? `<a class="lien-vue retenir-lien" href="#/${p.cta.vue}"
            >${esc(trad(p.cta.libelle))} <span aria-hidden="true">→</span></a>` : ''}
       </li>`).join('')}
-    </ul>
+    </ul>`}
   </section>`;
 }
 
@@ -1394,6 +1446,9 @@ function viewSettings() {
       ${ligneReglage({ action: 'regl-langue', label: t('settings.language'), valeur: langue, sous: t('settings.language.hint') })}
       ${ligneReglage({ action: 'regl-devise', label: trad('Devise principale'),
           valeur: trad((DEVISES_BASE.find(([id]) => id === deviseBase()) || DEVISES_BASE[0])[1]) })}
+      ${ligneBascule({ action: 'regl-retenir', label: trad('À retenir sur l’Aperçu'),
+          sous: trad('Une lecture courte de ta situation, en haut de l’Aperçu.'),
+          on: !retenirMasquee() })}
     </div>
   </section>
   <section class="regl-groupe">
@@ -7813,6 +7868,24 @@ const ACTIONS = {
   },
   'regl-autorefresh'() {
     Store.state.meta.autoRefresh = !Store.state.meta.autoRefresh;
+    Store.save(); render(); retourHaptique();
+  },
+  'regl-retenir'() {
+    Store.state.meta.retenirMasquee = !Store.state.meta.retenirMasquee;
+    Store.save(); render(); retourHaptique();
+  },
+  'retenir-plier'() {
+    Store.state.meta.retenirReplie = !retenirReplie();
+    Store.save(); render(); retourHaptique();
+  },
+  async 'retenir-options'() {
+    const v = await askOptions({
+      titre: trad('Section À retenir'),
+      sous: trad('Tu pourras la réafficher depuis Préférences.'),
+      options: [{ v: 'masquer', l: trad('Masquer cette section') }],
+    });
+    if (v !== 'masquer') return;
+    Store.state.meta.retenirMasquee = true;
     Store.save(); render(); retourHaptique();
   },
   async 'regl-devise'() {
