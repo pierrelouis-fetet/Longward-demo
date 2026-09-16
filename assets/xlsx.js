@@ -97,10 +97,10 @@ const Xlsx = (() => {
     return Math.round((Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 86400000);
   }
 
-  const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+  const STYLES = () => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <numFmts count="3">
-<numFmt numFmtId="164" formatCode="#,##0.00\\ &quot;€&quot;"/>
+<numFmt numFmtId="164" formatCode="#,##0.00\\ &quot;${signeDeviseBase()}&quot;"/>
 <numFmt numFmtId="165" formatCode="0.00%"/>
 <numFmt numFmtId="166" formatCode="dd/mm/yyyy"/>
 </numFmts>
@@ -202,7 +202,7 @@ ${sheets.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.open
 <Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 </Relationships>` },
 
-      { name: 'xl/styles.xml', data: STYLES },
+      { name: 'xl/styles.xml', data: STYLES() },
 
       ...sheets.map((s, i) => ({
         name: `xl/worksheets/sheet${i + 1}.xml`,

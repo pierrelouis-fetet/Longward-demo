@@ -250,11 +250,17 @@ const Charts = (() => {
     return court.trimEnd() + '…';
   }
 
+  /* Le compact d'axe suit la devise du profil, et le signe se place comme la
+     langue le veut : `Intl` met « 125 k € » en francais et « €125K » en
+     anglais. On lui demande donc de formater l'unite de millier elle-meme,
+     plutot que de coller un signe a la main du cote ou il ne va pas. */
   const kEur = v => {
     if (masqueActif()) return '•••';   // les axes chiffrés trahiraient le total
     const a = Math.abs(v);
-    if (a >= 1000) return (v / 1000).toLocaleString(locale(), { maximumFractionDigits: 1 }) + ' k€';
-    return Math.round(v).toLocaleString(locale()) + ' €';
+    const dev = { style: 'currency', currency: deviseBase(), currencyDisplay: 'narrowSymbol',
+                  maximumFractionDigits: a >= 1000 ? 1 : 0 };
+    if (a >= 1000) return new Intl.NumberFormat(locale(), { ...dev, notation: 'compact' }).format(v);
+    return new Intl.NumberFormat(locale(), dev).format(Math.round(v));
   };
 
   /* Option facultative, nee de la page Projection :

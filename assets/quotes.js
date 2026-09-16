@@ -57,9 +57,9 @@ const Quotes = (() => {
       const sym = (p.symbol || '').trim();
       if (p.manual || !sym) continue;
       if (!symbols.includes(sym)) symbols.push(sym);
-      if (p.currency && p.currency !== 'EUR') currencies.add(p.currency);
+      if (p.currency && p.currency !== deviseBase()) currencies.add(p.currency);
     }
-    const fxPairs = [...currencies].map(c => `EUR${c}=X`);
+    const fxPairs = [...currencies].map(c => `${deviseBase()}${c}=X`);
     return { symbols, fxPairs, currencies: [...currencies], all: [...symbols, ...fxPairs] };
   }
 
@@ -106,9 +106,11 @@ const Quotes = (() => {
     const bySym = {};
     p.all.forEach((s, i) => { bySym[s.toUpperCase()] = data.quotes[i]; });
 
+    // `EURUSD=X` donne des USD par euro, on veut l'inverse : la base par unite
     const fx = {};
+    const base = deviseBase();
     for (const c of p.currencies) {
-      const q = bySym[`EUR${c}=X`];
+      const q = bySym[`${base}${c}=X`];
       if (q && !q.error && q.price) fx[c] = 1 / q.price;
     }
 
@@ -139,7 +141,7 @@ const Quotes = (() => {
       pos.volume = q.volume ?? null;
       if (q.firstTrade) pos.firstTrade = q.firstTrade;
       if (q.currency) pos.currency = q.currency;
-      pos.fx = (pos.currency && pos.currency !== 'EUR')
+      pos.fx = (pos.currency && pos.currency !== deviseBase())
         ? (fx[pos.currency] ?? num(pos.fx) ?? 1)
         : 1;
       
