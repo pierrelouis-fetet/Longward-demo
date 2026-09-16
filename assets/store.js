@@ -1894,6 +1894,23 @@ function deviseBase() {
   return DEVISES_BASE.some(([id]) => id === d) ? d : 'EUR';
 }
 const signeDeviseBase = () => symboleDevise(deviseBase());
+const NOMS_DEVISE = { EUR: 'Euro', USD: 'Dollar américain' };
+/* LA DEVISE EST-ELLE ENCORE A CHOISIR ?
+
+   Deux situations qu'il faut distinguer, et rien d'autre ne les separe :
+
+   Un profil deja servi, cree quand seul l'euro existait. Ses montants SONT des
+   euros, personne n'a besoin de le lui demander, et l'interrompre pour une
+   question dont la reponse est ecrite dans ses donnees serait absurde. La
+   migration tranche pour lui, une fois, et l'enregistre comme un fait.
+
+   Un profil vierge. Il n'a aucun montant, donc aucune reponse implicite : la
+   question se pose, avant la premiere saisie, et c'est lui qui repond.
+
+   Le choix se DECLARE, il ne se devine pas : `deviseChoisie` est un fait pose,
+   jamais deduit a chaque rendu. Sans quoi saisir puis effacer son premier
+   compte reposerait la question. */
+const deviseAChoisir = () => !Store.state?.meta?.deviseChoisie;
 
 function aDesMontantsSaisis() {
   const s = Store.state;
@@ -2277,6 +2294,15 @@ const Store = {
 
     if (!DEVISES_BASE.some(([id]) => id === s.meta.devise)) {
       s.meta.devise = 'EUR';
+    }
+
+    if (typeof s.meta.deviseChoisie !== 'boolean') {
+      const b = s.budget || {};
+      s.meta.deviseChoisie = (s.comptes || []).length > 0
+        || (s.positions || []).length > 0
+        || Object.values(s.now || {}).some(v => num(v) !== 0)
+        || (b.income || []).length > 0 || (b.fixedCharges || []).length > 0
+        || (s.history || []).length > 0;
     }
     const parDefaut = Object.fromEntries(SEED_ACCOUNTS.map(a => [a.id, a]));
     for (const a of s.accounts) {
