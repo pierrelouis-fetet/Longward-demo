@@ -14114,9 +14114,9 @@ suite('Les animations s’éteignent, et se déclenchent au doigt', () => {
     const css = (lireSource('assets/styles.css') || '').replace(/\/\*[\s\S]*?\*\//g, '');
     const tel = css.slice(css.indexOf('@media (max-width: 900px)'));
     vrai(tel.length > 1000, 'le bloc du téléphone doit être trouvable');
-    vrai(/\.btn, \.segmented button, \.lien-vue, \.data-view summary \{ position: relative; \}/.test(tel),
+    vrai(/\.btn, \.segmented button, \.lien-vue, \.data-view summary,\s*\n\s*\.retenir-bascule, \.retenir-plus \{ position: relative; \}/.test(tel),
       'les cibles compactes portent leur halo');
-    const halo = tel.match(/\.btn::after, \.segmented button::after, \.lien-vue::after, \.data-view summary::after \{([^}]*)\}/);
+    const halo = tel.match(/\.btn::after, \.segmented button::after, \.lien-vue::after, \.data-view summary::after,\s*\n\s*\.retenir-bascule::after, \.retenir-plus::after \{([^}]*)\}/);
     vrai(halo && /left: 0; right: 0; top: -4px; bottom: -4px/.test(halo[1]),
       'un halo vertical de 4 px : 30 + 8 = 38, et deux boutons en colonne à 8 px d’écart se touchent sans se recouvrir');
     vrai(/\.btn-rond::after \{[^}]*inset: -3px/.test(tel), 'la cloche, l’œil et le profil : 38 + 6 = 44');
@@ -41103,5 +41103,129 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
     /* La fleche est decorative : elle ne doit pas etre lue a voix haute. */
     vrai(/<span aria-hidden="true">→<\/span>/.test(r), 'la flèche est masquée aux lecteurs d’écran');
     vrai(/aria-labelledby="retenirTitre"/.test(r), 'et la section est nommée');
+  });
+});
+
+/* --- Réduire, masquer, et s'en souvenir ----------------------------------- */
+suite('À retenir se replie, se retire, et s’en souvient', () => {
+  const app = () => lireSource('assets/app.js');
+  const rendu = () => {
+    const a = app();
+    return a.slice(a.indexOf('const retenirReplie = ()'), a.indexOf('function viewOverview()'));
+  };
+
+  test('le choix vit dans l’état, donc il survit à un rechargement', () => {
+    /* Les autres replis de ce fichier sont des drapeaux de session, remis a
+       zero au chargement. Celui-ci est une preference : il est range dans
+       `meta`, et suit donc l'etat partout ou il va. */
+    const r = rendu();
+    vrai(/const retenirReplie = \(\) => !!Store\.state\?\.meta\?\.retenirReplie;/.test(r),
+      'le repli se lit dans meta');
+    vrai(/const retenirMasquee = \(\) => !!Store\.state\?\.meta\?\.retenirMasquee;/.test(r),
+      'le masquage aussi');
+    const a = app();
+    for (const acte of ['retenir-plier', 'retenir-options', 'regl-retenir']) {
+      const i = a.indexOf(`'${acte}'(`);
+      vrai(i > 0, `${acte} existe`);
+      vrai(/Store\.save\(\);/.test(a.slice(i, i + 700)), `${acte} enregistre son choix`);
+    }
+    /* Et un export le porte, comme tout ce qui vit dans meta. */
+    Store.state = blankState(); Store.migrate();
+    Store.state.meta.retenirReplie = true;
+    const copie = JSON.parse(JSON.stringify(Store.state));
+    eq(copie.meta.retenirReplie, true, 'un export le porte');
+    Store.state = copie; Store.migrate();
+    eq(Store.state.meta.retenirReplie, true, 'et un import le rend');
+  });
+
+  test('un état neuf s’ouvre déplié, et rien ne se replie tout seul', () => {
+    Store.state = blankState(); Store.migrate();
+    eq(!!Store.state.meta.retenirReplie, false, 'déplié par défaut');
+    eq(!!Store.state.meta.retenirMasquee, false, 'et visible');
+    /* Aucune migration ne pose ces clefs : leur absence vaut « non ». */
+    const s = lireSource('assets/store.js');
+    vrai(!/retenirReplie|retenirMasquee/.test(s),
+      'le modèle ne les connaît pas : c’est une préférence de vue, pas une donnée');
+  });
+
+  test('replié, la carte garde son titre, son compte et une cible confortable', () => {
+    const r = rendu();
+    /* Le titre porte le bouton : un bouton ne peut pas contenir un titre, et
+       l'inverse est valide. Replie, il prend toute la ligne. */
+    vrai(/<h2 id="retenirTitre" class="retenir-tete-pliee">/.test(r), 'le titre porte la bascule');
+    vrai(/trad\('\{n\} insights'\)\.replace\('\{n\}', n\)/.test(r), 'le compte se dit');
+    vrai(/n === 1 \? trad\('1 insight'\)/.test(r), 'et au singulier quand il n’y en a qu’un');
+    const css = lireSource('assets/styles.css');
+    vrai(/\.retenir-tete-pliee \.retenir-bascule \{\s*\n\s*width: 100%;/.test(css),
+      'replié, le bouton prend toute la largeur');
+    vrai(/\.retenir-bascule, \.retenir-plus \{ position: relative; \}/.test(css),
+      'et les deux commandes reçoivent la cible tactile des autres');
+  });
+
+  test('l’état s’annonce aux lecteurs d’écran, dans les deux sens', () => {
+    const r = rendu();
+    vrai(/aria-expanded="false" aria-controls="retenirCorps"/.test(r), 'replié');
+    vrai(/aria-expanded="true" aria-controls="retenirCorps"/.test(r), 'déplié');
+    vrai(/<ul class="retenir-liste" id="retenirCorps">/.test(r), 'et la cible existe');
+    vrai(/aria-label="\$\{esc\(trad\('Options de la section'\)\)\}"/.test(r),
+      'les trois points portent un nom');
+    /* Les chevrons sont decoratifs : ils ne se lisent pas a voix haute. */
+    eq((r.match(/class="retenir-chevron[^"]*" aria-hidden="true"/g) || []).length, 2,
+      'les deux chevrons sont masqués aux lecteurs d’écran');
+  });
+
+  test('aucune croix : « Réduire » se défait, un retrait se choisit', () => {
+    const r = rendu();
+    for (const signe of ['✕', '×', 'Fermer', 'Ignorer', 'Ne plus afficher']) {
+      vrai(!r.includes(signe), `la carte ne porte pas « ${signe} »`);
+    }
+    vrai(/trad\('Réduire'\)/.test(r), 'le geste ordinaire est « Réduire »');
+    /* Le retrait vit derriere les trois points, pas a cote de « Réduire ». */
+    const a = app();
+    const menu = a.slice(a.indexOf("async 'retenir-options'()"), a.indexOf("async 'regl-place'()"));
+    vrai(/trad\('Masquer cette section'\)/.test(menu), 'le retrait est une entrée de menu');
+    vrai(/if \(v !== 'masquer'\) return;/.test(menu), 'et fermer la feuille ne masque rien');
+  });
+
+  test('masquée, elle se réaffiche depuis les Préférences', () => {
+    const a = app();
+    vrai(/if \(retenirMasquee\(\)\) return '';/.test(rendu()), 'masquée, la carte ne se rend pas');
+    /* La porte de retour, et c'est la MEME clef : deux portes sur un seul fait. */
+    const reglages = a.slice(a.indexOf('function viewSettings()'), a.indexOf('function alertesMasquees'));
+    vrai(/action: 'regl-retenir'/.test(reglages), 'la bascule existe dans Préférences');
+    vrai(/on: !retenirMasquee\(\)/.test(reglages), 'et elle lit la même clef');
+    const acte = a.slice(a.indexOf("'regl-retenir'()"), a.indexOf("'retenir-plier'()"));
+    vrai(/Store\.state\.meta\.retenirMasquee = !Store\.state\.meta\.retenirMasquee;/.test(acte),
+      'elle écrit la même clef, dans les deux sens');
+    for (const c of ['À retenir sur l’Aperçu', 'Une lecture courte de ta situation, en haut de l’Aperçu.',
+                     'Masquer cette section', 'Section À retenir',
+                     'Tu pourras la réafficher depuis Préférences.',
+                     'Options de la section', '1 insight', '{n} insights']) {
+      vrai(!!I18N.en[c], `« ${c} » a sa traduction`);
+    }
+    vrai(I18N.en['{n} insights'].includes('{n}'), 'et le gabarit garde sa marque');
+  });
+
+  test('le repli ne touche ni au moteur, ni au contenu des insights', () => {
+    /* La carte se replie ; les cinq regles, leurs seuils et leurs phrases ne
+       bougent pas. Le moteur ne connait meme pas cet etat. */
+    const m = lireSource('assets/insights.js');
+    vrai(!/retenirReplie|retenirMasquee|MAX_A_RETENIR/.test(m), 'le moteur ignore l’affichage');
+    Fixture.poser();
+    const avant = JSON.stringify(construireInsights());
+    Store.state.meta.retenirReplie = true;
+    Store.state.meta.retenirMasquee = true;
+    eq(JSON.stringify(construireInsights()), avant, 'et il rend exactement la même chose');
+  });
+
+  test('la seule animation est celle du chevron, et elle se coupe', () => {
+    const css = lireSource('assets/styles.css');
+    vrai(/\.retenir-chevron \{[^}]*transition: transform \.15s ease;/.test(css),
+      'le chevron tourne, à la durée déjà employée ailleurs');
+    vrai(/@media \(prefers-reduced-motion: reduce\) \{ \.retenir-chevron \{ transition: none; \} \}/.test(css),
+      'et rien ne bouge pour qui demande moins de mouvement');
+    /* Aucune hauteur animee : le systeme de design n'en anime nulle part. */
+    const bloc = css.slice(css.indexOf('.retenir-tete {'), css.indexOf('.retenir-liste {'));
+    vrai(!/max-height|transition: .*height/.test(bloc), 'aucune hauteur ne s’anime');
   });
 });
