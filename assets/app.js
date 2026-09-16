@@ -810,7 +810,7 @@ const PRESENTATION_INSIGHT = {
   },
   wealth_pace_shift: {
     titre: 'Rythme patrimonial',
-    phrase: p => trad('Ton rythme patrimonial est de {a} par mois sur les {n} derniers mois, contre {b} sur les {m} précédents.')
+    phrase: p => trad('Ton rythme patrimonial est d’environ {a} par mois sur les {n} derniers mois, contre {b} sur les {m} précédents.')
       .replace('{a}', fmtEUR0(p.currentMonthly)).replace('{n}', p.currentMonths)
       .replace('{b}', fmtEUR0(p.previousMonthly)).replace('{m}', p.previousMonths),
     cta: { vue: 'overview', ancre: 'rythme', libelle: 'Voir mon rythme' },
@@ -864,6 +864,9 @@ function carteARetenir() {
   const options = `<button type="button" class="retenir-plus" data-action="retenir-options"
         aria-label="${esc(trad('Options de la section'))}" title="${esc(trad('Options de la section'))}"
         >···</button>`;
+  const chevron = `<span class="retenir-pastille" aria-hidden="true"
+        ><svg class="retenir-chevron" viewBox="0 0 24 24" aria-hidden="true"
+        focusable="false"><path d="M6 9.5 12 15.5 18 9.5"/></svg></span>`;
   return `
   <section class="card retenir${replie ? ' repliee' : ''}" aria-labelledby="retenirTitre">
     ${replie ? `
@@ -874,7 +877,7 @@ function carteARetenir() {
           <span>${trad('À retenir')}</span>
           <span class="retenir-compte">· ${n === 1 ? trad('1 insight')
             : trad('{n} insights').replace('{n}', n)}</span>
-          <span class="retenir-chevron" aria-hidden="true">⌄</span>
+          ${chevron}
         </button>
       </h2>
       ${options}
@@ -885,11 +888,12 @@ function carteARetenir() {
         <button type="button" class="retenir-bascule retenir-reduire" data-action="retenir-plier"
                 aria-expanded="true" aria-controls="retenirCorps">
           <span>${trad('Réduire')}</span>
-          <span class="retenir-chevron haut" aria-hidden="true">⌄</span>
+          ${chevron}
         </button>
         ${options}
       </div>
-    </div>
+    </div>`}
+    <div class="retenir-pli" ${replie ? 'aria-hidden="true"' : ''}>
     <ul class="retenir-liste" id="retenirCorps">
       ${lus.map(([i, p]) => `
       <li class="retenir-item">
@@ -907,7 +911,8 @@ function carteARetenir() {
           : `<a class="lien-vue retenir-lien" href="#/${p.cta.vue}"
              >${esc(trad(p.cta.libelle))} <span aria-hidden="true">→</span></a>`}
       </li>`).join('')}
-    </ul>`}
+    </ul>
+    </div>
   </section>`;
 }
 

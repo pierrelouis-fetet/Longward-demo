@@ -3334,43 +3334,82 @@ tr.flash-target td { animation: flash-row 1.6s ease; }
 .choix-txt .sub { display: block; }
 .choix-coche { flex: none; width: 22px; text-align: center; color: var(--accent); font-weight: 700; visibility: hidden; }
 .choix-ligne.on .choix-coche { visibility: visible; }
+.card.retenir { position: relative; overflow: hidden; }
+.card.retenir::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: linear-gradient(to bottom,
+    var(--accent), color-mix(in oklab, var(--accent) 35%, transparent));
+}
+
+.retenir-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 18px; }
+.retenir-item { position: relative; padding-left: 16px; }
+.retenir-item::before {
+  content: ''; position: absolute; left: 0; top: .52em; width: 6px; height: 6px;
+  border-radius: 50%; background: var(--accent);
+}
+.retenir-titre { display: block; font-size: var(--font-base); font-weight: 600; letter-spacing: -.01em; }
+.retenir-texte { margin: 3px 0 0; color: var(--text-secondary); max-width: 62ch; }
+.retenir-lien { display: inline-block; margin-top: 8px; font-size: var(--font-sm); font-weight: 550; }
+
 .retenir-tete { align-items: center; }
 .retenir-actes { display: flex; align-items: center; gap: 2px; margin-left: auto; }
 .retenir-bascule {
   display: inline-flex; align-items: center; gap: 6px; padding: 4px 2px;
   background: none; border: none; font: inherit; font-size: var(--font-sm);
   color: var(--muted); cursor: pointer; border-radius: var(--radius-xs);
+  transition: color .15s ease;
 }
 @media (hover: hover) { .retenir-bascule:hover { color: var(--text-secondary); } }
 .retenir-bascule:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.retenir-chevron { display: inline-block; font-size: 15px; line-height: 1; transition: transform .15s ease; }
-.retenir-chevron.haut { transform: rotate(180deg); }
-@media (prefers-reduced-motion: reduce) { .retenir-chevron { transition: none; } }
+
+.retenir-pastille {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; flex: none; border-radius: 50%;
+  background: color-mix(in oklab, var(--accent) 14%, transparent);
+  transition: background .15s ease;
+}
+@media (hover: hover) {
+  .retenir-bascule:hover .retenir-pastille { background: color-mix(in oklab, var(--accent) 24%, transparent); }
+}
+.retenir-chevron {
+  width: 16px; height: 16px; flex: none;
+  fill: none; stroke: var(--accent); stroke-width: 2.1;
+  stroke-linecap: round; stroke-linejoin: round;
+  transition: transform .24s cubic-bezier(.16, 1, .3, 1);
+}
+.retenir-reduire .retenir-pastille .retenir-chevron { transform: rotate(180deg); }
 
 .retenir-tete-pliee { flex: 1 1 auto; min-width: 0; }
 .retenir-tete-pliee .retenir-bascule {
-  width: 100%; padding: 6px 0; font-size: var(--font-lg); font-weight: 680;
+  width: 100%; padding: 4px 0; font-size: var(--font-lg); font-weight: 680;
   letter-spacing: -.015em; color: var(--text-primary);
 }
 .retenir-compte { font-size: var(--font-sm); font-weight: 400; letter-spacing: 0; color: var(--muted); }
-.retenir-tete-pliee .retenir-chevron { margin-left: auto; color: var(--muted); }
+.retenir-tete-pliee .retenir-pastille { margin-left: auto; }
 .card.retenir.repliee .card-head { margin-bottom: 0; }
 
 .retenir-plus {
   flex: none; background: none; border: none; font: inherit; line-height: 1;
   color: var(--muted); cursor: pointer; padding: 6px 8px; border-radius: var(--radius-xs);
-  letter-spacing: .12em;
+  letter-spacing: .12em; transition: color .15s ease;
 }
 @media (hover: hover) { .retenir-plus:hover { color: var(--text-secondary); } }
 .retenir-plus:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.retenir-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.retenir-item { padding: 14px 0; border-top: 1px solid var(--grid); }
-.retenir-item:first-child { padding-top: 4px; border-top: none; }
-.retenir-item:last-child { padding-bottom: 0; }
-.retenir-titre { display: block; font-size: var(--font-base); font-weight: 600; }
-.retenir-texte { margin: 4px 0 0; color: var(--text-secondary); max-width: 62ch; }
-.retenir-lien { display: inline-block; margin-top: 8px; font-size: var(--font-sm); }
+.retenir-pli {
+  display: grid; grid-template-rows: 1fr;
+  transition: grid-template-rows .26s cubic-bezier(.16, 1, .3, 1), opacity .2s ease;
+}
+.retenir-pli > * { min-height: 0; overflow: hidden; }
+.card.retenir.repliee .retenir-pli {
+  grid-template-rows: 0fr; opacity: 0; visibility: hidden;
+  transition: grid-template-rows .22s cubic-bezier(.16, 1, .3, 1), opacity .14s ease,
+              visibility 0s .22s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .retenir-chevron, .retenir-pli, .card.retenir.repliee .retenir-pli,
+  .retenir-pastille, .retenir-bascule, .retenir-plus { transition: none; }
+}
 
 .devise-question { font-size: var(--font-lg); font-weight: 600; margin: 2px 0 14px; }
 .devise-choix { display: grid; gap: 8px; }

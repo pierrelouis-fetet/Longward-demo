@@ -41174,9 +41174,16 @@ suite('À retenir se replie, se retire, et s’en souvient', () => {
     vrai(/<ul class="retenir-liste" id="retenirCorps">/.test(r), 'et la cible existe');
     vrai(/aria-label="\$\{esc\(trad\('Options de la section'\)\)\}"/.test(r),
       'les trois points portent un nom');
-    /* Les chevrons sont decoratifs : ils ne se lisent pas a voix haute. */
-    eq((r.match(/class="retenir-chevron[^"]*" aria-hidden="true"/g) || []).length, 2,
-      'les deux chevrons sont masqués aux lecteurs d’écran');
+    /* Le chevron est un dessin, pose dans une pastille, et les deux sont
+       decoratifs : rien de tout cela ne se lit a voix haute. */
+    vrai(/<span class="retenir-pastille" aria-hidden="true"/.test(r),
+      'la pastille est masquée aux lecteurs d’écran');
+    vrai(/<svg class="retenir-chevron" viewBox="0 0 24 24" aria-hidden="true"/.test(r),
+      'le chevron aussi, et c’est un dessin, pas un caractère');
+    /* Le commentaire du code cite le glyphe pour dire pourquoi il est parti :
+       on lit ce qui s'affiche, pas ce qui l'explique. */
+    vrai(!/⌄|˅|▾|▼/.test(r.replace(/\/\*[\s\S]*?\*\//g, '')),
+      'aucun glyphe de chevron ne subsiste');
   });
 
   test('aucune croix : « Réduire » se défait, un retrait se choisit', () => {
@@ -41223,15 +41230,40 @@ suite('À retenir se replie, se retire, et s’en souvient', () => {
     eq(JSON.stringify(construireInsights()), avant, 'et il rend exactement la même chose');
   });
 
-  test('la seule animation est celle du chevron, et elle se coupe', () => {
+  test('le chevron tourne, le corps se déroule, et tout se coupe', () => {
     const css = lireSource('assets/styles.css');
-    vrai(/\.retenir-chevron \{[^}]*transition: transform \.15s ease;/.test(css),
-      'le chevron tourne, à la durée déjà employée ailleurs');
-    vrai(/@media \(prefers-reduced-motion: reduce\) \{ \.retenir-chevron \{ transition: none; \} \}/.test(css),
+    vrai(/\.retenir-chevron \{[\s\S]*?transition: transform \.24s cubic-bezier/.test(css),
+      'le chevron tourne');
+    vrai(/\.retenir-reduire \.retenir-pastille \.retenir-chevron \{ transform: rotate\(180deg\); \}/.test(css),
+      'et il tourne, il n’est pas remplacé par un second dessin');
+    /* LE DEROULEMENT MESURE, IL NE DEVINE PAS. Une grille qui passe de zero a
+       une fraction laisse le navigateur interpoler la hauteur reelle : la carte
+       s'ouvre a sa taille, quel que soit le nombre d'insights. Un plafond de
+       hauteur ecrit a la main aurait coupe le troisieme. */
+    vrai(/\.retenir-pli \{[\s\S]*?grid-template-rows: 1fr;[\s\S]*?transition: grid-template-rows/.test(css),
+      'le corps se déroule par la grille');
+    vrai(/\.card\.retenir\.repliee \.retenir-pli \{[\s\S]*?grid-template-rows: 0fr;/.test(css),
+      'et se replie par la même');
+    vrai(!/max-height/.test(css.slice(css.indexOf('.retenir-pli {'), css.indexOf('@media (prefers-reduced-motion: reduce) {', css.indexOf('.retenir-pli {')))),
+      'aucun plafond de hauteur deviné');
+    /* La visibilite ne se retire qu'une fois le pli termine, sinon le contenu
+       disparaitrait des lecteurs d'ecran avant d'avoir fini de se fermer. */
+    vrai(/visibility: hidden;[\s\S]*?visibility 0s \.22s/.test(css),
+      'la visibilité se retire après le pli, pas pendant');
+    vrai(/@media \(prefers-reduced-motion: reduce\) \{\s*\n\s*\.retenir-chevron, \.retenir-pli/.test(css),
       'et rien ne bouge pour qui demande moins de mouvement');
-    /* Aucune hauteur animee : le systeme de design n'en anime nulle part. */
-    const bloc = css.slice(css.indexOf('.retenir-tete {'), css.indexOf('.retenir-liste {'));
-    vrai(!/max-height|transition: .*height/.test(bloc), 'aucune hauteur ne s’anime');
+  });
+
+  test('le corps reste dans le balisage même replié : c’est ce qui l’anime', () => {
+    const a = app();
+    const rendu = a.slice(a.indexOf('function carteARetenir()'), a.indexOf('function viewOverview()'));
+    /* Un contenu retire du balisage ne peut que disparaitre d'un coup. */
+    vrai(/<div class="retenir-pli" \$\{replie \? 'aria-hidden="true"' : ''\}>/.test(rendu),
+      'le pli enveloppe le corps dans les deux états');
+    const i = rendu.indexOf('${replie ? `');
+    const j = rendu.indexOf('<div class="retenir-pli"');
+    vrai(j > i, 'seul l’en-tête change selon l’état');
+    vrai(/aria-hidden="true"/.test(rendu), 'et replié, il sort des lecteurs d’écran');
   });
 });
 
@@ -41356,8 +41388,8 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
   test('le rythme dit laquelle des deux périodes est la récente', () => {
     const p = presentation();
     const bloc = p.slice(p.indexOf('wealth_pace_shift: {'), p.indexOf('goal_projected_date: {'));
-    vrai(/sur les \{n\} derniers mois, contre \{b\} sur les \{m\} précédents/.test(bloc),
-      'les deux périodes se nomment');
+    vrai(/d’environ \{a\} par mois sur les \{n\} derniers mois, contre \{b\} sur les \{m\} précédents/.test(bloc),
+      'les deux périodes se nomment, et « environ » dit que c’est un mois ordinaire');
     vrai(!/performance|rendement|gain/i.test(bloc.replace(/\/\*[\s\S]*?\*\//g, '')),
       'et ce n’est ni une performance, ni un rendement, ni un gain');
   });
@@ -41428,5 +41460,132 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
     setLang('en');
     try { eq(JSON.stringify(construireInsights()), avant, 'et la langue ne le change pas'); }
     finally { setLang('fr'); }
+  });
+});
+
+/* --- Un rythme, pas une moyenne gonflée par un seul mois ------------------- */
+suite('Le rythme résiste à un mois exceptionnel', () => {
+  const trouve = () => construireInsights().find(i => i.id === 'wealth_pace_shift') || null;
+  /* Une fenetre = six variations mensuelles. On pose douze variations : les six
+     premieres font la periode precedente, les six suivantes la recente. */
+  const poser = (avant, apres) => {
+    Fixture.poser(s => {
+      let cumul = 0;
+      const v = [0];
+      for (const d of avant.concat(apres)) { cumul += d; v.push(cumul); }
+      s.monthly = v.map((x, i) => {
+        const d = new Date(Date.UTC(2024, i + 1, 0));
+        return { date: d.toISOString().slice(0, 10), comment: '', v: { c_courant: x } };
+      });
+    });
+  };
+  const stable = [700, 750, 800, 700, 780, 760];
+
+  test('CAS A — une série stable donne son rythme, autour de la médiane', () => {
+    poser([500, 520, 510, 490, 505, 515], stable);
+    const i = trouve();
+    vrai(!!i, 'la règle produit');
+    /* Mediane de la fenetre recente : 700, 700, 750, 760, 780, 800 -> 755. */
+    pres(i.params.currentMonthly, 755, 'le rythme récent est la médiane');
+    pres(i.params.previousMonthly, 507.5, 'le précédent aussi');
+    eq(i.params.currentMonths, 6);
+  });
+
+  test('CAS B — un seul mois exceptionnel ne devient pas le nouveau rythme', () => {
+    /* Le cas reel : cinq mois autour de 750, un mois a 8 000. */
+    const prime = [700, 750, 800, 8000, 780, 760];
+    poser([500, 520, 510, 490, 505, 515], prime);
+    const i = trouve();
+    vrai(!!i, 'la règle parle : la période reste lisible');
+    /* La moyenne brute vaut 1 948 ; le rythme affiche est la mediane, 765. */
+    const moyenne = prime.reduce((s, x) => s + x, 0) / prime.length;
+    pres(moyenne, 1965, 'la moyenne brute est bien gonflée');
+    pres(i.params.currentMonthly, 770, 'mais le rythme affiché est le mois ordinaire');
+    vrai(i.params.currentMonthly < moyenne / 2,
+      'et il est très loin de la moyenne, ce qui est exactement le but');
+    /* La preuve garde la moyenne : c'est le chiffre de l'historique. */
+    pres(i.evidence.currentMean, moyenne, 'la preuve porte la moyenne brute');
+    vrai(i.evidence.currentLargestMonthShare > 0.6,
+      'et dit que le plus gros mois porte l’essentiel du mouvement');
+  });
+
+  test('CAS B bis — un mois exceptionnel NÉGATIF ne creuse pas le rythme', () => {
+    poser([500, 520, 510, 490, 505, 515], [700, 750, 800, -8000, 780, 760]);
+    const i = trouve();
+    vrai(!!i, 'la règle parle');
+    pres(i.params.currentMonthly, 755, 'le rythme reste celui des mois ordinaires');
+    vrai(i.evidence.currentMean < 0, 'alors que la moyenne brute est négative');
+  });
+
+  test('CAS C — une vraie tendance progressive n’est pas prise pour un accident', () => {
+    poser([500, 520, 510, 490, 505, 515], [700, 900, 1100, 1300, 1500, 1700]);
+    const i = trouve();
+    vrai(!!i, 'la montée régulière reste un rythme');
+    pres(i.params.currentMonthly, 1200, 'et c’est le milieu de la série');
+    /* Aucun mois n'est ecarte : la tendance est reelle. */
+    vrai(i.evidence.currentLargestMonthShare < 0.35, 'aucun mois ne domine');
+  });
+
+  test('CAS D — deux gros mois : le rythme reste celui des mois ordinaires', () => {
+    poser([500, 520, 510, 490, 505, 515], [700, 750, 5000, 720, 5500, 800]);
+    const i = trouve();
+    vrai(!!i, 'quatre mois sur six se ressemblent encore');
+    pres(i.params.currentMonthly, 775, 'le rythme les décrit');
+  });
+
+  test('CAS E — une série qui alterne n’a aucun rythme : silence', () => {
+    /* Mediane a 750, et pas un seul mois qui l'approche. Une phrase qui
+       annoncerait 750 decrirait une periode que personne n'a vecue. */
+    poser([500, 520, 510, 490, 505, 515], [-1000, 2500, -800, 2300, -900, 2400]);
+    eq(trouve(), null, 'aucun nombre ne résume cette période');
+  });
+
+  test('CAS F et G — une période précédente négative ou nulle reste muette', () => {
+    poser([-500, -520, -510, -490, -505, -515], stable);
+    eq(trouve(), null, 'base négative : aucun pourcentage interprétable');
+    poser([0, 0, 0, 0, 0, 0], stable);
+    eq(trouve(), null, 'base nulle non plus');
+  });
+
+  test('CAS H — le filtre anti-bruit de vingt pour cent porte sur le rythme', () => {
+    /* Medianes : 1 000 puis 1 199 -> 19,9 %, silence. */
+    poser([1000, 1000, 1000, 1000, 1000, 1000], [1199, 1199, 1199, 1199, 1199, 1199]);
+    eq(trouve(), null, '19,9 % ne vaut pas la peine d’être dit');
+    /* 1 000 -> 1 200 : vingt pour cent pile, borne inclusive. */
+    poser([1000, 1000, 1000, 1000, 1000, 1000], [1200, 1200, 1200, 1200, 1200, 1200]);
+    const i = trouve();
+    vrai(!!i, '20,0 % produit l’insight');
+    pres(i.params.deltaPct, 20);
+    eq(i.evidence.displayThresholdPct, SEUIL_AFFICHAGE_RYTHME_PCT);
+  });
+
+  test('la mesure est nommée dans le code, et la moyenne n’a pas disparu', () => {
+    const m = lireSource('assets/insights.js');
+    vrai(/function rythmeRepresentatif\(points\)/.test(m), 'la couche existe');
+    vrai(/function mediane\(valeurs\)/.test(m), 'et elle repose sur la médiane');
+    /* La moyenne reste calculee et rendue : l'historique dit toujours la verite
+       de la periode, prime comprise. */
+    vrai(/moyenne: taux\.reduce/.test(m), 'la moyenne est toujours calculée');
+    vrai(/currentMean: a\.moyenne/.test(m), 'et rendue dans la preuve');
+    /* Le moteur historique n'a pas bouge. */
+    const s = lireSource('assets/store.js');
+    vrai(/average: mois \? somme \/ mois : 0,/.test(s),
+      'statsRythme rend toujours sa moyenne, inchangée');
+    vrai(!/mediane|median/i.test(s.slice(s.indexOf('function statsRythme'), s.indexOf('function moisEntre'))),
+      'et rien de robuste n’a été glissé dans le moteur historique');
+  });
+
+  test('aucune cause n’est nommée, et rien n’est retiré des données', () => {
+    const m = lireSource('assets/insights.js').replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const mot of ['prime', 'héritage', 'heritage', 'vente', 'bonus', 'exceptionnel']) {
+      vrai(!new RegExp(mot, 'i').test(m), `le moteur ne nomme pas « ${mot} »`);
+    }
+    /* Aucun point n'est ecarte de la fenetre : la mediane les regarde tous. */
+    vrai(!/filter\(.*outlier|slice\(1, -1\)/.test(m), 'aucun mois n’est jeté');
+    /* Et la progression totale de la periode reste celle de l'historique. */
+    poser([500, 520, 510, 490, 505, 515], [700, 750, 800, 8000, 780, 760]);
+    const pts = monthlyPace().points;
+    const somme = pts.slice(-6).reduce((s, p) => s + num(p.delta), 0);
+    pres(somme, 11790, 'l’historique porte toujours la progression réelle, prime comprise');
   });
 });
