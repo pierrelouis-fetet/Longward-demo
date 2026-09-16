@@ -40431,7 +40431,15 @@ suite('Le moteur d’insights ne parle pas sans données', () => {
       eq(typeof r.evaluer, 'function', `${r.id} déclare evaluer()`);
       vrai(!!r.titleKey && !!r.descriptionKey, `${r.id} porte ses clefs`);
       vrai(!!r.dedupeGroup, `${r.id} porte son groupe`);
-      eq(r.eligible(contexteInsights()), false, `${r.id} se tait sur un état vierge`);
+      vrai(!!r.famille && !!r.question, `${r.id} porte sa famille et sa question`);
+      vrai(num(r.reposJours) > 0 && num(r.materialite) > 0,
+        `${r.id} declare son repos et sa matérialité`);
+      /* Les deux fonctions recoivent les mesures deja faites, jamais l'etat
+         brut : c'est ce qui garantit qu'un seul passage sur les moteurs sert
+         treize regles, et que deux d'entre elles ne lisent pas le meme chiffre
+         a deux instants differents. */
+      eq(r.eligible(mesuresInsights(contexteInsights()), contexteInsights()), false,
+        `${r.id} se tait sur un état vierge`);
     }
   });
 
@@ -40465,11 +40473,18 @@ suite('Le moteur d’insights ne parle pas sans données', () => {
     const a = construireInsights().map(i => i.id);
     const b = construireInsights().map(i => i.id);
     eq(a.join(','), b.join(','), 'deux appels de suite, même ordre');
-    /* Le rang intrinseque gouverne, l'ordre de declaration departage. */
-    const l = construireInsights();
+    /* Le poids gouverne, l'ordre de declaration departage. Le poids est la
+       somme du rang de la famille et de l'amplitude que la regle a rendue :
+       il se lit, et c'est tout l'interet de ne pas avoir de score opaque. */
+    const l = evaluerInsights();
     for (let i = 1; i < l.length; i++) {
-      vrai(l[i - 1].priorite <= l[i].priorite, 'les rangs ne reculent jamais');
+      vrai(l[i - 1].poids >= l[i].poids, 'les poids ne remontent jamais');
+      vrai(l[i].poids >= 10, 'aucun poids ne descend sous le rang le plus bas');
     }
+    /* Et la selection ne reclasse rien : elle ne fait que retirer. */
+    const choisis = construireInsights().map(i => i.id);
+    const ordre = l.map(i => i.id).filter(id => choisis.includes(id));
+    eq(choisis.join(','), ordre.join(','), 'la sélection garde l’ordre de l’évaluation');
     /* Et aucun horodatage ne traine dans le moteur. */
     vrai(!/Date\.now\(\)|new Date\(\)/.test(src()), 'aucune horloge ne sert de départage');
   });
@@ -40491,14 +40506,267 @@ suite('Le moteur d’insights ne parle pas sans données', () => {
   });
 });
 
-/* --- Les cinq règles, une par une ---------------------------------------- */
+/* --- Le catalogue, le repos, la selection ---------------------------------
+
+   Ce que la suite precedente protege, c'est le contrat du moteur. Celle-ci
+   protege ce que le catalogue a de neuf : treize regles au lieu de cinq, un
+   poids qui remplace un rang inverse, une memoire qui fait taire ce qui a deja
+   ete dit, et une selection qui evite de raconter trois fois la meme histoire.
+
+   Elle protege aussi ce que le catalogue REFUSE de faire, et c'est la moitie qui
+   compte : trois familles d'insights ont ete ecartees faute de donnee, et le
+   code porte la raison de chacune. Sans ce test, la prochaine lecture les
+   reinventerait avec une heuristique deguisee en decision du detenteur. */
+suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', () => {
+  const src = () => lireSource('assets/insights.js');
+  const sansCommentaires = () => src().replace(/\/\*[\s\S]*?\*\//g, '');
+
+  test('chaque règle est unique, nommée, et rangée dans une famille', () => {
+    const ids = REGLES_INSIGHT.map(r => r.id);
+    eq(new Set(ids).size, ids.length, 'aucun identifiant en double');
+    const groupes = REGLES_INSIGHT.map(r => r.dedupeGroup);
+    eq(new Set(groupes).size, groupes.length, 'aucun groupe de déduplication en double');
+    const familles = new Set(REGLES_INSIGHT.map(r => r.famille));
+    vrai(familles.size >= 6, `${familles.size} familles distinctes`);
+    for (const r of REGLES_INSIGHT) {
+      vrai([INSIGHT_PRIORITE.HAUTE, INSIGHT_PRIORITE.MOYENNE, INSIGHT_PRIORITE.BASSE]
+        .includes(r.priorite), `${r.id} porte un des trois rangs`);
+    }
+    /* Le rang le plus haut porte le plus grand nombre : le poids est une somme,
+       et une echelle inversee se serait additionnee a l'envers. */
+    vrai(INSIGHT_PRIORITE.HAUTE > INSIGHT_PRIORITE.BASSE, 'le rang monte avec l’importance');
+  });
+
+  /* CES DEUX TESTS LISENT DU CODE, ET JAMAIS UN COMMENTAIRE. La chaîne de
+     publication retire les commentaires : une assertion posée sur une phrase
+     explicative passe ici et rougit dans l'arbre publié, sans qu'aucun
+     comportement n'ait changé. C'est arrivé, et une fois suffit. */
+  test('ce que les données ne permettent pas est écarté, et rien ne le remplace', () => {
+    const c = sansCommentaires();
+    /* PAS DE RESERVE CIBLE INVENTEE. `runway()` porte un palier à trois et six
+       mois qui sert une jauge ailleurs ; aucune règle ne le lit, sinon une
+       phrase qui circule passerait pour un arbitrage du détenteur. */
+    vrai(!/targetLow|targetHigh/.test(c), 'aucun palier de runway() ne devient une cible');
+    /* PAS DE MARCHES. Le complément des apports mêle valorisation, capital
+       remboursé et réévaluation, et rien ici ne sait les séparer. */
+    vrai(!/march[ée]s/i.test(c), 'aucune règle n’attribue quoi que ce soit aux marchés');
+    Fixture.poser();
+    const o = evaluerInsights().find(x => x.id === 'wealth_growth_origin');
+    if (o) {
+      vrai('rest' in o.params, 'le complément s’appelle « le reste »');
+      eq(o.evidence.restIsNotOnlyMarkets, true, 'et la preuve le déclare');
+    }
+    /* PAS D'HISTORIQUE PAR LIGNE. Les relevés notent des montants par compte :
+       la concentration ne compare donc le portefeuille qu'à lui-même. */
+    const k = evaluerInsights().find(x => x.id === 'concentration_top_line');
+    if (k) {
+      vrai(!Object.keys(k.params).some(n => /previous|avant/i.test(n)),
+        'la concentration ne compare aucune date');
+      vrai(!k.evidence.previousDate, 'et sa preuve n’en porte aucune');
+    }
+  });
+
+  test('deux règles se passent de tout seuil posé, et se comparent au détenteur', () => {
+    const c = sansCommentaires();
+    const tranche = (a, b) => c.slice(c.indexOf(a), c.indexOf(b));
+    /* Un mois sort de l'ordinaire quand il s'écarte de plus du DOUBLE de ce que
+       ses propres mois s'écartent habituellement. Aucun montant, aucun
+       pourcentage : trois cents euros de plus sont énormes chez l'un et
+       invisibles chez l'autre. */
+    const mois = tranche("id: 'spending_month_anomaly'", "id: 'concentration_top_line'");
+    vrai(/2 \* dispersion/.test(mois), 'le seuil est le double de sa propre dispersion');
+    vrai(/mediane\(avant\.map/.test(mois), 'mesurée sur ses propres mois');
+    vrai(!/SEUIL_/.test(mois), 'et aucun seuil posé n’entre dans la règle');
+    /* Une ligne est remarquable quand elle pèse autant que les deux suivantes DU
+       MEME portefeuille. « Seize pour cent, est-ce beaucoup » n'a pas de réponse
+       générale, et toutes celles qui circulent sont des opinions. */
+    const ligne = tranche("id: 'concentration_top_line'", 'function creditBientotSolde');
+    vrai(/deuxSuivantes/.test(ligne), 'la première ligne se compare aux deux suivantes');
+    vrai(!/SEUIL_/.test(ligne), 'et aucun seuil posé n’y entre non plus');
+    /* Aucun jugement ne peut sortir du moteur, même par une clef. */
+    for (const mot of ['prudent', 'sain', 'risque', 'recommand', 'optimal']) {
+      vrai(!new RegExp(mot, 'i').test(c), `« ${mot} » ne sort pas du moteur`);
+    }
+  });
+
+  test('un insight déjà montré se tait, et revient quand son chiffre bouge', () => {
+    Fixture.poser();
+    const l = evaluerInsights();
+    vrai(l.length > 0, 'la graine a de quoi parler');
+    const i = l[0];
+    const regle = REGLES_INSIGHT.find(r => r.id === i.id);
+    const ilYA = n => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+
+    /* CELUI D'AUJOURD'HUI RESTE A L'ECRAN. La vue note ce qu'elle vient de
+       montrer ; si la note le faisait taire aussitôt, le rendu suivant du même
+       jour le retirerait, et les entrées suivantes remonteraient pour subir le
+       même sort. La carte se vidait en trois rendus, et c'est arrivé. */
+    Store.state.meta.insightsVus = { [i.id]: { date: todayISO(), valeur: i.valeur } };
+    vrai(evaluerInsights().some(x => x.id === i.id), 'noté aujourd’hui, il reste affiché');
+
+    /* Le lendemain, et tant que dure son repos, il attend son tour. */
+    Store.state.meta.insightsVus[i.id].date = ilYA(1);
+    vrai(!evaluerInsights().some(x => x.id === i.id),
+      'le lendemain, même chiffre : il se tait');
+
+    /* Il revient dès que sa propre matérialité est franchie, et pas avant. */
+    Store.state.meta.insightsVus[i.id].valeur = i.valeur + num(regle.materialite) * 2 + 1;
+    vrai(evaluerInsights().some(x => x.id === i.id), 'le chiffre a bougé : il revient');
+  });
+
+  test('le repos fini, il revient même sans rien de neuf', () => {
+    Fixture.poser();
+    const i = evaluerInsights()[0];
+    const regle = REGLES_INSIGHT.find(r => r.id === i.id);
+    const vieux = new Date(Date.now() - (num(regle.reposJours) + 1) * 86400000)
+      .toISOString().slice(0, 10);
+    Store.state.meta.insightsVus = { [i.id]: { date: vieux, valeur: i.valeur } };
+    vrai(evaluerInsights().some(x => x.id === i.id),
+      'passé son repos, il a de nouveau le droit de se dire');
+  });
+
+  test('le moteur lit la mémoire, il ne l’écrit jamais', () => {
+    vrai(!/Store\.save|Store\.state\.meta\.insightsVus =/.test(src()),
+      'aucune écriture dans le moteur');
+    const a = lireSource('assets/app.js');
+    vrai(/Store\.state\.meta\.insightsVus = memoire;/.test(a), 'c’est la vue qui note');
+    vrai(/function noterInsightsVus\(\)/.test(a), 'et elle a sa fonction');
+    /* Elle note au MONTAGE, pas au rendu : rendre ne doit rien enregistrer. */
+    const monte = a.slice(a.indexOf('function mountOverview()'),
+                          a.indexOf('function mountOverview()') + 300);
+    vrai(/noterInsightsVus\(\);/.test(monte), 'appelée depuis le montage de l’accueil');
+    const rendu = a.slice(a.indexOf('function carteARetenir()'), a.indexOf('function viewOverview()'));
+    vrai(!/Store\.save/.test(rendu), 'et le rendu n’enregistre rien');
+    /* Trois lectures de suite rendent le meme resultat. */
+    Fixture.poser();
+    const avant = JSON.stringify(evaluerInsights());
+    evaluerInsights();
+    eq(JSON.stringify(evaluerInsights()), avant, 'trois lectures, un seul résultat');
+  });
+
+  test('trois au maximum, et jamais deux fois le même sujet', () => {
+    Fixture.poser();
+    const choisis = construireInsights();
+    vrai(choisis.length <= MAX_INSIGHTS, `${choisis.length} insights, trois au maximum`);
+    const groupes = choisis.map(i => i.dedupeGroup);
+    eq(new Set(groupes).size, groupes.length, 'aucun groupe deux fois');
+    /* Une seule famille par entree tant qu'il y a de quoi remplir autrement. */
+    const dispo = new Set(evaluerInsights().map(i => i.famille));
+    if (dispo.size >= choisis.length) {
+      const familles = choisis.map(i => i.famille);
+      eq(new Set(familles).size, familles.length, 'et autant de familles que d’entrées');
+    }
+  });
+
+  test('la réserve se compare à elle-même, à dépenses constantes', () => {
+    Fixture.poser();
+    const m = mesuresInsights(contexteInsights());
+    const avant = reserveIlYA(m, 3);
+    const i = evaluerInsights().find(x => x.id === 'liquidity_runway_shift') || null;
+    if (!avant) { eq(i, null, 'sans relevé assez ancien, elle se tait'); return; }
+    /* LA CONSOMMATION EST LA MEME DES DEUX COTES. Les charges fixes n'ont pas
+       d'historique : en mêler deux attribuerait au cash une variation venue du
+       budget, et la phrase promettrait ce qu'elle ne mesure pas. */
+    pres(avant.mois, num(avant.cash) / num(m.runway.burn),
+      'les mois d’avant se comptent avec la consommation d’aujourd’hui');
+    if (i) {
+      vrai(i.evidence.burnConstant === true, 'la preuve le déclare');
+      /* ET LE MEME PERIMETRE DES DEUX COTES. Un relevé mensuel ne note qu'une
+         poche de trésorerie : répondre avec les liquidités mobilisables, qui
+         ajoutent le différé, aurait comparé une poche à trois et annoncé une
+         progression qui n'aurait été qu'un changement de définition. */
+      eq(i.evidence.scope, 'cash', 'les deux dates parlent de la trésorerie');
+      pres(i.params.months, num(m.totaux.cash) / num(m.runway.burn),
+        'aujourd’hui se compte sur la même poche qu’hier');
+      vrai(i.params.months !== num(m.runway.liquidMonths)
+        || num(m.totaux.cash) === num(m.runway.immediate) + num(m.runway.tiers),
+        'et non sur les liquidités mobilisables, qui comptent autre chose');
+      pres(i.params.deltaMonths, i.params.months - i.params.previousMonths,
+        'l’écart est bien la différence des deux');
+      vrai(Math.abs(i.params.deltaMonths) >= SEUIL_AFFICHAGE_RESERVE_MOIS - 1e-9,
+        'et il franchit son seuil d’affichage');
+    }
+  });
+
+  test('les deux parts d’une poche se calculent sur la même base', () => {
+    Fixture.poser();
+    const m = mesuresInsights(contexteInsights());
+    const p = partsDesPoches(m, 6);
+    if (!p) { vrai(true, 'pas assez d’historique : rien à vérifier'); return; }
+    /* LA REGLE CARDINALE DU PROJET : un total vaut la somme de ses parts. Les
+       deux photos totalisent cent pour cent, sinon l'écart affiché mêlerait un
+       changement de poids et un changement de périmètre. */
+    const sommeAvant = p.lignes.reduce((s, x) => s + x.avant, 0);
+    const sommeApres = p.lignes.reduce((s, x) => s + x.maintenant, 0);
+    pres(sommeAvant, 100, 'les parts d’hier font cent');
+    pres(sommeApres, 100, 'celles d’aujourd’hui aussi');
+    pres(p.lignes.reduce((s, x) => s + x.ecart, 0), 0, 'donc les écarts se compensent');
+    vrai(p.mois >= 6, 'et le relevé comparé date vraiment de six mois');
+  });
+
+  test('la première ligne ne parle que si elle pèse les deux suivantes', () => {
+    Fixture.poser();
+    const c = concentration({ financier: true });
+    const i = evaluerInsights().find(x => x.id === 'concentration_top_line') || null;
+    if (!c || !c.top3) { eq(i, null, 'moins de quatre lignes : elle se tait'); return; }
+    const deux = num(c.top3.value) - num(c.premiere.value);
+    eq(!!i, deux > 0 && num(c.premiere.value) >= deux,
+      'elle parle exactement quand la première pèse au moins les deux suivantes');
+    if (i) {
+      pres(i.params.pct, num(c.premiere.pct), 'la part vient de concentration()');
+      eq(i.evidence.nextTwoValue, deux, 'et la preuve porte le poids compare');
+    }
+  });
+
+  test('un mois inhabituel se mesure à la dispersion du détenteur', () => {
+    const poser = totaux => Fixture.poser(s => {
+      s.budget.expenses = totaux.map((v, n) => ({
+        month: `2026-0${n + 1}-01`, v: { Courses: v }, note: '',
+      }));
+    });
+    const anomalie = () => evaluerInsights().find(x => x.id === 'spending_month_anomaly') || null;
+    /* UNE SERIE PARFAITEMENT PLATE N'A PAS DE DISPERSION, donc pas d'anomalie
+       possible : trois euros d'écart y seraient « inhabituels », ce qui ne veut
+       rien dire. On se tait. */
+    poser([1000, 1000, 1000, 1000, 1000, 1000, 1000, 2000]);
+    eq(anomalie(), null, 'sans dispersion mesurable, aucune anomalie');
+    /* Chez quelqu'un dont les mois varient de cinquante euros, mille de plus
+       sortent de l'ordinaire. */
+    poser([900, 1100, 950, 1050, 1000, 1200, 1000, 2000]);
+    const i = anomalie();
+    vrai(!!i, 'un mois au double de la dispersion habituelle se dit');
+    eq(i.params.usual, 1000, 'le repère est la médiane de ses propres mois');
+    eq(i.evidence.usualDeviation, 50, 'et le seuil sa propre dispersion');
+    /* Le meme ecart, chez la meme personne, sous le double : on se tait. */
+    poser([900, 1100, 950, 1050, 1000, 1200, 1000, 1050]);
+    eq(anomalie(), null, 'sous le double de sa dispersion, rien à dire');
+  });
+
+  test('les dépenses se comparent trimestre contre trimestre, mois clos seulement', () => {
+    Fixture.poser(s => {
+      s.budget.expenses = [1000, 1000, 1000, 1400, 1400, 1400].map((v, n) => ({
+        month: `2026-0${n + 1}-01`, v: { Courses: v }, note: '',
+      }));
+      /* Un mois courant enorme : il ne doit RIEN changer, il n'est pas clos. */
+      s.budget.expenses.push({ month: currentMonthKey(), v: { Courses: 9000 }, note: '' });
+    });
+    const i = evaluerInsights().find(x => x.id === 'spending_shift');
+    vrai(!!i, 'la règle produit');
+    eq(i.params.current, 1400, 'les trois derniers mois clos');
+    eq(i.params.previous, 1000, 'contre les trois d’avant');
+    pres(i.params.deltaPct, 40, 'soit quarante pour cent');
+    eq(i.evidence.currentTo, '2026-06-01', 'et le mois courant reste dehors');
+  });
+});
+
+/* --- Les règles, une par une ---------------------------------------- */
 suite('Insight : la réserve de liquidités', () => {
-  const brut = () => par(construireInsights(), 'liquidity_runway');
+  const brut = () => par(evaluerInsights(), 'liquidity_runway');
   const par = (l, id) => l.find(i => i.id === id) || null;
 
   test('sans dépenses observées, la règle se tait', () => {
     Fixture.poser(s => { s.budget.expenses = []; });
-    eq(par(construireInsights(), 'liquidity_runway'), null,
+    eq(par(evaluerInsights(), 'liquidity_runway'), null,
       'aucune dépense saisie n’est une absence, pas un zéro : rien à dire');
     /* Et surtout : `runway()` sait quand meme rendre un chiffre, parce qu'il
        retombe sur l'objectif de depenses. C'est precisement ce que la regle
@@ -40508,7 +40776,7 @@ suite('Insight : la réserve de liquidités', () => {
 
   test('avec des dépenses observées, elle rend des mois et sa preuve', () => {
     Fixture.poser();
-    const i = par(construireInsights(), 'liquidity_runway');
+    const i = par(evaluerInsights(), 'liquidity_runway');
     vrai(!!i, 'la règle produit');
     const r = runway();
     eq(i.params.months, num(r.liquidMonths), 'les mois viennent de runway(), pas d’un second calcul');
@@ -40525,7 +40793,7 @@ suite('Insight : la réserve de liquidités', () => {
     vrai(!/targetLow|targetHigh/.test(regle),
       'les trois et six mois de runway() ne sortent pas d’ici : ce n’est pas une norme');
     Fixture.poser();
-    const i = par2(construireInsights(), 'liquidity_runway');
+    const i = par2(evaluerInsights(), 'liquidity_runway');
     for (const k of Object.keys(i.params)) {
       vrai(!/suffisant|insuffisant|bon|mauvais|ideal/i.test(k), `params.${k} ne juge rien`);
     }
@@ -40534,7 +40802,7 @@ suite('Insight : la réserve de liquidités', () => {
 });
 
 suite('Insight : l’écart à la cible d’allocation', () => {
-  const trouve = () => construireInsights().find(i => i.id === 'allocation_target_gap') || null;
+  const trouve = () => evaluerInsights().find(i => i.id === 'allocation_target_gap') || null;
 
   /* Le reequilibrage se nourrit des POSITIONS, par `stockTotals()`, et non des
      lignes posees sur un compte : deux titres suffisent donc a fabriquer un
@@ -40607,7 +40875,7 @@ suite('Insight : l’écart à la cible d’allocation', () => {
       ];
       s.comptes.forEach(c => { c.cash = []; });
     });
-    const tous = construireInsights().filter(i => i.id === 'allocation_target_gap');
+    const tous = evaluerInsights().filter(i => i.id === 'allocation_target_gap');
     eq(tous.length, 1, 'une seule carte d’allocation, jamais trois');
     const a = trouve(), b = trouve();
     eq(a.params.classe, b.params.classe, 'et c’est la même à chaque lecture');
@@ -40634,7 +40902,7 @@ suite('Insight : l’écart à la cible d’allocation', () => {
 });
 
 suite('Insight : le rythme d’accumulation', () => {
-  const trouve = () => construireInsights().find(i => i.id === 'wealth_pace_shift') || null;
+  const trouve = () => evaluerInsights().find(i => i.id === 'wealth_pace_shift') || null;
   const poserHistorique = valeurs => {
     Fixture.poser(s => {
       s.monthly = valeurs.map((v, i) => {
@@ -40705,7 +40973,7 @@ suite('Insight : le rythme d’accumulation', () => {
 });
 
 suite('Insight : la date d’atteinte de la cible', () => {
-  const trouve = () => construireInsights().find(i => i.id === 'goal_projected_date') || null;
+  const trouve = () => evaluerInsights().find(i => i.id === 'goal_projected_date') || null;
 
   test('sans cible de projection, la règle se tait', () => {
     Fixture.poser(s => { s.meta.projTarget = 0; });
@@ -40747,7 +41015,7 @@ suite('Insight : la date d’atteinte de la cible', () => {
 });
 
 suite('Insight : le capital remboursé', () => {
-  const trouve = () => construireInsights().find(i => i.id === 'debt_principal_share') || null;
+  const trouve = () => evaluerInsights().find(i => i.id === 'debt_principal_share') || null;
 
   test('sans crédit qui amortit, la règle se tait', () => {
     Fixture.poser(s => { s.etabs.forEach(e => { e.dettes = []; }); });
@@ -40807,7 +41075,7 @@ suite('Le moteur d’insights et la cloche ne font pas le même métier', () => 
 
 /* --- Le bruit du rythme --------------------------------------------------- */
 suite('Le rythme ne se dit que s’il a vraiment changé', () => {
-  const trouve = () => construireInsights().find(i => i.id === 'wealth_pace_shift') || null;
+  const trouve = () => evaluerInsights().find(i => i.id === 'wealth_pace_shift') || null;
   /* Treize releves, donc douze intervalles : deux fenetres de six mois. Les six
      premiers ecarts valent `avant`, les six suivants `apres`. */
   const poserRythme = (avant, apres) => {
@@ -40889,7 +41157,7 @@ suite('Le rythme ne se dit que s’il a vraiment changé', () => {
 
 /* --- La granularité de l'allocation --------------------------------------- */
 suite('L’allocation parle de la classe, jamais d’une moitié de classe', () => {
-  const trouve = () => construireInsights().find(i => i.id === 'allocation_target_gap') || null;
+  const trouve = () => evaluerInsights().find(i => i.id === 'allocation_target_gap') || null;
   const pos = (id, classe, role, valeur, compte) => ({
     id, name: id, isin: '', symbol: id.toUpperCase(), currency: 'EUR', qty: 1,
     buyPrice: valeur, price: valeur, fx: 1, fxBuy: 1, account: compte,
@@ -40975,26 +41243,42 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
     return a.slice(a.indexOf('function carteARetenir()'), a.indexOf('function viewOverview()'));
   };
 
-  test('aucun insight : aucune carte, et rien pour combler', () => {
+  test('aucun insight : un état calme, et surtout pas un remplissage', () => {
     Store.state = blankState(); Store.migrate(); refreshAccounts();
     eq(construireInsights().length, 0, 'le moteur ne dit rien sur un état vierge');
     const r = rendu();
-    vrai(/if \(!lus\.length\) return '';/.test(r),
-      'la vue rend une chaîne vide, donc la Home ne porte pas de carte');
-    /* Et surtout : aucune phrase de remplissage dans CETTE carte. La cloche
-       porte bien un « Rien à signaler », et c'est son rôle : elle répond à une
-       question qu'on lui a posée. Une lecture qui n'a rien à dire se tait. */
-    for (const mot of ['Tout va bien', 'Rien à signaler', 'Aucun insight']) {
+    /* LA CARTE REPOND, ELLE NE COMBLE PAS. « Rien d'inhabituel à signaler » dit
+       ce qui a été regardé et ce qui en est ressorti ; c'est une réponse, et
+       elle vaut celles qui portent un chiffre. Ce que la carte ne fait toujours
+       pas, c'est inventer une lecture pour occuper la place. */
+    vrai(/const vide = !lus\.length;/.test(r), 'l’état calme est un état, pas une absence');
+    vrai(r.includes('Rien d’inhabituel à signaler'), 'et il porte sa phrase');
+    vrai(!!I18N.en['Rien d’inhabituel à signaler'], 'qui existe dans les deux langues');
+    /* Aucun jugement, aucune promesse, aucun compte de zéro. « Tout va bien »
+       serait une assurance que rien ne fonde ; « Aucun insight » parlerait du
+       moteur plutôt que du patrimoine ; « Rien à signaler » appartient à la
+       cloche, qui répond à une question qu'on lui a posée. */
+    for (const mot of ['Tout va bien', 'Aucun insight', 'Rien à signaler']) {
       vrai(!r.includes(mot), `« ${mot} » n’apparaît pas dans la carte`);
     }
+    vrai(/\$\{!n \? '' :/.test(r), 'et la pastille « 0 insight » ne peut pas s’écrire');
   });
 
   test('la page ne montre jamais plus de trois insights', () => {
     const a = app();
-    vrai(/const MAX_A_RETENIR = 3;/.test(a), 'le plafond est déclaré, et il vaut trois');
+    /* LE PLAFOND NE S'ECRIT QU'UNE FOIS. Il vit avec la selection qui
+       l'applique, dans le moteur ; la vue le relaie. Deux « 3 » ecrits chacun
+       de son cote auraient fini par differer, et la vue aurait coupe ce que le
+       moteur croyait avoir choisi. */
+    vrai(/const MAX_INSIGHTS = 3;/.test(lireSource('assets/insights.js')),
+      'le plafond est déclaré dans le moteur, et il vaut trois');
+    vrai(/const MAX_A_RETENIR = MAX_INSIGHTS;/.test(a), 'la vue le relaie sans le réécrire');
     vrai(/\.slice\(0, MAX_A_RETENIR\)/.test(rendu()), 'la coupe se fait sur cette constante');
-    /* Le moteur peut en produire cinq : c'est bien un plafond d'affichage. */
-    eq(REGLES_INSIGHT.length, 5, 'cinq règles existent');
+    /* Le catalogue en porte treize : c'est bien un plafond d'affichage, et la
+       selection en ecarte dix sur un etat qui aurait de quoi les nourrir. */
+    vrai(REGLES_INSIGHT.length >= 12, `${REGLES_INSIGHT.length} règles au catalogue`);
+    Fixture.poser();
+    vrai(construireInsights().length <= 3, 'et jamais plus de trois sortent');
   });
 
   test('l’ordre affiché est celui du moteur, sans second tri', () => {
@@ -41019,14 +41303,15 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
     for (const m of a.slice(a.indexOf('const VIEWS = {'), a.indexOf('const REDIRECTIONS')).matchAll(/^  ([a-z-]+):\s/gm)) routes.push(m[1]);
     for (const m of a.slice(a.indexOf('const REDIRECTIONS = {'), a.indexOf('const SOUS_ONGLETS')).matchAll(/^  '?([a-z-]+)'?:\s*\[/gm)) routes.push(m[1]);
     const cibles = [...p.matchAll(/cta: \{ vue: '([a-z-]+)'/g)].map(m => m[1]);
-    eq(cibles.length, 5, 'les cinq insights portent un renvoi');
+    eq(cibles.length, REGLES_INSIGHT.length, 'chaque règle du catalogue porte un renvoi');
     for (const c of cibles) vrai(routes.includes(c), `« ${c} » est une route servie`);
-    eq(cibles.join(','), 'overview,rebalance,overview,objective,overview',
-      'réserve → Autonomie, allocation → Cible, rythme → Rythme, objectif → Projection, capital → Accumulation');
-    /* Quatre des cinq visent une carte precise, pas le haut d'une page. */
+    /* Et chaque ancre citee existe vraiment dans le balisage : un renvoi vers
+       une carte absente defile jusqu'en haut de page sans rien dire. */
     const ancres = [...p.matchAll(/ancre: '([a-z]+)'/g)].map(m => m[1]);
-    eq(ancres.join(','), 'autonomie,evolution,trajectoire,accumulation',
-      'chaque renvoi qui peut viser une carte la vise');
+    vrai(ancres.length >= 8, `${ancres.length} renvois visent une carte précise`);
+    for (const an of new Set(ancres)) {
+      vrai(a.includes(`data-anchor="${an}"`), `la carte « ${an} » existe`);
+    }
     /* Aucun libelle vague. */
     for (const mot of ['En savoir plus', 'Optimiser', 'Améliorer', 'Découvrir']) {
       vrai(!p.includes(mot), `aucun renvoi ne dit « ${mot} »`);
@@ -41319,7 +41604,12 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
                                  ['debt_principal_share', "cta: { vue: 'overview', ancre: 'accumulation', libelle: 'Voir mon accumulation' }"]]) {
       vrai(p.includes(attendu), `${id} porte son renvoi`);
     }
-    eq((p.match(/ancre: '/g) || []).length, 4, 'quatre renvois ancrés');
+    /* Les quatre premiers renvois n'ont pas bouge ; les nouveaux ne visent que
+       des cartes qui existaient deja, aucune n'a ete creee pour l'occasion. */
+    for (const an of new Set([...p.matchAll(/ancre: '([a-z]+)'/g)].map(m => m[1]))) {
+      vrai(['autonomie', 'evolution', 'trajectoire', 'accumulation'].includes(an),
+        `« ${an} » est une des quatre cartes déjà ancrées`);
+    }
   });
 
   test('aucun calcul n’a changé', () => {
@@ -41327,7 +41617,7 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
     const m = lireSource('assets/insights.js');
     vrai(!/autonomie|Voir mon|goto/.test(m), 'le moteur ne connaît pas les destinations');
     Fixture.poser();
-    const i = construireInsights().find(x => x.id === 'liquidity_runway');
+    const i = evaluerInsights().find(x => x.id === 'liquidity_runway');
     if (i) {
       const r = runway();
       eq(i.params.months, num(r.liquidMonths), 'les mois viennent toujours de runway()');
@@ -41354,13 +41644,13 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
        projection, un nombre sans intitule : le montant est la seule facon de la
        nommer, et on n'en invente pas d'autre. */
     const p = presentation();
-    const bloc = p.slice(p.indexOf('goal_projected_date: {'), p.indexOf('debt_principal_share: {'));
+    const bloc = p.slice(p.indexOf('goal_projected_date: {'), p.indexOf('liquidity_runway_shift: {'));
     vrai(/\.replace\('\{t\}', fmtEUR0\(p\.target\)\)/.test(bloc),
       'le montant vient des params du moteur et passe par le formateur central');
     vrai(!/[€$]/.test(bloc.replace(/\/\*[\s\S]*?\*\//g, '')), 'aucun signe monétaire en dur');
     /* Le moteur le rendait deja : rien de neuf cote calcul. */
     Fixture.poser(s => { s.meta.projTarget = 200000; s.meta.projHorizon = 30; });
-    const i = construireInsights().find(x => x.id === 'goal_projected_date');
+    const i = evaluerInsights().find(x => x.id === 'goal_projected_date');
     vrai(!!i, 'la règle produit');
     eq(i.params.target, num(projectionSettings().target), 'la cible vient de projectionSettings()');
     /* Et aucun nom n'est invente : le modele n'en porte pas. */
@@ -41457,14 +41747,20 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
   test('aucun renvoi ne reste générique', () => {
     const p = presentation();
     const libelles = [...p.matchAll(/libelle: '([^']+)'/g)].map(m => m[1].replace(/\\'/g, "'"));
-    eq(libelles.length, 5, 'les cinq portent un renvoi');
+    eq(libelles.length, REGLES_INSIGHT.length, 'chaque règle porte son renvoi');
     for (const l of libelles) {
       vrai(!/^Voir le budget$|^Voir le détail$|^En savoir plus$/.test(l),
         `« ${l} » ne dit pas ce qu’il ouvre`);
       vrai(!!I18N.en[l], `« ${l} » a sa traduction`);
     }
-    /* Chacun nomme sa destination, et aucun ne se repete. */
-    eq(new Set(libelles).size, 5, 'cinq renvois distincts');
+    /* DEUX REGLES PEUVENT VISER LA MEME CARTE, et c'est normal : « ta réserve
+       couvre huit mois » et « ta réserve a gagné deux mois » mènent toutes deux
+       à l'autonomie financière. Ce qui compte n'est pas qu'ils soient distincts
+       mais que chacun NOMME l'endroit où il mène. */
+    for (const l of libelles) {
+      vrai(/^Voir (mon|ma|mes|l’)/.test(l),
+        `« ${l} » nomme l’endroit où il mène, et non l’action qu’il propose`);
+    }
   });
 
   test('les phrases restent courtes, et aucune ne porte de monnaie en dur', () => {
@@ -41494,7 +41790,7 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
 
 /* --- Un rythme, pas une moyenne gonflée par un seul mois ------------------- */
 suite('Le rythme résiste à un mois exceptionnel', () => {
-  const trouve = () => construireInsights().find(i => i.id === 'wealth_pace_shift') || null;
+  const trouve = () => evaluerInsights().find(i => i.id === 'wealth_pace_shift') || null;
   /* Une fenetre = six variations mensuelles. On pose douze variations : les six
      premieres font la periode precedente, les six suivantes la recente. */
   const poser = (avant, apres) => {
@@ -41632,8 +41928,12 @@ suite('Une entrée peut porter son chiffre devant', () => {
        barre en SVG, et `esc` l'afficherait en clair. */
     vrai(/escMontant\(p\.valeur/.test(rendu), 'et elle traverse l’échappement des montants');
     const p = a.slice(a.indexOf('const PRESENTATION_INSIGHT'), a.indexOf('function carteARetenir()'));
-    eq((p.match(/valeur: p =>/g) || []).length, 1,
-      'une seule règle en porte une aujourd’hui : les autres se lisent en une phrase');
+    /* Toutes n'en portent pas : une date d'objectif ou un écart d'allocation se
+       lisent en une phrase, et sortir un nombre de leur milieu le rendrait muet.
+       Le gabarit reste donc facultatif, et une règle sur deux s'en passe. */
+    const combien = (p.match(/valeur: p =>/g) || []).length;
+    vrai(combien >= 2 && combien < REGLES_INSIGHT.length,
+      `${combien} règles sur ${REGLES_INSIGHT.length} portent un chiffre devant`);
   });
 
   test('le chiffre ne prend pas la couleur de l’accent', () => {

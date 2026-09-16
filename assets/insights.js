@@ -42,8 +42,6 @@
    manquante n'est pas un insight : elle rend simplement la regle non eligible,
    et c'est la cloche qui la reclame, si c'est son role. */
 
-const INSIGHT_PRIORITE = { HAUTE: 1, MOYENNE: 2, BASSE: 3 };
-
 /* --- Seuils : ce sont des filtres d'affichage, jamais des normes -----------
 
    LIRE CECI AVANT D'EN AJOUTER UN.
@@ -56,7 +54,13 @@ const INSIGHT_PRIORITE = { HAUTE: 1, MOYENNE: 2, BASSE: 3 };
 
    La convention de comparaison est `>=`, et elle est volontairement inclusive :
    un ecart de exactement 5,0 points produit l'insight. Un test la fige, parce
-   que la frontiere est le seul endroit ou deux lecteurs peuvent differer. */
+   que la frontiere est le seul endroit ou deux lecteurs peuvent differer.
+
+   ET QUAND C'EST POSSIBLE, LE SEUIL VIENT DE LA PERSONNE. « Un mois de depenses
+   inhabituel » n'a pas de definition generale : trois cents euros de plus sont
+   enormes chez l'un et invisibles chez l'autre. Deux regles plus bas se passent
+   donc de tout nombre pose et se comparent a la dispersion propre du detenteur,
+   ou a la forme de son propre portefeuille. */
 const SEUIL_AFFICHAGE_ALLOCATION_PP = 5;
 
 /* Le rythme change-t-il assez pour qu'on le dise ? Vingt pour cent d'ecart
@@ -82,7 +86,43 @@ const SEUIL_AFFICHAGE_ALLOCATION_PP = 5;
    l'allocation. Un test la fige. */
 const SEUIL_AFFICHAGE_RYTHME_PCT = 20;
 
+const SEUIL_AFFICHAGE_RESERVE_MOIS = 1;
+
+const SEUIL_AFFICHAGE_POCHE_PP = 5;
+
+const SEUIL_AFFICHAGE_DEPENSES_PCT = 10;
+
+const SEUIL_AFFICHAGE_OBJECTIF_MOIS = 2;
+
+const MOIS_CREDIT_BIENTOT_SOLDE = 12;
+
 const MOIS_MINIMUM_FENETRE_RYTHME = 6;
+
+const MOIS_MINIMUM_FENETRE_DEPENSES = 3;
+
+const INSIGHT_PRIORITE = { HAUTE: 30, MOYENNE: 20, BASSE: 10 };
+const amplitude = (valeur, seuil) => {
+  if (!(seuil > 0)) return 0;
+  return Math.max(0, Math.min(20, Math.round((Math.abs(num(valeur)) / seuil - 1) * 10)));
+};
+
+const MAX_INSIGHTS = 3;
+
+const insightsVus = () => (Store.state && Store.state.meta && Store.state.meta.insightsVus) || {};
+
+function joursEntre(depuis, jusqua) {
+  return Math.round((new Date(String(jusqua) + 'T12:00:00')
+    - new Date(String(depuis) + 'T12:00:00')) / 86400000);
+}
+
+function auRepos(regle, valeur, aujourdhui) {
+  const vu = insightsVus()[regle.id];
+  if (!vu || !vu.date) return false;
+  const jours = joursEntre(vu.date, aujourdhui);
+  if (jours <= 0) return false;
+  if (jours >= num(regle.reposJours)) return false;
+  return Math.abs(num(valeur) - num(vu.valeur)) < num(regle.materialite);
+}
 
 function contexteInsights(ctx) {
   const c = ctx || {};
@@ -237,88 +277,239 @@ function rythmeRepresentatif(points) {
 }
 
 /* =============================================================
-   LES REGLES
+   COUCHE 1 — LES MESURES
    =============================================================
 
-   Chacune porte son identifiant, sa categorie, son rang, son groupe de
-   deduplication, la question a laquelle elle repond, et deux fonctions pures.
-   `eligible` dit si les donnees permettent de conclure ; `evaluer` rend
-   l'insight ou `null`. L'ordre de declaration sert de depart au classement :
-   il est stable, et c'est lui qui departage deux rangs egaux. */
+   Un seul passage sur les moteurs, un seul objet, et toutes les regles y
+   puisent. Deux raisons, et la seconde compte plus que la premiere : la
+   projection et le reequilibrage coutent cher, et surtout deux regles qui
+   liraient le meme chiffre a deux moments differents finiraient par ne plus
+   dire la meme chose.
+
+   RIEN N'EST CALCULE ICI QUI EXISTE AILLEURS. Chaque champ est la sortie d'un
+   moteur de `store.js`, parfois divisee par une autre sortie du meme fichier.
+   Aucune formule financiere nouvelle, aucun seuil, aucune interpretation : la
+   couche des mesures ne fait que rassembler. */
+function mesuresInsights(ctx) {
+  const annee = String(ctx.aujourdhui).slice(0, 4);
+  const dep = depensesObservees(annee);
+  const r = runway();
+  const t = nowTotals();
+  const p = patrimoine();
+  const rec = savingsReconciliation();
+  const pace = monthlyPace();
+  const proj = projectionSettings();
+  const releves = historySeries({ includeNow: false });
+
+  const moisCourant = String(ctx.aujourdhui).slice(0, 7);
+  const depenses = expenseSeries('all')
+    .filter(x => x.month < moisCourant && x.total > 0)
+    .sort((a, b) => a.month.localeCompare(b.month));
+
+  return {
+    aujourdhui: ctx.aujourdhui,
+    depensesObservees: dep,
+    runway: r,
+    totaux: t,
+    patrimoine: p,
+    epargne: rec,
+    pace,
+    releves,
+    depenses,
+    projection: proj,
+    /* Le poids de la dette dans le patrimoine, quand la base est positive.
+       `null` et non zero : sans patrimoine brut, il n'y a pas de rapport. */
+    poidsDette: num(p.brut) > 0 ? num(p.dettes) / num(p.brut) * 100 : null,
+  };
+}
+
+/* La moyenne d'une tranche de la serie des depenses. Rend `null` si la tranche
+   n'est pas pleine : comparer trois mois a deux n'a pas de sens, et la
+   difference se lirait comme un changement de comportement. */
+function moyenneDepenses(serie, debut, combien) {
+  const t = (serie || []).slice(debut, debut + combien);
+  if (t.length < combien) return null;
+  return t.reduce((s, x) => s + num(x.total), 0) / combien;
+}
+
+function partDesApports(points) {
+  if (!points || !points.length) return null;
+  const debut = String(points[0].depuis || points[0].date);
+  const fin = String(points[points.length - 1].date);
+  const total = points.reduce((s, x) => s + num(x.delta), 0);
+  if (!(total > 0)) return null;
+  const apports = num(apportsDetail(debut, fin).net);
+  if (!(apports > 0)) return null;
+  return { total, apports, reste: total - apports, part: apports / total * 100, debut, fin };
+}
+
+function reserveIlYA(m, moisEnArriere) {
+  const pts = m.releves;
+  if (!pts.length || !(num(m.runway.burn) > 0)) return null;
+  const cible = decalerMois(String(m.aujourdhui), -moisEnArriere);
+  const avant = pts.filter(x => String(x.date) <= cible);
+  if (!avant.length) return null;
+  const p = avant[avant.length - 1];
+  if (moisEntre(String(p.date), String(m.aujourdhui)) < moisEnArriere) return null;
+  return { date: String(p.date), cash: num(p.cash), mois: num(p.cash) / num(m.runway.burn) };
+}
+
+function decalerMois(iso, n) {
+  const y = Number(String(iso).slice(0, 4));
+  const mo = Number(String(iso).slice(5, 7));
+  const total = (mo - 1) + n;
+  const an = y + Math.floor(total / 12);
+  const mois = ((total % 12) + 12) % 12 + 1;
+  /* Concatene plutot qu'un gabarit : le moteur s'interdit tout signe
+     monetaire, et un test le verifie sur le dollar, que `${}` porte aussi. */
+  return an + '-' + String(mois).padStart(2, '0') + '-28';
+}
+
+/* =============================================================
+   COUCHE 2 — LE CATALOGUE DES REGLES
+   =============================================================
+
+   Chacune porte son identifiant, sa FAMILLE, son rang, son groupe de
+   deduplication, son repos, sa materialite, la question a laquelle elle repond,
+   et deux fonctions pures. `eligible` dit si les donnees permettent de
+   conclure ; `evaluer` rend l'insight ou `null`. Les deux recoivent les mesures
+   deja calculees et le contexte, jamais l'etat brut.
+
+   LA FAMILLE N'EST PAS LA CATEGORIE. La categorie nomme le sujet ; la famille
+   sert a la selection, et c'est elle qui empeche trois entrees de raconter la
+   meme histoire sous trois angles.
+
+   CE QUI N'EST PAS DANS CE CATALOGUE, ET POURQUOI. Une regle n'y vit que si un
+   moteur existant porte deja sa donnee. Trois manquent, et leur absence est un
+   choix, pas un oubli :
+
+     — « il te reste 1 850 € au-dela de ta reserve cible » demanderait une
+       reserve cible DECLAREE. `runway()` porte bien un `targetLow` a trois mois,
+       mais c'est une heuristique d'affichage, pas une decision du detenteur ; la
+       prendre pour telle ferait passer une phrase qui circule pour un arbitrage
+       que personne n'a rendu.
+     — « 70 % de ta progression vient de la hausse de tes placements »
+       demanderait de separer la valorisation du capital rembourse et de la
+       revalorisation d'un bien. Rien ne sait le faire ici. La regle qui existe
+       parle donc d'apports et « du reste », et ne nomme jamais le reste.
+     — « ta premiere ligne pesait 10 % il y a six mois » demanderait un
+       historique des POSITIONS. Les releves mensuels notent des montants par
+       compte, jamais par ligne. La concentration ne se compare donc qu'a la
+       forme actuelle du portefeuille.
+
+   Ces trois-la reviendront le jour ou la donnee existera, pas avant. */
 const REGLES_INSIGHT = [
 
-  /* --- 1. Combien de temps la reserve tient -------------------------------
+  /* --- Ce que la reserve couvre ------------------------------------------
 
      Le tableau de bord montre deja le cash. Ce qu'il ne montre pas, c'est le
-     rapport entre ce cash et ce qui sort chaque mois — et c'est la seule forme
+     rapport entre ce cash et ce qui sort chaque mois, et c'est la seule forme
      sous laquelle un montant de liquidites veut dire quelque chose.
 
      Aucun seuil, aucun jugement : ni « trop », ni « pas assez ». `runway()`
      porte bien un `targetLow` et un `targetHigh` a trois et six mois, qui
-     servent une jauge ailleurs ; ils ne sortent PAS d'ici. Trois mois n'est pas
-     une verite, c'est une phrase qui circule. */
+     servent une jauge ailleurs ; ils ne sortent PAS d'ici. */
   {
     id: 'liquidity_runway',
+    famille: 'liquidite',
     categorie: 'liquidity',
     priorite: INSIGHT_PRIORITE.HAUTE,
     dedupeGroup: 'liquidity',
+    reposJours: 30,
+    materialite: SEUIL_AFFICHAGE_RESERVE_MOIS,
     question: 'Combien de temps ma réserve couvre-t-elle mes dépenses ?',
     titleKey: 'insight.liquidity_runway.title',
     descriptionKey: 'insight.liquidity_runway.description',
-    explainabilityKey: 'insight.liquidity_runway.explain',
-    eligible(ctx) {
-      const d = depensesObservees(String(ctx.aujourdhui).slice(0, 4));
-      if (!d.observees) return false;
-      const r = runway();
-      return num(r.burn) > 0;
-    },
-    evaluer(ctx) {
-      const d = depensesObservees(String(ctx.aujourdhui).slice(0, 4));
-      const r = runway();
+    eligible: m => m.depensesObservees.observees && num(m.runway.burn) > 0,
+    evaluer: m => ({
+      valeur: num(m.runway.liquidMonths),
+      params: {
+        months: num(m.runway.liquidMonths),
+        /* `runway()` ne rend pas la somme mobilisable, il rend le nombre de mois
+           qu'elle couvre. On la retrouve en multipliant par la consommation :
+           c'est l'inverse exact de sa propre division, pas un second calcul. */
+        reserve: num(m.runway.burn) * num(m.runway.liquidMonths),
+        monthlyBurn: num(m.runway.burn),
+      },
+      evidence: {
+        source: 'runway',
+        immediate: num(m.runway.immediate),
+        monthlyBurn: num(m.runway.burn),
+        liquidMonths: num(m.runway.liquidMonths),
+        immediateMonths: num(m.runway.immediateMonths),
+        observedExpenseMonths: m.depensesObservees.mois,
+        observedMonthlyExpenses: m.depensesObservees.moyenne,
+      },
+      action: { vue: 'overview' },
+    }),
+  },
+
+  {
+    id: 'liquidity_runway_shift',
+    famille: 'liquidite',
+    categorie: 'liquidity',
+    priorite: INSIGHT_PRIORITE.HAUTE,
+    dedupeGroup: 'liquidity_shift',
+    reposJours: 30,
+    materialite: SEUIL_AFFICHAGE_RESERVE_MOIS,
+    question: 'Ma réserve s’est-elle étoffée ou érodée ?',
+    titleKey: 'insight.liquidity_runway_shift.title',
+    descriptionKey: 'insight.liquidity_runway_shift.description',
+    eligible: m => !!reserveIlYA(m, 3),
+    evaluer(m) {
+      const avant = reserveIlYA(m, 3);
+      if (!avant) return null;
+      /* LE MEME PERIMETRE DES DEUX COTES, ET C'EST TOUT L'ENJEU. Un releve
+         mensuel ne note qu'une poche de TRESORERIE : il ne sait pas ce qui
+         etait mobilisable sous huit jours ni ce qui dormait dans une assurance
+         vie. Repondre avec `liquidMonths`, qui ajoute le differe, aurait compare
+         une poche a trois, et l'ecart aurait annonce une progression de la
+         tresorerie qui n'aurait ete qu'un changement de definition.
+         La regle voisine, elle, parle bien de liquidites mobilisables : les deux
+         chiffres different, et les deux phrases nomment ce qu'elles comptent. */
+      const maintenant = num(m.totaux.cash) / num(m.runway.burn);
+      const ecart = maintenant - avant.mois;
+      if (Math.abs(ecart) + 1e-9 < SEUIL_AFFICHAGE_RESERVE_MOIS) return null;
       return {
-        params: {
-          months: num(r.liquidMonths),
-          /* `runway()` ne rend pas la somme mobilisable, il rend le nombre de
-             mois qu'elle couvre. On la retrouve en multipliant par la
-             consommation : c'est l'inverse exact de sa propre division, pas un
-             second calcul de liquidites. */
-          reserve: num(r.burn) * num(r.liquidMonths),
-          monthlyBurn: num(r.burn),
-        },
+        valeur: ecart,
+        poids: amplitude(ecart, SEUIL_AFFICHAGE_RESERVE_MOIS),
+        params: { months: maintenant, previousMonths: avant.mois, deltaMonths: ecart },
         evidence: {
-          source: 'runway',
-          immediate: num(r.immediate),
-          monthlyBurn: num(r.burn),
-          liquidMonths: num(r.liquidMonths),
-          immediateMonths: num(r.immediateMonths),
-          observedExpenseMonths: d.mois,
-          observedMonthlyExpenses: d.moyenne,
+          source: 'nowTotals+historySeries',
+          scope: 'cash',
+          monthlyBurn: num(m.runway.burn),
+          burnConstant: true,
+          previousDate: avant.date,
+          previousCash: avant.cash,
+          currentCash: num(m.totaux.cash),
+          displayThresholdMonths: SEUIL_AFFICHAGE_RESERVE_MOIS,
         },
-        action: { vue: 'budget' },
+        action: { vue: 'overview' },
       };
     },
   },
 
-  /* --- 2. L'ecart a la cible que l'utilisateur a posee --------------------
+  /* --- L'ecart a la cible que le detenteur a posee ------------------------
 
      La seule comparaison qui vaille ici est avec SA cible, jamais avec une
      repartition reputee bonne. `rebalanceRows()` la calcule deja, sur une base
-     explicite dont les classes mises hors jeu sont retirees — on ne refait donc
+     explicite dont les classes mises hors jeu sont retirees : on ne refait donc
      ni le denominateur ni les parts.
 
      Une seule sortie par regle, la deviation la plus grande en valeur absolue.
      Cinq classes qui derivent ne font pas cinq cartes : elles font une carte,
-     celle qui derive le plus, et le detail se lit dans Allocation. A egalite
-     parfaite, l'ordre rendu par le moteur tranche, et il est stable. */
+     celle qui derive le plus, et le detail se lit dans Allocation. */
   {
     id: 'allocation_target_gap',
+    famille: 'allocation',
     categorie: 'allocation',
     priorite: INSIGHT_PRIORITE.HAUTE,
     dedupeGroup: 'allocation',
+    reposJours: 21,
+    materialite: SEUIL_AFFICHAGE_ALLOCATION_PP,
     question: 'Est-ce que mon allocation s’éloigne de ce que j’avais décidé ?',
     titleKey: 'insight.allocation_target_gap.title',
     descriptionKey: 'insight.allocation_target_gap.description',
-    explainabilityKey: 'insight.allocation_target_gap.explain',
     eligible() {
       const r = rebalanceRows();
       if (!(num(r.base) > 0)) return false;
@@ -335,23 +526,18 @@ const REGLES_INSIGHT = [
       }
       if (!tete) return null;
       return {
+        valeur: tete.ecart,
+        poids: amplitude(tete.ecart, SEUIL_AFFICHAGE_ALLOCATION_PP),
         params: {
-          classe: tete.r.cle,
-          label: tete.r.label,
-          currentPct: num(tete.r.pct),
-          targetPct: num(tete.r.targetPct),
-          deltaPct: tete.ecart,
+          classe: tete.r.cle, label: tete.r.label,
+          currentPct: num(tete.r.pct), targetPct: num(tete.r.targetPct), deltaPct: tete.ecart,
         },
         evidence: {
           source: 'rebalanceRows',
           classe: tete.r.cle,
-          scope: 'classe',
-          lignesAgregees: num(tete.r.roles),
-          currentPct: num(tete.r.pct),
-          targetPct: num(tete.r.targetPct),
-          deltaPct: tete.ecart,
-          currentValue: num(tete.r.value),
-          targetValue: num(tete.r.targetVal),
+          scope: 'classe', lignesAgregees: num(tete.r.roles),
+          currentPct: num(tete.r.pct), targetPct: num(tete.r.targetPct), deltaPct: tete.ecart,
+          currentValue: num(tete.r.value), targetValue: num(tete.r.targetVal),
           displayThresholdPp: SEUIL_AFFICHAGE_ALLOCATION_PP,
         },
         action: { vue: 'rebalance' },
@@ -359,43 +545,71 @@ const REGLES_INSIGHT = [
     },
   },
 
-  /* --- 3. Le rythme d'accumulation, compare a lui-meme --------------------
+  {
+    id: 'pocket_share_shift',
+    famille: 'allocation',
+    categorie: 'allocation',
+    priorite: INSIGHT_PRIORITE.MOYENNE,
+    dedupeGroup: 'pocket',
+    reposJours: 45,
+    materialite: SEUIL_AFFICHAGE_POCHE_PP,
+    question: 'Une part de mon patrimoine a-t-elle changé de poids ?',
+    titleKey: 'insight.pocket_share_shift.title',
+    descriptionKey: 'insight.pocket_share_shift.description',
+    eligible: m => !!partsDesPoches(m, 6),
+    evaluer(m) {
+      const p = partsDesPoches(m, 6);
+      if (!p) return null;
+      let tete = null;
+      for (const x of p.lignes) {
+        if (Math.abs(x.ecart) + 1e-9 < SEUIL_AFFICHAGE_POCHE_PP) continue;
+        if (!tete || Math.abs(x.ecart) > Math.abs(tete.ecart)) tete = x;
+      }
+      if (!tete) return null;
+      return {
+        valeur: tete.ecart,
+        poids: amplitude(tete.ecart, SEUIL_AFFICHAGE_POCHE_PP),
+        params: { poche: tete.cle, currentPct: tete.maintenant,
+                  previousPct: tete.avant, deltaPct: tete.ecart, months: p.mois },
+        evidence: {
+          source: 'historySeries', poche: tete.cle, previousDate: p.date,
+          currentPct: tete.maintenant, previousPct: tete.avant, deltaPct: tete.ecart,
+          observedMonths: p.mois, displayThresholdPp: SEUIL_AFFICHAGE_POCHE_PP,
+        },
+        action: { vue: 'overview' },
+      };
+    },
+  },
+
+  /* --- Le rythme de progression, compare a lui-meme -----------------------
 
      RYTHME, ET JAMAIS PERFORMANCE. Ce que `monthlyPace()` mesure est la
      variation du patrimoine NET entre deux releves : elle contient l'epargne,
-     les apports exterieurs, le capital rembourse sur les credits et le
-     mouvement des marches, sans savoir les separer. L'appeler rendement serait
-     attribuer aux marches ce qu'on a mis de sa poche.
+     les apports exterieurs, le capital rembourse sur les credits et le mouvement
+     des marches, sans savoir les separer. L'appeler rendement serait attribuer
+     aux marches ce qu'on a mis de sa poche.
 
-     Les deux fenetres se nomment par les mois reellement couverts. Personne ne
-     lira « douze mois contre les douze precedents » sur un historique qui n'en
-     porte pas vingt-quatre : les nombres de mois sortent dans les parametres,
-     et la phrase se construira avec eux.
-
-     LE RYTHME EST UNE MEDIANE, PAS UNE MOYENNE. Un seul mois exceptionnel
-     — prime, heritage, vente — suffit a faire dire a une moyenne que sept
-     cents euros par mois en valent deux mille. La mediane repond a « a quoi
-     ressemble un mois ordinaire ici », qui est la question posee. La moyenne
-     reste dans la preuve : c'est elle que l'historique affiche, et l'ecart
-     entre les deux se lit. */
+     LE RYTHME EST UNE MEDIANE, PAS UNE MOYENNE. Un seul mois exceptionnel suffit
+     a faire dire a une moyenne que sept cents euros par mois en valent deux
+     mille. La moyenne reste dans la preuve : c'est elle que l'historique
+     affiche, et l'ecart entre les deux se lit. */
   {
     id: 'wealth_pace_shift',
+    famille: 'progression',
     categorie: 'wealth_pace',
     priorite: INSIGHT_PRIORITE.MOYENNE,
     dedupeGroup: 'wealth_pace',
+    reposJours: 30,
+    materialite: SEUIL_AFFICHAGE_RYTHME_PCT,
     question: 'Mon patrimoine progresse-t-il plus vite qu’avant ?',
     titleKey: 'insight.wealth_pace_shift.title',
     descriptionKey: 'insight.wealth_pace_shift.description',
-    explainabilityKey: 'insight.wealth_pace_shift.explain',
-    eligible() {
-      return !!fenetresRythme(monthlyPace().points, MOIS_MINIMUM_FENETRE_RYTHME);
-    },
-    evaluer() {
-      const f = fenetresRythme(monthlyPace().points, MOIS_MINIMUM_FENETRE_RYTHME);
+    eligible: m => !!fenetresRythme(m.pace.points, MOIS_MINIMUM_FENETRE_RYTHME),
+    evaluer(m) {
+      const f = fenetresRythme(m.pace.points, MOIS_MINIMUM_FENETRE_RYTHME);
       if (!f) return null;
       const a = rythmeRepresentatif(f.recente);
       const b = rythmeRepresentatif(f.precedente);
-      const apA = statsRythme(f.recente), apB = statsRythme(f.precedente);
       if (!a || !b) return null;
       if (!a.representatif || !b.representatif) return null;
       const courant = a.mediane, precedent = b.mediane;
@@ -408,91 +622,119 @@ const REGLES_INSIGHT = [
          borne, et le test qui la fige echouerait pour une raison qui n'a rien a
          voir avec la finance. */
       if (Math.abs(ecartPct) + 1e-9 < SEUIL_AFFICHAGE_RYTHME_PCT) return null;
+      const apA = statsRythme(f.recente), apB = statsRythme(f.precedente);
       return {
+        valeur: ecartPct,
+        poids: amplitude(ecartPct, SEUIL_AFFICHAGE_RYTHME_PCT),
         params: {
-          currentMonthly: courant,
-          currentMonths: num(a.mois),
-          previousMonthly: precedent,
-          previousMonths: num(b.mois),
-          deltaMonthly: courant - precedent,
-          deltaPct: ecartPct,
+          currentMonthly: courant, currentMonths: num(a.mois),
+          previousMonthly: precedent, previousMonths: num(b.mois),
+          deltaMonthly: courant - precedent, deltaPct: ecartPct,
         },
         evidence: {
           source: 'monthlyPace',
           currentFrom: f.recente[0] ? f.recente[0].depuis || f.recente[0].date : null,
           currentTo: f.recente[f.recente.length - 1].date,
-          currentMonths: num(a.mois),
-          currentMonthly: courant,
-          currentMean: a.moyenne,
-          currentDeviation: a.ecartMedian,
+          currentMonths: num(a.mois), currentMonthly: courant,
+          currentMean: a.moyenne, currentDeviation: a.ecartMedian,
           currentLargestMonthShare: a.partDuPlusGrosMois,
           previousFrom: f.precedente[0] ? f.precedente[0].depuis || f.precedente[0].date : null,
           previousTo: f.precedente[f.precedente.length - 1].date,
-          previousMonths: num(b.mois),
-          previousMonthly: precedent,
-          previousMean: b.moyenne,
-          previousDeviation: b.ecartMedian,
+          previousMonths: num(b.mois), previousMonthly: precedent,
+          previousMean: b.moyenne, previousDeviation: b.ecartMedian,
           previousLargestMonthShare: b.partDuPlusGrosMois,
-          deltaPct: ecartPct,
-          displayThresholdPct: SEUIL_AFFICHAGE_RYTHME_PCT,
-          currentContributions: num(apA.apports),
-          previousContributions: num(apB.apports),
+          deltaPct: ecartPct, displayThresholdPct: SEUIL_AFFICHAGE_RYTHME_PCT,
+          currentContributions: num(apA.apports), previousContributions: num(apB.apports),
         },
-        action: { vue: 'history' },
+        action: { vue: 'overview' },
       };
     },
   },
 
-  /* --- 4. Quand la cible serait atteinte ----------------------------------
+  /* --- D'ou vient la progression ------------------------------------------
+
+     LA SEULE ATTRIBUTION DE CAUSE QUE LES DONNEES AUTORISENT, et elle s'arrete a
+     mi-chemin. `apportsDetail()` sait ce qui est ENTRE du dehors sur la periode.
+     Le complement, lui, melange la valorisation des placements, le capital
+     rembourse sur les credits et la revalorisation d'un bien : on le nomme « le
+     reste », et jamais « les marches ». */
+  {
+    id: 'wealth_growth_origin',
+    famille: 'progression',
+    categorie: 'wealth_pace',
+    priorite: INSIGHT_PRIORITE.MOYENNE,
+    dedupeGroup: 'origine',
+    reposJours: 45,
+    materialite: 10,
+    question: 'Ma progression vient-elle de ce que je verse ou du reste ?',
+    titleKey: 'insight.wealth_growth_origin.title',
+    descriptionKey: 'insight.wealth_growth_origin.description',
+    eligible(m) {
+      const f = fenetresRythme(m.pace.points, MOIS_MINIMUM_FENETRE_RYTHME);
+      return !!(f && partDesApports(f.recente));
+    },
+    evaluer(m) {
+      const f = fenetresRythme(m.pace.points, MOIS_MINIMUM_FENETRE_RYTHME);
+      const o = f && partDesApports(f.recente);
+      if (!o) return null;
+      if (o.part < 10 || o.part > 90) return null;
+      return {
+        valeur: o.part,
+        params: {
+          contributionsPct: o.part, restPct: 100 - o.part,
+          contributions: o.apports, rest: o.reste, total: o.total,
+          months: num(rythmeRepresentatif(f.recente).mois),
+        },
+        evidence: {
+          source: 'apportsDetail+monthlyPace',
+          from: o.debut, to: o.fin, total: o.total, contributions: o.apports,
+          rest: o.reste, restIsNotOnlyMarkets: true,
+        },
+        action: { vue: 'overview' },
+      };
+    },
+  },
+
+  /* --- Quand la cible serait atteinte -------------------------------------
 
      Le seul moteur de projection est `capitalisation()`. On ne refait pas de
      trajectoire ici, on lit l'annee et le mois qu'il a notes au passage.
 
      « Selon tes hypotheses actuelles » et non « au rythme actuel » : la
      trajectoire depend d'un scenario de rendement, d'un versement mensuel et
-     d'une inflation, tous poses par l'utilisateur. Les nommer dans la preuve
-     est ce qui rend la date honnete.
-
-     Si le moteur n'atteint pas la cible dans l'horizon choisi, il n'y a pas de
-     date : la regle se tait plutot que d'en fabriquer une. Une cible deja
-     franchie n'est pas non plus cette regle-la. */
+     d'une inflation, tous poses par le detenteur. Les nommer dans la preuve est
+     ce qui rend la date honnete. */
   {
     id: 'goal_projected_date',
+    famille: 'objectif',
     categorie: 'goal',
     priorite: INSIGHT_PRIORITE.HAUTE,
     dedupeGroup: 'goal',
+    reposJours: 30,
+    materialite: SEUIL_AFFICHAGE_OBJECTIF_MOIS,
     question: 'Quand ma cible serait-elle atteinte ?',
     titleKey: 'insight.goal_projected_date.title',
     descriptionKey: 'insight.goal_projected_date.description',
-    explainabilityKey: 'insight.goal_projected_date.explain',
-    eligible() {
-      const s = projectionSettings();
-      if (!(num(s.target) > 0)) return false;
-      const p = capitalisation({ years: horizonProjection() });
-      const a = p.targetReached;
+    eligible(m) {
+      if (!(num(m.projection.target) > 0)) return false;
+      const a = capitalisation({ years: horizonProjection() }).targetReached;
       return !!a && !a.dejaAtteinte && num(a.monthsFromNow) > 0;
     },
-    evaluer() {
-      const s = projectionSettings();
-      const p = capitalisation({ years: horizonProjection() });
-      const a = p.targetReached;
+    evaluer(m) {
+      const a = capitalisation({ years: horizonProjection() }).targetReached;
       if (!a || a.dejaAtteinte) return null;
       return {
+        valeur: num(a.monthsFromNow),
         params: {
-          target: num(s.target),
-          year: num(a.year),
-          month: num(a.month),
+          target: num(m.projection.target), year: num(a.year), month: num(a.month),
           monthsFromNow: num(a.monthsFromNow),
         },
         evidence: {
           source: 'capitalisation',
-          target: num(s.target),
-          horizonYears: horizonProjection(),
-          monthlyContribution: num(s.monthly),
-          scenario: s.scenario,
-          inflationPct: num(s.inflation),
-          reachedYear: num(a.year),
-          reachedMonth: num(a.month),
+          target: num(m.projection.target), horizonYears: horizonProjection(),
+          monthlyContribution: num(m.projection.monthly), scenario: m.projection.scenario,
+          inflationPct: num(m.projection.inflation),
+          reachedYear: num(a.year), reachedMonth: num(a.month),
           monthsFromNow: num(a.monthsFromNow),
         },
         action: { vue: 'objective' },
@@ -500,64 +742,301 @@ const REGLES_INSIGHT = [
     },
   },
 
-  /* --- 5. Ce qui monte sans passer par l'epargne --------------------------
+  {
+    id: 'goal_date_shift',
+    famille: 'objectif',
+    categorie: 'goal',
+    priorite: INSIGHT_PRIORITE.HAUTE,
+    dedupeGroup: 'goal_shift',
+    reposJours: 30,
+    materialite: SEUIL_AFFICHAGE_OBJECTIF_MOIS,
+    question: 'Ma cible se rapproche-t-elle ou s’éloigne-t-elle ?',
+    titleKey: 'insight.goal_date_shift.title',
+    descriptionKey: 'insight.goal_date_shift.description',
+    eligible(m) {
+      if (!(num(m.projection.target) > 0)) return false;
+      const vu = insightsVus().goal_projected_date;
+      if (!vu || !vu.date || !(num(vu.valeur) > 0)) return false;
+      const a = capitalisation({ years: horizonProjection() }).targetReached;
+      return !!a && !a.dejaAtteinte && num(a.monthsFromNow) > 0;
+    },
+    evaluer(m) {
+      const a = capitalisation({ years: horizonProjection() }).targetReached;
+      const vu = insightsVus().goal_projected_date;
+      if (!a || a.dejaAtteinte || !vu) return null;
+      const jours = joursEntre(vu.date, m.aujourdhui);
+      const attendu = num(vu.valeur) - jours / 30.44;
+      const gagne = attendu - num(a.monthsFromNow);
+      if (Math.abs(gagne) + 1e-9 < SEUIL_AFFICHAGE_OBJECTIF_MOIS) return null;
+      return {
+        valeur: num(a.monthsFromNow),
+        poids: amplitude(gagne, SEUIL_AFFICHAGE_OBJECTIF_MOIS),
+        params: {
+          target: num(m.projection.target), year: num(a.year), month: num(a.month),
+          monthsEarlier: gagne, sinceDays: jours,
+        },
+        evidence: {
+          source: 'capitalisation+insightsVus',
+          previousEstimateMonths: num(vu.valeur), previousDate: vu.date,
+          currentEstimateMonths: num(a.monthsFromNow), expectedIfUnchanged: attendu,
+          monthsEarlier: gagne, displayThresholdMonths: SEUIL_AFFICHAGE_OBJECTIF_MOIS,
+        },
+        action: { vue: 'objective' },
+      };
+    },
+  },
 
-     Une mensualite de credit sort du compte en entier, mais une partie
-     reconstitue du patrimoine : le capital rembourse. Il fait grossir le
-     patrimoine net sans jamais etre disponible a investir, et c'est
-     exactement le genre de chose qu'un tableur ne dit pas tout seul.
-
-     `savingsReconciliation()` fait deja cette separation et la nomme. On lit
-     son `capitalRembourse`, et on ne le confond jamais avec `investable`. */
   {
     id: 'debt_principal_share',
+    famille: 'dette',
     categorie: 'debt',
     priorite: INSIGHT_PRIORITE.MOYENNE,
     dedupeGroup: 'debt',
+    reposJours: 45,
+    materialite: 50,
     question: 'Quelle part de ma progression vient du remboursement de mes crédits ?',
     titleKey: 'insight.debt_principal_share.title',
     descriptionKey: 'insight.debt_principal_share.description',
-    explainabilityKey: 'insight.debt_principal_share.explain',
-    eligible() {
-      return num(savingsReconciliation().capitalRembourse) > 0.005;
-    },
+    eligible: m => num(m.epargne.capitalRembourse) > 0.005,
+    evaluer: m => ({
+      valeur: num(m.epargne.capitalRembourse),
+      params: {
+        monthlyPrincipalRepaid: num(m.epargne.capitalRembourse),
+        monthlyInvestable: num(m.epargne.investable),
+      },
+      evidence: {
+        source: 'savingsReconciliation',
+        monthlyPrincipalRepaid: num(m.epargne.capitalRembourse),
+        monthlyInvestable: num(m.epargne.investable),
+        monthlyTheoretical: num(m.epargne.theoretical),
+        /* Les depenses retenues sont-elles observees ou est-ce l'objectif qui a
+           servi ? La difference change ce que `investable` veut dire. */
+        expensesObserved: !!m.epargne.spendObserved,
+      },
+      action: { vue: 'overview' },
+    }),
+  },
+
+  {
+    id: 'debt_soon_free',
+    famille: 'dette',
+    categorie: 'debt',
+    priorite: INSIGHT_PRIORITE.MOYENNE,
+    dedupeGroup: 'debt_free',
+    reposJours: 60,
+    materialite: 1,
+    question: 'Une mensualité va-t-elle bientôt se libérer ?',
+    titleKey: 'insight.debt_soon_free.title',
+    descriptionKey: 'insight.debt_soon_free.description',
+    eligible: () => !!creditBientotSolde(),
     evaluer() {
-      const rec = savingsReconciliation();
+      const c = creditBientotSolde();
+      if (!c) return null;
       return {
-        params: {
-          monthlyPrincipalRepaid: num(rec.capitalRembourse),
-          monthlyInvestable: num(rec.investable),
-        },
+        valeur: c.mois,
+        poids: amplitude(MOIS_CREDIT_BIENTOT_SOLDE - c.mois + 3, 3),
+        params: { months: c.mois, monthly: c.mensualite },
         evidence: {
-          source: 'savingsReconciliation',
-          monthlyPrincipalRepaid: num(rec.capitalRembourse),
-          monthlyInvestable: num(rec.investable),
-          monthlyTheoretical: num(rec.theoretical),
-          /* Les depenses retenues sont-elles observees ou est-ce l'objectif qui
-             a servi ? La difference change ce que `investable` veut dire. */
-          expensesObserved: !!rec.spendObserved,
+          source: 'echeancierCredit', months: c.mois, monthlyPayment: c.mensualite,
+          remaining: c.montant, horizonMonths: MOIS_CREDIT_BIENTOT_SOLDE,
+        },
+        action: { vue: 'accounts' },
+      };
+    },
+  },
+
+  {
+    id: 'spending_shift',
+    famille: 'budget',
+    categorie: 'budget',
+    priorite: INSIGHT_PRIORITE.MOYENNE,
+    dedupeGroup: 'spending',
+    reposJours: 30,
+    materialite: SEUIL_AFFICHAGE_DEPENSES_PCT,
+    question: 'Mes dépenses ont-elles changé de niveau ?',
+    titleKey: 'insight.spending_shift.title',
+    descriptionKey: 'insight.spending_shift.description',
+    eligible: m => m.depenses.length >= MOIS_MINIMUM_FENETRE_DEPENSES * 2,
+    evaluer(m) {
+      const n = m.depenses.length, N = MOIS_MINIMUM_FENETRE_DEPENSES;
+      const recent = moyenneDepenses(m.depenses, n - N, N);
+      const avant = moyenneDepenses(m.depenses, n - 2 * N, N);
+      if (recent == null || avant == null || !(avant > 0)) return null;
+      if (Math.round(recent) === Math.round(avant)) return null;
+      const ecartPct = (recent / avant - 1) * 100;
+      if (Math.abs(ecartPct) + 1e-9 < SEUIL_AFFICHAGE_DEPENSES_PCT) return null;
+      return {
+        valeur: ecartPct,
+        poids: amplitude(ecartPct, SEUIL_AFFICHAGE_DEPENSES_PCT),
+        params: { current: recent, previous: avant, delta: recent - avant,
+                  deltaPct: ecartPct, months: N },
+        evidence: {
+          source: 'expenseSeries',
+          currentFrom: m.depenses[n - N].month, currentTo: m.depenses[n - 1].month,
+          previousFrom: m.depenses[n - 2 * N].month, previousTo: m.depenses[n - N - 1].month,
+          current: recent, previous: avant, deltaPct: ecartPct,
+          displayThresholdPct: SEUIL_AFFICHAGE_DEPENSES_PCT,
         },
         action: { vue: 'budget' },
       };
     },
   },
+
+  {
+    id: 'spending_month_anomaly',
+    famille: 'budget',
+    categorie: 'budget',
+    priorite: INSIGHT_PRIORITE.MOYENNE,
+    dedupeGroup: 'spending_month',
+    reposJours: 30,
+    materialite: 1,
+    question: 'Le dernier mois clos sort-il de l’ordinaire ?',
+    titleKey: 'insight.spending_month_anomaly.title',
+    descriptionKey: 'insight.spending_month_anomaly.description',
+    eligible: m => m.depenses.length >= 6,
+    evaluer(m) {
+      const serie = m.depenses;
+      const dernier = serie[serie.length - 1];
+      const avant = serie.slice(0, -1).map(x => num(x.total));
+      const med = mediane(avant);
+      const dispersion = mediane(avant.map(x => Math.abs(x - med)));
+      if (!(dispersion > 0) || !(med > 0)) return null;
+      const ecart = num(dernier.total) - med;
+      if (Math.abs(ecart) < 2 * dispersion) return null;
+      return {
+        valeur: ecart,
+        poids: amplitude(ecart, 2 * dispersion),
+        params: { month: dernier.month, total: num(dernier.total), usual: med,
+                  delta: ecart, deltaPct: ecart / med * 100 },
+        evidence: {
+          source: 'expenseSeries', month: dernier.month, total: num(dernier.total),
+          usualMedian: med, usualDeviation: dispersion, observedMonths: avant.length,
+          rule: 'ecart superieur au double de la dispersion habituelle',
+        },
+        action: { vue: 'budget' },
+      };
+    },
+  },
+
+  {
+    id: 'concentration_top_line',
+    famille: 'concentration',
+    categorie: 'concentration',
+    priorite: INSIGHT_PRIORITE.BASSE,
+    dedupeGroup: 'concentration',
+    reposJours: 60,
+    materialite: 3,
+    question: 'Une seule ligne porte-t-elle une part inhabituelle de mes actifs ?',
+    titleKey: 'insight.concentration_top_line.title',
+    descriptionKey: 'insight.concentration_top_line.description',
+    eligible() {
+      const c = concentration({ financier: true });
+      return !!(c && c.top3);
+    },
+    evaluer() {
+      const c = concentration({ financier: true });
+      if (!c || !c.top3) return null;
+      const deuxSuivantes = num(c.top3.value) - num(c.premiere.value);
+      if (!(deuxSuivantes > 0) || num(c.premiere.value) < deuxSuivantes) return null;
+      return {
+        valeur: num(c.premiere.pct),
+        poids: amplitude(num(c.premiere.value) / deuxSuivantes, 1),
+        params: { label: c.premiere.label, pct: num(c.premiere.pct), lignes: num(c.n) },
+        evidence: {
+          source: 'concentration', scope: 'financier',
+          firstValue: num(c.premiere.value), firstPct: num(c.premiere.pct),
+          nextTwoValue: deuxSuivantes, lines: num(c.n),
+          rule: 'la premiere ligne pese au moins autant que les deux suivantes reunies',
+        },
+        action: { vue: 'positions' },
+      };
+    },
+  },
 ];
 
-function construireInsights(ctx) {
+/* Le credit dont l'echeancier s'eteint le plus tot dans l'horizon retenu, avec
+   la mensualite qui se liberera. Rend `null` s'il n'y en a aucun, ou si aucune
+   charge ne porte la mensualite : sans elle, on ne saurait pas dire combien. */
+function creditBientotSolde() {
+  let tete = null;
+  for (const e of ETABS()) {
+    for (const d of (e.dettes || [])) {
+      const ech = echeancierCredit(d);
+      if (!ech || !ech.amortissable || !(num(ech.mois) > 0)) continue;
+      if (num(ech.mois) > MOIS_CREDIT_BIENTOT_SOLDE) continue;
+      const mensualite = num(mensualiteCredit(d));
+      if (!(mensualite > 0)) continue;
+      if (!tete || num(ech.mois) < tete.mois) {
+        tete = { mois: num(ech.mois), mensualite, montant: num(d.montant) };
+      }
+    }
+  }
+  return tete;
+}
+
+/* La part de chaque poche dans le patrimoine, aujourd'hui et au dernier releve
+   d'il y a au moins N mois. `historySeries` range chaque releve par poche :
+   c'est la seule decomposition dont le passe dispose, et elle ne descend pas
+   jusqu'a la ligne.
+
+   Les deux parts se calculent sur la somme des MEMES poches de chaque cote. Un
+   denominateur pris ailleurs — le brut d'un bandeau, le net d'une carte — aurait
+   compare deux pourcentages qui ne parlent pas de la meme chose. */
+function partsDesPoches(m, moisEnArriere) {
+  const pts = m.releves;
+  if (!pts.length) return null;
+  const cible = decalerMois(String(m.aujourdhui), -moisEnArriere);
+  const avant = pts.filter(x => String(x.date) <= cible);
+  if (!avant.length) return null;
+  const p = avant[avant.length - 1];
+  const mois = moisEntre(String(p.date), String(m.aujourdhui));
+  if (mois < moisEnArriere) return null;
+  const totalAvant = POCHES_EVOLUTION.reduce((s, k) => s + num(p[k]), 0);
+  const totalMaintenant = POCHES_EVOLUTION.reduce((s, k) => s + num(m.totaux[k]), 0);
+  if (!(totalAvant > 0) || !(totalMaintenant > 0)) return null;
+  return {
+    date: String(p.date), mois,
+    lignes: POCHES_EVOLUTION.map(k => {
+      const a = num(p[k]) / totalAvant * 100;
+      const b = num(m.totaux[k]) / totalMaintenant * 100;
+      return { cle: k, avant: a, maintenant: b, ecart: b - a };
+    }),
+  };
+}
+
+/* =============================================================
+   COUCHES 3 A 5 — POIDS, DEDUPLICATION, SELECTION
+   =============================================================
+
+   Parcourt le catalogue dans l'ordre declare, ecarte les regles qui n'ont pas de
+   quoi conclure, ecarte celles qui se reposent, classe ce qui reste par poids,
+   puis choisit au plus trois entrees en evitant de raconter trois fois la meme
+   histoire.
+
+   RIEN NE S'AFFICHE PARCE QUE C'EST CALCULABLE. Une regle eligible qui ne
+   franchit pas son propre seuil rend `null`, et une liste vide est un resultat
+   comme un autre.
+
+   Ni DOM, ni ecriture, ni reseau, ni traduction, ni formatage. */
+function evaluerInsights(ctx) {
   const c = contexteInsights(ctx);
+  const m = mesuresInsights(c);
   const sortis = [];
   REGLES_INSIGHT.forEach((regle, rang) => {
-    if (!regle.eligible(c)) return;
-    const brut = regle.evaluer(c);
+    if (!regle.eligible(m, c)) return;
+    const brut = regle.evaluer(m, c);
     if (!brut) return;
+    if (auRepos(regle, brut.valeur, c.aujourdhui)) return;
     sortis.push({
       id: regle.id,
+      famille: regle.famille,
       categorie: regle.categorie,
       priorite: regle.priorite,
       dedupeGroup: regle.dedupeGroup || regle.id,
       titleKey: regle.titleKey,
       descriptionKey: regle.descriptionKey,
-      explainabilityKey: regle.explainabilityKey,
+      poids: num(regle.priorite) + num(brut.poids),
+      valeur: num(brut.valeur),
       params: brut.params,
       evidence: brut.evidence,
       action: brut.action || null,
@@ -565,12 +1044,32 @@ function construireInsights(ctx) {
     });
   });
 
-  sortis.sort((a, b) => (a.priorite - b.priorite) || (a.rang - b.rang));
+  sortis.sort((a, b) => (b.poids - a.poids) || (a.rang - b.rang));
+  return sortis;
+}
 
-  const vus = new Set();
-  return sortis.filter(i => {
-    if (vus.has(i.dedupeGroup)) return false;
-    vus.add(i.dedupeGroup);
-    return true;
-  }).map(({ rang, ...i }) => i);
+/* COUCHE 5 — LA SELECTION, SEPAREE DE LA DETECTION.
+
+   Elle l'est pour une raison pratique autant que propre : une regle se teste sur
+   ce qu'elle DETECTE, pas sur sa place dans un classement a treize. Un test qui
+   passait par la liste finale cessait de parler de sa regle des qu'une
+   quatorzieme entrait, et c'est un faux rouge a chaque ajout.
+
+   `evaluerInsights()` rend tout ce qui a quelque chose a dire, classe.
+   `construireInsights()` en garde au plus trois, et c'est lui que la vue lit. */
+function construireInsights(ctx) {
+  const sortis = evaluerInsights(ctx);
+
+  const groupes = new Set(), familles = new Set(), choisis = [];
+  for (const i of sortis) {
+    if (choisis.length >= MAX_INSIGHTS) break;
+    if (groupes.has(i.dedupeGroup) || familles.has(i.famille)) continue;
+    groupes.add(i.dedupeGroup); familles.add(i.famille); choisis.push(i);
+  }
+  for (const i of sortis) {
+    if (choisis.length >= MAX_INSIGHTS) break;
+    if (groupes.has(i.dedupeGroup)) continue;
+    groupes.add(i.dedupeGroup); choisis.push(i);
+  }
+  return choisis.map(({ rang, ...i }) => i);
 }

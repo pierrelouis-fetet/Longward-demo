@@ -784,7 +784,9 @@ function sortiesRappel(genre, label, avant = '') {
   </span>`;
 }
 
-const MAX_A_RETENIR = 3;
+const MAX_A_RETENIR = MAX_INSIGHTS;
+
+const libellePoche = cle => trad(CLASSES_ACTIFS[POCHE_CLASSE[cle]] || cle);
 
 const moisEtAnnee = (annee, mois) => new Intl.DateTimeFormat(locale(),
   { month: 'long', year: 'numeric' }).format(new Date(Date.UTC(annee, mois - 1, 1)));
@@ -823,6 +825,65 @@ const PRESENTATION_INSIGHT = {
       .replace('{t}', fmtEUR0(p.target)).replace('{d}', moisEtAnnee(p.year, p.month)),
     cta: { vue: 'objective', ancre: 'trajectoire', libelle: 'Voir ma projection' },
   },
+  liquidity_runway_shift: {
+    titre: 'Évolution de ta trésorerie',
+    phrase: p => trad('Ta trésorerie couvre {a} mois de dépenses, contre {b} il y a trois mois, à dépenses constantes.')
+      .replace('{a}', fmtMois(p.months)).replace('{b}', fmtMois(p.previousMonths)),
+    cta: { vue: 'overview', ancre: 'autonomie', libelle: 'Voir mon autonomie' },
+  },
+  pocket_share_shift: {
+    titre: 'Poids d’une poche',
+    phrase: p => trad('{c} pèse {a} de ton patrimoine, contre {b} il y a {m} mois.')
+      .replace('{c}', esc(libellePoche(p.poche)))
+      .replace('{a}', fmtPct(p.currentPct, 1)).replace('{b}', fmtPct(p.previousPct, 1))
+      .replace('{m}', p.months),
+    cta: { vue: 'overview', ancre: 'evolution', libelle: 'Voir l’évolution' },
+  },
+  wealth_growth_origin: {
+    titre: 'Origine de ta progression',
+    valeur: p => fmtPct(p.contributionsPct, 0),
+    phrase: p => trad('de ta progression sur {m} mois vient de tes versements ; le reste mêle valorisation, capital remboursé et réévaluation.')
+      .replace('{m}', p.months),
+    cta: { vue: 'overview', ancre: 'evolution', libelle: 'Voir l’évolution' },
+  },
+  goal_date_shift: {
+    titre: 'Ta cible a bougé',
+    phrase: p => trad(p.monthsEarlier >= 0
+      ? 'Ta cible de {t} tomberait vers {d}, soit {n} mois plus tôt qu’à la dernière lecture.'
+      : 'Ta cible de {t} tomberait vers {d}, soit {n} mois plus tard qu’à la dernière lecture.')
+      .replace('{t}', fmtEUR0(p.target)).replace('{d}', moisEtAnnee(p.year, p.month))
+      .replace('{n}', fmtMois(Math.abs(p.monthsEarlier))),
+    cta: { vue: 'objective', ancre: 'trajectoire', libelle: 'Voir ma projection' },
+  },
+  debt_soon_free: {
+    titre: 'Mensualité bientôt libérée',
+    valeur: p => fmtEUR0(p.monthly) + trad('/mois'),
+    phrase: p => trad('se libèrent dans {n} mois, à la dernière échéance de ce crédit.')
+      .replace('{n}', p.months),
+    cta: { vue: 'accounts', libelle: 'Voir mes crédits' },
+  },
+  spending_shift: {
+    titre: 'Niveau de tes dépenses',
+    valeur: p => fmtEUR0(p.current) + trad('/mois'),
+    phrase: p => trad('sur les {n} derniers mois clos, contre {b} sur les {m} mois précédents.')
+      .replace('{n}', p.months).replace('{m}', p.months)
+      .replace('{b}', fmtEUR0(p.previous) + trad('/mois')),
+    cta: { vue: 'budget', libelle: 'Voir mes dépenses' },
+  },
+  spending_month_anomaly: {
+    titre: 'Un mois à part',
+    valeur: p => fmtEUR0(p.total),
+    phrase: p => trad('en {d}, contre {b} pour un mois ordinaire chez toi.')
+      .replace('{d}', esc(fmtMoisAn(p.month.slice(0, 7) + '-15'))).replace('{b}', fmtEUR0(p.usual)),
+    cta: { vue: 'budget', libelle: 'Voir mes dépenses' },
+  },
+  concentration_top_line: {
+    titre: 'Ta première ligne',
+    valeur: p => fmtPct(p.pct, 1),
+    phrase: p => trad('de tes actifs financiers tiennent sur {c}, autant que les deux lignes suivantes réunies.')
+      .replace('{c}', esc(trad(p.label))),
+    cta: { vue: 'positions', libelle: 'Voir mes positions' },
+  },
   debt_principal_share: {
     titre: 'Capital remboursé',
     phrase: p => trad('{a} par mois de ta progression patrimoniale viennent du capital remboursé sur tes crédits, et non de ton épargne disponible.')
@@ -830,6 +891,24 @@ const PRESENTATION_INSIGHT = {
     cta: { vue: 'overview', ancre: 'accumulation', libelle: 'Voir mon accumulation' },
   },
 };
+
+let dernierARetenir = [];
+
+function noterInsightsVus() {
+  if (!dernierARetenir.length) return;
+  const jour = todayISO();
+  const memoire = Store.state.meta.insightsVus || {};
+  let change = false;
+  for (const i of dernierARetenir) {
+    const vu = memoire[i.id];
+    if (vu && vu.date === jour && num(vu.valeur) === num(i.valeur)) continue;
+    memoire[i.id] = { date: jour, valeur: num(i.valeur) };
+    change = true;
+  }
+  if (!change) return;
+  Store.state.meta.insightsVus = memoire;
+  Store.save();
+}
 
 /* --- Repliee, masquee : deux etats, et ils se souviennent ------------------
 
@@ -858,8 +937,9 @@ function carteARetenir() {
     .map(i => [i, PRESENTATION_INSIGHT[i.id]])
     .filter(([, p]) => !!p)
     .slice(0, MAX_A_RETENIR);
-  if (!lus.length) return '';
+  const vide = !lus.length;
   const n = lus.length;
+  dernierARetenir = lus.map(([i]) => i);
   const replie = retenirReplie();
   /* Le meme bouton dans les deux etats, donc le meme `aria-controls` et le meme
      `aria-expanded` : un lecteur d'ecran annonce l'etat, pas une couleur. */
@@ -877,8 +957,8 @@ function carteARetenir() {
         <button type="button" class="retenir-bascule" data-action="retenir-plier"
                 aria-expanded="false" aria-controls="retenirCorps">
           <span>${trad('À retenir')}</span>
-          <span class="retenir-compte">· ${n === 1 ? trad('1 insight')
-            : trad('{n} insights').replace('{n}', n)}</span>
+          ${!n ? '' : `<span class="retenir-compte">· ${n === 1 ? trad('1 insight')
+            : trad('{n} insights').replace('{n}', n)}</span>`}
           ${chevron}
         </button>
       </h2>
@@ -897,6 +977,11 @@ function carteARetenir() {
     </div>`}
     <div class="retenir-pli" ${replie ? 'aria-hidden="true"' : ''}>
     <ul class="retenir-liste" id="retenirCorps">
+      ${!vide ? '' : `
+      <li class="retenir-item retenir-calme">
+        <b class="retenir-titre">${esc(trad('Rien d’inhabituel à signaler'))}</b>
+        <p class="retenir-texte">${esc(trad('Ton patrimoine, tes dépenses et ton allocation restent proches de leurs tendances récentes.'))}</p>
+      </li>`}
       ${lus.map(([i, p]) => `
       <li class="retenir-item">
         <b class="retenir-titre">${esc(trad(p.titre))}</b>
@@ -1187,6 +1272,7 @@ function viewOverview() {
 }
 
 function mountOverview() {
+  noterInsightsVus();
   monterEvolution();
 
   const t = nowTotals();
