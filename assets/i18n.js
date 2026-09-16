@@ -231,7 +231,7 @@ const I18N = {
     'Voir mon accumulation': 'View my accumulation',
     '{c} : {a} de tes investissements, soit {e} points au-dessus de ta cible de {b}.': '{c}: {a} of your investments, {e} points above your {b} target.',
     '{c} : {a} de tes investissements, soit {e} points en dessous de ta cible de {b}.': '{c}: {a} of your investments, {e} points below your {b} target.',
-    'Ton rythme patrimonial est de {a} par mois sur les {n} derniers mois, contre {b} sur les {m} précédents.': 'Your wealth pace is {a} a month over the last {n} months, against {b} over the {m} before.',
+    'Ton rythme patrimonial est d’environ {a} par mois sur les {n} derniers mois, contre {b} sur les {m} précédents.': 'Your wealth pace is about {a} a month over the last {n} months, against {b} over the {m} before.',
     'Ta cible de {t} serait atteinte vers {d}, selon tes hypothèses actuelles.': 'Your {t} target would be reached around {d}, based on your current assumptions.',
     '{a} par mois de ta progression patrimoniale viennent du capital remboursé sur tes crédits, et non de ton épargne disponible.': '{a} a month of your wealth growth comes from loan principal repaid, not from your available savings.',
     'Voir mon autonomie': 'View my financial runway',

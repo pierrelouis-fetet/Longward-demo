@@ -186,6 +186,56 @@ function fenetresRythme(points, moisParFenetre) {
   return { recente: recente.pris, precedente: avant.pris };
 }
 
+/* --- UN RYTHME QUI RESISTE A UN MOIS EXCEPTIONNEL -------------------------
+
+   LE DEFAUT, ET IL EST GRAVE. `statsRythme()` rend une MOYENNE, et c'est la
+   bonne reponse a la question de l'historique : « de combien mon patrimoine
+   a-t-il progresse sur cette periode ». Ce n'est pas la bonne reponse a la
+   question de cette regle-ci : « quel rythme mensuel represente cette
+   periode ». Une prime, un heritage, la vente d'un bien, et six mois a sept
+   cents euros deviennent « mille neuf cent soixante-cinq euros par mois ».
+   Le chiffre est exact et la phrase est fausse.
+
+   CE QU'ON NE FAIT PAS. On ne retire aucun mois des donnees : l'historique
+   continue de porter la progression reelle, prime comprise. On ne devine pas
+   non plus la CAUSE — Longward voit un mouvement, pas une prime, et nommer
+   une cause qu'il ignore serait inventer.
+
+   LA MESURE : LA MEDIANE des variations mensuelles. Elle repond exactement a
+   « a quoi ressemble un mois ordinaire ici », et un seul mois hors norme ne la
+   deplace pas. Une moyenne tronquee aurait demande de choisir combien de mois
+   jeter ; la mediane ne jette rien, elle se contente de regarder au milieu.
+
+   Un point peut couvrir plusieurs mois quand un releve manque : on prend donc
+   son rythme mensuel, `delta / mois`, et non son ecart brut. */
+function rythmesMensuels(points) {
+  return (points || []).map(p => num(p.delta) / Math.max(1, num(p.mois) || 1));
+}
+
+function mediane(valeurs) {
+  const v = (valeurs || []).slice().sort((a, b) => a - b);
+  if (!v.length) return 0;
+  const m = Math.floor(v.length / 2);
+  return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
+}
+
+function rythmeRepresentatif(points) {
+  const taux = rythmesMensuels(points);
+  if (!taux.length) return null;
+  const med = mediane(taux);
+  const ecart = mediane(taux.map(t => Math.abs(t - med)));
+  const total = taux.reduce((s, t) => s + Math.abs(t), 0);
+  const plusGros = taux.reduce((s, t) => Math.max(s, Math.abs(t)), 0);
+  return {
+    mediane: med,
+    moyenne: taux.reduce((s, t) => s + t, 0) / taux.length,
+    ecartMedian: ecart,
+    partDuPlusGrosMois: total > 0 ? plusGros / total : 0,
+    representatif: Math.abs(med) > 0 && ecart <= Math.abs(med),
+    mois: (points || []).reduce((s, p) => s + Math.max(1, num(p.mois) || 1), 0),
+  };
+}
+
 /* =============================================================
    LES REGLES
    =============================================================
@@ -322,9 +372,12 @@ const REGLES_INSIGHT = [
      porte pas vingt-quatre : les nombres de mois sortent dans les parametres,
      et la phrase se construira avec eux.
 
-     Aucun seuil de variation en V1, volontairement. En poser un demanderait de
-     decider a partir de quel ecart un rythme « change », et rien dans les
-     donnees ne le dit. La priorisation tranchera, avec du recul. */
+     LE RYTHME EST UNE MEDIANE, PAS UNE MOYENNE. Un seul mois exceptionnel
+     — prime, heritage, vente — suffit a faire dire a une moyenne que sept
+     cents euros par mois en valent deux mille. La mediane repond a « a quoi
+     ressemble un mois ordinaire ici », qui est la question posee. La moyenne
+     reste dans la preuve : c'est elle que l'historique affiche, et l'ecart
+     entre les deux se lit. */
   {
     id: 'wealth_pace_shift',
     categorie: 'wealth_pace',
@@ -340,9 +393,12 @@ const REGLES_INSIGHT = [
     evaluer() {
       const f = fenetresRythme(monthlyPace().points, MOIS_MINIMUM_FENETRE_RYTHME);
       if (!f) return null;
-      const a = statsRythme(f.recente);
-      const b = statsRythme(f.precedente);
-      const courant = num(a.average), precedent = num(b.average);
+      const a = rythmeRepresentatif(f.recente);
+      const b = rythmeRepresentatif(f.precedente);
+      const apA = statsRythme(f.recente), apB = statsRythme(f.precedente);
+      if (!a || !b) return null;
+      if (!a.representatif || !b.representatif) return null;
+      const courant = a.mediane, precedent = b.mediane;
       if (!(precedent > 0)) return null;
       if (Math.round(courant) === Math.round(precedent)) return null;
       const ecartPct = (courant / precedent - 1) * 100;
@@ -354,9 +410,9 @@ const REGLES_INSIGHT = [
       if (Math.abs(ecartPct) + 1e-9 < SEUIL_AFFICHAGE_RYTHME_PCT) return null;
       return {
         params: {
-          currentMonthly: num(a.average),
+          currentMonthly: courant,
           currentMonths: num(a.mois),
-          previousMonthly: num(b.average),
+          previousMonthly: precedent,
           previousMonths: num(b.mois),
           deltaMonthly: courant - precedent,
           deltaPct: ecartPct,
@@ -366,15 +422,21 @@ const REGLES_INSIGHT = [
           currentFrom: f.recente[0] ? f.recente[0].depuis || f.recente[0].date : null,
           currentTo: f.recente[f.recente.length - 1].date,
           currentMonths: num(a.mois),
-          currentMonthly: num(a.average),
+          currentMonthly: courant,
+          currentMean: a.moyenne,
+          currentDeviation: a.ecartMedian,
+          currentLargestMonthShare: a.partDuPlusGrosMois,
           previousFrom: f.precedente[0] ? f.precedente[0].depuis || f.precedente[0].date : null,
           previousTo: f.precedente[f.precedente.length - 1].date,
           previousMonths: num(b.mois),
-          previousMonthly: num(b.average),
+          previousMonthly: precedent,
+          previousMean: b.moyenne,
+          previousDeviation: b.ecartMedian,
+          previousLargestMonthShare: b.partDuPlusGrosMois,
           deltaPct: ecartPct,
           displayThresholdPct: SEUIL_AFFICHAGE_RYTHME_PCT,
-          currentContributions: num(a.apports),
-          previousContributions: num(b.apports),
+          currentContributions: num(apA.apports),
+          previousContributions: num(apB.apports),
         },
         action: { vue: 'history' },
       };
