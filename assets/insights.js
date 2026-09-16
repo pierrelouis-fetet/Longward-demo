@@ -106,8 +106,6 @@ const amplitude = (valeur, seuil) => {
   return Math.max(0, Math.min(20, Math.round((Math.abs(num(valeur)) / seuil - 1) * 10)));
 };
 
-const MAX_INSIGHTS = 3;
-
 const insightsVus = () => (Store.state && Store.state.meta && Store.state.meta.insightsVus) || {};
 
 function joursEntre(depuis, jusqua) {
@@ -363,6 +361,22 @@ function decalerMois(iso, n) {
   /* Concatene plutot qu'un gabarit : le moteur s'interdit tout signe
      monetaire, et un test le verifie sur le dollar, que `${}` porte aussi. */
   return an + '-' + String(mois).padStart(2, '0') + '-28';
+}
+
+function selectionParClef(liste, clefDe, combien) {
+  const vues = new Set(), choisis = [];
+  for (const x of (liste || [])) {
+    if (choisis.length >= combien) break;
+    const k = clefDe(x);
+    if (k && vues.has(k)) continue;
+    vues.add(k); choisis.push(x);
+  }
+  for (const x of (liste || [])) {
+    if (choisis.length >= combien) break;
+    if (choisis.includes(x)) continue;
+    choisis.push(x);
+  }
+  return choisis;
 }
 
 /* =============================================================
@@ -1062,12 +1076,10 @@ function construireInsights(ctx) {
 
   const groupes = new Set(), familles = new Set(), choisis = [];
   for (const i of sortis) {
-    if (choisis.length >= MAX_INSIGHTS) break;
     if (groupes.has(i.dedupeGroup) || familles.has(i.famille)) continue;
     groupes.add(i.dedupeGroup); familles.add(i.famille); choisis.push(i);
   }
   for (const i of sortis) {
-    if (choisis.length >= MAX_INSIGHTS) break;
     if (groupes.has(i.dedupeGroup)) continue;
     groupes.add(i.dedupeGroup); choisis.push(i);
   }

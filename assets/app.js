@@ -789,7 +789,32 @@ function sortiesRappel(genre, label, avant = '') {
   </span>`;
 }
 
-const MAX_A_RETENIR = MAX_INSIGHTS;
+const MAX_A_RETENIR = 3;
+
+/* --- OU MENE CET INSIGHT, ET POURQUOI CA SE DERIVE ------------------------
+
+   La destination se DERIVE du renvoi, elle ne se recopie pas dans un troisieme
+   champ. Une metadonnee ecrite a la main a cote du bouton finit par le
+   contredire : on change l'ancre du renvoi, on oublie l'autre, et la selection
+   croit separer deux entrees qui ouvrent desormais la meme carte. C'est la faute
+   que ce depot corrige sans arret, et elle ne coute rien a eviter ici.
+
+   VUE ET ANCRE, PAS LA VUE SEULE. Trois insights pointent vers `overview`, et
+   ils y visent trois cartes qui repondent a trois questions differentes :
+   « Autonomie financiere », « Evolution du patrimoine », « Accumulation ce
+   mois-ci ». Les confondre sous la meme destination en ecarterait deux pour une
+   ressemblance qui n'existe que dans l'URL.
+
+   ET SURTOUT PAS LE LIBELLE. « Voir l'evolution » est du texte traduit : la
+   selection changerait de comportement entre le francais et l'anglais. */
+const destinationInsight = p => (p && p.cta) ? `${p.cta.vue}:${p.cta.ancre || ''}` : '';
+
+/* L'algorithme des deux tours vit dans le moteur, ou il se teste : le harnais ne
+   charge pas `app.js`, et une selection ecrite ici ne se verifierait que des
+   yeux. Ce qui reste ici est ce que la vue seule sait — l'endroit ou chaque
+   renvoi mene. */
+const selectionARetenir = candidats =>
+  selectionParClef(candidats, c => destinationInsight(c[1]), MAX_A_RETENIR);
 
 const libellePoche = cle => trad(CLASSES_ACTIFS[POCHE_CLASSE[cle]] || cle);
 
@@ -938,10 +963,9 @@ const retenirMasquee = () => !!Store.state?.meta?.retenirMasquee;
 
 function carteARetenir() {
   if (retenirMasquee()) return '';
-  const lus = construireInsights()
+  const lus = selectionARetenir(construireInsights()
     .map(i => [i, PRESENTATION_INSIGHT[i.id]])
-    .filter(([, p]) => !!p)
-    .slice(0, MAX_A_RETENIR);
+    .filter(([, p]) => !!p));
   const vide = !lus.length;
   const n = lus.length;
   dernierARetenir = lus.map(([i]) => i);
