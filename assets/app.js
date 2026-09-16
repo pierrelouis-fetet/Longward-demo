@@ -1120,6 +1120,31 @@ function viewOverview() {
   </div>` : ''}
 
   ${(() => {
+    /* DEUX PRECISIONS DIFFERENTES SUR LA MEME LIGNE, ET C'EST VOULU.
+
+       Le montant perd ses centimes : un patrimoine est une lecture macro, et
+       « 14 965,00 EUR » donne a une carte de composition l'allure d'un releve
+       bancaire. Les quatre-vingt-dix centimes qui separent deux poches ne
+       changent ni la part, ni la barre, ni la decision. Rien n'est arrondi dans
+       les donnees, seulement a l'ecran, et le total de la mention de base sous
+       la carte reste ce qu'il etait.
+
+       Le pourcentage, lui, garde sa decimale : une poche a trois dixiemes
+       disparaitrait derriere « 0 % » alors qu'elle existe. Le chiffre secondaire
+       est ici le plus precis des deux, parce que c'est le seul ou la precision
+       se voit.
+
+       LA PLACE DE CE COMMENTAIRE N'EST PAS UN DETAIL. Il vit DANS la fonction,
+       apres le `${'$'}{(() => {` qui ouvre le code. Une ligne plus haut, il serait
+       entre deux balises d'un litteral de gabarit — donc du TEXTE, pas du
+       JavaScript : le fichier se parse, la suite reste verte, et les visiteurs
+       lisent le commentaire en clair au milieu de l'accueil. C'est arrive.
+       La regle tient en deux mots : dans le gabarit, `<!-- -->` ; dans le code,
+       un commentaire de bloc. Et un commentaire HTML dans un litteral part
+       jusqu'au DOM, donc le raisonnement se met dans le code, jamais dans le
+       balisage.
+       (Ne pas ecrire ici la sequence qui FERME un commentaire de bloc : elle le
+       fermerait. C'est ce qui vient d'arriver, dans ce commentaire meme.) */
     const classes = repartitionClasses({ net: evoNet });
     if (!classes.length) return '';
     return `
