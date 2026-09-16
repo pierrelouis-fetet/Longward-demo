@@ -1589,6 +1589,9 @@ tr.ligne-ouvre .mois-lien { pointer-events: none; }
 .lien-vue { color: var(--series-1); text-decoration: none; }
 @media (hover: hover) { .lien-vue:hover { text-decoration: underline; } }
 .lien-vue:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--radius-xs); }
+button.lien-vue {
+  background: none; border: none; padding: 0; font: inherit; cursor: pointer;
+}
 /* Le mois en cours se repere dans la liste comme il se repere dans le
    tableau. La regle passe avant `:active`, sinon l'appui n'aurait plus de
    retour visuel sur cette ligne-la, la seule qu'on touche souvent. */

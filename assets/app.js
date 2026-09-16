@@ -705,13 +705,13 @@ function carteAccumulation() {
      son texte dans un attribut, ou le masque des montants s'imprimerait en
      clair, balise SVG comprise. `fmtEUR0Texte` y rend « ••• € ». */
   if (!(rec.income > 0) && !(rec.fixed > 0) && !(rec.spend > 0)) return `
-  <div class="card">
+  <div class="card" data-anchor="accumulation">
     <div class="card-head"><h2>${trad('Accumulation ce mois-ci')}</h2></div>
     ${invitePremierPas('revenus')}
   </div>`;
   const ligneRevenus = `<dt>${trad('Revenus fixes')}</dt><dd>${fmtEUR0(rec.income)}</dd>`;
   if (chargesInconnues()) return `
-  <div class="card">
+  <div class="card" data-anchor="accumulation">
     <div class="card-head"><h2>${trad('Accumulation ce mois-ci')}</h2>
       <span class="hint">${trad('Comment tes revenus se transforment en patrimoine')}</span></div>
     <dl class="kv kv-accumul">
@@ -741,7 +741,7 @@ function carteAccumulation() {
     ? `${fmtEUR0Texte(rec.theoretical)} ÷ ${fmtEUR0Texte(rec.income)} = ${fmtPct(rec.theoreticalRate, 1)}`
     : trad('Aucun revenu déclaré pour l’instant.'));
   return `
-  <div class="card">
+  <div class="card" data-anchor="accumulation">
     <div class="card-head"><h2>${trad('Accumulation ce mois-ci')}</h2>
       <span class="hint">${trad('Comment tes revenus se transforment en patrimoine')}</span></div>
     <dl class="kv kv-accumul">
@@ -794,33 +794,38 @@ const PRESENTATION_INSIGHT = {
     titre: 'Réserve disponible',
     phrase: p => trad('Tes liquidités mobilisables couvrent environ {n} mois de dépenses renseignées.')
       .replace('{n}', fmtMois(p.months)),
-    cta: { vue: 'budget', libelle: 'Voir le budget' },
+    cta: { vue: 'overview', ancre: 'autonomie', libelle: 'Voir mon autonomie' },
   },
   allocation_target_gap: {
     titre: 'Allocation et cible',
-    phrase: p => trad('{c} : {a} de tes investissements, pour une cible de {b}.')
+    phrase: p => trad(p.deltaPct >= 0
+      ? '{c} : {a} de tes investissements, soit {e} points au-dessus de ta cible de {b}.'
+      : '{c} : {a} de tes investissements, soit {e} points en dessous de ta cible de {b}.')
       .replace('{c}', esc(trad(p.label))).replace('{a}', fmtPct(p.currentPct, 1))
+      /* Une decimale suffit : `fmtNombre` en rend deux, on arrondit avant
+         plutot que d'ajouter un formateur de plus pour un seul appel. */
+      .replace('{e}', fmtNombre(Math.round(Math.abs(p.deltaPct) * 10) / 10))
       .replace('{b}', fmtPct(p.targetPct, 1)),
-    cta: { vue: 'rebalance', libelle: 'Voir la cible' },
+    cta: { vue: 'rebalance', libelle: 'Voir ma cible' },
   },
   wealth_pace_shift: {
     titre: 'Rythme patrimonial',
-    phrase: p => trad('Ton patrimoine progresse de {a} par mois sur {n} mois, contre {b} sur les {m} précédents.')
+    phrase: p => trad('Ton rythme patrimonial est de {a} par mois sur les {n} derniers mois, contre {b} sur les {m} précédents.')
       .replace('{a}', fmtEUR0(p.currentMonthly)).replace('{n}', p.currentMonths)
       .replace('{b}', fmtEUR0(p.previousMonthly)).replace('{m}', p.previousMonths),
-    cta: { vue: 'history', libelle: 'Voir l’historique' },
+    cta: { vue: 'overview', ancre: 'rythme', libelle: 'Voir mon rythme' },
   },
   goal_projected_date: {
     titre: 'Horizon de l’objectif',
-    phrase: p => trad('Selon tes hypothèses actuelles, ta cible serait atteinte vers {d}.')
-      .replace('{d}', moisEtAnnee(p.year, p.month)),
-    cta: { vue: 'objective', libelle: 'Voir la projection' },
+    phrase: p => trad('Ta cible de {t} serait atteinte vers {d}, selon tes hypothèses actuelles.')
+      .replace('{t}', fmtEUR0(p.target)).replace('{d}', moisEtAnnee(p.year, p.month)),
+    cta: { vue: 'objective', ancre: 'trajectoire', libelle: 'Voir ma projection' },
   },
   debt_principal_share: {
     titre: 'Capital remboursé',
-    phrase: p => trad('{a} par mois de ta progression viennent du capital remboursé sur tes crédits, et non de ton épargne disponible.')
+    phrase: p => trad('{a} par mois de ta progression patrimoniale viennent du capital remboursé sur tes crédits, et non de ton épargne disponible.')
       .replace('{a}', fmtEUR0(p.monthlyPrincipalRepaid)),
-    cta: { vue: 'budget', libelle: 'Voir le budget' },
+    cta: { vue: 'overview', ancre: 'accumulation', libelle: 'Voir mon accumulation' },
   },
 };
 
@@ -890,8 +895,17 @@ function carteARetenir() {
       <li class="retenir-item">
         <b class="retenir-titre">${esc(trad(p.titre))}</b>
         <p class="retenir-texte">${p.phrase(i.params)}</p>
-        ${p.cta ? `<a class="lien-vue retenir-lien" href="#/${p.cta.vue}"
-           >${esc(trad(p.cta.libelle))} <span aria-hidden="true">→</span></a>` : ''}
+        ${!p.cta ? '' : p.cta.ancre
+          /* Une ancre vise un endroit DANS une vue : c'est `goto` qui sait
+             faire les deux, changer d'ecran s'il le faut puis defiler jusqu'a
+             la carte. Une adresse ne le pourrait pas, elle s'arrete en haut de
+             page. Le bouton porte la meme allure que le lien : la difference
+             est dans ce qu'il fait, pas dans ce qu'il montre. */
+          ? `<button type="button" class="lien-vue retenir-lien" data-action="goto"
+                data-view="${esc(p.cta.vue)}" data-anchor="${esc(p.cta.ancre)}"
+                >${esc(trad(p.cta.libelle))} <span aria-hidden="true">→</span></button>`
+          : `<a class="lien-vue retenir-lien" href="#/${p.cta.vue}"
+             >${esc(trad(p.cta.libelle))} <span aria-hidden="true">→</span></a>`}
       </li>`).join('')}
     </ul>`}
   </section>`;
@@ -1084,7 +1098,7 @@ function viewOverview() {
   ${carteAccumulation()}
 
   <div class="grid g-2-1">
-    <div class="card">
+    <div class="card" data-anchor="rythme">
       <div class="card-head"><h2>${trad('Rythme d\'accumulation')}</h2>
         ${relevesRenseignes() >= 2 ? rangeControl('pace-range', paceRange) : ''}</div>
       ${relevesRenseignes() >= 2 ? `<div class="chart" id="chartPace"></div>`
@@ -1112,7 +1126,7 @@ function viewOverview() {
         </dl>`;
       })()}
     </div>
-  <div class="card">
+  <div class="card" data-anchor="autonomie">
     <div class="card-head"><h2>${trad('Autonomie financière')}${aide(trad("Combien de mois tu tiendrais si tes revenus s'arrêtaient demain. La jauge compte ton épargne de précaution ; la liste ajoute ce qui pourrait être mobilisé ensuite, du plus accessible au plus lent, en mois cumulés. L'immobilier et le non coté se vendent, mais en quelques mois et avec une décote si tu es pressé. Ce qui est bloqué jusqu'à son échéance reste affiché mais sort du cumul : cet argent n'arrivera pas, quoi qu'il se passe demain. Un titre coté se vend en séance, mais le virement met deux à trois jours ouvrés à arriver : c'est ce délai, pas la liquidité, qui le range en « quelques jours ». Casser un PEA de moins de cinq ans lui coûte son avantage fiscal, pas son accès. Coût mensuel retenu : charges fixes plus dépenses moyennes."))}</h2>
       <span class="hint">${trad('si les revenus s\'arrêtaient')}</span></div>
     ${(() => {
@@ -1901,7 +1915,7 @@ function viewObjective() {
     ].filter(x => Math.abs(num(x.value)) > 0.005)
      .map(x => ({ ...x, pct: dernier.total ? num(x.value) / dernier.total * 100 : 0 }));
     return `
-  <div class="card repart">
+  <div class="card repart" data-anchor="trajectoire">
     <div class="card-head">
       <h2>${trad('De quoi sera fait ton patrimoine')}</h2>
       <label class="row" style="gap:8px; font-size:var(--font-sm); color:var(--text-secondary)">
