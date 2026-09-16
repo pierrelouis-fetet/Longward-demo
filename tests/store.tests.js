@@ -41158,6 +41158,99 @@ suite('La carte de répartition se lit au niveau du patrimoine', () => {
   });
 });
 
+/* --- Un commentaire qui s'affiche -----------------------------------------
+
+   UN COMMENTAIRE DE BLOC POSE DANS UN LITTERAL DE GABARIT N'EST PAS UN
+   COMMENTAIRE, c'est du
+   TEXTE. Le fichier se parse, la suite reste verte, la chaine de publication ne
+   le retire pas — et le visiteur lit le raisonnement du developpeur en clair, au
+   milieu de l'ecran d'accueil. C'est arrive, en production, sur les trois
+   deploiements a la fois.
+
+   Rien ne l'attrapait : le controle du parsage ne voit qu'un fichier valide, et
+   celui des backticks dans un commentaire HTML regarde l'autre moitie du piege.
+   Ce controle-ci lit le fichier caractere par caractere, exactement comme le
+   filtre de publication, et signale tout ouvrant de bloc rencontre alors qu'on
+   se trouve dans le TEXTE d'un gabarit — c'est-a-dire hors de tout `${'$'}{ }`. */
+suite('Aucun commentaire ne part dans le balisage', () => {
+  /* La pile dit ou l'on se trouve : `tpl` dans le texte d'un gabarit, `sub`
+     dans une interpolation, vide dans du JavaScript ordinaire. */
+  const commentairesAffiches = src => {
+    const trouves = [];
+    const pile = [];
+    let i = 0;
+    const n = src.length;
+    while (i < n) {
+      const c = src[i];
+      const dansTpl = pile.length > 0 && pile[pile.length - 1] === 'tpl';
+      if (c === '\\') { i += 2; continue; }
+      if (dansTpl) {
+        if (c === '`') { pile.pop(); i++; continue; }
+        if (c === '$' && src[i + 1] === '{') { pile.push('sub'); i += 2; continue; }
+        if (c === '/' && src[i + 1] === '*') { trouves.push(i); i += 2; continue; }
+        i++; continue;
+      }
+      if (c === '`') { pile.push('tpl'); i++; continue; }
+      if (c === '"' || c === "'") {
+        const q = c; i++;
+        while (i < n && src[i] !== q) {
+          if (src[i] === '\\') i++;
+          if (src[i] === '\n') break;
+          i++;
+        }
+        i++; continue;
+      }
+      if (c === '/' && src[i + 1] === '/') { while (i < n && src[i] !== '\n') i++; continue; }
+      if (c === '/' && src[i + 1] === '*') {
+        const fin = src.indexOf('*/', i + 2);
+        i = fin >= 0 ? fin + 2 : n;
+        continue;
+      }
+      if (pile.length && pile[pile.length - 1] === 'sub') {
+        if (c === '}') { pile.pop(); i++; continue; }
+        if (c === '{') { pile.push('sub'); i++; continue; }
+      }
+      i++;
+    }
+    return trouves.map(p => src.slice(0, p).split('\n').length);
+  };
+
+  test('aucun fichier servi ne porte de commentaire dans son balisage', () => {
+    for (const f of ['assets/app.js', 'assets/charts.js', 'assets/store.js',
+                     'assets/insights.js', 'assets/i18n.js', 'assets/cloudsync.js']) {
+      const lignes = commentairesAffiches(lireSource(f));
+      eq(lignes.join(', '), '',
+        `${f} : commentaire affiché ligne ${lignes.join(', ')}`);
+    }
+  });
+
+  test('le contrôle attrape vraiment ce qu’il prétend attraper', () => {
+    /* Un controle qui ne trouve jamais rien peut etre casse sans qu'on le sache.
+       On lui donne les deux formes, celle qui s'affiche et celle qui ne
+       s'affiche pas, et il doit les distinguer. */
+    eq(commentairesAffiches('const h = `<b>x</b>\n  /* vu */\n`;').length, 1,
+      'entre deux balises, le commentaire s’affiche');
+    eq(commentairesAffiches('const h = `<b>${(() => { /* caché */ return 1; })()}</b>`;').length, 0,
+      'dans une interpolation, il reste du code');
+    eq(commentairesAffiches('/* ordinaire */ const x = 1;').length, 0,
+      'hors gabarit, il reste du code');
+    eq(commentairesAffiches('const h = `<b>${x}</b>`; /* après */').length, 0,
+      'après la fermeture du gabarit aussi');
+    /* Un gabarit imbrique dans une interpolation : le cas courant de ce fichier. */
+    eq(commentairesAffiches('`<i>${l.map(x => `<b>\n/* vu */\n</b>`)}</i>`').length, 1,
+      'et jusque dans un gabarit imbriqué');
+  });
+
+  test('la règle est écrite là où on la lira', () => {
+    /* Le piege se double de son jumeau : un commentaire HTML dans un gabarit ne
+       casse rien, mais il part jusqu'au DOM du visiteur. Les deux regles se
+       lisent au meme endroit. */
+    const a = lireSource('assets/app.js');
+    vrai(/dans le gabarit, `<!-- -->` ; dans le code,/.test(a),
+      'la règle des deux formes vit dans le fichier qu’elle protège');
+  });
+});
+
 /* --- Le moteur d'insights -------------------------------------------------
 
    Il lit les moteurs existants et en tire une lecture. Il ne calcule rien de
