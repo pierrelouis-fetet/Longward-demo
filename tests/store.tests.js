@@ -41025,7 +41025,7 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
       'réserve → Autonomie, allocation → Cible, rythme → Rythme, objectif → Projection, capital → Accumulation');
     /* Quatre des cinq visent une carte precise, pas le haut d'une page. */
     const ancres = [...p.matchAll(/ancre: '([a-z]+)'/g)].map(m => m[1]);
-    eq(ancres.join(','), 'autonomie,rythme,trajectoire,accumulation',
+    eq(ancres.join(','), 'autonomie,evolution,trajectoire,accumulation',
       'chaque renvoi qui peut viser une carte la vise');
     /* Aucun libelle vague. */
     for (const mot of ['En savoir plus', 'Optimiser', 'Améliorer', 'Découvrir']) {
@@ -41314,7 +41314,7 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
   test('les quatre autres renvois n’ont pas bougé', () => {
     const p = presentation();
     for (const [id, attendu] of [['allocation_target_gap', "cta: { vue: 'rebalance', libelle: 'Voir ma cible' }"],
-                                 ['wealth_pace_shift', "cta: { vue: 'overview', ancre: 'rythme', libelle: 'Voir mon rythme' }"],
+                                 ['wealth_pace_shift', "cta: { vue: 'overview', ancre: 'evolution', libelle: 'Voir l’évolution' }"],
                                  ['goal_projected_date', "cta: { vue: 'objective', ancre: 'trajectoire', libelle: 'Voir ma projection' }"],
                                  ['debt_principal_share', "cta: { vue: 'overview', ancre: 'accumulation', libelle: 'Voir mon accumulation' }"]]) {
       vrai(p.includes(attendu), `${id} porte son renvoi`);
@@ -41385,13 +41385,42 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
     }
   });
 
-  test('le rythme dit laquelle des deux périodes est la récente', () => {
+  test('la progression met le chiffre devant et la comparaison derrière', () => {
     const p = presentation();
     const bloc = p.slice(p.indexOf('wealth_pace_shift: {'), p.indexOf('goal_projected_date: {'));
-    vrai(/d’environ \{a\} par mois sur les \{n\} derniers mois, contre \{b\} sur les \{m\} précédents/.test(bloc),
-      'les deux périodes se nomment, et « environ » dit que c’est un mois ordinaire');
-    vrai(!/performance|rendement|gain/i.test(bloc.replace(/\/\*[\s\S]*?\*\//g, '')),
-      'et ce n’est ni une performance, ni un rendement, ni un gain');
+    /* Le montant se lit seul, signe compris, et porte son unite de temps. */
+    vrai(/valeur: p => montantSigne\(p\.currentMonthly, fmtEUR0\) \+ trad\('\/mois'\)/.test(bloc),
+      'le chiffre principal est un montant signé, par mois');
+    vrai(/sur les \{n\} derniers mois, contre \{b\} sur les \{m\} mois précédents/.test(bloc),
+      'et la phrase ne fait plus que le situer dans le temps');
+    /* « EN MOYENNE » SERAIT FAUX. Ce chiffre est une mediane : c'est ce qui
+       l'empeche d'etre gonfle par une prime ou une vente, et le mot ne manque
+       pas a la phrase. */
+    vrai(!/en moyenne|moyenne/i.test(bloc.replace(/\/\*[\s\S]*?\*\//g, '')),
+      'la phrase ne dit pas « en moyenne », puisque le calcul est une médiane');
+    const m = lireSource('assets/insights.js');
+    vrai(/currentMonthly: courant/.test(m) && /const courant = a\.mediane/.test(m),
+      'et le moteur rend bien la médiane');
+    /* Ni epargne, ni performance : ce montant contient les apports, le capital
+       rembourse et les marches sans savoir les separer. */
+    for (const mot of ['performance', 'rendement', 'gain', 'épargne', 'epargne']) {
+      vrai(!new RegExp(mot, 'i').test(bloc.replace(/\/\*[\s\S]*?\*\//g, '')),
+        `« ${mot} » décrirait autre chose`);
+    }
+  });
+
+  test('le signe se lit, dans les deux sens, et ne coupe pas la ligne', () => {
+    /* `montantSigne` rend « +1 375 € », « −420 € », et « 0 € » sans signe : un
+       plus devant un zero se lit comme une addition qui n'a pas eu lieu. */
+    Store.state = blankState(); Store.migrate();
+    vrai(/^\+/.test(montantSigne(1375, fmtEUR0)), 'une hausse porte son plus');
+    vrai(/^−/.test(montantSigne(-420, fmtEUR0)), 'une baisse porte son moins typographique');
+    vrai(!/^[+−]/.test(montantSigne(0, fmtEUR0)), 'et zéro n’en porte aucun');
+    const css = lireSource('assets/styles.css');
+    vrai(/\.retenir-valeur \{[\s\S]*?white-space: nowrap;/.test(css),
+      'le montant et son unité ne se séparent jamais');
+    vrai(/\.retenir-valeur \{[\s\S]*?font-variant-numeric: tabular-nums;/.test(css),
+      'et deux montants voisins alignent leurs chiffres');
   });
 
   test('le capital remboursé dit de quelle progression il parle', () => {
@@ -41587,5 +41616,51 @@ suite('Le rythme résiste à un mois exceptionnel', () => {
     const pts = monthlyPace().points;
     const somme = pts.slice(-6).reduce((s, p) => s + num(p.delta), 0);
     pres(somme, 11790, 'l’historique porte toujours la progression réelle, prime comprise');
+  });
+});
+
+/* --- Le chiffre principal ------------------------------------------------- */
+suite('Une entrée peut porter son chiffre devant', () => {
+  const app = () => lireSource('assets/app.js');
+
+  test('le gabarit ne rend la valeur que si la règle en déclare une', () => {
+    const a = app();
+    const rendu = a.slice(a.indexOf('function carteARetenir()'), a.indexOf('function viewOverview()'));
+    vrai(/\$\{p\.valeur \? `<p class="retenir-valeur">\$\{escMontant\(p\.valeur\(i\.params\)\)\}<\/p>` : ''\}/.test(rendu),
+      'la valeur est optionnelle');
+    /* `escMontant` et non `esc` : un montant masque est du balisage, un oeil
+       barre en SVG, et `esc` l'afficherait en clair. */
+    vrai(/escMontant\(p\.valeur/.test(rendu), 'et elle traverse l’échappement des montants');
+    const p = a.slice(a.indexOf('const PRESENTATION_INSIGHT'), a.indexOf('function carteARetenir()'));
+    eq((p.match(/valeur: p =>/g) || []).length, 1,
+      'une seule règle en porte une aujourd’hui : les autres se lisent en une phrase');
+  });
+
+  test('le chiffre ne prend pas la couleur de l’accent', () => {
+    /* Le filet, les puces et le chevron la portent deja : un quatrieme violet
+       dans la meme carte la viderait de sa force. */
+    const css = lireSource('assets/styles.css');
+    const bloc = css.slice(css.indexOf('.retenir-valeur {'), css.indexOf('}', css.indexOf('.retenir-valeur {')));
+    vrai(/color: var\(--text-primary\)/.test(bloc), 'il se lit en encre pleine');
+    vrai(!/--accent/.test(bloc), 'et non en accent');
+  });
+
+  test('le renvoi mène à la courbe, qui montre la même chose', () => {
+    const a = app();
+    const i = a.indexOf('data-anchor="evolution"');
+    vrai(i > 0, 'l’ancre est posée');
+    /* Deux mille cinq cents caracteres de commentaire separent l'ouverture de
+       cette carte de son titre : la fenetre doit les couvrir. */
+    vrai(a.slice(i, i + 3200).includes("trad('Évolution du patrimoine')"),
+      'et la carte visée est bien celle de la courbe');
+    eq(I18N.en['Évolution du patrimoine'], 'Wealth over time', 'qui a déjà son nom anglais');
+    for (const c of ['Progression du patrimoine', '/mois', 'Voir l’évolution',
+                     'sur les {n} derniers mois, contre {b} sur les {m} mois précédents.']) {
+      vrai(!!I18N.en[c], `« ${c} » a sa traduction`);
+    }
+    for (const m of ['{n}', '{b}', '{m}']) {
+      vrai(I18N.en['sur les {n} derniers mois, contre {b} sur les {m} mois précédents.'].includes(m),
+        `et le gabarit garde ${m}`);
+    }
   });
 });

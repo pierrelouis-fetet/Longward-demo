@@ -3348,6 +3348,26 @@ tr.flash-target td { animation: flash-row 1.6s ease; }
   border-radius: 50%; background: var(--accent);
 }
 .retenir-titre { display: block; font-size: var(--font-base); font-weight: 600; letter-spacing: -.01em; }
+/* LE CHIFFRE QU'ON VIENT CHERCHER SE LIT SEUL.
+
+   « Ton rythme patrimonial est d'environ 1 375 € par mois » obligeait a lire
+   une phrase entiere pour trouver un nombre. Pose devant, en gras et d'un cran
+   plus grand, il se prend d'un coup d'oeil et la phrase ne sert plus qu'a le
+   situer dans le temps.
+
+   Il ne prend pas la couleur de l'accent : celle-ci appartient deja au filet,
+   aux puces et au chevron, et un quatrieme violet dans la meme carte la
+   viderait de sa force. Un chiffre en encre pleine se voit bien assez.
+
+   `tabular-nums` parce que deux entrees voisines portant des montants doivent
+   aligner leurs chiffres ; `nowrap` parce que « +1 375 €/mois » coupe apres le
+   signe monetaire si on le laisse faire, et une unite orpheline sur la ligne
+   suivante se lit comme une faute. */
+.retenir-valeur {
+  margin: 4px 0 2px; font-size: var(--font-xl); font-weight: 700;
+  letter-spacing: -.02em; color: var(--text-primary);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
 .retenir-texte { margin: 3px 0 0; color: var(--text-secondary); max-width: 62ch; }
 .retenir-lien { display: inline-block; margin-top: 8px; font-size: var(--font-sm); font-weight: 550; }
 

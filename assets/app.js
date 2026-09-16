@@ -619,7 +619,7 @@ function carteEvolution() {
   const { series } = evolutionAffichee();
   const perimetreUtile = basculesAffichees().perimetre;
   return `
-    <div class="card">
+    <div class="card" data-anchor="evolution">
       <div class="card-head"><h2>${trad('Évolution du patrimoine')}${
         perimetreUtile ? aide(trad(AIDE_PERIMETRE)) : ''}</h2>${
         perimetreUtile ? `
@@ -809,11 +809,13 @@ const PRESENTATION_INSIGHT = {
     cta: { vue: 'rebalance', libelle: 'Voir ma cible' },
   },
   wealth_pace_shift: {
-    titre: 'Rythme patrimonial',
-    phrase: p => trad('Ton rythme patrimonial est d’environ {a} par mois sur les {n} derniers mois, contre {b} sur les {m} précédents.')
-      .replace('{a}', fmtEUR0(p.currentMonthly)).replace('{n}', p.currentMonths)
-      .replace('{b}', fmtEUR0(p.previousMonthly)).replace('{m}', p.previousMonths),
-    cta: { vue: 'overview', ancre: 'rythme', libelle: 'Voir mon rythme' },
+    titre: 'Progression du patrimoine',
+    valeur: p => montantSigne(p.currentMonthly, fmtEUR0) + trad('/mois'),
+    phrase: p => trad('sur les {n} derniers mois, contre {b} sur les {m} mois précédents.')
+      .replace('{n}', p.currentMonths)
+      .replace('{b}', montantSigne(p.previousMonthly, fmtEUR0) + trad('/mois'))
+      .replace('{m}', p.previousMonths),
+    cta: { vue: 'overview', ancre: 'evolution', libelle: 'Voir l’évolution' },
   },
   goal_projected_date: {
     titre: 'Horizon de l’objectif',
@@ -898,6 +900,7 @@ function carteARetenir() {
       ${lus.map(([i, p]) => `
       <li class="retenir-item">
         <b class="retenir-titre">${esc(trad(p.titre))}</b>
+        ${p.valeur ? `<p class="retenir-valeur">${escMontant(p.valeur(i.params))}</p>` : ''}
         <p class="retenir-texte">${p.phrase(i.params)}</p>
         ${!p.cta ? '' : p.cta.ancre
           /* Une ancre vise un endroit DANS une vue : c'est `goto` qui sait
