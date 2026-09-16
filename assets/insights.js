@@ -59,6 +59,29 @@ const INSIGHT_PRIORITE = { HAUTE: 1, MOYENNE: 2, BASSE: 3 };
    que la frontiere est le seul endroit ou deux lecteurs peuvent differer. */
 const SEUIL_AFFICHAGE_ALLOCATION_PP = 5;
 
+/* Le rythme change-t-il assez pour qu'on le dise ? Vingt pour cent d'ecart
+   relatif entre les deux fenetres. « Mille quarante contre mille » est exact et
+   n'apprend rien ; ce filtre le laisse dehors, et il ne dit rien de ce qui
+   serait un bon rythme.
+
+   TROIS CONDITIONS, ET AUCUNE N'EST INVENTEE POUR L'OCCASION.
+
+   La fenetre precedente doit etre STRICTEMENT POSITIVE. C'est la regle que ce
+   projet applique deja partout : un pourcentage n'existe que sur une base
+   positive, et `deltas()` rend `pct: null` sur une base nulle ou negative.
+   Diviser par un rythme precedent proche de zero fabriquerait un « +900 % » qui
+   ne mesure rien. Le prix a payer est connu et assume : quelqu'un dont le
+   patrimoine reculait et qui remonte ne verra pas cet insight-la. Mieux vaut
+   ce silence qu'un pourcentage que personne ne peut interpreter.
+
+   Les deux montants doivent DIFFERER UNE FOIS ARRONDIS comme ils seront
+   affiches. Ce n'est pas un seuil, c'est une coherence : la phrase ne peut pas
+   dire « 1 240 contre 1 240 ».
+
+   Et l'ecart relatif doit atteindre le filtre, borne INCLUSIVE comme celle de
+   l'allocation. Un test la fige. */
+const SEUIL_AFFICHAGE_RYTHME_PCT = 20;
+
 const MOIS_MINIMUM_FENETRE_RYTHME = 6;
 
 function contexteInsights(ctx) {
@@ -90,18 +113,50 @@ function depensesObservees(annee) {
            mois: num(stats.moisRetenus) };
 }
 
-/* Les lignes du reequilibrage, mises a plat.
+/* Les lignes du reequilibrage, mises a plat PUIS ramenees a la classe.
 
    `rebalanceRows()` ne rend pas un tableau mais un objet : `classes` porte une
    ligne par classe — dedoublee en core et satellite quand la cible l'est — et
    `cash` porte la tresorerie a placer, ou `null` quand elle a ete sortie du
    perimetre. Les deux se lisent de la meme facon, avec la meme base, et une
-   regle qui n'aurait lu que `classes` aurait ignore une cible de tresorerie
-   sans que rien ne le dise. */
+   regle qui n'aurait lu que `classes` aurait ignore une cible de tresorerie.
+
+   POURQUOI ON REGROUPE. Une phrase doit nommer exactement ce qu'elle compare.
+   « Actions core pese 46 % pour une cible de 46 % » est vrai et illisible : le
+   role n'est pas une classe, et personne ne raisonne en « actions core » devant
+   un tableau de bord. L'insight parle donc toujours de la classe entiere.
+
+   L'AGREGATION NE RECALCULE RIEN. Elle additionne les lignes que le moteur
+   vient de rendre, encours et cible, et c'est tout : les deux moities d'une
+   classe decoupee ont ete construites sur la meme base, leur somme EST la
+   classe. La part se redivise par cette meme base, jamais par une autre. Aucune
+   cible, aucun encours, aucun denominateur n'est relu ailleurs, et la somme des
+   parts continue de faire ce qu'elle faisait.
+
+   Le detail par role n'est pas perdu : il se lit dans Allocation, ou la cible
+   se regle. Ici, on nomme la classe. */
 function lignesReequilibrage(r) {
-  const base = (r && r.classes) ? r.classes.slice() : [];
-  if (r && r.cash) base.push(r.cash);
-  return base;
+  const plates = (r && r.classes) ? r.classes.slice() : [];
+  if (r && r.cash) plates.push(r.cash);
+  const base = num(r && r.base);
+  const parClasse = new Map();
+  for (const l of plates) {
+    const cle = l.classeParente || l.cle;
+    const label = l.labelClasse || l.label;
+    const deja = parClasse.get(cle);
+    if (!deja) {
+      parClasse.set(cle, { cle, label, value: num(l.value), targetPct: num(l.targetPct),
+                           targetVal: num(l.targetVal), roles: 1 });
+      continue;
+    }
+    deja.value += num(l.value);
+    deja.targetPct += num(l.targetPct);
+    deja.targetVal += num(l.targetVal);
+    deja.roles += 1;
+  }
+  return [...parClasse.values()].map(x => Object.assign(x, {
+    pct: base ? x.value / base * 100 : 0,
+  }));
 }
 
 /* --- Les fenetres du rythme -----------------------------------------------
@@ -240,6 +295,8 @@ const REGLES_INSIGHT = [
         evidence: {
           source: 'rebalanceRows',
           classe: tete.r.cle,
+          scope: 'classe',
+          lignesAgregees: num(tete.r.roles),
           currentPct: num(tete.r.pct),
           targetPct: num(tete.r.targetPct),
           deltaPct: tete.ecart,
@@ -285,13 +342,24 @@ const REGLES_INSIGHT = [
       if (!f) return null;
       const a = statsRythme(f.recente);
       const b = statsRythme(f.precedente);
+      const courant = num(a.average), precedent = num(b.average);
+      if (!(precedent > 0)) return null;
+      if (Math.round(courant) === Math.round(precedent)) return null;
+      const ecartPct = (courant / precedent - 1) * 100;
+      /* L'EPSILON N'EST PAS UNE COQUETTERIE. `1200 / 1000 - 1` vaut
+         0,19999999999999996 en virgule flottante : sans cette marge, un ecart
+         d'exactement vingt pour cent tomberait du mauvais cote de sa propre
+         borne, et le test qui la fige echouerait pour une raison qui n'a rien a
+         voir avec la finance. */
+      if (Math.abs(ecartPct) + 1e-9 < SEUIL_AFFICHAGE_RYTHME_PCT) return null;
       return {
         params: {
           currentMonthly: num(a.average),
           currentMonths: num(a.mois),
           previousMonthly: num(b.average),
           previousMonths: num(b.mois),
-          deltaMonthly: num(a.average) - num(b.average),
+          deltaMonthly: courant - precedent,
+          deltaPct: ecartPct,
         },
         evidence: {
           source: 'monthlyPace',
@@ -303,6 +371,8 @@ const REGLES_INSIGHT = [
           previousTo: f.precedente[f.precedente.length - 1].date,
           previousMonths: num(b.mois),
           previousMonthly: num(b.average),
+          deltaPct: ecartPct,
+          displayThresholdPct: SEUIL_AFFICHAGE_RYTHME_PCT,
           currentContributions: num(a.apports),
           previousContributions: num(b.apports),
         },

@@ -1588,6 +1588,7 @@ tr.ligne-ouvre .mois-lien { pointer-events: none; }
 .mlist-groupe > .mlist:last-child { border-bottom: none; }
 .lien-vue { color: var(--series-1); text-decoration: none; }
 @media (hover: hover) { .lien-vue:hover { text-decoration: underline; } }
+.lien-vue:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--radius-xs); }
 /* Le mois en cours se repere dans la liste comme il se repere dans le
    tableau. La regle passe avant `:active`, sinon l'appui n'aurait plus de
    retour visuel sur cette ligne-la, la seule qu'on touche souvent. */
@@ -3330,6 +3331,14 @@ tr.flash-target td { animation: flash-row 1.6s ease; }
 .choix-txt .sub { display: block; }
 .choix-coche { flex: none; width: 22px; text-align: center; color: var(--accent); font-weight: 700; visibility: hidden; }
 .choix-ligne.on .choix-coche { visibility: visible; }
+.retenir-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.retenir-item { padding: 14px 0; border-top: 1px solid var(--grid); }
+.retenir-item:first-child { padding-top: 4px; border-top: none; }
+.retenir-item:last-child { padding-bottom: 0; }
+.retenir-titre { display: block; font-size: var(--font-base); font-weight: 600; }
+.retenir-texte { margin: 4px 0 0; color: var(--text-secondary); max-width: 62ch; }
+.retenir-lien { display: inline-block; margin-top: 8px; font-size: var(--font-sm); }
+
 .devise-question { font-size: var(--font-lg); font-weight: 600; margin: 2px 0 14px; }
 .devise-choix { display: grid; gap: 8px; }
 .devise-carte {
