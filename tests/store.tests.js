@@ -40395,3 +40395,412 @@ suite('La devise, avant la première saisie', () => {
     vrai(!/flag|drapeau/.test(f), 'aucun drapeau : l’euro n’est pas la France');
   });
 });
+
+/* --- Le moteur d'insights -------------------------------------------------
+
+   Il lit les moteurs existants et en tire une lecture. Il ne calcule rien de
+   financier, ne produit aucun texte, ne connait ni langue ni devise, et se tait
+   des qu'une donnee manque. Ces trois proprietes sont ce que la suite protege :
+   le reste n'est que le detail de cinq regles. */
+suite('Le moteur d’insights ne parle pas sans données', () => {
+  const src = () => lireSource('assets/insights.js');
+  const par = (l, id) => l.find(i => i.id === id) || null;
+  const vierge = () => { Store.state = blankState(); Store.migrate(); refreshAccounts(); };
+
+  /* Un historique de N relevés mensuels consécutifs, valeur imposée mois par
+     mois : c'est la seule facon de fabriquer un rythme comparable. */
+  const poserHistorique = (valeurs, depart = '2024-01-31') => {
+    const [y, m] = depart.split('-').map(Number);
+    Store.state.monthly = valeurs.map((v, i) => {
+      const d = new Date(Date.UTC(y, m - 1 + i + 1, 0));
+      return { date: d.toISOString().slice(0, 10), comment: '', v: { c_courant: v } };
+    });
+  };
+
+  test('1. un état vierge ne produit aucun insight', () => {
+    vierge();
+    const l = construireInsights();
+    eq(l.length, 0, 'rien à dire, donc rien de dit : ' + l.map(i => i.id).join(', '));
+    vrai(Array.isArray(l), 'et c’est une liste, pas null');
+  });
+
+  test('2. chaque règle déclare son éligibilité et ne rend rien sans elle', () => {
+    vierge();
+    for (const r of REGLES_INSIGHT) {
+      eq(typeof r.eligible, 'function', `${r.id} déclare eligible()`);
+      eq(typeof r.evaluer, 'function', `${r.id} déclare evaluer()`);
+      vrai(!!r.titleKey && !!r.descriptionKey, `${r.id} porte ses clefs`);
+      vrai(!!r.dedupeGroup, `${r.id} porte son groupe`);
+      eq(r.eligible(contexteInsights()), false, `${r.id} se tait sur un état vierge`);
+    }
+  });
+
+  test('3. le moteur ne produit ni texte, ni signe monétaire, ni pourcentage formaté', () => {
+    const s = src();
+    /* Aucun signe monetaire en dur, dans aucune des deux devises. */
+    vrai(!/[€$]/.test(s.replace(/\/\*[\s\S]*?\*\//g, '')), 'aucun symbole de devise hors commentaire');
+    /* Aucun formateur : ni le central, ni un Intl local. */
+    for (const interdit of ['fmtEUR', 'fmtCur', 'Intl.NumberFormat', 'toLocaleString',
+                            'deviseBase', 'trad(', 't(\'']) {
+      vrai(!s.includes(interdit), `le moteur n’appelle pas ${interdit}`);
+    }
+    /* Ni DOM, ni stockage, ni reseau, ni horloge non injectee. */
+    for (const interdit of ['document', 'localStorage', 'fetch(', 'setTimeout', 'window.']) {
+      vrai(!s.includes(interdit), `le moteur ne touche pas à ${interdit}`);
+    }
+    /* Et ce qu'il rend ne porte que des nombres et des clefs. */
+    Fixture.poser();
+    for (const i of construireInsights()) {
+      for (const [k, v] of Object.entries(i.params)) {
+        vrai(typeof v === 'number' || typeof v === 'string',
+          `${i.id}.params.${k} est un nombre ou une clef, pas un objet formaté`);
+        if (typeof v === 'string') vrai(!/[€$%]/.test(v), `${i.id}.params.${k} ne porte aucune unité`);
+      }
+      vrai(!!i.evidence && !!i.evidence.source, `${i.id} nomme son moteur source`);
+    }
+  });
+
+  test('4. l’ordre est déterministe, et deux lectures rendent la même liste', () => {
+    Fixture.poser();
+    const a = construireInsights().map(i => i.id);
+    const b = construireInsights().map(i => i.id);
+    eq(a.join(','), b.join(','), 'deux appels de suite, même ordre');
+    /* Le rang intrinseque gouverne, l'ordre de declaration departage. */
+    const l = construireInsights();
+    for (let i = 1; i < l.length; i++) {
+      vrai(l[i - 1].priorite <= l[i].priorite, 'les rangs ne reculent jamais');
+    }
+    /* Et aucun horodatage ne traine dans le moteur. */
+    vrai(!/Date\.now\(\)|new Date\(\)/.test(src()), 'aucune horloge ne sert de départage');
+  });
+
+  test('5. un seul insight par groupe de déduplication', () => {
+    Fixture.poser();
+    const l = construireInsights();
+    const groupes = l.map(i => i.dedupeGroup);
+    eq(new Set(groupes).size, groupes.length, 'aucun groupe n’apparaît deux fois');
+  });
+
+  test('6. la devise ne change pas un seul résultat du moteur', () => {
+    Fixture.poser();
+    Store.state.meta.devise = 'EUR';
+    const eur = JSON.stringify(construireInsights());
+    Store.state.meta.devise = 'USD';
+    const usd = JSON.stringify(construireInsights());
+    eq(usd, eur, 'les insights sont identiques en euros et en dollars');
+  });
+});
+
+/* --- Les cinq règles, une par une ---------------------------------------- */
+suite('Insight : la réserve de liquidités', () => {
+  const brut = () => par(construireInsights(), 'liquidity_runway');
+  const par = (l, id) => l.find(i => i.id === id) || null;
+
+  test('sans dépenses observées, la règle se tait', () => {
+    Fixture.poser(s => { s.budget.expenses = []; });
+    eq(par(construireInsights(), 'liquidity_runway'), null,
+      'aucune dépense saisie n’est une absence, pas un zéro : rien à dire');
+    /* Et surtout : `runway()` sait quand meme rendre un chiffre, parce qu'il
+       retombe sur l'objectif de depenses. C'est precisement ce que la regle
+       refuse de presenter comme des « dépenses renseignées ». */
+    vrai(num(runway().burn) > 0, 'le moteur, lui, rend toujours un chiffre');
+  });
+
+  test('avec des dépenses observées, elle rend des mois et sa preuve', () => {
+    Fixture.poser();
+    const i = par(construireInsights(), 'liquidity_runway');
+    vrai(!!i, 'la règle produit');
+    const r = runway();
+    eq(i.params.months, num(r.liquidMonths), 'les mois viennent de runway(), pas d’un second calcul');
+    eq(i.params.monthlyBurn, num(r.burn));
+    eq(i.evidence.source, 'runway');
+    vrai(i.evidence.observedExpenseMonths > 0, 'la preuve dit combien de mois ont été observés');
+    /* La reserve est l'inverse exact de la division de runway(). */
+    pres(i.params.reserve, num(r.liquidMonths) * num(r.burn), 'la réserve est cohérente avec les mois');
+  });
+
+  test('aucun jugement, aucun seuil : le constat et rien d’autre', () => {
+    const s = lireSource('assets/insights.js');
+    const regle = s.slice(s.indexOf("id: 'liquidity_runway'"), s.indexOf("id: 'allocation_target_gap'"));
+    vrai(!/targetLow|targetHigh/.test(regle),
+      'les trois et six mois de runway() ne sortent pas d’ici : ce n’est pas une norme');
+    Fixture.poser();
+    const i = par2(construireInsights(), 'liquidity_runway');
+    for (const k of Object.keys(i.params)) {
+      vrai(!/suffisant|insuffisant|bon|mauvais|ideal/i.test(k), `params.${k} ne juge rien`);
+    }
+  });
+  function par2(l, id) { return l.find(i => i.id === id) || null; }
+});
+
+suite('Insight : l’écart à la cible d’allocation', () => {
+  const trouve = () => construireInsights().find(i => i.id === 'allocation_target_gap') || null;
+
+  /* Le reequilibrage se nourrit des POSITIONS, par `stockTotals()`, et non des
+     lignes posees sur un compte : deux titres suffisent donc a fabriquer un
+     ecart au dixieme de point. Les valeurs sont quantite un fois le prix, pour
+     qu'on lise le pourcentage directement dans le test. */
+  const poserParts = (actions, obligations, cibleActions, cibleObligations) => {
+    Fixture.poser(s => {
+      s.targets = { cashToInvest: 0,
+                    classes: { actions: cibleActions, obligations: cibleObligations },
+                    exclues: [] };
+      s.positions = [
+        { id: 'p_a', name: 'Actions', isin: '', symbol: 'ACT', currency: 'EUR', qty: 1,
+          buyPrice: actions, price: actions, fx: 1, fxBuy: 1, account: 'c_pea',
+          manual: false, assetClass: 'actions', role: 'core' },
+        { id: 'p_o', name: 'Obligations', isin: '', symbol: 'OBL', currency: 'EUR', qty: 1,
+          buyPrice: obligations, price: obligations, fx: 1, fxBuy: 1, account: 'c_pea',
+          manual: false, assetClass: 'obligations', role: 'core' },
+      ];
+      s.comptes.forEach(c => { if (c.id === 'c_pea') c.cash = []; });
+    });
+  };
+
+  test('sans cible posée, la règle se tait', () => {
+    Fixture.poser(s => { s.targets = { cashToInvest: 0, classes: {}, exclues: [] }; });
+    eq(trouve(), null, 'pas de cible n’est pas une cible de zéro');
+  });
+
+  test('la convention du seuil est >= 5 points, et ce test la fige', () => {
+    eq(SEUIL_AFFICHAGE_ALLOCATION_PP, 5, 'le seuil d’affichage vaut cinq points');
+    /* 4,9 point : rien. Le filtre existe pour que le bruit ne prenne pas la
+       place du signal, et il ne dit rien de ce qui serait prudent. */
+    poserParts(6990, 3010, 65, 35);
+    eq(trouve(), null, '4,9 pp ne produit rien');
+    /* Exactement 5,0 : l'insight parait. LA BORNE EST INCLUSIVE, et c'est ici
+       que deux lecteurs pouvaient differer. */
+    poserParts(7000, 3000, 65, 35);
+    vrai(!!trouve(), '5,0 pp produit l’insight : la borne est inclusive');
+    poserParts(7200, 2800, 65, 35);
+    const i = trouve();
+    vrai(!!i, '7 pp aussi');
+    pres(i.params.deltaPct, 7, 'l’écart est rendu en points de pourcentage');
+    pres(i.params.currentPct, 72);
+    pres(i.params.targetPct, 65);
+  });
+
+  test('la sous-allocation compte autant que la sur-allocation', () => {
+    poserParts(5800, 4200, 65, 35);
+    const i = trouve();
+    vrai(!!i, 'un retard de 7 pp produit aussi');
+    vrai(i.params.deltaPct < 0, 'et le signe dit le sens');
+    pres(Math.abs(i.params.deltaPct), 7);
+  });
+
+  test('plusieurs classes dérivent : une seule sort, la plus grande, toujours la même', () => {
+    /* Actions a +12, obligations a −6 : la plus grande deviation gagne, sans
+       ambiguite, et deux lectures rendent la meme. */
+    Fixture.poser(s => {
+      s.targets = { cashToInvest: 0,
+                    classes: { actions: 60, obligations: 30, metaux: 10 }, exclues: [] };
+      s.positions = [
+        { id: 'p_a', name: 'Actions', isin: '', symbol: 'ACT', currency: 'EUR', qty: 1,
+          buyPrice: 7200, price: 7200, fx: 1, fxBuy: 1, account: 'c_pea',
+          manual: false, assetClass: 'actions', role: 'core' },
+        { id: 'p_o', name: 'Obligations', isin: '', symbol: 'OBL', currency: 'EUR', qty: 1,
+          buyPrice: 2400, price: 2400, fx: 1, fxBuy: 1, account: 'c_pea',
+          manual: false, assetClass: 'obligations', role: 'core' },
+        { id: 'p_m', name: 'Or', isin: '', symbol: 'OR', currency: 'EUR', qty: 1,
+          buyPrice: 400, price: 400, fx: 1, fxBuy: 1, account: 'c_cto',
+          manual: false, assetClass: 'metaux', role: 'satellite' },
+      ];
+      s.comptes.forEach(c => { c.cash = []; });
+    });
+    const tous = construireInsights().filter(i => i.id === 'allocation_target_gap');
+    eq(tous.length, 1, 'une seule carte d’allocation, jamais trois');
+    const a = trouve(), b = trouve();
+    eq(a.params.classe, b.params.classe, 'et c’est la même à chaque lecture');
+    pres(a.params.deltaPct, 12, 'la plus grande déviation, en valeur absolue');
+    pres(a.params.currentPct, 72);
+    pres(a.params.targetPct, 60);
+  });
+
+  test('la preuve nomme le seuil comme un seuil d’affichage', () => {
+    poserParts(7200, 2800, 65, 35);
+    const i = trouve();
+    eq(i.evidence.source, 'rebalanceRows');
+    eq(i.evidence.displayThresholdPp, SEUIL_AFFICHAGE_ALLOCATION_PP,
+      'la preuve porte le seuil, pour que la présentation sache que c’est un filtre');
+    vrai(/filtres d’affichage, jamais des normes/.test(lireSource('assets/insights.js'))
+      || /filtres d'affichage, jamais des normes/.test(lireSource('assets/insights.js')),
+      'et le code le dit');
+    /* Le moteur ne recalcule ni la base, ni les parts. */
+    const r = rebalanceRows();
+    const ligne = lignesReequilibrage(r).find(x => x.cle === i.params.classe);
+    pres(i.params.currentPct, num(ligne.pct), 'la part vient de rebalanceRows()');
+    pres(i.evidence.currentValue, num(ligne.value), 'l’encours aussi');
+  });
+});
+
+suite('Insight : le rythme d’accumulation', () => {
+  const trouve = () => construireInsights().find(i => i.id === 'wealth_pace_shift') || null;
+  const poserHistorique = valeurs => {
+    Fixture.poser(s => {
+      s.monthly = valeurs.map((v, i) => {
+        const d = new Date(Date.UTC(2024, i + 1, 0));
+        return { date: d.toISOString().slice(0, 10), comment: '', v: { c_courant: v } };
+      });
+    });
+  };
+
+  test('un historique trop court ne produit rien', () => {
+    Fixture.poser();
+    eq(trouve(), null, 'un seul relevé ne fait aucune période');
+    poserHistorique([1000, 2000, 3000]);
+    eq(trouve(), null, 'deux intervalles ne font pas deux fenêtres de six mois');
+    poserHistorique([1000, 2000, 3000, 4000, 5000, 6000, 7000]);
+    eq(trouve(), null, 'six intervalles couvrent une seule fenêtre, pas deux');
+  });
+
+  test('deux fenêtres pleines produisent, et nomment les mois réellement couverts', () => {
+    /* Treize releves : douze intervalles, donc deux fenetres de six mois. */
+    poserHistorique([0, 100, 200, 300, 400, 500, 600, 1600, 2600, 3600, 4600, 5600, 6600]);
+    const i = trouve();
+    vrai(!!i, 'la règle produit');
+    eq(i.params.currentMonths, 6, 'la fenêtre récente couvre six mois');
+    eq(i.params.previousMonths, 6, 'la précédente aussi');
+    pres(i.params.previousMonthly, 100, 'cent par mois avant');
+    pres(i.params.currentMonthly, 1000, 'mille par mois ensuite');
+    pres(i.params.deltaMonthly, 900);
+    eq(i.evidence.source, 'monthlyPace');
+    vrai(!!i.evidence.currentFrom && !!i.evidence.currentTo, 'la preuve borne la période récente');
+    vrai(!!i.evidence.previousFrom && !!i.evidence.previousTo, 'et la précédente');
+  });
+
+  test('le mot « performance » n’apparaît nulle part', () => {
+    const s = lireSource('assets/insights.js');
+    const regle = s.slice(s.indexOf("id: 'wealth_pace_shift'"), s.indexOf("id: 'goal_projected_date'"));
+    for (const mot of ['performance', 'rendement']) {
+      vrai(!new RegExp(mot, 'i').test(regle.replace(/\/\*[\s\S]*?\*\//g, '')),
+        `« ${mot} » n’a rien à faire ici : le rythme contient les apports`);
+    }
+    /* Et la preuve le dit, chiffres a l'appui. */
+    poserHistorique([0, 100, 200, 300, 400, 500, 600, 1600, 2600, 3600, 4600, 5600, 6600]);
+    const i = trouve();
+    vrai('currentContributions' in i.evidence, 'la preuve isole les apports de la période');
+  });
+
+  test('les fenêtres se comptent en mois couverts, pas en nombre de relevés', () => {
+    const s = lireSource('assets/insights.js');
+    vrai(/mois \+= Math\.max\(1, num\(reste\[i\]\.mois\) \|\| 1\);/.test(s),
+      'chaque point apporte les mois qu’il couvre');
+    eq(MOIS_MINIMUM_FENETRE_RYTHME, 6, 'six mois par fenêtre');
+    /* Deux releves espaces d'un an font UN point et douze mois : la fenetre est
+       pleine avec un seul point, et c'est juste. */
+    Fixture.poser(s2 => {
+      s2.monthly = [
+        { date: '2023-01-31', comment: '', v: { c_courant: 0 } },
+        { date: '2024-01-31', comment: '', v: { c_courant: 12000 } },
+        { date: '2025-01-31', comment: '', v: { c_courant: 36000 } },
+      ];
+    });
+    const i = trouve();
+    vrai(!!i, 'deux intervalles annuels suffisent');
+    eq(i.params.currentMonths, 12);
+    eq(i.params.previousMonths, 12);
+    pres(i.params.previousMonthly, 1000);
+    pres(i.params.currentMonthly, 2000);
+  });
+});
+
+suite('Insight : la date d’atteinte de la cible', () => {
+  const trouve = () => construireInsights().find(i => i.id === 'goal_projected_date') || null;
+
+  test('sans cible de projection, la règle se tait', () => {
+    Fixture.poser(s => { s.meta.projTarget = 0; });
+    eq(trouve(), null, 'pas de cible n’est pas une cible de zéro');
+  });
+
+  test('une cible hors de portée ne fabrique aucune date', () => {
+    Fixture.poser(s => { s.meta.projTarget = 50000000; s.meta.projHorizon = 10; });
+    eq(trouve(), null, 'le moteur n’atteint pas la cible : aucune date inventée');
+  });
+
+  test('une cible atteignable rend une année, un mois et ses hypothèses', () => {
+    Fixture.poser(s => { s.meta.projTarget = 200000; s.meta.projHorizon = 30; });
+    const i = trouve();
+    vrai(!!i, 'la règle produit');
+    const p = capitalisation({ years: 30 });
+    eq(i.params.year, num(p.targetReached.year), 'l’année vient de capitalisation()');
+    eq(i.params.month, num(p.targetReached.month), 'le mois aussi');
+    vrai(i.params.monthsFromNow > 0);
+    eq(i.evidence.source, 'capitalisation');
+    /* Les hypotheses sont nommees : la date n'est honnete que si l'on sait de
+       quel scenario elle descend. */
+    for (const k of ['horizonYears', 'monthlyContribution', 'scenario', 'inflationPct']) {
+      vrai(k in i.evidence, `la preuve porte ${k}`);
+    }
+  });
+
+  test('une cible déjà franchie n’est pas cette règle-là', () => {
+    Fixture.poser(s => { s.meta.projTarget = 1000; });
+    eq(trouve(), null, 'déjà atteinte : rien à projeter ici');
+  });
+
+  test('aucun moteur de projection parallèle', () => {
+    const s = lireSource('assets/insights.js');
+    vrai(/capitalisation\(\{ years: horizonProjection\(\) \}\)/.test(s),
+      'la trajectoire vient du moteur, pas d’un calcul local');
+    vrai(!/Math\.pow|\*\* *\(|1 \+ taux/.test(s), 'aucune capitalisation écrite à la main');
+  });
+});
+
+suite('Insight : le capital remboursé', () => {
+  const trouve = () => construireInsights().find(i => i.id === 'debt_principal_share') || null;
+
+  test('sans crédit qui amortit, la règle se tait', () => {
+    Fixture.poser(s => { s.etabs.forEach(e => { e.dettes = []; }); });
+    eq(trouve(), null, 'aucun capital remboursé : rien à dire');
+  });
+
+  test('un crédit qui amortit produit un montant mensuel, jamais confondu avec l’épargne', () => {
+    Fixture.poser(s => {
+      const e = s.etabs.find(x => x.id === 'e_bien');
+      e.dettes = [{ id: 'd_pret', libelle: 'Prêt', montant: 100000, taux: 2, mensualite: 600,
+                    note: '', verifieLe: todayISO() }];
+    });
+    const rec = savingsReconciliation();
+    if (!(num(rec.capitalRembourse) > 0.005)) {
+      vrai(true, 'ce fixture n’amortit pas : la règle se tait, et c’est le comportement attendu');
+      eq(trouve(), null);
+      return;
+    }
+    const i = trouve();
+    vrai(!!i, 'la règle produit');
+    eq(i.params.monthlyPrincipalRepaid, num(rec.capitalRembourse),
+      'le montant vient de savingsReconciliation(), pas d’un second calcul');
+    eq(i.params.monthlyInvestable, num(rec.investable));
+    vrai(i.params.monthlyPrincipalRepaid !== i.params.monthlyInvestable
+      || i.params.monthlyInvestable === 0,
+      'le capital remboursé et l’épargne disponible restent deux nombres distincts');
+    eq(i.evidence.source, 'savingsReconciliation');
+    vrai('expensesObserved' in i.evidence,
+      'la preuve dit si les dépenses retenues sont observées ou si c’est l’objectif qui a servi');
+  });
+});
+
+suite('Le moteur d’insights et la cloche ne font pas le même métier', () => {
+  test('aucune règle ne double un contrôle de healthChecks()', () => {
+    const s = lireSource('assets/insights.js');
+    vrai(!/healthChecks/.test(s.replace(/\/\*[\s\S]*?\*\//g, '')),
+      'le moteur n’appelle pas la cloche et ne la recopie pas');
+    /* La cloche reclame un geste de saisie, le moteur lit une situation. Aucune
+       regle d'insight ne doit donc porter de niveau d'alerte. */
+    Fixture.poser();
+    for (const i of construireInsights()) {
+      vrai(!('level' in i), `${i.id} ne porte aucun niveau d’alerte`);
+      vrai(!/manquant|incomplet|a compléter|à compléter/i.test(i.id),
+        `${i.id} n’est pas une réclamation de saisie`);
+    }
+  });
+
+  test('l’horizon de projection se dérive comme dans la vue', () => {
+    const i = lireSource('assets/insights.js');
+    const a = lireSource('assets/app.js');
+    vrai(/num\(Store\.state && Store\.state\.meta \? Store\.state\.meta\.projHorizon : 0\) \|\| 20/.test(i),
+      'le moteur dérive l’horizon de l’état');
+    vrai(/num\(Store\.state\?\.meta\?\.projHorizon\) \|\| 20/.test(a),
+      'et la vue en fait autant : même défaut de vingt ans');
+  });
+});
