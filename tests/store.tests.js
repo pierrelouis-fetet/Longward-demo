@@ -40804,3 +40804,304 @@ suite('Le moteur d’insights et la cloche ne font pas le même métier', () => 
       'et la vue en fait autant : même défaut de vingt ans');
   });
 });
+
+/* --- Le bruit du rythme --------------------------------------------------- */
+suite('Le rythme ne se dit que s’il a vraiment changé', () => {
+  const trouve = () => construireInsights().find(i => i.id === 'wealth_pace_shift') || null;
+  /* Treize releves, donc douze intervalles : deux fenetres de six mois. Les six
+     premiers ecarts valent `avant`, les six suivants `apres`. */
+  const poserRythme = (avant, apres) => {
+    Fixture.poser(s => {
+      const v = [0];
+      for (let i = 0; i < 6; i++) v.push(v[v.length - 1] + avant);
+      for (let i = 0; i < 6; i++) v.push(v[v.length - 1] + apres);
+      s.monthly = v.map((x, i) => {
+        const d = new Date(Date.UTC(2024, i + 1, 0));
+        return { date: d.toISOString().slice(0, 10), comment: '', v: { c_courant: x } };
+      });
+    });
+  };
+
+  test('le seuil est un filtre d’affichage, et il vaut vingt pour cent', () => {
+    eq(SEUIL_AFFICHAGE_RYTHME_PCT, 20);
+    const s = lireSource('assets/insights.js');
+    vrai(/filtres d’affichage, jamais des normes/.test(s) || /filtres d'affichage, jamais des normes/.test(s),
+      'le fichier dit que ce sont des filtres, pas des normes');
+  });
+
+  test('une variation trop faible ne se dit pas', () => {
+    poserRythme(1000, 1040);   /* +4 % */
+    eq(trouve(), null, '4 % ne vaut pas la peine d’être dit');
+    poserRythme(1000, 1199);   /* +19,9 % */
+    eq(trouve(), null, '19,9 % non plus');
+  });
+
+  test('exactement vingt pour cent se dit : la borne est inclusive', () => {
+    poserRythme(1000, 1200);
+    const i = trouve();
+    vrai(!!i, '20,0 % produit l’insight');
+    pres(i.params.deltaPct, 20, 'et la preuve porte l’écart relatif');
+    eq(i.evidence.displayThresholdPct, SEUIL_AFFICHAGE_RYTHME_PCT,
+      'la preuve nomme le seuil, pour que personne ne le prenne pour une règle');
+  });
+
+  test('une variation franche se dit, dans les deux sens', () => {
+    poserRythme(1000, 1500);
+    const haut = trouve();
+    vrai(!!haut && haut.params.deltaPct > 0, 'une accélération');
+    poserRythme(1500, 1000);
+    const bas = trouve();
+    vrai(!!bas && bas.params.deltaPct < 0, 'et un ralentissement');
+    pres(Math.abs(bas.params.deltaPct), 100 / 3, 'l’écart se rapporte à la période précédente');
+  });
+
+  test('une période précédente nulle ou négative ne produit aucun pourcentage', () => {
+    /* La regle de la maison : un pourcentage n'existe que sur une base
+       positive. Un rythme precedent a zero donnerait un « +900 % » qui ne
+       mesure rien, et un rythme negatif retournerait le signe. */
+    poserRythme(0, 1500);
+    eq(trouve(), null, 'une base nulle : silence plutôt qu’un pourcentage absurde');
+    poserRythme(-500, 1500);
+    eq(trouve(), null, 'une base négative : silence aussi');
+    /* Et le silence est assume : la donnee existe toujours dans le moteur. */
+    vrai(monthlyPace().points.length >= 12, 'l’historique, lui, est bien là');
+  });
+
+  test('deux montants qui s’affichent pareil ne font pas une phrase', () => {
+    /* Un ecart relatif enorme sur des montants minuscules : « 0 contre 0 ». */
+    Fixture.poser(s => {
+      const v = [0];
+      for (let i = 0; i < 6; i++) v.push(v[v.length - 1] + 0.1);
+      for (let i = 0; i < 6; i++) v.push(v[v.length - 1] + 0.4);
+      s.monthly = v.map((x, i) => {
+        const d = new Date(Date.UTC(2024, i + 1, 0));
+        return { date: d.toISOString().slice(0, 10), comment: '', v: { c_courant: x } };
+      });
+    });
+    eq(trouve(), null, 'arrondis, les deux rythmes valent le même nombre : rien à dire');
+  });
+
+  test('un historique trop court reste non éligible', () => {
+    Fixture.poser();
+    eq(trouve(), null, 'un seul relevé');
+  });
+});
+
+/* --- La granularité de l'allocation --------------------------------------- */
+suite('L’allocation parle de la classe, jamais d’une moitié de classe', () => {
+  const trouve = () => construireInsights().find(i => i.id === 'allocation_target_gap') || null;
+  const pos = (id, classe, role, valeur, compte) => ({
+    id, name: id, isin: '', symbol: id.toUpperCase(), currency: 'EUR', qty: 1,
+    buyPrice: valeur, price: valeur, fx: 1, fxBuy: 1, account: compte,
+    manual: false, assetClass: classe, role,
+  });
+
+  test('une cible découpée en cœur et satellite se lit comme une seule classe', () => {
+    /* La cible est posee par role — c'est ce que `rebalanceRows()` decoupe.
+       L'insight doit quand meme nommer « Actions », pas « Actions cœur ». */
+    Fixture.poser(s => {
+      s.targets = { cashToInvest: 0,
+                    classes: { actions: { core: 40, satellite: 20 }, obligations: 40 },
+                    exclues: [] };
+      s.positions = [pos('p_c', 'actions', 'core', 5000, 'c_pea'),
+                     pos('p_s', 'actions', 'satellite', 2200, 'c_pea'),
+                     pos('p_o', 'obligations', 'core', 2800, 'c_pea')];
+      s.comptes.forEach(c => { c.cash = []; });
+    });
+    const i = trouve();
+    vrai(!!i, 'la règle produit');
+    eq(i.params.classe, 'actions', 'la classe entière, pas un rôle');
+    eq(i.evidence.scope, 'classe', 'et la preuve le dit');
+    eq(i.evidence.lignesAgregees, 2, 'deux lignes de rôle ont été ramenées à leur classe');
+    /* 7 200 sur 10 000, pour une cible de 40 + 20 : douze points d'ecart. */
+    pres(i.params.currentPct, 72);
+    pres(i.params.targetPct, 60);
+    pres(i.params.deltaPct, 12);
+    /* Et le libelle ne porte aucun role. */
+    vrai(!/c(oe|œ)ur|core|satellite/i.test(i.params.label),
+      `« ${i.params.label} » ne nomme pas un rôle`);
+  });
+
+  test('l’agrégation additionne ce que le moteur a rendu, elle ne recalcule rien', () => {
+    Fixture.poser(s => {
+      s.targets = { cashToInvest: 0,
+                    classes: { actions: { core: 40, satellite: 20 }, obligations: 40 },
+                    exclues: [] };
+      s.positions = [pos('p_c', 'actions', 'core', 5000, 'c_pea'),
+                     pos('p_s', 'actions', 'satellite', 2200, 'c_pea'),
+                     pos('p_o', 'obligations', 'core', 2800, 'c_pea')];
+      s.comptes.forEach(c => { c.cash = []; });
+    });
+    const r = rebalanceRows();
+    const plates = r.classes.filter(x => x.classeParente === 'actions');
+    eq(plates.length, 2, 'le moteur rend bien deux lignes de rôle');
+    const groupe = lignesReequilibrage(r).find(x => x.cle === 'actions');
+    pres(groupe.value, plates.reduce((s2, x) => s2 + num(x.value), 0), 'l’encours est la somme');
+    pres(groupe.targetPct, plates.reduce((s2, x) => s2 + num(x.targetPct), 0), 'la cible aussi');
+    pres(groupe.pct, groupe.value / num(r.base) * 100, 'et la part se divise par la base du moteur');
+    /* La somme des parts fait toujours cent, agregation comprise. */
+    const total = lignesReequilibrage(r).reduce((s2, x) => s2 + num(x.value), 0);
+    pres(total, num(r.base), 'un total vaut la somme de ses parts');
+  });
+
+  test('sous le seuil, rien ne sort, même agrégé', () => {
+    Fixture.poser(s => {
+      s.targets = { cashToInvest: 0,
+                    classes: { actions: { core: 45, satellite: 25 }, obligations: 30 },
+                    exclues: [] };
+      s.positions = [pos('p_c', 'actions', 'core', 5000, 'c_pea'),
+                     pos('p_s', 'actions', 'satellite', 2200, 'c_pea'),
+                     pos('p_o', 'obligations', 'core', 2800, 'c_pea')];
+      s.comptes.forEach(c => { c.cash = []; });
+    });
+    /* 72 contre 70, et 28 contre 30 : deux points, sous le filtre. */
+    eq(trouve(), null, 'deux points d’écart ne valent pas une carte');
+  });
+});
+
+/* --- La section À retenir -------------------------------------------------
+
+   `app.js` n'est pas charge par le harnais : ces controles lisent donc la
+   source, comme tous les controles de vue de ce projet. Ce qui s'execute ici,
+   c'est le moteur ; ce qui se lit, c'est la facon dont la page s'en sert. */
+suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
+  const app = () => lireSource('assets/app.js');
+  const presentation = () => {
+    const a = app();
+    return a.slice(a.indexOf('const PRESENTATION_INSIGHT'), a.indexOf('function carteARetenir()'));
+  };
+  const rendu = () => {
+    const a = app();
+    return a.slice(a.indexOf('function carteARetenir()'), a.indexOf('function viewOverview()'));
+  };
+
+  test('aucun insight : aucune carte, et rien pour combler', () => {
+    Store.state = blankState(); Store.migrate(); refreshAccounts();
+    eq(construireInsights().length, 0, 'le moteur ne dit rien sur un état vierge');
+    const r = rendu();
+    vrai(/if \(!lus\.length\) return '';/.test(r),
+      'la vue rend une chaîne vide, donc la Home ne porte pas de carte');
+    /* Et surtout : aucune phrase de remplissage dans CETTE carte. La cloche
+       porte bien un « Rien à signaler », et c'est son rôle : elle répond à une
+       question qu'on lui a posée. Une lecture qui n'a rien à dire se tait. */
+    for (const mot of ['Tout va bien', 'Rien à signaler', 'Aucun insight']) {
+      vrai(!r.includes(mot), `« ${mot} » n’apparaît pas dans la carte`);
+    }
+  });
+
+  test('la page ne montre jamais plus de trois insights', () => {
+    const a = app();
+    vrai(/const MAX_A_RETENIR = 3;/.test(a), 'le plafond est déclaré, et il vaut trois');
+    vrai(/\.slice\(0, MAX_A_RETENIR\)/.test(rendu()), 'la coupe se fait sur cette constante');
+    /* Le moteur peut en produire cinq : c'est bien un plafond d'affichage. */
+    eq(REGLES_INSIGHT.length, 5, 'cinq règles existent');
+  });
+
+  test('l’ordre affiché est celui du moteur, sans second tri', () => {
+    const r = rendu();
+    vrai(!/\.sort\(/.test(r), 'la vue ne reclasse rien : deux classements finiraient par diverger');
+    vrai(/construireInsights\(\)/.test(r), 'elle lit la liste que le moteur a déjà ordonnée');
+    /* Et le moteur, lui, est stable : deux appels, deux fois le meme ordre. */
+    Fixture.poser();
+    eq(construireInsights().map(i => i.id).join(','),
+       construireInsights().map(i => i.id).join(','), 'l’ordre ne bouge pas d’un appel à l’autre');
+  });
+
+  test('chaque règle a sa présentation, et chaque renvoi mène quelque part', () => {
+    const p = presentation();
+    const a = app();
+    for (const r of REGLES_INSIGHT) {
+      vrai(p.includes(`${r.id}: {`), `${r.id} a sa présentation`);
+    }
+    /* Les cinq destinations, et chacune est une vue ou une redirection que
+       l'application sert deja. Les deux tables vivent dans `app.js`. */
+    const routes = [];
+    for (const m of a.slice(a.indexOf('const VIEWS = {'), a.indexOf('const REDIRECTIONS')).matchAll(/^  ([a-z-]+):\s/gm)) routes.push(m[1]);
+    for (const m of a.slice(a.indexOf('const REDIRECTIONS = {'), a.indexOf('const SOUS_ONGLETS')).matchAll(/^  '?([a-z-]+)'?:\s*\[/gm)) routes.push(m[1]);
+    const cibles = [...p.matchAll(/cta: \{ vue: '([a-z-]+)'/g)].map(m => m[1]);
+    eq(cibles.length, 5, 'les cinq insights portent un renvoi');
+    for (const c of cibles) vrai(routes.includes(c), `« ${c} » est une route servie`);
+    eq(cibles.join(','), 'budget,rebalance,history,objective,budget',
+      'réserve → Budget, allocation → Cible, rythme → Historique, objectif → Projection, capital → Budget');
+    /* Aucun libelle vague. */
+    for (const mot of ['En savoir plus', 'Optimiser', 'Améliorer', 'Découvrir']) {
+      vrai(!p.includes(mot), `aucun renvoi ne dit « ${mot} »`);
+    }
+  });
+
+  test('aucun titre ne juge, aucune phrase ne conseille', () => {
+    const p = presentation();
+    const sansCommentaires = p.replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const mot of ['trop de', 'insuffisant', 'idéal', 'recommandé', 'Attention',
+                       'excellent', 'Bravo', 'mauvaise', 'tu devrais', 'il faut']) {
+      vrai(!new RegExp(mot, 'i').test(sansCommentaires), `la présentation ne dit pas « ${mot} »`);
+    }
+    /* Le rythme ne s'appelle jamais performance : il contient les apports. */
+    const bloc = p.slice(p.indexOf('wealth_pace_shift: {'), p.indexOf('goal_projected_date: {'));
+    vrai(!/performance|rendement/i.test(bloc.replace(/\/\*[\s\S]*?\*\//g, '')),
+      'le rythme patrimonial garde son nom');
+    /* Et la date d'objectif reste au conditionnel. */
+    vrai(/ta cible serait atteinte vers/.test(p), 'la date est projetée, jamais promise');
+    vrai(!/tu atteindras/i.test(sansCommentaires), 'aucune promesse dans le texte affiché');
+  });
+
+  test('aucun signe monétaire n’est écrit en dur dans la présentation', () => {
+    const p = presentation().replace(/\/\*[\s\S]*?\*\//g, '');
+    vrai(!/[€$]/.test(p), 'les montants passent par le formateur central');
+    vrai(/fmtEUR0\(/.test(p), 'et c’est bien lui');
+    vrai(/fmtPct\(/.test(p), 'les pourcentages aussi');
+    /* Le moteur, lui, n'a jamais rien formate. */
+    const m = lireSource('assets/insights.js').replace(/\/\*[\s\S]*?\*\//g, '');
+    vrai(!/fmtEUR|fmtPct|[€$]/.test(m), 'et rien n’a fui vers le moteur');
+  });
+
+  test('les deux langues portent toutes les clefs de la section', () => {
+    const p = presentation();
+    const clefs = ['À retenir'];
+    for (const m of p.matchAll(/titre: '([^']+)'/g)) clefs.push(m[1].replace(/\\'/g, "'"));
+    for (const m of p.matchAll(/libelle: '([^']+)'/g)) clefs.push(m[1].replace(/\\'/g, "'"));
+    vrai(clefs.length >= 11, `${clefs.length} clefs relevées`);
+    for (const c of clefs) vrai(!!I18N.en[c], `« ${c} » a sa traduction`);
+    /* Les gabarits interpoles gardent leurs marques en anglais : sans elles, le
+       nombre disparait de la phrase sans que rien ne tombe. */
+    for (const [cle, marques] of [
+      ['Tes liquidités mobilisables couvrent environ {n} mois de dépenses renseignées.', ['{n}']],
+      ['{c} : {a} de tes investissements, pour une cible de {b}.', ['{c}', '{a}', '{b}']],
+      ['Ton patrimoine progresse de {a} par mois sur {n} mois, contre {b} sur les {m} précédents.',
+        ['{a}', '{n}', '{b}', '{m}']],
+      ['Selon tes hypothèses actuelles, ta cible serait atteinte vers {d}.', ['{d}']],
+      ['{a} par mois de ta progression viennent du capital remboursé sur tes crédits, et non de ton épargne disponible.',
+        ['{a}']],
+    ]) {
+      vrai(!!I18N.en[cle], `« ${cle.slice(0, 44)}… » a sa traduction`);
+      for (const mq of marques) vrai(I18N.en[cle].includes(mq), `et elle garde ${mq}`);
+    }
+  });
+
+  test('la section vit entre la situation et le détail', () => {
+    const a = app();
+    const depart = a.indexOf('function viewOverview()');
+    const repart = a.indexOf('class="card repart"', depart);
+    const retenir = a.indexOf('${carteARetenir()}', depart);
+    const positions = a.indexOf("${!aDesPositionsMarche() ? '' : `", depart);
+    vrai(repart > depart && retenir > repart, 'elle suit la répartition, donc le patrimoine');
+    vrai(positions > retenir, 'et précède le détail des positions');
+  });
+
+  test('la section se lit, elle n’alerte pas', () => {
+    const r = rendu();
+    const css = lireSource('assets/styles.css');
+    /* Aucune couleur de gravite, aucune icone, aucun emoji. */
+    for (const mot of ['--critical', '--warning', '--serious', 'badge', 'alerte']) {
+      vrai(!r.includes(mot), `la carte ne porte pas ${mot}`);
+    }
+    vrai(/\.retenir-item \{[\s\S]*?border-top: 1px solid var\(--grid\);/.test(css),
+      'les entrées se séparent par un filet, comme partout ailleurs');
+    /* Et ce qui se focalise porte l'anneau de l'application. */
+    vrai(/\.lien-vue:focus-visible \{[\s\S]*?outline: 2px solid var\(--accent\)/.test(css),
+      'le renvoi est atteignable au clavier, et ça se voit');
+    /* La fleche est decorative : elle ne doit pas etre lue a voix haute. */
+    vrai(/<span aria-hidden="true">→<\/span>/.test(r), 'la flèche est masquée aux lecteurs d’écran');
+    vrai(/aria-labelledby="retenirTitre"/.test(r), 'et la section est nommée');
+  });
+});

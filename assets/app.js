@@ -784,6 +784,67 @@ function sortiesRappel(genre, label, avant = '') {
   </span>`;
 }
 
+const MAX_A_RETENIR = 3;
+
+const moisEtAnnee = (annee, mois) => new Intl.DateTimeFormat(locale(),
+  { month: 'long', year: 'numeric' }).format(new Date(Date.UTC(annee, mois - 1, 1)));
+
+const PRESENTATION_INSIGHT = {
+  liquidity_runway: {
+    titre: 'Réserve disponible',
+    phrase: p => trad('Tes liquidités mobilisables couvrent environ {n} mois de dépenses renseignées.')
+      .replace('{n}', fmtMois(p.months)),
+    cta: { vue: 'budget', libelle: 'Voir le budget' },
+  },
+  allocation_target_gap: {
+    titre: 'Allocation et cible',
+    phrase: p => trad('{c} : {a} de tes investissements, pour une cible de {b}.')
+      .replace('{c}', esc(trad(p.label))).replace('{a}', fmtPct(p.currentPct, 1))
+      .replace('{b}', fmtPct(p.targetPct, 1)),
+    cta: { vue: 'rebalance', libelle: 'Voir la cible' },
+  },
+  wealth_pace_shift: {
+    titre: 'Rythme patrimonial',
+    phrase: p => trad('Ton patrimoine progresse de {a} par mois sur {n} mois, contre {b} sur les {m} précédents.')
+      .replace('{a}', fmtEUR0(p.currentMonthly)).replace('{n}', p.currentMonths)
+      .replace('{b}', fmtEUR0(p.previousMonthly)).replace('{m}', p.previousMonths),
+    cta: { vue: 'history', libelle: 'Voir l’historique' },
+  },
+  goal_projected_date: {
+    titre: 'Horizon de l’objectif',
+    phrase: p => trad('Selon tes hypothèses actuelles, ta cible serait atteinte vers {d}.')
+      .replace('{d}', moisEtAnnee(p.year, p.month)),
+    cta: { vue: 'objective', libelle: 'Voir la projection' },
+  },
+  debt_principal_share: {
+    titre: 'Capital remboursé',
+    phrase: p => trad('{a} par mois de ta progression viennent du capital remboursé sur tes crédits, et non de ton épargne disponible.')
+      .replace('{a}', fmtEUR0(p.monthlyPrincipalRepaid)),
+    cta: { vue: 'budget', libelle: 'Voir le budget' },
+  },
+};
+
+function carteARetenir() {
+  const lus = construireInsights()
+    .map(i => [i, PRESENTATION_INSIGHT[i.id]])
+    .filter(([, p]) => !!p)
+    .slice(0, MAX_A_RETENIR);
+  if (!lus.length) return '';
+  return `
+  <section class="card retenir" aria-labelledby="retenirTitre">
+    <div class="card-head"><h2 id="retenirTitre">${trad('À retenir')}</h2></div>
+    <ul class="retenir-liste">
+      ${lus.map(([i, p]) => `
+      <li class="retenir-item">
+        <b class="retenir-titre">${esc(trad(p.titre))}</b>
+        <p class="retenir-texte">${p.phrase(i.params)}</p>
+        ${p.cta ? `<a class="lien-vue retenir-lien" href="#/${p.cta.vue}"
+           >${esc(trad(p.cta.libelle))} <span aria-hidden="true">→</span></a>` : ''}
+      </li>`).join('')}
+    </ul>
+  </section>`;
+}
+
 function viewOverview() {
   const t = nowTotals();
   const d = deltas();
@@ -917,6 +978,7 @@ function viewOverview() {
     ${apercuVerrou(trad('Projection'), trad('Disponible quand ta situation est suffisamment renseignée.'), 'courbe')}
   </div>`
   : `
+  ${carteARetenir()}
   ${!aDesPositionsMarche() ? '' : `
   <div class="card">
     <div class="card-head"><h2>${trad('Tes titres')}</h2>
