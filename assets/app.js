@@ -1049,16 +1049,45 @@ function viewOverview() {
      rend `null` quand la base de comparaison est nulle, negative, ou que le
      patrimoine a traverse zero entre les deux dates. L'euro, lui, reste exact
      dans tous les cas. */
+  /* --- « SUR {n} MOIS GLISSANTS », ET LE NOMBRE EST LE VRAI -----------------
+
+     La fenetre est bien GLISSANTE : elle se termine aujourd'hui et remonte vers
+     le releve le plus proche d'il y a douze mois, jamais vers un 1er janvier.
+     C'est ce que « glissants » dit, et c'est ce qui la distingue d'une annee
+     civile.
+
+     MAIS ELLE NE FAIT PAS TOUJOURS DOUZE MOIS, et le libelle ne le pretend
+     jamais. `variationAn()` retient le releve le plus proche de douze mois dans
+     une tolerance de trois, et rend l'AGE REEL du point retenu. Ecrire « 12 »
+     sous une comparaison qui en couvre quinze serait le meme mensonge que
+     l'ecrire sous quatre. Le nombre reste donc interpole depuis le moteur : la
+     phrase dit « sur 12 mois glissants » quand le releve a douze mois, et
+     « sur 15 mois glissants » quand il en a quinze.
+
+     CE N'EST PAS UN RENDEMENT, et la bulle le dit en toutes lettres. Un
+     « +127,7 % » se lit spontanement comme une performance de placement ; celui
+     -ci contient les versements, les retraits et le capital rembourse sur les
+     credits. Le pourcentage ne change pas, son nom non plus : c'est la bulle
+     qui porte la distinction, parce qu'un second intitule dans la carte
+     encombrerait le seul chiffre qu'on vient lire.
+
+     ET LE GRAND CHIFFRE PERD SES CENTIMES, comme la carte de composition juste
+     dessous. Trente-quatre centimes sous un patrimoine de cinquante mille euros
+     n'ajoutent aucune information et coutent deux caracteres au plus grand
+     nombre de l'application. Rien n'est arrondi dans les donnees : `nowTotals()`
+     rend ce qu'il rendait, et les ecrans qui ont besoin du centime le gardent.
+     La variation, elle, n'en a jamais porte — `fmtSigned` formate deja a zero
+     decimale — et le pourcentage garde la sienne. */
   const varAn = variationAn(todayISO(), evoNet);
   const blocVariation = !varAn ? '' : `
     <div class="hero-deltas">
       <div class="hero-delta">
         <b class="${cls(varAn.eur)}">${fmtSigned(varAn.eur)}${varAn.pct == null ? ''
           : `<span class="hero-pct">· ${fmtSignedPct(varAn.pct, 1)}</span>`}</b>
-        <span>${trad(varAn.mois > 1 ? '{n} derniers mois' : '{n} dernier mois')
+        <span>${trad(varAn.mois > 1 ? 'sur {n} mois glissants' : 'sur {n} mois glissant')
           .replace('{n}', varAn.mois)}${aide(trad(evoNet
-            ? 'Variation du patrimoine net sur la période. Elle inclut les versements, les retraits, le remboursement du capital des crédits et l’évolution de la valeur des actifs.'
-            : 'Variation du patrimoine brut sur la période. Elle inclut les versements, les retraits et l’évolution de la valeur des actifs.'))}</span>
+            ? 'Variation de ton patrimoine net entre aujourd’hui et le relevé le plus proche d’il y a un an. Elle inclut les versements, les retraits, le remboursement du capital des crédits et l’évolution de la valeur des actifs : ce n’est pas la performance de tes placements.'
+            : 'Variation de ton patrimoine brut entre aujourd’hui et le relevé le plus proche d’il y a un an. Elle inclut les versements, les retraits et l’évolution de la valeur des actifs : ce n’est pas la performance de tes placements.'))}</span>
       </div>
     </div>`;
 
@@ -1083,7 +1112,7 @@ function viewOverview() {
                   title="${trad('La valeur de tes avoirs, crédits non déduits')}">${trad('Brut')}</button>
         </span>` : ''}
       </div>
-      <div class="hero-value">${fmtEUR(evoNet ? t.total : t.brut)}</div>`}
+      <div class="hero-value">${fmtEUR0(evoNet ? t.total : t.brut)}</div>`}
     </div>
     ${blocVariation}
     ${(() => {

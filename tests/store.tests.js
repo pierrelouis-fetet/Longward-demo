@@ -5593,7 +5593,9 @@ suite('Bandeau de l’Aperçu : net ou brut, jusqu’au bout', () => {
   test('B. en net, l’intitulé dit « patrimoine net »', () => {
     const dico = lireSource('assets/i18n.js');
     vrai(dico.includes('"Patrimoine net": "Net worth"'), 'et l’anglais dit « Net worth »');
-    vrai(/hero-value">\$\{fmtEUR\(evoNet \? t\.total : t\.brut\)\}/.test(bandeau()),
+    /* Sans centimes, comme la carte de composition juste dessous : le formateur
+       change, la source non. */
+    vrai(/hero-value">\$\{fmtEUR0\(evoNet \? t\.total : t\.brut\)\}/.test(bandeau()),
       'le grand chiffre reste celui qui existait, sans recalcul');
   });
 
@@ -5651,12 +5653,17 @@ suite('Bandeau de l’Aperçu : net ou brut, jusqu’au bout', () => {
     scene({ brut: 10000, releves: [['2025-05-01', 8000]] });
     eq(variationAn(AUJ, false).mois, 15, 'quinze mois retenus dans la tolérance');
     const app = vue();
-    vrai(/trad\(varAn\.mois > 1 \? '\{n\} derniers mois' : '\{n\} dernier mois'\)/.test(app),
+    /* LE NOMBRE RESTE CELUI DU MOTEUR. « Glissants » dit que la fenêtre se
+       termine aujourd'hui, pas qu'elle fait douze mois : écrire « 12 » sous une
+       comparaison qui en couvre quinze serait le même mensonge que l'écrire
+       sous quatre. */
+    vrai(/trad\(varAn\.mois > 1 \? 'sur \{n\} mois glissants' : 'sur \{n\} mois glissant'\)/.test(app),
       'la vue écrit le nombre de mois qu’on lui donne');
+    vrai(/\.replace\('\{n\}', varAn\.mois\)/.test(app), 'et c’est l’âge réel du relevé retenu');
     vrai(/\.replace\('\{n\}', varAn\.mois\)/.test(app), 'et le substitue');
     const dico = lireSource('assets/i18n.js');
-    vrai(dico.includes('"{n} derniers mois": "Last {n} months"'),
-      'l’anglais compte derrière, le français devant');
+    vrai(dico.includes('"sur {n} mois glissants": "over a rolling {n}-month period"'),
+      'l’anglais dit la période à sa façon, sans calquer le français');
   });
 
   test('H. aucun historique exploitable, aucun faux zéro', () => {
@@ -5686,9 +5693,14 @@ suite('Bandeau de l’Aperçu : net ou brut, jusqu’au bout', () => {
   test('K. les quatre chaînes du bandeau se traduisent', () => {
     const dico = lireSource('assets/i18n.js');
     const declaree = cle => dico.includes('"' + cle + '":') || dico.includes("'" + cle + "':");
-    for (const cle of ['{n} derniers mois', '{n} dernier mois',
+    for (const cle of ['sur {n} mois glissants', 'sur {n} mois glissant',
                        'Patrimoine net', 'Patrimoine brut'])
       vrai(declaree(cle), 'traduit : ' + cle);
+    /* L'anglais dit la même chose sans calquer le français : « over a rolling
+       12-month period », et non « over the 12 last months ». */
+    eq(I18N.en['sur {n} mois glissants'], 'over a rolling {n}-month period',
+      'et la période anglaise se lit naturellement');
+    vrai(I18N.en['sur {n} mois glissants'].includes('{n}'), 'en gardant sa marque');
     /* L'infobulle nomme ce qui fait bouger le chiffre, et le mot qui ne doit
        pas y etre n'y est pas : ce nombre n'est pas une performance. */
     const app = vue();
@@ -5696,12 +5708,12 @@ suite('Bandeau de l’Aperçu : net ou brut, jusqu’au bout', () => {
     const bloc = app.slice(i, app.indexOf('`;', app.indexOf('</div>`', i)));
     vrai(/remboursement du capital des crédits/.test(bloc),
       'le net cite le remboursement du capital');
-    const iBrut = bloc.indexOf('Variation du patrimoine brut');
+    const iBrut = bloc.indexOf('Variation de ton patrimoine brut');
     vrai(iBrut > 0, 'le texte du brut existe');
     vrai(!/remboursement du capital/.test(bloc.slice(iBrut)),
       'le brut ne le cite pas : il ne le mesure pas');
-    for (const en of ['Change in net worth over the period',
-                      'Change in total assets over the period'])
+    for (const en of ['Change in your net worth between today',
+                      'Change in your total assets between today'])
       vrai(dico.includes(en), 'et l’anglais existe : ' + en.slice(0, 22));
   });
 
@@ -5799,7 +5811,19 @@ suite('Variation du patrimoine : douze mois glissants, ou rien', () => {
     vrai(!/apports inclus/.test(bloc), 'la réserve n’est plus sur la face');
     /* Ce nombre melange ce qu'on a verse et ce que les marches ont fait : le
        nommer performance serait promettre une mesure que rien ne calcule. */
-    vrai(!/performance|rendement/i.test(bloc), 'et il ne s’appelle pas une performance');
+    /* LE MOT « PERFORMANCE » N'EST PAS INTERDIT, IL EST RETOURNE. Le nombre
+       mélange ce qu'on a versé et ce que les marchés ont fait : le NOMMER
+       performance promettrait une mesure que rien ne calcule, mais dire qu'il
+       n'en est pas une est exactement ce qui lève la confusion. Un « +127,7 % »
+       se lit spontanément comme un rendement de placement.
+       La distinction vit dans la bulle, jamais sur la face de la carte : un
+       second intitulé encombrerait le seul chiffre qu'on vient lire. */
+    const face = bloc.slice(0, bloc.indexOf('aide('));
+    vrai(!/performance|rendement/i.test(face), 'la face ne nomme aucune performance');
+    vrai(/ce n’est pas la performance de tes placements/.test(bloc),
+      'et la bulle dit explicitement que ce n’en est pas une');
+    vrai(/it is not your investment performance/.test(lireSource('assets/i18n.js')),
+      'dans les deux langues');
   });
 
   test('deux lignes, et le montant tient la première', () => {
@@ -22078,7 +22102,7 @@ suite('Deux réglages, deux questions, et ils ne se marchent pas dessus', () => 
       'la barre et la liste lisent le patrimoine complet, jamais le périmètre du graphique');
     vrai(!/repartitionClasses\([^)]*evoFinancier/.test(sansCom),
       'aucun appel ne passe evoFinancier à la répartition');
-    vrai(/<div class="hero-value">\$\{fmtEUR\(evoNet \? t\.total : t\.brut\)\}<\/div>/.test(sansCom),
+    vrai(/<div class="hero-value">\$\{fmtEUR0\(evoNet \? t\.total : t\.brut\)\}<\/div>/.test(sansCom),
       'le grand chiffre suit Net / Brut et rien d’autre');
     vrai(!/allocFinancier = evoFinancier/.test(sansCom),
       'et le commutateur d’Allocation ne se branche pas dessus');
@@ -41248,6 +41272,133 @@ suite('Aucun commentaire ne part dans le balisage', () => {
     const a = lireSource('assets/app.js');
     vrai(/dans le gabarit, `<!-- -->` ; dans le code,/.test(a),
       'la règle des deux formes vit dans le fichier qu’elle protège');
+  });
+});
+
+/* --- Le hero : une fenetre nommee pour ce qu'elle est ----------------------
+
+   « 12 derniers mois » sous un « +127,7 % » se lit comme un rendement annuel.
+   Deux choses le corrigent, et aucune ne touche a un calcul : la fenetre se dit
+   glissante, et la bulle dit en toutes lettres que ce n'est pas une
+   performance. */
+suite('Le hero dit sa fenêtre et ce qu’elle n’est pas', () => {
+  const vue = () => lireSource('assets/app.js');
+  const bloc = () => {
+    const a = vue();
+    const i = a.indexOf('const blocVariation = !varAn');
+    return a.slice(i, a.indexOf('`;', a.indexOf('</div>`', i)));
+  };
+
+  test('la fenêtre est vraiment glissante, et le moteur le prouve', () => {
+    /* GLISSANTE VEUT DIRE : elle se termine aujourd'hui et remonte vers le
+       relevé le plus proche d'il y a un an, jamais vers un 1er janvier. */
+    const st = lireSource('assets/store.js');
+    const f = st.slice(st.indexOf('function variationAn'), st.indexOf('function variationAn') + 2600);
+    vrai(/const maintenant = enMois\(aujourdhui\);/.test(f), 'la fenêtre part d’aujourd’hui');
+    vrai(/Math\.abs\(age\(p\) - 12\) > TOLERANCE_AN/.test(f), 'et vise douze mois en arrière');
+    vrai(!/getFullYear|01-01/.test(f), 'aucune année civile n’entre dans le choix');
+  });
+
+  test('mais elle ne prétend jamais faire douze mois', () => {
+    /* Le nombre affiché est l'AGE REEL du relevé retenu, dans une tolérance de
+       trois mois. Écrire « 12 » sous une comparaison qui en couvre quinze
+       serait le même mensonge que l'écrire sous quatre. */
+    setLang('fr');
+    const a = vue();
+    vrai(/'sur \{n\} mois glissants'/.test(a), 'le gabarit porte une marque, pas un douze');
+    vrai(!/sur 12 mois glissants'/.test(a), 'aucun douze écrit en dur');
+    eq(trad('sur {n} mois glissants').replace('{n}', 12), 'sur 12 mois glissants',
+      'et à douze mois, la phrase est celle qu’on attend');
+    eq(trad('sur {n} mois glissants').replace('{n}', 15), 'sur 15 mois glissants',
+      'à quinze, elle le dit');
+    eq(trad('sur {n} mois glissant').replace('{n}', 1), 'sur 1 mois glissant',
+      'et le singulier existe');
+  });
+
+  test('l’anglais dit la période sans calquer le français', () => {
+    setLang('en');
+    try {
+      eq(trad('sur {n} mois glissants').replace('{n}', 12), 'over a rolling 12-month period');
+      eq(trad('sur {n} mois glissant').replace('{n}', 1), 'over a rolling 1-month period');
+      eq(trad('Patrimoine net'), 'Net worth', 'et le titre garde sa terminologie');
+    } finally { setLang('fr'); }
+  });
+
+  test('le grand chiffre perd ses centimes, la variation aussi, le pourcentage non', () => {
+    const b = bloc();
+    /* Le montant : formateur central à zéro décimale, comme la carte de
+       composition juste dessous. */
+    vrai(/hero-value">\$\{fmtEUR0\(/.test(vue()), 'le patrimoine se lit sans centimes');
+    /* La variation en euros n'en a jamais porté : `fmtSigned` formate déjà à
+       zéro décimale. On le fige, pour que personne ne l'enrichisse. */
+    vrai(/fmtSigned\(varAn\.eur\)/.test(b), 'la variation passe par le formateur signé');
+    const st = lireSource('assets/store.js');
+    vrai(/const fmtSigned = v => \(v >= 0 \? '\+' : '−'\) \+ fmtEUR\(Math\.abs\(v\), 0\);/.test(st),
+      'et celui-là est à zéro décimale');
+    /* Le pourcentage, lui, garde la sienne : à l'entier près, un écart de six
+       dixièmes disparaîtrait. */
+    vrai(/fmtSignedPct\(varAn\.pct, 1\)/.test(b), 'le pourcentage garde sa décimale');
+    setLang('fr');
+    eq(fmtSignedPct(127.74, 1), '+127,7 %');
+    setLang('en');
+    try { eq(fmtSignedPct(127.74, 1), '+127.7%'); } finally { setLang('fr'); }
+  });
+
+  test('rien n’est arrondi dans les données', () => {
+    Fixture.poser();
+    const t = nowTotals();
+    /* L'écran arrondit, le modèle jamais : les centimes sont toujours là. */
+    eq(t.total, num(t.total), 'le net garde sa valeur exacte');
+    eq(t.brut, num(t.brut), 'le brut aussi');
+    const st = lireSource('assets/store.js');
+    const f = st.slice(st.indexOf('function nowTotals'), st.indexOf('function nowTotals') + 1200);
+    vrai(!/Math\.round/.test(f), 'aucun arrondi dans nowTotals()');
+  });
+
+  test('la bulle nomme ce qui bouge, et ce que ce n’est pas', () => {
+    const b = bloc();
+    /* Elle ne cite que des composantes réellement incluses. */
+    vrai(/les versements, les retraits, le remboursement du capital des crédits/.test(b),
+      'le net cite le capital remboursé');
+    const iBrut = b.indexOf('Variation de ton patrimoine brut');
+    vrai(!/remboursement du capital/.test(b.slice(iBrut)),
+      'le brut ne le cite pas : il ne le mesure pas');
+    /* ET LE MOT EST RETOURNE, jamais posé. */
+    vrai(/ce n’est pas la performance de tes placements/.test(b),
+      'la bulle lève la confusion explicitement');
+    const face = b.slice(0, b.indexOf('aide('));
+    vrai(!/performance|rendement/i.test(face), 'mais la face ne nomme rien de tel');
+  });
+
+  test('la hiérarchie et l’alignement ne bougent pas', () => {
+    const css = lireSource('assets/styles.css');
+    /* Rien n'est centré : la lecture reste de gauche à droite. */
+    for (const sel of ['.hero-label', '.hero-value', '.hero-deltas', '.hero-delta']) {
+      const r = css.slice(css.indexOf(sel + ' '), css.indexOf('}', css.indexOf(sel + ' ')));
+      vrai(!/text-align: center|justify-content: center|align-items: center;[^}]*justify/.test(r),
+        `${sel} n’est pas centré`);
+    }
+    /* L'ordre de lecture : intitulé, montant, variation, période, barre. */
+    const a = vue();
+    const i = n => a.indexOf(n);
+    vrai(i('hero-label') < i('hero-value'), 'l’intitulé précède le montant');
+    vrai(i('const blocVariation') < i('hero-label'), 'la variation se construit avant');
+    vrai(i('hero-value') < i('${blocVariation}'), 'et se rend après le montant');
+  });
+
+  test('aucun élément n’a été ajouté à droite', () => {
+    /* Le vide à droite de la période est une respiration, pas un oubli : tout ce
+       qui pouvait s'y mettre répétait un chiffre déjà lu deux centimètres plus
+       bas. Le seul élément à droite reste la bascule Net / Brut, qui y était. */
+    const a = vue();
+    const i = a.indexOf('const blocVariation = !varAn');
+    const b = a.slice(i, a.indexOf('`;', a.indexOf('</div>`', i)));
+    eq((b.match(/<div class="hero-delta">/g) || []).length, 1,
+      'une seule colonne de variation, comme avant');
+    vrai(!/hero-aside|hero-droite|hero-extra/.test(a), 'aucun bloc nouveau à droite');
+    const css = lireSource('assets/styles.css');
+    vrai(/\.hero-label > \.segmented \{ margin-left: auto; \}/.test(css),
+      'et la bascule garde sa place, la seule à droite');
   });
 });
 
