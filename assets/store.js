@@ -2017,6 +2017,31 @@ const fmtDelaiMois = v => {
   return partAns || partMois || trad('moins d’un mois');
 };
 
+/* --- LA LARGEUR D'UNE BARRE DE PART, ET SON PLANCHER ------------------------
+
+   Une poche a trois dixiemes de pourcent rend une barre de moins d'un pixel :
+   0,3 % de 311 px font 0,93 px, que l'arrondi du navigateur et le rayon de la
+   pastille effacent tout a fait. La ligne porte alors un nom, un montant, un
+   pourcentage, et une barre vide — le dessin dement le chiffre.
+
+   LE PLANCHER EST EN PIXELS, ET C'EST VOULU. C'est une question de dessin et
+   non de comptabilite : ce qui compte est qu'il reste quelque chose a voir, et
+   trois pixels restent trois pixels que la carte fasse 311 px de large ou 700.
+   Un plancher en pourcentage aurait grossi avec elle.
+
+   IL NE VAUT QUE POUR UNE PART STRICTEMENT POSITIVE. Une poche a zero garde une
+   barre vide, et c'est une information : zero n'est pas trois dixiemes.
+
+   ET IL NE TOUCHE PAS AU CHIFFRE. La ligne continue d'afficher « 0,3 % ». Le
+   plancher est graphique, il ne remonte nulle part, et il ne rend pas une part
+   de 0,3 % comparable a une part de 5 % : au-dela d'environ un pour cent, c'est
+   la proportion qui l'emporte, exactement comme avant.
+
+   Il vit avec les formateurs, et non dans la vue : le harnais de tests ne
+   charge pas `app.js`, et une regle posee la-bas ne se verifierait que des
+   yeux. Ce qu'il rend est une longueur CSS, comme `fmtEUR0` rend un montant. */
+const largeurPart = pct => num(pct) > 0 ? `max(3px, ${num(pct).toFixed(1)}%)` : '0%';
+
 const fmtSigned = v => (v >= 0 ? '+' : '−') + fmtEUR(Math.abs(v), 0);
 /* Un montant signe, sauf a zero : « +584 € », « −300 € », et « 0 € » plutot que
    « +0 € ». Un plus devant un zero se lit comme une addition qui n'a pas eu

@@ -41007,6 +41007,157 @@ suite('La cible se date au mois, et les deux écrans disent le même mois', () =
   });
 });
 
+/* --- La carte de repartition, sous le hero ---------------------------------
+
+   Elle disait « 14 965,00 € » pour une poche de patrimoine : deux decimales qui
+   ne changent ni la part, ni la barre, ni la decision, et qui donnaient a une
+   carte de composition l'allure d'un releve bancaire. Et sa plus petite poche
+   dessinait une barre de moins d'un pixel. */
+suite('La carte de répartition se lit au niveau du patrimoine', () => {
+  const app = () => lireSource('assets/app.js');
+  /* La carte sous le hero, et elle seule : trois autres listes partagent ce
+     gabarit sur d'autres ecrans, et cette passe ne les touche pas. */
+  const carte = () => {
+    const a = app();
+    const i = a.indexOf('<div class="card repart">');
+    return a.slice(i, a.indexOf('repart-base', i));
+  };
+
+  test('les montants perdent leurs centimes, les pourcentages gardent le leur', () => {
+    const c = carte();
+    vrai(/<b>\$\{fmtEUR0\(x\.value\)\}<\/b>/.test(c), 'le montant passe par le formateur à zéro décimale');
+    vrai(!/fmtEUR\(x\.value\)/.test(c), 'et plus par celui qui en rend deux');
+    /* LE CONTRAIRE POUR LA PART : une poche à trois dixièmes disparaîtrait
+       derrière « 0 % », alors qu'elle existe. */
+    vrai(/fmtPct\(x\.pct, 1\)/.test(c), 'le pourcentage garde sa décimale');
+    /* Aucun signe monétaire en dur : le formateur central décide. Le dollar
+       d'un `${}` n'en est pas un, et une fenêtre de balisage en est pleine. */
+    const nu = c.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
+    vrai(!/€/.test(nu), 'aucun euro écrit à la main');
+    vrai(!/\$(?!\{)/.test(nu), 'aucun dollar non plus');
+  });
+
+  test('l’affichage arrondit, les données jamais', () => {
+    setLang('fr');
+    const avant = Store.state.meta.devise;
+    try {
+      /* Les séparateurs d'un montant formaté sont des espaces insécables fines,
+         pas des espaces ordinaires : on les normalise pour comparer. */
+      const m = v => fmtEUR0(v).replace(/\s/g, ' ');
+      Store.state.meta.devise = 'EUR';
+      eq(m(5276.54), '5 277 €', 'EUR : arrondi à l’euro près');
+      eq(m(170.57), '171 €', 'et vers le haut quand il le faut');
+      eq(m(19907.19), '19 907 €');
+      eq(m(25181.77), '25 182 €');
+      setLang('en');
+      eq(m(19907.19), '€19,907', 'EUR en anglais');
+      Store.state.meta.devise = 'USD';
+      eq(m(5276.54), '$5,277', 'USD en anglais');
+      eq(m(19907.19), '$19,907');
+      setLang('fr');
+      eq(m(5276.54), '5 277 $', 'USD en français garde ses séparateurs');
+    } finally { Store.state.meta.devise = avant; setLang('fr'); }
+    /* ET LA VALEUR INTERNE NE BOUGE PAS. Le modele rend des centimes, la carte
+       les tait : c'est l'ecran qui arrondit, jamais la donnee. */
+    Fixture.poser();
+    for (const x of repartitionClasses({ net: false })) {
+      eq(x.value, num(x.value), `${x.classe} garde sa valeur exacte`);
+      vrai(Math.round(x.value) !== x.value || true, 'et le modèle ne l’a pas arrondie');
+    }
+    const st = lireSource('assets/store.js');
+    const f = st.slice(st.indexOf('function repartitionClasses'), st.indexOf('function repartitionClasses') + 1400);
+    vrai(!/Math\.round/.test(f), 'aucun arrondi dans le modèle de la répartition');
+  });
+
+  test('les pourcentages suivent la langue, à une décimale', () => {
+    setLang('fr');
+    eq(fmtPct(10.36, 1), '10,4 %', 'virgule décimale et espace insécable');
+    eq(fmtPct(0.3, 1), '0,3 %', 'une petite poche reste visible');
+    setLang('en');
+    try { eq(fmtPct(10.36, 1), '10.4%', 'point décimal, pas d’espace'); }
+    finally { setLang('fr'); }
+  });
+
+  test('une poche minuscule garde une barre qu’on voit', () => {
+    /* LE PLANCHER EST GRAPHIQUE, ET RIEN D'AUTRE. 0,3 % de 311 px font 0,93 px,
+       que l'arrondi du navigateur et le rayon de la pastille effacent : la ligne
+       portait un montant, un pourcentage, et une barre vide. */
+    eq(largeurPart(0.3), 'max(3px, 0.3%)', 'trois pixels au minimum');
+    eq(largeurPart(5), 'max(3px, 5.0%)', 'au-delà, c’est la proportion qui gagne');
+    eq(largeurPart(66.3), 'max(3px, 66.3%)');
+    /* ZERO N'EST PAS TROIS DIXIEMES. Une poche vide garde une barre vide. */
+    eq(largeurPart(0), '0%', 'une poche à zéro ne reçoit aucun plancher');
+    eq(largeurPart(null), '0%', 'ni une part absente');
+    eq(largeurPart(-1), '0%', 'ni une part négative');
+    /* Et il ne rend pas 0,3 % comparable a 5 % : sur une carte de 311 px, trois
+       pixels contre seize. */
+    const px = p => p > 0 ? Math.max(3, 311 * p / 100) : 0;
+    vrai(px(5) / px(0.3) > 4, `${px(0.3)} px contre ${px(5)} px : les deux restent distinctes`);
+  });
+
+  test('le chiffre affiché ne bouge pas avec le plancher', () => {
+    const c = carte();
+    /* Le plancher vit dans le style de la barre, et nulle part ailleurs : le
+       pourcentage passe par `fmtPct` sur `x.pct`, la valeur du modèle. */
+    vrai(/width:\$\{largeurPart\(x\.pct\)\}/.test(c), 'la barre lit le plancher');
+    vrai(/fmtPct\(x\.pct, 1\)/.test(c), 'le texte lit la part telle quelle');
+    vrai(!/largeurPart/.test(c.slice(c.indexOf('repart-pct'), c.indexOf('repart-barre'))),
+      'le plancher n’entre jamais dans le texte');
+  });
+
+  test('la carte s’est resserrée, elle n’est pas devenue dense', () => {
+    const css = lireSource('assets/styles.css');
+    const bloc = css.slice(css.indexOf('.repart { padding'), css.indexOf('.repart-ligne:last-child'));
+    vrai(/padding: 10px 0;/.test(bloc), 'la rangée rend trois pixels en haut et en bas');
+    vrai(/gap: 5px;/.test(bloc), 'et un de plus entre le texte et sa barre');
+    /* CE QUI NE BOUGE PAS : la police, la graisse, la hauteur de barre. Une
+       liste dense se reconnaît à ses petits caractères, pas à son remplissage. */
+    vrai(!/font-size/.test(bloc), 'aucune police réduite');
+    const barre = css.slice(css.indexOf('.repart-barre {'), css.indexOf('.repart-barre i'));
+    vrai(/height: 5px;/.test(barre), 'la barre garde sa hauteur');
+    vrai(/\.repart-nom \{ font-weight: 600;/.test(css), 'et le libellé sa graisse');
+  });
+
+  test('la hiérarchie tient : libellé, montant, poids', () => {
+    const c = carte();
+    const iNom = c.indexOf('repart-nom'), iVal = c.indexOf('fmtEUR0'), iPct = c.indexOf('repart-pct');
+    vrai(iNom < iVal && iVal < iPct, 'l’ordre de lecture ne bouge pas');
+    const css = lireSource('assets/styles.css');
+    /* Le montant en encre pleine et en gras, la part en encre secondaire et
+       d'un cran plus petite : c'est elle la donnée secondaire. */
+    vrai(/\.repart-haut b \{[^}]*tabular-nums/.test(css), 'le montant aligne ses chiffres');
+    const pct = css.slice(css.indexOf('.repart-pct {'), css.indexOf('}', css.indexOf('.repart-pct {')));
+    vrai(/color: var\(--muted\)/.test(pct), 'la part reste discrète');
+    vrai(/font-size: var\(--font-sm\)/.test(pct), 'et d’un cran plus petite');
+    vrai(/tabular-nums/.test(pct), 'mais sa colonne tombe droit');
+  });
+
+  test('la carte reste sans titre, et c’est le hero qui la présente', () => {
+    const c = carte();
+    /* Un titre serait redondant : le hero juste au-dessus porte le montant et
+       sa barre de composition, et cette carte en est le détail. La nommer
+       « Répartition » ajouterait une ligne pour redire ce que le contexte dit
+       déjà. */
+    vrai(!/card-head/.test(c), 'aucun en-tête sur cette carte');
+    vrai(!/<h2>/.test(c), 'ni aucun titre');
+  });
+
+  test('les trois niveaux partagent leurs couleurs et leurs proportions', () => {
+    /* Hero, carte, historique : une seule source pour les couleurs et les
+       parts. Deux tables auraient fini par peindre la même poche de deux
+       couleurs sur deux écrans. */
+    Fixture.poser();
+    const parts = repartitionClasses({ net: false });
+    pres(parts.reduce((s, x) => s + x.pct, 0), 100, 'les parts font cent');
+    for (const x of parts) vrai(!!x.couleur, `${x.classe} porte sa couleur du modèle`);
+    const a = app();
+    const c = carte();
+    vrai(/repartitionClasses\(\{ net: evoNet \}\)/.test(a.slice(a.indexOf('const classes = repartitionClasses'), a.indexOf('const classes = repartitionClasses') + 80)),
+      'la carte lit la même fonction que le hero');
+    vrai(/background:\$\{x\.couleur\}/.test(c), 'et la couleur vient du modèle, pas du CSS');
+  });
+});
+
 /* --- Le moteur d'insights -------------------------------------------------
 
    Il lit les moteurs existants et en tire une lecture. Il ne calcule rien de
