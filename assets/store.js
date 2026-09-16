@@ -1983,6 +1983,31 @@ const fmtPct = (v, dec = 2) => moinsTypographique(new Intl.NumberFormat(locale()
 }).format(num(v))) + (enAnglais() ? '%' : ' %');
 
 const fmtNombre = v => moinsTypographique(num(v).toLocaleString(locale(), { maximumFractionDigits: 2 }));
+
+/* --- La part d'une valeur dans un total -----------------------------------
+
+   UN POURCENTAGE N'EXISTE QUE SUR UNE BASE STRICTEMENT POSITIVE. C'est la regle
+   que `deltas()` et `poidsPoches()` appliquent deja, et elle a deux raisons
+   qu'aucun garde-fou local ne remplace : un total nul divise par zero, et une
+   base negative retourne tous les signes -- un patrimoine net de -20 000 EUR
+   ferait afficher « -43 % » a une poche qui pese pourtant quelque chose.
+   `null` et non zero : la part n'est pas nulle, elle n'existe pas.
+
+   UNE VALEUR NEGATIVE SUR UNE BASE POSITIVE GARDE SON SIGNE. Le trace net impute
+   le reliquat de dette sur la poche qui porte les prets, qui devient negative ;
+   la carte de repartition montre deja cette part telle quelle. La masquer ferait
+   un total qui ne vaudrait plus la somme de ses parts.
+
+   Ces trois lignes vivent ici et non dans le dessin, parce que le harnais de
+   tests ne charge pas `charts.js` : une regle posee la-bas ne se verifierait que
+   des yeux, et c'est exactement ce que ce projet a appris a ne plus faire. */
+const baseDivisible = base => num(base) > 0.005;
+const poidsDansTotal = (valeur, base) =>
+  baseDivisible(base) ? num(valeur) / num(base) * 100 : null;
+const fmtPoids = (valeur, base) => {
+  const p = poidsDansTotal(valeur, base);
+  return p == null ? '' : fmtPct(p, 1);
+};
 const fmtSigned = v => (v >= 0 ? '+' : '−') + fmtEUR(Math.abs(v), 0);
 /* Un montant signe, sauf a zero : « +584 € », « −300 € », et « 0 € » plutot que
    « +0 € ». Un plus devant un zero se lit comme une addition qui n'a pas eu

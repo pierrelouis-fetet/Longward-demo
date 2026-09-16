@@ -22476,12 +22476,15 @@ suite('Changer de périmètre se voit, sans se rejouer tout seul', () => {
       'et éteint après le premier, sinon un redimensionnement le rejouerait');
 
     const app = lireSource('assets/app.js');
-    const montage = app.slice(app.indexOf('function monterEvolution()'),
-                              app.indexOf('function monterEvolution()') + 900);
+    /* La fenetre s'arrete a la fin de la fonction, jamais a un nombre de
+       caracteres : un commentaire ajoute au milieu pousse l'appel dehors, et le
+       test devient rouge sans qu'aucun comportement n'ait change. */
+    const debutMontage = app.indexOf('function monterEvolution()');
+    const montage = app.slice(debutMontage, app.indexOf('\n}', debutMontage));
     vrai(/const anime = evoTransition;\s*\n\s*evoTransition = false;/.test(montage),
       'le montage consomme le drapeau, il ne le lit pas');
-    vrai(/Charts\.stackedArea\(cible, \{ points, height: 300, series, anime \}\)/.test(montage),
-      'et le passe au graphique');
+    vrai(/Charts\.stackedArea\(cible, \{ points, height: 300, series, anime, parts: true \}\)/.test(montage),
+      'et le passe au graphique, avec les parts que l’infobulle affiche');
     /* DEUX gestes le levent, et ils se nomment ici. Cette barriere a fait son
        travail le jour ou le second est arrive : elle a refuse le changement
        jusqu'a ce qu'il soit declare. Un troisieme devra passer par la meme
@@ -40393,6 +40396,174 @@ suite('La devise, avant la première saisie', () => {
     const css = lireSource('assets/styles.css');
     vrai(/\.devise-carte \{[\s\S]*?min-height: 64px;/.test(css), 'la cible du doigt est large');
     vrai(!/flag|drapeau/.test(f), 'aucun drapeau : l’euro n’est pas la France');
+  });
+});
+
+/* --- Le poids de chaque poche dans l'infobulle de l'historique -------------
+
+   « Liquidites 6 170 EUR » ne dit pas de quoi le patrimoine etait fait ce
+   mois-la : il fallait diviser de tete par un total lu deux lignes plus bas.
+   L'infobulle porte desormais la part, sur la meme base que le total qu'elle
+   affiche, et les chiffres de cette suite sont ceux de l'exemple qui l'a
+   demandee. */
+suite('L’infobulle de l’historique dit la composition, pas seulement les montants', () => {
+  const TOTAL = 26540;
+  const enFrancais = f => { setLang('fr'); try { return f(); } finally { setLang('fr'); } };
+  const enAnglais = f => { setLang('en'); try { return f(); } finally { setLang('fr'); } };
+
+  test('chaque poche porte sa part du total de cette date', () => {
+    setLang('fr');
+    /* Les quatre lignes de l'exemple, au dixieme pres. */
+    eq(fmtPoids(6170, TOTAL), '23,2 %', 'les liquidités');
+    eq(fmtPoids(8747, TOTAL), '33,0 %', 'les actifs de marché, et le zéro décimal reste');
+    eq(fmtPoids(75, TOTAL), '0,3 %', 'une poche minuscule reste visible');
+    eq(fmtPoids(11548, TOTAL), '43,5 %', 'le non coté');
+    /* Et le nombre nu, sans mise en forme, pour que le calcul se lise seul. */
+    pres(poidsDansTotal(6170, TOTAL), 6170 / TOTAL * 100, 'aucune correction au passage');
+  });
+
+  test('une décimale, jamais plus, jamais moins', () => {
+    setLang('fr');
+    /* « 33 % » perdrait la difference avec 33,4 ; « 0,2826 % » n'apprend rien. */
+    vrai(/^\d+,\d %$/.test(fmtPoids(8747, TOTAL)), '33,0 % garde son zéro');
+    vrai(/^\d+,\d %$/.test(fmtPoids(75, TOTAL)), '0,3 % garde sa décimale');
+    const c = lireSource('assets/charts.js');
+    const bulle = c.slice(c.indexOf('const base = totals[i];'), c.indexOf('const left = Math.min'));
+    /* La ligne Total dit « 100 % » sans decimale : cent n'est pas une mesure
+       arrondie, c'est la definition de la base. */
+    vrai(/fmtPct\(100, 0\)/.test(bulle), 'le total dit 100 % sans décimale');
+  });
+
+  test('la somme des parts arrondies n’est pas maquillée', () => {
+    setLang('fr');
+    /* 23,2 + 33,0 + 0,3 + 43,5 fait bien 100,0 ici, mais rien ne le garantit :
+       un autre mois donnera 99,9 ou 100,1, et c'est acceptable. Ce que ce test
+       fige, c'est qu'AUCUNE ligne n'est corrigee pour forcer la somme. */
+    const parts = [6170, 8747, 75, 11548].map(v => poidsDansTotal(v, TOTAL));
+    pres(parts.reduce((s, x) => s + x, 0), 100, 'les parts exactes font cent');
+    for (const [i, v] of [6170, 8747, 75, 11548].entries()) {
+      pres(parts[i], v / TOTAL * 100, `la part de ${v} est son quotient, et rien d’autre`);
+    }
+    const c = lireSource('assets/charts.js');
+    const bulle = c.slice(c.indexOf('const base = totals[i];'), c.indexOf('const left = Math.min'));
+    vrai(!/reste|reliquat|100 -|100-/.test(bulle.replace(/\/\*[\s\S]*?\*\//g, '')),
+      'aucune dernière ligne rattrapée pour tomber juste');
+  });
+
+  test('un total nul ou négatif ne produit ni NaN ni Infinity', () => {
+    setLang('fr');
+    for (const base of [0, 0.004, -1, -26540]) {
+      eq(poidsDansTotal(1000, base), null, `base ${base} : la part n’existe pas`);
+      eq(fmtPoids(1000, base), '', 'et rien ne s’affiche');
+    }
+    /* Ni zero de substitution, ni tiret : les six autres endroits de
+       l'application qui portent une part indisponible n'ecrivent rien, et le
+       tiret cadratin est proscrit du texte affiché. */
+    const c = lireSource('assets/charts.js');
+    const bulle = c.slice(c.indexOf('const base = totals[i];'), c.indexOf('const left = Math.min'));
+    vrai(!/—/.test(bulle), 'aucun tiret cadratin');
+    /* Et la colonne disparaît entière : l'infobulle redevient celle d'avant. */
+    vrai(/const avecPoids = !!opts\.parts && baseDivisible\(base\);/.test(bulle),
+      'la colonne ne paraît que sur une base divisible');
+    vrai(/: lignes\.map\(sr => `<div class="tt-row">/.test(bulle),
+      'sinon le balisage d’avant est rendu tel quel');
+  });
+
+  test('une poche négative garde son signe, sur une base positive', () => {
+    setLang('fr');
+    /* Le tracé net impute le reliquat de dette sur la poche qui porte les
+       prêts : elle devient négative, et la carte de répartition montre déjà
+       cette part telle quelle. La masquer ferait un total qui ne vaudrait plus
+       la somme de ses parts. */
+    pres(poidsDansTotal(-5000, 20000), -25, 'la part suit le signe de la poche');
+    vrai(fmtPoids(-5000, 20000).startsWith('−'), 'et le moins typographique le dit');
+    /* Le total reste la somme de ses parts, signes compris. */
+    const poches = [25000, -5000];
+    pres(poches.reduce((s, v) => s + poidsDansTotal(v, 20000), 0), 100,
+      'les parts font toujours cent');
+  });
+
+  test('une valeur minuscule ne casse rien', () => {
+    setLang('fr');
+    eq(fmtPoids(0.4, TOTAL), '0,0 %', 'sous le dixième, la part s’affiche nulle sans erreur');
+    eq(fmtPoids(0, TOTAL), '0,0 %', 'et zéro reste zéro');
+    /* Mais une poche absente n'entre pas dans l'infobulle : elle n'y entre pas
+       davantage pour montrer « 0,0 % ». */
+    const c = lireSource('assets/charts.js');
+    vrai(/const lignes = series\.filter\(sr => Math\.abs\(Number\(p\[sr\.key\]\) \|\| 0\) > 0\.005\);/.test(c),
+      'une poche vide ce mois-là reste hors de la bulle');
+  });
+
+  test('les deux langues, les deux devises', () => {
+    /* Le poids suit la locale, jamais une virgule écrite à la main. */
+    enFrancais(() => eq(fmtPoids(6170, TOTAL), '23,2 %', 'virgule décimale et espace insécable'));
+    enAnglais(() => eq(fmtPoids(6170, TOTAL), '23.2%', 'point décimal, pas d’espace'));
+    /* Et il ne dépend d’aucune devise : c’est un rapport, pas un montant. */
+    setLang('fr');
+    const avant = Store.state.meta.devise;
+    try {
+      Store.state.meta.devise = 'EUR';
+      const eur = fmtPoids(6170, TOTAL);
+      Store.state.meta.devise = 'USD';
+      eq(fmtPoids(6170, TOTAL), eur, 'le poids est le même en euros et en dollars');
+    } finally { Store.state.meta.devise = avant; }
+    const c = lireSource('assets/charts.js');
+    vrai(!/[€$]%/.test(c), 'aucun signe collé au pourcentage');
+  });
+
+  test('le montant et sa part sortent du même instantané', () => {
+    const c = lireSource('assets/charts.js');
+    const bulle = c.slice(c.indexOf('const base = totals[i];'), c.indexOf('const left = Math.min'));
+    /* LA BASE EST LE TOTAL AFFICHÉ. Relire un patrimoine d'aujourd'hui pour
+       diviser un montant de mars donnerait des parts qui ne totalisent pas
+       cent, et personne ne pourrait dire laquelle des deux lignes ment. */
+    vrai(/const base = totals\[i\];/.test(c), 'la base est le total du point');
+    vrai(/totals\[i\] = |const totals = points\.map/.test(c) || /const totals = points\.map/.test(c),
+      'lui-même dérivé des séries tracées');
+    for (const interdit of ['patrimoine(', 'nowTotals(', 'historySeries(', 'poidsPoches(']) {
+      vrai(!bulle.includes(interdit), `l’infobulle ne relit pas ${interdit}`);
+    }
+    /* Et le montant de la ligne vient du même point que sa part. */
+    vrai(/\$\{fmtEUR0\(p\[sr\.key\] \|\| 0\)\}<\/b>\$\{poids\(p\[sr\.key\] \|\| 0\)\}/.test(bulle),
+      'la même valeur nourrit le montant et le poids');
+  });
+
+  test('trois colonnes qui s’alignent, et rien ne déborde', () => {
+    const css = lireSource('assets/styles.css');
+    const bloc = css.slice(css.indexOf('.tt-parts {'), css.indexOf('.tt-fin {') + 60);
+    /* UNE SEULE GRILLE POUR TOUTE LA BULLE. Une rangée en flex est son propre
+       conteneur : sa colonne de montants se cale sur la longueur de son propre
+       libellé, et rien ne s'aligne avec la rangée du dessus. */
+    vrai(/display: grid/.test(bloc), 'les rangées partagent une grille');
+    vrai(/grid-template-columns: auto minmax\(0, 1fr\) auto auto/.test(bloc),
+      'quatre colonnes : pastille, libellé, montant, poids');
+    vrai(/\.tt-ligne \{ display: contents; \}/.test(bloc),
+      'et chaque rangée s’y fond, sinon ses cellules ne seraient pas des cellules');
+    /* Des chiffres de largeur égale des deux côtés, sinon les virgules dansent. */
+    eq((bloc.match(/font-variant-numeric: tabular-nums/g) || []).length, 2,
+      'montants et poids alignent leurs chiffres');
+    /* Le montant reste prioritaire : encre pleine contre encre secondaire. */
+    vrai(/\.tt-parts b \{[^}]*color: var\(--text-primary\)/.test(bloc), 'le montant garde l’encre pleine');
+    vrai(/\.tt-poids \{[^}]*color: var\(--muted\)/.test(bloc), 'le poids passe en second plan');
+    /* Et il ne se coupe pas devant son signe. */
+    vrai(/\.tt-poids \{[^}]*white-space: nowrap/.test(bloc), '« 23,2 % » tient sur une ligne');
+    /* Le filet du total traverse les quatre colonnes : une rangée fondue n'a
+       plus de boîte, donc plus de bordure. */
+    vrai(/\.tt-filet \{[^}]*grid-column: 1 \/ -1/.test(bloc), 'le filet traverse la grille');
+  });
+
+  test('la Projection garde son infobulle, la part n’y a pas de sens', () => {
+    const a = lireSource('assets/app.js');
+    /* Le même dessin sert deux courbes. « Départ et versements » et
+       « Rendement » ne composent pas un patrimoine : une part y répondrait à
+       une question que personne ne pose. L'option le dit, plutôt qu'un défaut
+       qui s'appliquerait partout. */
+    const proj = a.slice(a.indexOf("Charts.stackedArea($('#chartProjection')"),
+                         a.indexOf("Charts.stackedArea($('#chartProjection')") + 700);
+    vrai(!/parts: true/.test(proj), 'la Projection ne demande pas les parts');
+    const debut = a.indexOf('function monterEvolution()');
+    vrai(/parts: true/.test(a.slice(debut, a.indexOf('\n}', debut))),
+      'l’historique, lui, les demande');
   });
 });
 

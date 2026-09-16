@@ -546,17 +546,57 @@ const Charts = (() => {
         tdot.setAttribute('cx', x(i)); tdot.setAttribute('cy', y(totals[i]));
 
         tip.hidden = false;
-        tip.innerHTML = `<div class="tt-head">${esc(p.label)}</div>` +
-          /* Une bande a zero sur ce mois-la ne se dit pas. `seriesUtiles()`
-             garde une serie des qu'elle porte quelque chose QUELQUE PART, ce
-             qui est juste pour la legende : sans cela une poche disparaitrait
-             de la pile le mois ou elle se vide. Mais point par point, « Capital
-             garanti 0 € » sur douze mois est une ligne qui n'apprend rien et
-             qui fait douter — l'infobulle du mois dit ce qu'il y avait ce
-             mois-la, et rien n'y etait. */
-          series.filter(sr => Math.abs(Number(p[sr.key]) || 0) > 0.005)
-            .map(sr => `<div class="tt-row"><span class="sw" style="background:${sr.color}"></span>${esc(sr.label)}<b>${fmtEUR0(p[sr.key] || 0)}</b></div>`).join('') +
-          `<div class="tt-row tt-total">Total<b>${fmtEUR0(totals[i])}</b></div>` +
+        /* Une bande a zero sur ce mois-la ne se dit pas. `seriesUtiles()` garde
+           une serie des qu'elle porte quelque chose QUELQUE PART, ce qui est
+           juste pour la legende : sans cela une poche disparaitrait de la pile
+           le mois ou elle se vide. Mais point par point, « Capital garanti 0 € »
+           sur douze mois est une ligne qui n'apprend rien et qui fait douter,
+           l'infobulle du mois dit ce qu'il y avait ce mois-la, et rien n'y
+           etait. Une poche absente n'y entre donc pas, et elle n'y entre pas
+           davantage pour montrer « 0,0 % ». */
+        const lignes = series.filter(sr => Math.abs(Number(p[sr.key]) || 0) > 0.005);
+
+        /* --- LE POIDS DE CHAQUE POCHE DANS LE TOTAL DE CETTE DATE ------------
+
+           LA BASE EST `totals[i]`, ET C'EST EXACTEMENT LE TOTAL QUE LA DERNIERE
+           LIGNE AFFICHE. Aucune autre source n'est relue : le montant et sa part
+           viennent du meme instantane, donc le pourcentage ne peut pas dire
+           autre chose que ce que la colonne d'a cote montre. Relire un
+           `patrimoine()` d'aujourd'hui pour diviser un montant de mars aurait
+           donne des parts qui ne totalisent pas cent.
+
+           UN POURCENTAGE N'EXISTE QUE SUR UNE BASE STRICTEMENT POSITIVE. C'est
+           la regle du projet, celle que `deltas()` et `poidsPoches()` appliquent
+           deja. Un total nul diviserait par zero ; un patrimoine net negatif
+           retournerait tous les signes, et « 43 % » sur une base de -20 000 ne
+           veut rien dire. Dans ces deux cas la colonne ne parait pas du tout et
+           l'infobulle redevient celle d'avant : c'est ce que font les six autres
+           endroits de l'application ou une part indisponible ne s'ecrit pas.
+
+           UNE POCHE NEGATIVE SUR UNE BASE POSITIVE GARDE SON SIGNE. Le trace net
+           impute le reliquat de dette sur la poche qui porte les prets, qui
+           devient negative ; la carte de repartition montre deja cette part
+           telle quelle. La masquer ferait un total qui ne vaudrait plus la somme
+           de ses parts, et c'est la regle cardinale de ce projet.
+
+           LA LIGNE TOTAL DIT « 100 % » SANS DECIMALE, et les autres en portent
+           une. Ce n'est pas une incoherence : cent n'est pas une mesure arrondie
+           ici, c'est la definition de la base. Les lignes, elles, peuvent
+           totaliser 99,9 ou 100,1 apres arrondi, et rien ne corrige la derniere
+           pour forcer la somme : une part maquillee serait fausse pour cacher un
+           arrondi qui, lui, est visible et honnete. */
+        const base = totals[i];
+        const avecPoids = !!opts.parts && baseDivisible(base);
+        const poids = v => `<span class="tt-poids">${fmtPoids(v, base)}</span>`;
+        const corps = avecPoids
+          ? `<div class="tt-parts">` +
+            lignes.map(sr => `<div class="tt-ligne"><span class="sw" style="background:${sr.color}"></span><span>${esc(sr.label)}</span><b>${fmtEUR0(p[sr.key] || 0)}</b>${poids(p[sr.key] || 0)}</div>`).join('') +
+            `<span class="tt-filet"></span>` +
+            `<div class="tt-ligne tt-fin"><span></span><span>${trad('Total')}</span><b>${fmtEUR0(totals[i])}</b><span class="tt-poids">${fmtPct(100, 0)}</span></div>` +
+            `</div>`
+          : lignes.map(sr => `<div class="tt-row"><span class="sw" style="background:${sr.color}"></span>${esc(sr.label)}<b>${fmtEUR0(p[sr.key] || 0)}</b></div>`).join('') +
+            `<div class="tt-row tt-total">${trad('Total')}<b>${fmtEUR0(totals[i])}</b></div>`;
+        tip.innerHTML = `<div class="tt-head">${esc(p.label)}</div>` + corps +
           (p.comment ? `<div class="tt-note">${esc(p.comment)}</div>` : '');
         const left = Math.min(Math.max(x(i) * (r.width / W) - tip.offsetWidth / 2, 4), r.width - tip.offsetWidth - 4);
         tip.style.left = left + 'px';

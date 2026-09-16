@@ -659,7 +659,12 @@ function monterEvolution() {
      `Charts.stackedArea` somme `series` point par point pour son maximum et pour
      sa ligne Total. Retirer l'immobilier de la liste suffit donc a rendre l'axe
      aux placements, sans qu'un seul chiffre soit force ici. */
-  if (cible) Charts.stackedArea(cible, { points, height: 300, series, anime });
+  /* `parts` : l'infobulle ajoute le poids de chaque poche dans le total de la
+     date. Une option, et non le defaut du graphique empile, parce que la
+     Projection emploie le meme dessin pour deux series qui ne composent pas un
+     patrimoine — « Depart et versements » et « Rendement » — ou une part n'a pas
+     le meme sens. */
+  if (cible) Charts.stackedArea(cible, { points, height: 300, series, anime, parts: true });
 }
 
 /* « Combien est-ce que j'accumule en ce moment ? »
