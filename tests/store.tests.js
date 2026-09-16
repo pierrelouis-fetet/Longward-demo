@@ -40567,6 +40567,166 @@ suite('L’infobulle de l’historique dit la composition, pas seulement les mon
   });
 });
 
+/* --- Trois insights, trois endroits ---------------------------------------
+
+   « Progression du patrimoine » et « Poids d'une poche » sont deux lectures
+   differentes, de deux familles differentes, et elles menaient toutes les deux
+   a la courbe de l'evolution. Deux des trois places de la carte ouvraient donc
+   le meme ecran, et la section paraissait se repeter.
+
+   La destination se DERIVE du renvoi, et c'est la seule chose que cette suite
+   lit dans la source : une metadonnee ecrite a la main a cote du bouton finit
+   par le contredire. */
+function destinationsPresentation() {
+  const a = lireSource('assets/app.js');
+  const table = a.slice(a.indexOf('const PRESENTATION_INSIGHT'), a.indexOf('/* --- Ce qui a deja ete montre'));
+  const sansCommentaires = table.replace(/\/\*[\s\S]*?\*\//g, '');
+  const par = {};
+  let id = null;
+  for (const ligne of sansCommentaires.split('\n')) {
+    const entree = ligne.match(/^  ([a-z_]+): \{/);
+    if (entree) { id = entree[1]; continue; }
+    const cta = ligne.match(/cta: \{ vue: '([a-z-]+)'(?:, ancre: '([a-z]+)')?/);
+    if (cta && id) { par[id] = `${cta[1]}:${cta[2] || ''}`; id = null; }
+  }
+  return par;
+}
+
+suite('À retenir mène à trois endroits différents, pas trois fois au même', () => {
+  const app = () => lireSource('assets/app.js');
+
+  test('la destination se dérive du renvoi, vue ET ancre', () => {
+    const a = app();
+    vrai(/const destinationInsight = p => \(p && p\.cta\) \? `\$\{p\.cta\.vue\}:\$\{p\.cta\.ancre \|\| ''\}` : '';/.test(a),
+      'elle se lit sur le renvoi, elle ne se recopie pas ailleurs');
+    /* PAS LA VUE SEULE. Trois insights pointent vers `overview` et y visent
+       trois cartes qui repondent a trois questions differentes : les confondre
+       en ecarterait deux pour une ressemblance qui n'existe que dans l'URL. */
+    const d = destinationsPresentation();
+    eq(d.liquidity_runway, 'overview:autonomie');
+    eq(d.wealth_pace_shift, 'overview:evolution');
+    eq(d.debt_principal_share, 'overview:accumulation');
+    vrai(new Set([d.liquidity_runway, d.wealth_pace_shift, d.debt_principal_share]).size === 3,
+      'trois cartes d’un même écran font trois destinations');
+    /* ET SURTOUT PAS LE LIBELLE : « Voir l'évolution » est du texte traduit, la
+       sélection changerait de comportement entre le français et l'anglais. */
+    /* La tranche s'arrete a la fin de la fonction : ses voisines parlent bien de
+       libelles, et une fenetre trop large les aurait avalees. */
+    const sel = a.slice(a.indexOf('const destinationInsight'),
+                        a.indexOf(';', a.indexOf('const destinationInsight')));
+    vrai(!/libelle/.test(sel), 'le libellé n’entre jamais dans la destination');
+  });
+
+  test('chaque règle a sa destination, et le cas observé est bien un doublon', () => {
+    const d = destinationsPresentation();
+    eq(Object.keys(d).length, REGLES_INSIGHT.length, 'les treize règles portent une destination');
+    for (const r of REGLES_INSIGHT) vrai(!!d[r.id], `${r.id} a la sienne`);
+    /* LE CAS QUI A DEMANDE CETTE PASSE. Deux lectures différentes, deux familles
+       différentes, et le même graphique au bout du renvoi. */
+    eq(d.wealth_pace_shift, d.pocket_share_shift,
+      'progression et poids d’une poche mènent au même endroit');
+    const prog = REGLES_INSIGHT.find(r => r.id === 'wealth_pace_shift');
+    const poche = REGLES_INSIGHT.find(r => r.id === 'pocket_share_shift');
+    vrai(prog.dedupeGroup !== poche.dedupeGroup, 'mais elles ne disent pas la même chose');
+    vrai(prog.famille !== poche.famille, 'et ne sont pas de la même famille');
+    /* Huit destinations pour treize regles : la carte a de quoi varier. */
+    vrai(new Set(Object.values(d)).size >= 7, `${new Set(Object.values(d)).size} destinations distinctes`);
+  });
+
+  test('premier tour : au plus une entrée par destination', () => {
+    const l = [['A', 'history'], ['B', 'history'], ['C', 'autonomy'], ['D', 'goal']];
+    eq(selectionParClef(l, x => x[1], 3).map(x => x[0]).join(','), 'A,C,D',
+      'B laisse sa place, sa destination est déjà prise');
+    const m = [['A', 'history'], ['B', 'allocation'], ['C', 'autonomy'], ['D', 'goal']];
+    eq(selectionParClef(m, x => x[1], 3).map(x => x[0]).join(','), 'A,B,C',
+      'quatre destinations, les trois premières sortent');
+  });
+
+  test('second tour : la diversité ne cache jamais un insight utile', () => {
+    /* Deux destinations seulement, trois places : la troisieme revient a
+       l'entree ecartee, derriere les deux autres. */
+    const l = [['A', 'history'], ['B', 'history'], ['C', 'autonomy']];
+    eq(selectionParClef(l, x => x[1], 3).map(x => x[0]).join(','), 'A,C,B',
+      'B revient au second tour, mais après C');
+    /* Une seule destination : la carte se remplit quand même. */
+    const m = [['A', 'history'], ['B', 'history'], ['C', 'history']];
+    eq(selectionParClef(m, x => x[1], 3).map(x => x[0]).join(','), 'A,B,C',
+      'un seul endroit ne vide pas la carte');
+    /* Deux entrées, deux places occupées : la diversité ne crée pas de trou. */
+    eq(selectionParClef([['A', 'history'], ['B', 'history']], x => x[1], 3)
+      .map(x => x[0]).join(','), 'A,B', 'rien n’est perdu');
+  });
+
+  test('zéro, un, deux : le comportement ne bouge pas', () => {
+    eq(selectionParClef([], x => x[1], 3).length, 0, 'rien à choisir, rien de choisi');
+    eq(selectionParClef([['A', 'history']], x => x[1], 3).map(x => x[0]).join(','), 'A');
+    eq(selectionParClef([['A', 'history'], ['B', 'goal']], x => x[1], 3)
+      .map(x => x[0]).join(','), 'A,B');
+    /* Et jamais plus que le plafond demandé. */
+    const cinq = 'ABCDE'.split('').map((n, i) => [n, 'd' + i]);
+    eq(selectionParClef(cinq, x => x[1], 3).length, 3, 'trois places, trois entrées');
+  });
+
+  test('aucun tirage, aucune horloge : deux lectures, même résultat', () => {
+    const l = [['A', 'history'], ['B', 'history'], ['C', 'autonomy'], ['D', 'goal']];
+    const a = selectionParClef(l, x => x[1], 3).map(x => x[0]).join(',');
+    for (let n = 0; n < 5; n++) {
+      eq(selectionParClef(l, x => x[1], 3).map(x => x[0]).join(','), a, 'même liste, même ordre');
+    }
+    const m = lireSource('assets/insights.js');
+    const bloc = m.slice(m.indexOf('function selectionParClef'), m.indexOf('COUCHE 2'));
+    for (const interdit of ['Math.random', 'Date.now', 'sort(', 'shuffle']) {
+      vrai(!bloc.includes(interdit), `la sélection n’utilise pas ${interdit}`);
+    }
+  });
+
+  test('la déduplication métier passe avant la diversité de destination', () => {
+    /* L'ordre est fige : le moteur retire d'abord ce qui dit deux fois la meme
+       chose, la carte evite ensuite d'ouvrir deux fois le meme ecran. Inverser
+       les deux laisserait passer un doublon métier sous prétexte qu'il mène
+       ailleurs. */
+    Fixture.poser();
+    const moteur = construireInsights();
+    const groupes = moteur.map(i => i.dedupeGroup);
+    eq(new Set(groupes).size, groupes.length, 'le moteur a déjà dédupliqué');
+    const d = destinationsPresentation();
+    const carte = selectionParClef(moteur, i => d[i.id], 3);
+    const g2 = carte.map(i => i.dedupeGroup);
+    eq(new Set(g2).size, g2.length, 'et la carte n’en réintroduit aucun');
+  });
+
+  test('sur la graine, les trois entrées mènent à trois endroits', () => {
+    Fixture.poser();
+    const d = destinationsPresentation();
+    const moteur = construireInsights();
+    const carte = selectionParClef(moteur, i => d[i.id], 3);
+    vrai(carte.length <= 3, `${carte.length} entrées`);
+    const dests = carte.map(i => d[i.id]);
+    /* Si le moteur propose au moins trois destinations distinctes, la carte en
+       montre trois distinctes. Sinon le second tour a comblé, et c'est voulu. */
+    const dispo = new Set(moteur.map(i => d[i.id]));
+    if (dispo.size >= carte.length) {
+      eq(new Set(dests).size, dests.length, 'autant de destinations que d’entrées');
+    }
+    /* L'ordre reste celui du moteur pour le premier tour : la tête ne bouge
+       jamais. */
+    eq(carte[0] && carte[0].id, moteur[0] && moteur[0].id, 'le mieux classé garde sa place');
+  });
+
+  test('aucun bouton « autres insights », et le rendu ne change pas de forme', () => {
+    const a = app();
+    const rendu = a.slice(a.indexOf('function carteARetenir()'), a.indexOf('function viewOverview()'));
+    for (const mot of ['Voir d’autres', 'Mélanger', 'Rafraîchir', 'Plus d’insights']) {
+      vrai(!rendu.includes(mot), `aucun bouton « ${mot} »`);
+    }
+    /* La vue ne reclasse toujours rien : elle lit la liste que le moteur a
+       ordonnée, et la sélection ne fait que retirer. */
+    vrai(!/\.sort\(/.test(rendu), 'aucun second classement dans la vue');
+    vrai(/dernierARetenir = lus\.map/.test(rendu),
+      'et la mémoire note ce qui a vraiment été montré, pas ce que le moteur proposait');
+  });
+});
+
 /* --- Le moteur d'insights -------------------------------------------------
 
    Il lit les moteurs existants et en tire une lecture. Il ne calcule rien de
@@ -40652,10 +40812,16 @@ suite('Le moteur d’insights ne parle pas sans données', () => {
       vrai(l[i - 1].poids >= l[i].poids, 'les poids ne remontent jamais');
       vrai(l[i].poids >= 10, 'aucun poids ne descend sous le rang le plus bas');
     }
-    /* Et la selection ne reclasse rien : elle ne fait que retirer. */
+    /* LE MOTEUR NE COUPE PLUS, IL ORDONNE. Le premier tour met en tete au plus
+       une entree par famille, le second ajoute le reste derriere : l'ordre n'est
+       donc plus celui de l'evaluation, et c'est voulu. Ce qui reste garanti,
+       c'est que rien ne se perd et que la tete ne bouge pas. */
     const choisis = construireInsights().map(i => i.id);
-    const ordre = l.map(i => i.id).filter(id => choisis.includes(id));
-    eq(choisis.join(','), ordre.join(','), 'la sélection garde l’ordre de l’évaluation');
+    for (const id of choisis) vrai(l.some(x => x.id === id), `${id} vient de l’évaluation`);
+    eq(choisis[0], l[0].id, 'le mieux classé reste en tête');
+    eq(new Set(choisis).size, choisis.length, 'et aucun ne paraît deux fois');
+    eq(construireInsights().map(i => i.id).join(','), choisis.join(','),
+       'deux appels, même ordre');
     /* Et aucun horodatage ne traine dans le moteur. */
     vrai(!/Date\.now\(\)|new Date\(\)/.test(src()), 'aucune horloge ne sert de départage');
   });
@@ -40815,18 +40981,22 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
     eq(JSON.stringify(evaluerInsights()), avant, 'trois lectures, un seul résultat');
   });
 
-  test('trois au maximum, et jamais deux fois le même sujet', () => {
+  test('le moteur ne coupe pas, il déduplique et met les familles en tête', () => {
     Fixture.poser();
     const choisis = construireInsights();
-    vrai(choisis.length <= MAX_INSIGHTS, `${choisis.length} insights, trois au maximum`);
+    /* AUCUN PLAFOND ICI. Le moteur coupait a trois avant que la Home ait choisi
+       selon la destination : la quatrieme entree, celle qui aurait remplace un
+       doublon de destination, n'arrivait jamais jusqu'a la carte. */
+    vrai(!/MAX_INSIGHTS|slice\(0, 3\)/.test(lireSource('assets/insights.js')),
+      'le moteur ne connaît aucun plafond d’affichage');
     const groupes = choisis.map(i => i.dedupeGroup);
     eq(new Set(groupes).size, groupes.length, 'aucun groupe deux fois');
-    /* Une seule famille par entree tant qu'il y a de quoi remplir autrement. */
-    const dispo = new Set(evaluerInsights().map(i => i.famille));
-    if (dispo.size >= choisis.length) {
-      const familles = choisis.map(i => i.famille);
-      eq(new Set(familles).size, familles.length, 'et autant de familles que d’entrées');
-    }
+    /* Les familles passent devant : les premieres entrees en sont autant de
+       distinctes qu'il y en a. */
+    const familles = choisis.map(i => i.famille);
+    const distinctes = new Set(evaluerInsights().map(i => i.famille)).size;
+    eq(new Set(familles.slice(0, distinctes)).size, Math.min(distinctes, familles.length),
+      'le premier tour ne répète aucune famille');
   });
 
   test('la réserve se compare à elle-même, à dépenses constantes', () => {
@@ -41441,15 +41611,24 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
        l'applique, dans le moteur ; la vue le relaie. Deux « 3 » ecrits chacun
        de son cote auraient fini par differer, et la vue aurait coupe ce que le
        moteur croyait avoir choisi. */
-    vrai(/const MAX_INSIGHTS = 3;/.test(lireSource('assets/insights.js')),
-      'le plafond est déclaré dans le moteur, et il vaut trois');
-    vrai(/const MAX_A_RETENIR = MAX_INSIGHTS;/.test(a), 'la vue le relaie sans le réécrire');
-    vrai(/\.slice\(0, MAX_A_RETENIR\)/.test(rendu()), 'la coupe se fait sur cette constante');
+    /* LE PLAFOND VIT AVEC LA SELECTION QUI L'APPLIQUE, et celle-ci a demenage :
+       c'est la carte qui a trois places, et c'est elle qui choisit lesquelles
+       remplir. Un plafond pose dans le moteur coupait avant ce choix. */
+    vrai(/const MAX_A_RETENIR = 3;/.test(a), 'le plafond est déclaré dans la vue, et il vaut trois');
+    vrai(!/MAX_INSIGHTS/.test(lireSource('assets/insights.js')),
+      'et le moteur n’en porte plus');
+    vrai(/selectionARetenir\(construireInsights\(\)/.test(rendu()),
+      'la coupe passe par la sélection de la Home');
+    vrai(/selectionParClef\(candidats, c => destinationInsight\(c\[1\]\), MAX_A_RETENIR\)/.test(a),
+      'qui applique cette constante');
     /* Le catalogue en porte treize : c'est bien un plafond d'affichage, et la
        selection en ecarte dix sur un etat qui aurait de quoi les nourrir. */
     vrai(REGLES_INSIGHT.length >= 12, `${REGLES_INSIGHT.length} règles au catalogue`);
     Fixture.poser();
-    vrai(construireInsights().length <= 3, 'et jamais plus de trois sortent');
+    /* Et la carte n'en montre jamais plus de trois : la meme selection que la
+       vue, sur les memes destinations, lues dans sa propre table. */
+    vrai(selectionParClef(construireInsights(), i => destinationsPresentation()[i.id], 3)
+      .length <= 3, 'et jamais plus de trois sortent');
   });
 
   test('l’ordre affiché est celui du moteur, sans second tri', () => {
