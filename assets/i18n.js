@@ -238,7 +238,7 @@ const I18N = {
     'Ton rythme patrimonial est d’environ {a} par mois sur les {n} derniers mois, contre {b} sur les {m} précédents.': 'Your wealth pace is about {a} a month over the last {n} months, against {b} over the {m} before.',
     'Ta cible de {t} serait atteinte vers {d}, selon tes hypothèses actuelles.': 'Your {t} target would be reached around {d}, based on your current assumptions.',
     '{a} par mois de ta progression patrimoniale viennent du capital remboursé sur tes crédits, et non de ton épargne disponible.': '{a} a month of your wealth growth comes from loan principal repaid, not from your available savings.',
-    'Voir mon autonomie': 'View my financial runway',
+    'Voir ma réserve': 'View my safety reserve',
     '1 insight': '1 insight',
     '{n} insights': '{n} insights',
     'Options de la section': 'Section options',
@@ -269,6 +269,9 @@ const I18N = {
     'Voir mes positions': 'View my holdings',
     'Rien d’inhabituel à signaler': 'Nothing unusual to report',
     'Ton patrimoine, tes dépenses et ton allocation restent proches de leurs tendances récentes.': 'Your wealth, your spending and your allocation all stay close to their recent trends.',
+    'd’épargne immédiatement disponible.': 'of savings available right now.',
+    '{c} de plus seraient mobilisables, mais cet argent est fléché ou demande une vente.': '{c} more could be raised, but that money is already earmarked or needs to be sold.',
+    'L’objectif indicatif retenu dans l’app est de 3 à 6 mois.': 'The indicative target this app uses is 3 to 6 months.',
     'À retenir': 'Worth noting',
     'Réserve disponible': 'Available reserve',
     'Tes liquidités mobilisables couvrent environ {n} mois de dépenses renseignées.': 'Your available cash covers about {n} months of recorded spending.',
@@ -1249,12 +1252,12 @@ const I18N = {
 
     "Sauvegardé localement": "Saved locally",
     "Moyenne mensuelle du patrimoine": "Monthly wealth average",
-    "Autonomie financière": "Financial runway",
+    "Réserve de sécurité": "Safety reserve",
     "mois": "months",
     "épargne de précaution + cash disponible": "emergency fund + available cash",
     "réservés à un projet, disponibles si tu y touches.": "set aside for plans, available if you dip in.",
     "Ils ne comptent pas dans le coussin : la règle des 3 à 6 mois vise ce qui n’a pas encore d’emploi. Ils sont bien là, et ils figurent dans « Disponible tout de suite » juste en dessous : c’est ce qui explique l’écart entre les deux montants.": "They do not count in the cushion: the 3-to-6-months rule targets what has no job yet. They are there, and they appear in “Available right away” just below: that is what explains the gap between the two amounts.",
-    "hors autonomie": "outside runway",
+    "hors réserve": "outside the reserve",
     "mois cumulés": "cumulative months",
     "Coût de la vie retenu :": "Cost of living used:",
     "/ mois (charges fixes + dépenses moyennes).": "/ month (fixed costs + average spending).",
@@ -1669,7 +1672,7 @@ const I18N = {
     "Quand cet argent peut redevenir disponible.": "When this money can become available again.",
     "pèse": "is",
     "tes trois premières lignes": "your top three holdings",
-    "Le délai vient de la classe de la ligne et du type de compte qui la porte, jamais d’une supposition sur ton projet. Le logement que tu habites et ce qui est bloqué jusqu’à une échéance figurent ici parce qu’ils font partie de tes avoirs, mais l’autonomie financière de l’accueil les écarte de son cumul : elle compte ce sur quoi tu peux vivre, pas ce que tu possèdes.": "The delay comes from the holding's asset class and the account type holding it, never from a guess about your plans. The home you live in and anything locked until a maturity date appear here because they are part of your assets, but the financial runway on the overview leaves them out of its running total: it counts what you can live on, not what you own.",
+    "Le délai vient de la classe de la ligne et du type de compte qui la porte, jamais d’une supposition sur ton projet. Le logement que tu habites et ce qui est bloqué jusqu’à une échéance figurent ici parce qu’ils font partie de tes avoirs, mais la réserve de sécurité de l’accueil les écarte de son cumul : elle compte ce sur quoi tu peux vivre, pas ce que tu possèdes.": "The delay comes from the holding's asset class and the account type holding it, never from a guess about your plans. The home you live in and anything locked until a maturity date appear here because they are part of your assets, but the safety reserve on the overview leaves them out of its running total: it counts what you can live on, not what you own.",
     "Le délai vient de la classe de la ligne et du type de compte qui la porte, jamais d’une supposition sur ton projet. Tes murs et tes objets de valeur sont écartés de cette vue, et c’est ce qui fait disparaître le palier du logement que tu habites.": "The delay comes from the holding’s asset class and from the account that holds it, never from a guess about your plans. Your property and valuables are excluded from this view, which is what makes the tier for the home you live in disappear.",
     " :": ":",
     "immobilier et biens de valeur écartés": "property and valuables excluded",
@@ -1743,7 +1746,7 @@ const I18N = {
     "La somme des comptes ouverts de cette page. Le même nombre que sur l’accueil : si les deux diffèrent, c’est qu’un compte est archivé ou qu’un montant vient d’être corrigé.": "The sum of this page's open accounts. The same number as on the home screen: if the two differ, an account is archived or an amount was just corrected.",
     "Par défaut, la valeur d’une ligne est quantité × cours, et le cours se rafraîchit tout seul. « Saisie à la main » sert aux lignes qu’aucune place ne cote : une part de société, un contrat, un actif que tu valorises toi-même. Le cours cesse alors d’être interrogé.": "By default, a holding's value is quantity × price, and the price refreshes on its own. “Entered by hand” is for holdings no venue quotes: a company share, a contract, an asset you value yourself. The price then stops being fetched.",
     "Renommer déplace les montants déjà saisis. Retirer sort la catégorie de la saisie du mois sans toucher aux montants passés : c’est le geste pour un poste dans lequel tu ne dépenses plus. Supprimer retire la colonne et tout ce qu’elle contient. Ctrl+Z annule dans les deux cas.": "Renaming moves the amounts already entered. Removing takes the category out of the month's entry without touching past amounts: the gesture for a category you no longer spend in. Deleting removes the column and everything it contains. Ctrl+Z undoes in both cases.",
-    "Sous combien de temps chaque placement redevient de l’argent disponible. Elle alimente la carte « Autonomie financière » de l’accueil. « Auto » suit la règle du type de compte : un PEA de moins de cinq ans est bloqué, un compte-titres se vend en séance. La règle se trompe parfois : un non coté peut se revendre sur un marché secondaire, c’est pourquoi chaque ligne peut la contredire.": "How soon each investment becomes available money again. It feeds the “Financial runway” card on the home screen. “Auto” follows the account type's rule: a PEA under five years is locked, a brokerage account sells within the session. The rule is sometimes wrong: a private asset can resell on a secondary market, which is why each line can override it.",
+    "Sous combien de temps chaque placement redevient de l’argent disponible. Elle alimente la carte « Réserve de sécurité » de l’accueil. « Auto » suit la règle du type de compte : un PEA de moins de cinq ans est bloqué, un compte-titres se vend en séance. La règle se trompe parfois : un non coté peut se revendre sur un marché secondaire, c’est pourquoi chaque ligne peut la contredire.": "How soon each investment becomes available money again. It feeds the “Safety reserve” card on the home screen. “Auto” follows the account type's rule: a PEA under five years is locked, a brokerage account sells within the session. The rule is sometimes wrong: a private asset can resell on a secondary market, which is why each line can override it.",
     "Une seule base sur cette page : « Tes avoirs », tout ce que tu possèdes, non coté et immobilier compris. Toutes les cartes la partagent, donc leurs pourcentages se comparent entre eux et chaque total redonne ce même nombre. La mention grise en tête de chaque carte la rappelle, avec son montant. Le patrimoine net, qui retire tes crédits, se lit sur l’accueil : ici rien n’est soustrait.": "One base on this page: “Your holdings”, everything you own, unlisted assets and property included. Every card shares it, so their percentages compare with each other and every total gives that same number back. The grey note at the top of each card repeats it, with its amount. Net worth, which subtracts your loans, is on the overview: nothing is subtracted here.",
     "Les entrées et sorties exceptionnelles de la période affichée : un héritage, une prime, la vente d’un bien, ou à l’inverse une voiture, des travaux. Elles déplacent ton patrimoine sans rien dire de ton épargne, et la moyenne du dessous les compte : hors elles, ton rythme propre est de": "The one-off inflows and outflows of the period shown: an inheritance, a bonus, the sale of an asset, or the other way round a car, works. They move your wealth while saying nothing about your savings, and the average below counts them: outside them, your own pace is",
     "Dont": "Of which",
@@ -2230,8 +2233,8 @@ const I18N = {
     "Entrée exceptionnelle": "One-off inflow",
     "Entrée, de l’argent reçu": "Inflow, money received",
     "elle situe l’entrée dans ton historique": "it places the inflow in your history",
-    "La somme de tes entrées et de tes sorties exceptionnelles sur l’année affichée. Elle ne s’ajoute à aucun total de patrimoine : ces montants sont déjà passés sur tes comptes, c’est leur origine que ce journal garde en mémoire. Le rythme d’accumulation s’en sert pour distinguer ce que tu as mis de côté de ce qui t’est tombé du ciel, ou de ce qui est parti d’un coup. Une grosse dépense se note ici et non dans les dépenses du mois : là-bas elle gonflerait ta moyenne toute l’année, et avec elle le coût de la vie qui sert à ton autonomie financière et à ta cible d’épargne de précaution.":
-      "The sum of your one-off inflows and outflows over the year shown. It adds to no wealth total: these amounts have already passed through your accounts, it is their origin this log keeps. The accumulation pace uses it to tell what you set aside from what fell from the sky, or left in one go. A big expense is noted here and not in the month's spending: there it would inflate your average all year, and with it the cost of living used for your financial runway and your emergency fund target.",
+    "La somme de tes entrées et de tes sorties exceptionnelles sur l’année affichée. Elle ne s’ajoute à aucun total de patrimoine : ces montants sont déjà passés sur tes comptes, c’est leur origine que ce journal garde en mémoire. Le rythme d’accumulation s’en sert pour distinguer ce que tu as mis de côté de ce qui t’est tombé du ciel, ou de ce qui est parti d’un coup. Une grosse dépense se note ici et non dans les dépenses du mois : là-bas elle gonflerait ta moyenne toute l’année, et avec elle le coût de la vie qui sert à ta réserve de sécurité et à sa cible.":
+      "The sum of your one-off inflows and outflows over the year shown. It adds to no wealth total: these amounts have already passed through your accounts, it is their origin this log keeps. The accumulation pace uses it to tell what you set aside from what fell from the sky, or left in one go. A big expense is noted here and not in the month's spending: there it would inflate your average all year, and with it the cost of living used for your safety reserve and its target.",
     "de portefeuille financier coté, auquel Longward applique le rendement du scénario. La crypto, les métaux précieux, le non coté et la pierre papier sont regroupés dans l’hypothèse « Autres actifs », juste en dessous.":
       "of listed financial portfolio, to which Longward applies the scenario's return. Crypto, precious metals, private assets and property funds are grouped under the “Other assets” assumption, just below.",
     "Avec ±2 points sur le rendement des actifs de marché": "With ±2 points on the market-assets return",
@@ -2240,8 +2243,8 @@ const I18N = {
     "de portefeuille financier coté, auquel Longward applique le rendement du scénario. La crypto, les métaux précieux et le non coté sont regroupés dans l’hypothèse « Autres actifs », juste en dessous.":
       "of listed financial portfolio, to which Longward applies the scenario's return. Crypto, precious metals and private assets are grouped under the “Other assets” assumption, just below.",
     "sur les actifs de marché, au lieu de": "on market assets, instead of",
-    "La somme de tes entrées et de tes sorties exceptionnelles sur l’année affichée. Elle ne s’ajoute à aucun total de patrimoine : ces montants sont déjà passés sur tes comptes, c’est leur origine que ce journal garde en mémoire. Le rythme d’accumulation s’en sert pour distinguer ce que tu as mis de côté de ce qui t’est tombé du ciel, ou de ce qui est parti d’un coup. Une grosse dépense se note ici et non dans les dépenses du mois : là-bas elle gonflerait ta moyenne toute l’année, et avec elle le coût de la vie qui sert à ton autonomie financière et à ta cible d’épargne de précaution.":
-      "The sum of your one-off inflows and outflows over the year shown. It adds to no wealth total: these amounts have already passed through your accounts, it is their origin this log keeps. The accumulation pace uses it to tell what you set aside from what fell from the sky, or left in one go. A big expense is noted here and not in the month's spending: there it would inflate your average all year, and with it the cost of living used for your financial runway and your emergency fund target.",
+    "La somme de tes entrées et de tes sorties exceptionnelles sur l’année affichée. Elle ne s’ajoute à aucun total de patrimoine : ces montants sont déjà passés sur tes comptes, c’est leur origine que ce journal garde en mémoire. Le rythme d’accumulation s’en sert pour distinguer ce que tu as mis de côté de ce qui t’est tombé du ciel, ou de ce qui est parti d’un coup. Une grosse dépense se note ici et non dans les dépenses du mois : là-bas elle gonflerait ta moyenne toute l’année, et avec elle le coût de la vie qui sert à ta réserve de sécurité et à sa cible.":
+      "The sum of your one-off inflows and outflows over the year shown. It adds to no wealth total: these amounts have already passed through your accounts, it is their origin this log keeps. The accumulation pace uses it to tell what you set aside from what fell from the sky, or left in one go. A big expense is noted here and not in the month's spending: there it would inflate your average all year, and with it the cost of living used for your safety reserve and its target.",
     "avoirs": "assets",
     "moins": "less",
     "aucun crédit ce mois-là : net et brut se confondent": "no debt that month: net and gross are the same",
@@ -2325,7 +2328,7 @@ const I18N = {
       'Theoretical shares cannot exceed the billed amount.',
 
     "Net": "Net",
-    "Cette page suit les placements dont le cours arrive tout seul, du marché. Tes placements non cotés, ton immobilier et tes liquidités se déclarent dans Actifs, où c’est toi qui en donnes la valeur : ils comptent dans ton patrimoine, ta répartition et ton autonomie exactement comme le reste.":
+    "Cette page suit les placements dont le cours arrive tout seul, du marché. Tes placements non cotés, ton immobilier et tes liquidités se déclarent dans Actifs, où c’est toi qui en donnes la valeur : ils comptent dans ton patrimoine, ta répartition et ta réserve exactement comme le reste.":
       "This page tracks the holdings whose price arrives on its own, from the market. Your unlisted holdings, your property and your cash are declared in Assets, where you give the value yourself: they count towards your wealth, your allocation and your runway exactly like the rest.",
     "Pas encore de clôture de la veille en mémoire. Actualise les cours pour que la performance du jour apparaisse.":
       "No previous close on record yet. Refresh prices for the day's performance to appear.",

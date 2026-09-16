@@ -20126,7 +20126,13 @@ suite('Une application vide dit quoi faire', () => {
     /* L'autonomie : un rapport entre deux vides n'accuse personne de rien. */
     vrai(/if \(!r\.burn\) return/.test(src),
       'sans coût de la vie, aucune autonomie ne se mesure, quel que soit le coussin');
-    vrai(/const cover = ep \/ r\.burn;/.test(src),
+    /* Le coussin et son rapport viennent de `runway()`, ou ils se testent : ils
+       etaient calcules dans la vue, et l'insight de l'accueil en lisait un
+       autre. Deux chiffres justes qui se contredisaient a l'ecran. */
+    vrai(/const ep = r\.reserve;/.test(src) && /const cover = r\.reserveMois;/.test(src),
+      'la carte lit la réserve du modèle, elle ne la recalcule pas');
+    const st = lireSource('assets/store.js');
+    vrai(/reserveMois: burn \? reserve \/ burn : 0,/.test(st),
       'et le rapport ne se replie plus sur zéro faute de dénominateur');
   });
 
@@ -23026,7 +23032,7 @@ suite('La synthèse d’accumulation a changé d’écran, pas de calcul', () =>
        par les mois réels — c'est le mot qui suit. */
     const src = lireSource('assets/app.js');
     const i = src.indexOf("trad('Rythme d\\'accumulation')");
-    const bloc = src.slice(i, src.indexOf("trad('Autonomie financière')"));
+    const bloc = src.slice(i, src.indexOf("trad('Réserve de sécurité')"));
     vrai(/const trou = num\(p\.mois\) > p\.count;/.test(bloc),
       'la carte sait si un mois manque sur la période affichée');
     for (const [normal, trou] of [['Mois en hausse', 'Variations en hausse'],
@@ -23110,7 +23116,7 @@ suite('La synthèse d’accumulation a changé d’écran, pas de calcul', () =>
     const src = lireSource('assets/app.js');
     const i = src.indexOf("trad('Rythme d\\'accumulation')");
     vrai(i > 0, 'la carte existe toujours');
-    const bloc = src.slice(i, src.indexOf("trad('Autonomie financière')"));
+    const bloc = src.slice(i, src.indexOf("trad('Réserve de sécurité')"));
     /* Les trois compteurs se nomment desormais selon qu'un mois manque ou non
        — « Mois en hausse » ou « Variations en hausse » — donc on cherche le
        LIBELLE et non la forme exacte de l'appel. Ce que le controle protege est
@@ -40727,6 +40733,153 @@ suite('À retenir mène à trois endroits différents, pas trois fois au même',
   });
 });
 
+/* --- La reserve immediate passe devant -------------------------------------
+
+   L'accueil affichait « 0,8 mois » sur sa carte et « 6,6 mois » dans sa lecture,
+   pour la meme question. Les deux chiffres etaient justes : le premier comptait
+   l'epargne de precaution et le cash courant, le second y ajoutait l'argent
+   fleche vers un projet et ce qui se vend chez un courtier. Personne ne pouvait
+   deviner lequel repondait a « de quoi vivrais-je demain », et le plus grand
+   passait devant — c'est-a-dire le plus rassurant. */
+suite('La réserve de sécurité passe devant le mobilisable', () => {
+  /* Pose une reserve d'exactement N mois : tout le cash de precaution et de
+     courant se concentre sur une entree, les autres a zero. Le reste du
+     patrimoine ne bouge pas, donc le mobilisable reste plus grand. */
+  const poserReserve = mois => {
+    Fixture.poser();
+    const burn = runway().burn;
+    let premier = null;
+    for (const c of Store.state.comptes) for (const e of (c.cash || [])) {
+      if (e.affectation !== 'precaution' && e.affectation !== 'courant') continue;
+      if (!premier) premier = e; else e.montant = 0;
+    }
+    premier.montant = mois * burn;
+    refreshAccounts();
+    return runway();
+  };
+
+  test('un seul chiffre de réserve, et les deux écrans le lisent', () => {
+    Fixture.poser();
+    const r = runway();
+    const p = poches();
+    /* LE COUSSIN EST CELUI SUR LEQUEL ON VIVRAIT DEMAIN : l'épargne de
+       précaution plus le cash courant. L'argent fléché vers un projet ou en
+       attente d'investissement a déjà un travail. */
+    pres(r.reserve, p.precaution + p.courant, 'la réserve est précaution + courant');
+    pres(r.reserveMois, r.reserve / r.burn, 'et ses mois sont ce rapport');
+    /* La carte ne recalcule plus rien : elle lit le modèle. */
+    const a = lireSource('assets/app.js');
+    const carte = a.slice(a.indexOf('data-anchor="autonomie"'), a.indexOf('data-anchor="autonomie"') + 1600);
+    vrai(/const ep = r\.reserve;/.test(carte), 'la carte lit la réserve du modèle');
+    vrai(!/pk\.precaution \+ pk\.courant/.test(carte), 'elle ne la recompose plus');
+    /* Et l'insight lit le meme nombre, pas un troisieme. */
+    const i = evaluerInsights().find(x => x.id === 'liquidity_runway');
+    if (i) {
+      eq(i.params.reserve, num(r.reserve), 'l’insight annonce la même somme que la carte');
+      eq(i.params.months, num(r.reserveMois), 'et les mêmes mois');
+      vrai(i.params.months !== num(r.liquidMonths) || num(r.reserve) === num(r.burn) * num(r.liquidMonths),
+        'ce n’est plus le chiffre mobilisable');
+    }
+  });
+
+  test('le complément existe, il passe derrière, et la somme retombe juste', () => {
+    Fixture.poser();
+    const r = runway();
+    const i = evaluerInsights().find(x => x.id === 'liquidity_runway');
+    vrai(!!i, 'la règle produit');
+    /* RIEN N'EST PERDU : ce que la réserve ne compte pas se dit quand même,
+       avec ce qui le disqualifie. Un total vaut la somme de ses parts. */
+    pres(i.params.months + i.params.complementMonths, num(r.liquidMonths),
+      'réserve plus complément font les mois mobilisables');
+    vrai(i.params.complementMonths >= 0, 'le complément ne peut pas être négatif ici');
+    /* Et la phrase le range derrière, avec sa raison. */
+    const p = lireSource('assets/app.js');
+    const bloc = p.slice(p.indexOf('liquidity_runway: {'), p.indexOf('allocation_target_gap: {'));
+    vrai(/d’épargne immédiatement disponible\./.test(bloc), 'le chiffre de tête est nommé');
+    vrai(/de plus seraient mobilisables, mais cet argent est fléché ou demande une vente/.test(bloc),
+      'le complément dit pourquoi il ne compte pas');
+    vrai(bloc.indexOf('immédiatement disponible') < bloc.indexOf('seraient mobilisables'),
+      'et il vient après, jamais avant');
+  });
+
+  test('sous le repère, la réserve passe devant toute bonne nouvelle', () => {
+    const r = poserReserve(0.8);
+    vrai(num(r.reserve) < num(r.targetLow), 'la réserve est bien sous le repère');
+    const tous = evaluerInsights();
+    const niveau = tous.find(x => x.id === 'liquidity_runway');
+    vrai(!!niveau, 'la réserve se dit');
+    vrai(niveau.params.belowTargetMonths > 0, 'et elle annonce ce qui lui manque');
+    /* JAMAIS REMPLACEE PAR UNE LECTURE PLUS RASSURANTE. « Ta trésorerie a gagné
+       deux mois » prendrait la place de la seule entrée qui demande un geste. */
+    eq(tous.find(x => x.id === 'liquidity_runway_shift'), undefined,
+      'la trajectoire de trésorerie attend son tour');
+    /* Et son poids la met en tete : le rang de la famille plus le manque. */
+    eq(niveau.poids, 30 + Math.min(20, Math.round(niveau.params.belowTargetMonths * 10)),
+      'le poids monte avec ce qui manque');
+    vrai(niveau.poids > 30, 'donc au-dessus de son rang nu');
+  });
+
+  test('au-dessus du repère, les autres lectures peuvent reprendre la place', () => {
+    const r = poserReserve(5);
+    vrai(num(r.reserve) >= num(r.targetLow), 'la réserve couvre le repère');
+    const niveau = evaluerInsights().find(x => x.id === 'liquidity_runway');
+    vrai(!!niveau, 'elle se dit toujours');
+    eq(niveau.params.belowTargetMonths, 0, 'et rien ne lui manque');
+    eq(niveau.poids, 30, 'son poids redevient son rang, sans supplément');
+    /* La garde de la trajectoire est levée : elle redevient éligible dès que
+       l'historique le permet. */
+    const m = lireSource('assets/insights.js');
+    vrai(/eligible: m => !reserveSousCible\(m\) && !!reserveIlYA\(m, 3\),/.test(m),
+      'la garde ne tient que sous le repère');
+  });
+
+  test('le repère se nomme comme un objectif de l’app, jamais comme une vérité', () => {
+    const p = lireSource('assets/app.js');
+    const bloc = p.slice(p.indexOf('liquidity_runway: {'), p.indexOf('allocation_target_gap: {'));
+    const sansCommentaires = bloc.replace(/\/\*[\s\S]*?\*\//g, '');
+    /* Attribué, et conditionnel : il ne paraît que lorsqu'il sert. */
+    vrai(/L’objectif indicatif retenu dans l’app est de 3 à 6 mois\./.test(sansCommentaires),
+      'la phrase attribue le repère à l’application');
+    vrai(/p\.belowTargetMonths > 0 \? /.test(sansCommentaires),
+      'et il ne paraît que sous le repère');
+    /* Aucun jugement, aucun conseil. */
+    for (const mot of ['insuffisant', 'trop peu', 'tu devrais', 'il faut', 'dangereux', 'risqué']) {
+      vrai(!new RegExp(mot, 'i').test(sansCommentaires), `« ${mot} » serait un jugement`);
+    }
+  });
+
+  test('« autonomie financière » a cédé la place, partout où c’était son nom', () => {
+    const a = lireSource('assets/app.js');
+    /* Les commentaires peuvent garder l'ancien mot : ils expliquent justement
+       pourquoi il est parti. Seul compte ce qui s'affiche. */
+    const affiche = a.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
+    /* Le terme evoquait aussi l'independance financiere : la carte compte de
+       quoi tenir si les revenus s'arretaient, pas de quoi arreter de
+       travailler. */
+    vrai(!/Autonomie financière/.test(affiche), 'plus aucun titre ne porte l’ancien nom');
+    vrai(!/autonomie financière/.test(affiche), 'ni aucune bulle d’aide');
+    vrai(!/hors autonomie/.test(affiche), 'ni la mention des paliers hors cumul');
+    /* Les deux renvois qui nommaient la carte la nomment toujours, avec son
+       nouveau nom : un renvoi vers une carte qui n'existe plus est pire que
+       pas de renvoi. */
+    vrai(a.includes('Elle alimente la carte « Réserve de sécurité » de l’accueil.'),
+      'la bulle des positions nomme la bonne carte');
+    vrai(!!I18N.en['Réserve de sécurité'] && !!I18N.en['hors réserve'],
+      'et les deux langues suivent');
+  });
+
+  test('sans coût de la vie, la réserve ne vaut pas zéro mois', () => {
+    Store.state = blankState(); Store.migrate(); refreshAccounts();
+    const r = runway();
+    eq(r.burn, 0, 'aucun coût de la vie');
+    eq(r.reserveMois, 0, 'le rapport ne s’invente pas');
+    vrai(Number.isFinite(r.reserveMois), 'et surtout il ne vaut ni NaN ni Infinity');
+    /* La regle ne parle pas : sans depenses observees, elle n'est pas eligible. */
+    eq(evaluerInsights().find(x => x.id === 'liquidity_runway'), undefined,
+      'et la lecture se tait plutôt que d’annoncer zéro');
+  });
+});
+
 /* --- Le moteur d'insights -------------------------------------------------
 
    Il lit les moteurs existants et en tire une lecture. Il ne calcule rien de
@@ -40883,7 +41036,16 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
     /* PAS DE RESERVE CIBLE INVENTEE. `runway()` porte un palier à trois et six
        mois qui sert une jauge ailleurs ; aucune règle ne le lit, sinon une
        phrase qui circule passerait pour un arbitrage du détenteur. */
-    vrai(!/targetLow|targetHigh/.test(c), 'aucun palier de runway() ne devient une cible');
+    /* Le palier de trois mois entre desormais dans le moteur, et a un seul
+       titre : DECIDER qu'une reserve insuffisante passe devant une bonne
+       nouvelle. Il ne sort jamais en chiffre, il ne devient jamais une cible
+       affichee, et `targetHigh` n'y entre pas du tout. */
+    const catalogue = c.slice(c.indexOf('const REGLES_INSIGHT = ['));
+    vrai(!/targetLow/.test(catalogue), 'aucune règle du catalogue ne lit un palier');
+    vrai(/const reserveSousCible = m => num\(m\.runway\.reserve\) < num\(m\.runway\.targetLow\);/.test(c),
+      'les deux seules lignes qui le nomment sont des gardes de sélection');
+    vrai(/const moisManquants = m => Math\.max\(0,/.test(c), 'et la seconde mesure le manque');
+    vrai(!/targetHigh/.test(c), 'le palier haut n’entre pas dans le moteur');
     /* PAS DE MARCHES. Le complément des apports mêle valorisation, capital
        remboursé et réévaluation, et rien ici ne sait les séparer. */
     vrai(!/march[ée]s/i.test(c), 'aucune règle n’attribue quoi que ce soit aux marchés');
@@ -41120,19 +41282,38 @@ suite('Insight : la réserve de liquidités', () => {
     const i = par(evaluerInsights(), 'liquidity_runway');
     vrai(!!i, 'la règle produit');
     const r = runway();
-    eq(i.params.months, num(r.liquidMonths), 'les mois viennent de runway(), pas d’un second calcul');
+    /* LE CHIFFRE MIS EN AVANT EST LE PLUS PETIT DES TROIS, et c'est voulu :
+       c'est le seul sur lequel on vivrait demain. `liquidMonths` ajoute l'argent
+       fléché vers un projet et ce qui se vend chez un courtier. */
+    eq(i.params.months, num(r.reserveMois), 'les mois viennent de runway(), pas d’un second calcul');
+    eq(i.params.reserve, num(r.reserve), 'et la somme est celle de la carte');
     eq(i.params.monthlyBurn, num(r.burn));
     eq(i.evidence.source, 'runway');
+    eq(i.evidence.scope, 'precaution+courant', 'la preuve nomme ce qu’elle compte');
     vrai(i.evidence.observedExpenseMonths > 0, 'la preuve dit combien de mois ont été observés');
-    /* La reserve est l'inverse exact de la division de runway(). */
-    pres(i.params.reserve, num(r.liquidMonths) * num(r.burn), 'la réserve est cohérente avec les mois');
+    /* Le complement existe, il passe derriere, et la somme retombe juste. */
+    pres(i.params.months + i.params.complementMonths, num(r.liquidMonths),
+      'réserve plus complément font bien les mois mobilisables');
+    pres(i.params.reserve, num(r.reserveMois) * num(r.burn), 'la réserve est cohérente avec les mois');
   });
 
   test('aucun jugement, aucun seuil : le constat et rien d’autre', () => {
     const s = lireSource('assets/insights.js');
     const regle = s.slice(s.indexOf("id: 'liquidity_runway'"), s.indexOf("id: 'allocation_target_gap'"));
-    vrai(!/targetLow|targetHigh/.test(regle),
-      'les trois et six mois de runway() ne sortent pas d’ici : ce n’est pas une norme');
+    /* LE MOTEUR NE PUBLIE AUCUNE NORME. Il rend `belowTargetMonths`, le nombre
+       de mois qui manquent — un fait — et c'est la presentation qui nomme
+       l'objectif indicatif de l'application. Le palier ne sert ici qu'a peser. */
+    vrai(!/targetHigh/.test(regle), 'les six mois ne sortent pas d’ici');
+    vrai(!/'3 à 6|trois a six|3 mois'/.test(regle), 'aucun repère ne s’écrit en toutes lettres');
+    Fixture.poser();
+    const sorti = evaluerInsights().find(x => x.id === 'liquidity_runway');
+    if (sorti) {
+      vrai(typeof sorti.params.belowTargetMonths === 'number',
+        'le manque est un nombre, pas un verdict');
+      const r2 = runway();
+      eq(sorti.params.belowTargetMonths > 0, num(r2.reserve) < num(r2.targetLow),
+        'et il n’est positif que sous le palier');
+    }
     Fixture.poser();
     const i = par2(evaluerInsights(), 'liquidity_runway');
     for (const k of Object.keys(i.params)) {
@@ -41913,12 +42094,14 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
   test('le renvoi porte une ancre, et cette ancre existe', () => {
     const p = presentation();
     const bloc = p.slice(p.indexOf('liquidity_runway: {'), p.indexOf('allocation_target_gap: {'));
-    vrai(/cta: \{ vue: 'overview', ancre: 'autonomie', libelle: 'Voir mon autonomie' \}/.test(bloc),
-      'la réserve vise l’autonomie, sur l’écran où elle se lit');
+    vrai(/cta: \{ vue: 'overview', ancre: 'autonomie', libelle: 'Voir ma réserve' \}/.test(bloc),
+      'la réserve vise la carte qui la détaille, sur l’écran où elle se lit');
     /* La destination existe, et c'est bien la carte qui detaille les mois. */
     const a = app();
-    vrai(/<div class="card" data-anchor="autonomie">\s*\n\s*<div class="card-head"><h2>\$\{trad\('Autonomie financière'\)\}/.test(a),
-      'la carte « Autonomie financière » porte l’ancre');
+    /* L'ancre garde son nom d'origine : elle ne s'affiche jamais, et la
+       renommer casserait les renvois sans rien apprendre a personne. */
+    vrai(/data-anchor="autonomie">[\s\S]{0,400}?<h2>\$\{trad\('Réserve de sécurité'\)\}/.test(a),
+      'la carte « Réserve de sécurité » porte l’ancre');
     /* Et elle n'est pas le déclencheur : `focusAnchor` écarte les `goto`, mais
        une carte ne doit de toute façon porter aucune action. */
     const carte = a.slice(a.indexOf('<div class="card" data-anchor="autonomie">'), a.indexOf('<div class="card" data-anchor="autonomie">') + 200);
@@ -41940,10 +42123,14 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
   });
 
   test('les deux langues nomment la carte par son nom de produit', () => {
-    eq(I18N.en['Autonomie financière'], 'Financial runway', 'la carte a déjà son nom anglais');
-    eq(I18N.en['Voir mon autonomie'], 'View my financial runway',
+    /* « Autonomie financiere » evoquait aussi l'independance financiere, qui
+       n'est pas le sujet : la carte compte de quoi tenir si les revenus
+       s'arretaient, pas de quoi arreter de travailler. */
+    eq(I18N.en['Réserve de sécurité'], 'Safety reserve', 'la carte a son nom anglais');
+    eq(I18N.en['Voir ma réserve'], 'View my safety reserve',
       'le renvoi reprend ce mot, il n’en invente pas un second');
-    eq(trad('Voir mon autonomie'), 'Voir mon autonomie', 'et le français dit le sien');
+    eq(trad('Voir ma réserve'), 'Voir ma réserve', 'et le français dit le sien');
+    vrai(I18N.en['Autonomie financière'] === undefined, 'l’ancien nom est parti des deux côtés');
   });
 
   test('les quatre autres renvois n’ont pas bougé', () => {
@@ -41970,7 +42157,7 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
     const i = evaluerInsights().find(x => x.id === 'liquidity_runway');
     if (i) {
       const r = runway();
-      eq(i.params.months, num(r.liquidMonths), 'les mois viennent toujours de runway()');
+      eq(i.params.months, num(r.reserveMois), 'les mois viennent toujours de runway()');
       eq(i.evidence.source, 'runway');
     }
     /* Et la carte visée lit le même moteur que l'insight : un seul chiffre. */
@@ -42079,7 +42266,7 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
   test('chaque carte visée existe, et porte bien la réponse', () => {
     const a = app();
     /* Les quatre ancres, et la carte qui repond derriere chacune. */
-    for (const [ancre, titre] of [['autonomie', "trad('Autonomie financière')"],
+    for (const [ancre, titre] of [['autonomie', "trad('Réserve de sécurité')"],
                                   ['rythme', "trad('Rythme d\\'accumulation')"],
                                   ['accumulation', "trad('Accumulation ce mois-ci')"],
                                   ['trajectoire', "trad('De quoi sera fait ton patrimoine')"]]) {

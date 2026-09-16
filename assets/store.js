@@ -6170,8 +6170,30 @@ function runway() {
     cum += t.value; t.cumulative = cum; t.months = burn ? cum / burn : 0;
   }
 
+  /* --- LA RESERVE DE SECURITE, ET POURQUOI ELLE N'EST NI L'UNE NI L'AUTRE ---
+
+     Trois chiffres coexistaient, et deux s'affichaient sans que rien ne dise
+     lequel repondait a quelle question :
+
+       `immediate`    tout le cash pose sur un contenant mobilisable tout de
+                      suite, projets et argent a investir compris ;
+       `liquidMonths` celui-la plus ce qui se vend chez un courtier ;
+       et le coussin reel, que la carte calculait DANS LA VUE.
+
+     Ce dernier est le seul qui reponde a « de quoi vivrais-je demain » :
+     l'epargne de precaution plus le cash des depenses courantes. L'argent
+     flechevers un projet ou vers un investissement a deja un travail, et le
+     compter promettrait une reserve qui n'existe pas.
+
+     Il descend donc ici, ou il se teste, et la carte comme l'insight le lisent
+     au meme endroit. C'etait le defaut : la carte annoncait 0,8 mois pendant
+     que la lecture de l'accueil en annoncait 6,6, et les deux disaient vrai. */
+  const reserve = p.precaution + p.courant;
+
   return {
     burn, tiers, immediate,
+    reserve,
+    reserveMois: burn ? reserve / burn : 0,
     immediateMonths: burn ? immediate / burn : 0,
     liquidMonths: burn ? (immediate + differe) / burn : 0,
     targetLow: burn * 3, targetHigh: burn * 6,

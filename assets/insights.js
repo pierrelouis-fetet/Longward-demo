@@ -108,6 +108,13 @@ const amplitude = (valeur, seuil) => {
 
 const insightsVus = () => (Store.state && Store.state.meta && Store.state.meta.insightsVus) || {};
 
+const reserveSousCible = m => num(m.runway.reserve) < num(m.runway.targetLow);
+/* De combien de mois la reserve est en dessous de ce repere, zero au-dessus.
+   Les deux seules lignes du moteur qui nomment un palier de `runway()` sont
+   ici : aucune regle du catalogue n'y touche, et un test le verifie. */
+const moisManquants = m => Math.max(0,
+  (num(m.runway.targetLow) - num(m.runway.reserve)) / num(m.runway.burn));
+
 function joursEntre(depuis, jusqua) {
   return Math.round((new Date(String(jusqua) + 'T12:00:00')
     - new Date(String(depuis) + 'T12:00:00')) / 86400000);
@@ -435,27 +442,47 @@ const REGLES_INSIGHT = [
     titleKey: 'insight.liquidity_runway.title',
     descriptionKey: 'insight.liquidity_runway.description',
     eligible: m => m.depensesObservees.observees && num(m.runway.burn) > 0,
-    evaluer: m => ({
-      valeur: num(m.runway.liquidMonths),
-      params: {
-        months: num(m.runway.liquidMonths),
-        /* `runway()` ne rend pas la somme mobilisable, il rend le nombre de mois
-           qu'elle couvre. On la retrouve en multipliant par la consommation :
-           c'est l'inverse exact de sa propre division, pas un second calcul. */
-        reserve: num(m.runway.burn) * num(m.runway.liquidMonths),
-        monthlyBurn: num(m.runway.burn),
-      },
-      evidence: {
-        source: 'runway',
-        immediate: num(m.runway.immediate),
-        monthlyBurn: num(m.runway.burn),
-        liquidMonths: num(m.runway.liquidMonths),
-        immediateMonths: num(m.runway.immediateMonths),
-        observedExpenseMonths: m.depensesObservees.mois,
-        observedMonthlyExpenses: m.depensesObservees.moyenne,
-      },
-      action: { vue: 'overview' },
-    }),
+    evaluer(m) {
+      const r = m.runway;
+      /* CE QUI EST MIS EN AVANT EST LE CHIFFRE IMMEDIATEMENT ACTIONNABLE, jamais
+         le plus rassurant. La regle annoncait `liquidMonths`, qui ajoute a la
+         reserve le cash flechevers un projet et ce qui se vend chez un courtier :
+         26 mois quand la carte du meme ecran en affichait 5. Les deux etaient
+         justes et la lecture etait fausse.
+
+         Le complement n'est pas perdu, il passe DERRIERE, avec ce qui le
+         disqualifie : cet argent a deja un travail ou demande une vente. */
+      const mobilisable = num(r.burn) * num(r.liquidMonths);
+      const complement = (mobilisable - num(r.reserve)) / num(r.burn);
+      const sousCible = reserveSousCible(m);
+      const manque = moisManquants(m);
+      return {
+        valeur: num(r.reserveMois),
+        poids: sousCible ? amplitude(manque + 1, 1) : 0,
+        params: {
+          months: num(r.reserveMois),
+          reserve: num(r.reserve),
+          monthlyBurn: num(r.burn),
+          complementMonths: complement,
+          belowTargetMonths: manque,
+        },
+        evidence: {
+          source: 'runway',
+          scope: 'precaution+courant',
+          reserve: num(r.reserve),
+          reserveMonths: num(r.reserveMois),
+          monthlyBurn: num(r.burn),
+          immediate: num(r.immediate),
+          immediateMonths: num(r.immediateMonths),
+          mobilisableMonths: num(r.liquidMonths),
+          complementMonths: complement,
+          belowTarget: sousCible,
+          observedExpenseMonths: m.depensesObservees.mois,
+          observedMonthlyExpenses: m.depensesObservees.moyenne,
+        },
+        action: { vue: 'overview' },
+      };
+    },
   },
 
   {
@@ -469,7 +496,7 @@ const REGLES_INSIGHT = [
     question: 'Ma réserve s’est-elle étoffée ou érodée ?',
     titleKey: 'insight.liquidity_runway_shift.title',
     descriptionKey: 'insight.liquidity_runway_shift.description',
-    eligible: m => !!reserveIlYA(m, 3),
+    eligible: m => !reserveSousCible(m) && !!reserveIlYA(m, 3),
     evaluer(m) {
       const avant = reserveIlYA(m, 3);
       if (!avant) return null;
