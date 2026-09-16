@@ -40269,3 +40269,129 @@ suite('Une devise principale par profil', () => {
     eq(posValue(Store.state.positions[0]), 5000, 'et la valeur est le produit nu');
   });
 });
+
+/* --- La devise se choisit avant le premier montant -------------------------
+   Une micro-etape, avant la premiere saisie, et une seule fois. */
+suite('La devise, avant la première saisie', () => {
+  const app = () => lireSource('assets/app.js');
+  const neuf = () => { Store.state = blankState(); Store.migrate(); };
+
+  test('1. un profil vierge doit choisir, et la question précède toute saisie', () => {
+    neuf();
+    eq(deviseAChoisir(), true, 'rien n’a été choisi');
+    const a = app();
+    /* Les trois portes d'une saisie monetaire passent par la meme. */
+    for (const acte of ['ajouter-compte', 'add-income', 'add-charge']) {
+      const i = a.indexOf(`'${acte}'(`);
+      vrai(i > 0, `${acte} existe`);
+      const debut = a.slice(i, i + 400);
+      vrai(/if \(!await devisePosee\(\)\) return;/.test(debut),
+        `${acte} ne s’ouvre pas sans devise`);
+    }
+    vrai(/async function devisePosee\(\) \{\s*\n\s*if \(!deviseAChoisir\(\)\) return true;/.test(a),
+      'et la porte est unique');
+  });
+
+  test('2. le choix se pose, et la suite s’ouvre dans cette devise', () => {
+    const a = app();
+    vrai(/Store\.state\.meta\.devise = choix;\s*\n\s*Store\.state\.meta\.deviseChoisie = true;\s*\n\s*Store\.save\(\);/.test(a),
+      'la devise est enregistrée avant que quoi que ce soit s’ouvre');
+    neuf();
+    Store.state.meta.devise = 'USD';
+    Store.state.meta.deviseChoisie = true;
+    eq(deviseAChoisir(), false, 'la question ne se repose pas');
+    eq(deviseBase(), 'USD');
+    Store.state.meta.devise = 'EUR';
+    eq(deviseBase(), 'EUR');
+  });
+
+  test('3. aucune des deux n’est préchoisie, et la langue ne répond pas', () => {
+    const a = app();
+    const f = a.slice(a.indexOf('function choixDevise()'), a.indexOf('async function devisePosee()'));
+    vrai(/aria-checked="false"/.test(f) && !/aria-checked="true"/.test(f),
+      'les deux cartes partent décochées');
+    vrai(/id="devOk" type="button" disabled/.test(f), 'et le bouton attend un choix');
+    vrai(/if \(!choix\) return;/.test(f), 'il ne valide rien sans lui');
+    /* La langue ordonne, elle ne choisit pas. */
+    vrai(/const ordre = enAnglais\(\) \? \['USD', 'EUR'\] : \['EUR', 'USD'\];/.test(f),
+      'l’anglais voit le dollar en premier');
+    vrai(!/meta\.devise = enAnglais|currentLang\(\) === 'en' \? 'USD'/.test(a),
+      'et aucune langue ne pose la devise à la place de quelqu’un');
+  });
+
+  test('4. un état existant garde l’euro et n’est jamais interrompu', () => {
+    /* Un profil deja servi : ses montants sont des euros, la question n'a pas
+       lieu d'etre posee. */
+    Store.state = blankState();
+    Store.state.now = { especes: 50000 };
+    delete Store.state.meta.devise;
+    delete Store.state.meta.deviseChoisie;
+    Store.migrate();
+    refreshAccounts();
+    eq(Store.state.meta.devise, 'EUR', 'il compte en euros');
+    eq(Store.state.meta.deviseChoisie, true, 'et on ne le lui redemande pas');
+    eq(deviseAChoisir(), false);
+    /* Un profil vierge, lui, doit repondre. */
+    neuf();
+    eq(Store.state.meta.devise, 'EUR', 'une unité existe toujours, pour que rien ne s’affiche nu');
+    eq(Store.state.meta.deviseChoisie, false, 'mais elle n’a pas été choisie');
+    eq(deviseAChoisir(), true);
+    /* Idempotent : rejouer la migration ne rouvre pas la question. */
+    Store.migrate();
+    eq(Store.state.meta.deviseChoisie, false);
+  });
+
+  test('5. le choix survit à une fermeture, une reprise, une synchronisation', () => {
+    neuf();
+    Store.state.meta.devise = 'USD';
+    Store.state.meta.deviseChoisie = true;
+    /* Il vit dans `meta`, donc il part partout ou l'etat part : le stockage
+       local, la sauvegarde en ligne, l'export. */
+    const repris = JSON.parse(JSON.stringify(Store.state));
+    Store.state = repris; Store.migrate();
+    eq(deviseBase(), 'USD', 'au retour, toujours le dollar');
+    eq(deviseAChoisir(), false, 'et la question ne revient pas');
+    /* Et la reprise du guide se fait au premier pas, pas a la devise. */
+    eq(aUnComptePropre(), false, 'aucun compte n’a encore été créé');
+  });
+
+  test('6. la démonstration n’écrit jamais la devise réelle', () => {
+    const a = app();
+    const demo = a.slice(a.indexOf("'charger-demo'()"), a.indexOf("'charger-demo'()") + 1200);
+    vrai(!/meta\.devise|deviseChoisie/.test(demo), 'elle ne touche pas au choix');
+    vrai(!/await devisePosee\(\)/.test(demo), 'et elle n’exige pas qu’il soit fait');
+    const s = lireSource('assets/store.js');
+    /* Cette instance-ci n'a pas de mode demonstration : rien a isoler. */
+    if (/const cleStockage = /.test(s)) {
+      vrai(/const cleStockage = \(\) => cleParUtilisateur\(modeDemo\(\) \? CLE_DEMO : CLE_REELLE\);/.test(s),
+        'les deux états vivent sous deux clefs');
+    }
+  });
+
+  test('7. l’avertissement de conversion ne paraît qu’après coup', () => {
+    const a = app();
+    const regl = a.slice(a.indexOf("async 'regl-devise'()"), a.indexOf("async 'regl-place'()"));
+    vrai(/if \(aDesMontantsSaisis\(\)\) \{/.test(regl), 'il dépend des données existantes');
+    vrai(/Par exemple, 10 000 € deviendra 10 000 \$, sans conversion de valeur\./.test(regl),
+      'et il donne l’exemple');
+    /* La micro-etape, elle, n'avertit de rien : il n'y a encore aucun montant. */
+    const f = a.slice(a.indexOf('function choixDevise()'), a.indexOf('async function devisePosee()'));
+    vrai(!/convertira|conversion/.test(f), 'le premier choix ne fait peur à personne');
+    for (const [fr] of [['Quelle est ta devise principale ?'], ['Configurons ton Longward'],
+                        ['Dollar américain'], ['Continuer'],
+                        ['Tous les montants de ton Longward seront lus dans cette devise.']]) {
+      vrai(!!I18N.en[fr], `« ${fr} » a sa traduction`);
+    }
+  });
+
+  test('8. deux cartes touchables, aucun menu, aucun drapeau', () => {
+    const a = app();
+    const f = a.slice(a.indexOf('function choixDevise()'), a.indexOf('async function devisePosee()'));
+    vrai(!/<select/.test(f), 'pas de menu déroulant');
+    vrai(/class="devise-carte"/.test(f), 'deux cartes');
+    vrai(/NOMS_DEVISE\[id\]/.test(f), 'chacune nommée, et le nom vient du modèle');
+    const css = lireSource('assets/styles.css');
+    vrai(/\.devise-carte \{[\s\S]*?min-height: 64px;/.test(css), 'la cible du doigt est large');
+    vrai(!/flag|drapeau/.test(f), 'aucun drapeau : l’euro n’est pas la France');
+  });
+});

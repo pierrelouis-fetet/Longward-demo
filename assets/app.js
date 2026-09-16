@@ -1405,6 +1405,78 @@ function viewNotifs() {
    toucher une ligne choisit et referme. `grille` range les options en sept
    colonnes : c'est la forme d'un jour du mois. `groupe` sur une option ouvre
    un surtitre au-dessus d'elle. Resout la valeur choisie, ou null. */
+/* CONFIGURONS TON LONGWARD : LA DEVISE, AVANT LE PREMIER MONTANT.
+
+   Une micro-etape, pas un cinquieme pas. Le guide en compte quatre et les
+   garde : celle-ci n'est pas numerotee, ne s'affiche pas dans la liste et ne
+   revient jamais. Deux cartes, un bouton, deux secondes.
+
+   AUCUNE DES DEUX N'EST PRESELECTIONNEE. Un euro deja coche serait valide sans
+   etre lu, et un americain repartirait avec la mauvaise unite sans l'avoir
+   choisie. Le bouton attend donc un choix.
+
+   LA LANGUE NE REPOND PAS A LA PLACE. Elle ordonne les cartes -- l'anglais voit
+   le dollar en premier -- et s'arrete la. Un francais peut compter en dollars,
+   un anglophone vivant en France en euros ; deduire l'un de l'autre serait se
+   tromper sur une personne sur deux.
+
+   Rend `true` si la suite peut s'ouvrir : devise deja connue, ou choisie a
+   l'instant. `false` si la fenetre a ete fermee, et alors rien ne s'ouvre. */
+function choixDevise() {
+  return new Promise(resolve => {
+    const m = $('#modal');
+    apercuOuvert = null;
+    $('#modalTitle').textContent = trad('Configurons ton Longward');
+    $('#modalSub').textContent = trad('Tous les montants de ton Longward seront lus dans cette devise.');
+    const ordre = enAnglais() ? ['USD', 'EUR'] : ['EUR', 'USD'];
+    $('#modalBody').innerHTML = `
+      <p class="devise-question">${trad('Quelle est ta devise principale ?')}</p>
+      <div class="devise-choix" role="radiogroup"
+           aria-label="${esc(trad('Quelle est ta devise principale ?'))}">
+        ${ordre.map(id => `
+        <button type="button" class="devise-carte" role="radio" aria-checked="false" data-v="${id}">
+          <span class="devise-signe" aria-hidden="true">${symboleDevise(id)}</span>
+          <span class="devise-txt"><b>${id}</b><span class="sub">${esc(trad(NOMS_DEVISE[id]))}</span></span>
+        </button>`).join('')}
+      </div>`;
+    $('#modalFoot').innerHTML =
+      `<button class="btn" id="devOk" type="button" disabled>${trad('Continuer')}</button>`;
+    montrerModal(m);
+    let choix = null;
+    const fermer = v => {
+      masquerModal(m);
+      $('#modalClose').onclick = null; $('#modalBody').onclick = null;
+      resolve(v);
+    };
+    $('#modalBody').onclick = e => {
+      const b = e.target.closest('.devise-carte');
+      if (!b) return;
+      choix = b.dataset.v;
+      $$('#modalBody .devise-carte').forEach(x => {
+        const on = x === b;
+        x.classList.toggle('on', on);
+        x.setAttribute('aria-checked', on ? 'true' : 'false');
+      });
+      $('#devOk').disabled = false;
+      retourHaptique();
+    };
+    $('#devOk').onclick = () => {
+      if (!choix) return;
+      Store.state.meta.devise = choix;
+      Store.state.meta.deviseChoisie = true;
+      Store.save();
+      majOnglets(); render();
+      fermer(true);
+    };
+    $('#modalClose').onclick = () => fermer(false);
+  });
+}
+
+async function devisePosee() {
+  if (!deviseAChoisir()) return true;
+  return await choixDevise();
+}
+
 function askOptions({ titre, sous = '', options, valeur, grille = false }) {
   return new Promise(resolve => {
     const m = $('#modal');
@@ -7691,7 +7763,8 @@ const ACTIONS = {
     if (aDesMontantsSaisis()) {
       const suite = await askConfirm(
         trad('Changer de devise ne convertit pas tes montants\nTes chiffres restent les mêmes, '
-          + 'ils s’affichent simplement dans la nouvelle devise. Longward ne fait aucune conversion de change.'),
+          + 'ils s’affichent simplement dans la nouvelle devise. Longward ne fait aucune conversion de change.')
+        + ' ' + trad('Par exemple, 10 000 € deviendra 10 000 $, sans conversion de valeur.'),
         { danger: false, ok: trad('Changer la devise'), refus: trad('Annuler') });
       if (!suite) return;
     }
@@ -8316,6 +8389,7 @@ const ACTIONS = {
      ou s'ouvre chez un teneur de compte : un 401(k) est un PLAN, pas un
      contrat. Le mot suit le contenant declare, comme la fiche du compte. */
   async 'ajouter-compte'(btn) {
+    if (!await devisePosee()) return;
     const etabImpose = btn?.dataset?.etab && etabById(btn.dataset.etab) ? btn.dataset.etab : null;
     let etapes = etabImpose ? 2 : 3;
     const e1 = await askForm({
@@ -9742,6 +9816,7 @@ const ACTIONS = {
      la charge precedente en prend un, et `creditsRattachables()` les ecarte. Une
      boucle generique aurait resservi la liste d'avant. */
   async 'add-charge'() {
+    if (!await devisePosee()) return;
     for (;;) {
       const v = await askForm({
         titre: trad('Nouvelle charge fixe'),
@@ -9900,6 +9975,7 @@ const ACTIONS = {
   },
 
   async 'add-income'() {
+    if (!await devisePosee()) return;
     const v = await askForm({
       titre: trad('Nouvelle source de revenu'),
       sous: trad('Ce qui arrive vraiment sur ton compte : salaire net, loyer encaissé. Les charges que tu déclares à part ne sont pas déduites ici.'),
