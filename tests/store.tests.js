@@ -29817,22 +29817,32 @@ suite('Un scénario nommé plutôt qu’un rendement à deviner', () => {
        commentaire ajoute. */
     const brut = lireSource('assets/app.js');
     const debut = brut.indexOf('kv repart-pied');
-    const src = brut.slice(debut, brut.indexOf('ligne-cible">', debut) + 400);
+    /* La fenetre s'arrete a la fin du paragraphe, jamais a un nombre de
+       caracteres : une phrase qui s'allonge le pousse dehors, et le test
+       devient rouge sans qu'aucun comportement n'ait change. */
+    const iCible = brut.indexOf('ligne-cible">', debut);
+    const src = brut.slice(debut, brut.indexOf('</p>', iCible) + 4);
     vrai(debut > 0, 'le pied de la carte de tête doit exister');
     /* Hors de la grille, mesure faite : « franchie en 2050 (dans 25 ans) » dans
        une cellule de valeur repoussait l'intitule voisin sur deux lignes. */
     vrai(brut.indexOf('ligne-cible">') > brut.indexOf('</dl>', debut),
       'le verdict vit après la grille du pied, pas dedans');
-    vrai(/trad\('franchie en'\)/.test(src),
-      'l’année d’atteinte se lit dans le pied de la carte de tête');
-    vrai(/trad\('non atteinte'\)/.test(src),
+    /* LE MOIS, PAS SEULEMENT L'ANNEE. Entre janvier et decembre 2029 il y a un
+       an de vie, et le moteur boucle au mois : il sait lequel c'est. */
+    vrai(/moisEtAnnee\(anneeAtteinte\.year, anneeAtteinte\.month\)/.test(src),
+      'la date d’atteinte se lit au mois dans le pied de la carte de tête');
+    vrai(/trad\('vers'\)/.test(src),
+      'et au conditionnel : c’est une simulation, pas une promesse');
+    vrai(/fmtDelaiMois\(anneeAtteinte\.monthsFromNow\)/.test(src),
+      'le délai aussi se compte au mois');
+    vrai(/trad\('non atteinte sur l’horizon simulé'\)/.test(src),
       'et le verdict inverse s’y lit aussi : une cible manquée est une réponse, pas un silence');
 
     /* Le verdict ne se dit qu'une fois : deux copies, et c'est celle qu'on
        oublie de changer qui contredit l'autre. */
     const tout = lireSource('assets/app.js');
-    eq((tout.match(/trad\('franchie en'\)/g) || []).length, 1,
-      '« franchie en » ne doit exister qu’à un seul endroit');
+    eq((tout.match(/trad\('non atteinte sur l’horizon simulé'\)/g) || []).length, 1,
+      'le verdict ne doit exister qu’à un seul endroit');
     vrai(/s\.target && !anneeAtteinte \? `<div class="note"/.test(tout),
       'la note des leviers ne s’affiche que si la cible n’est pas atteinte');
   });
@@ -40877,6 +40887,123 @@ suite('La réserve de sécurité passe devant le mobilisable', () => {
     /* La regle ne parle pas : sans depenses observees, elle n'est pas eligible. */
     eq(evaluerInsights().find(x => x.id === 'liquidity_runway'), undefined,
       'et la lecture se tait plutôt que d’annoncer zéro');
+  });
+});
+
+/* --- La date d'atteinte, au mois, et la meme partout -----------------------
+
+   « franchie en 2029 » : entre janvier et decembre de cette annee-la il y a un
+   an de vie, et le moteur boucle au mois, donc il sait lequel c'est. L'arrondi
+   a l'annee jetait ce qu'il savait, deux fois — sur la date et sur le delai. */
+suite('La cible se date au mois, et les deux écrans disent le même mois', () => {
+  const projection = () => {
+    const a = lireSource('assets/app.js');
+    const i = a.indexOf('ligne-cible">');
+    return a.slice(a.lastIndexOf('${s.target ?', i), a.indexOf('</p>', i) + 4);
+  };
+
+  test('un délai se dit en années ET en mois', () => {
+    setLang('fr');
+    /* Les quatre formes que le francais demande, et rien de plus. */
+    eq(fmtDelaiMois(39), '3 ans et 3 mois', 'trois ans et un trimestre');
+    eq(fmtDelaiMois(12), '1 an', 'un an juste, au singulier, et sans « 0 mois »');
+    eq(fmtDelaiMois(16), '1 an et 4 mois', 'un an et des mois');
+    eq(fmtDelaiMois(24), '2 ans', 'deux ans, au pluriel');
+    eq(fmtDelaiMois(9), '9 mois', 'moins d’un an : pas d’années');
+    eq(fmtDelaiMois(1), '1 mois', 'un seul mois');
+    /* Sous le mois, un zero se lirait comme un delai nul. */
+    eq(fmtDelaiMois(0), 'moins d’un mois', 'et surtout pas « 0 mois »');
+    eq(fmtDelaiMois(-5), 'moins d’un mois', 'un délai négatif n’existe pas');
+  });
+
+  test('le délai suit la langue', () => {
+    setLang('en');
+    try {
+      eq(fmtDelaiMois(39), '3 years and 3 months');
+      eq(fmtDelaiMois(12), '1 year');
+      eq(fmtDelaiMois(9), '9 months');
+      eq(fmtDelaiMois(0), 'less than a month');
+    } finally { setLang('fr'); }
+    for (const c of ['an', 'ans', 'mois', 'et', 'moins d’un mois',
+                     'vers', 'jusqu’en', 'non atteinte sur l’horizon simulé']) {
+      vrai(!!I18N.en[c], `« ${c} » a sa traduction`);
+    }
+  });
+
+  test('la Projection nomme le mois, et jamais l’année seule', () => {
+    const src = projection();
+    vrai(/moisEtAnnee\(anneeAtteinte\.year, anneeAtteinte\.month\)/.test(src),
+      'la date passe par le formateur de mois');
+    vrai(!/anneeAtteinte\.year\}/.test(src), 'l’année ne s’affiche plus seule');
+    vrai(!/Math\.round\(anneeAtteinte\.yearsFromNow\)/.test(src),
+      'et le délai ne s’arrondit plus à l’année');
+    vrai(/fmtDelaiMois\(anneeAtteinte\.monthsFromNow\)/.test(src), 'il se compte au mois');
+  });
+
+  test('le wording reste une estimation, jamais une promesse', () => {
+    const src = projection();
+    /* « franchie » affirmait. La trajectoire depend d'un scenario de rendement
+       et d'un versement que le lecteur a poses lui-meme. */
+    vrai(!/franchie/.test(src), 'plus aucun verbe d’affirmation');
+    vrai(/trad\('vers'\)/.test(src), 'la date est approchée');
+    for (const mot of ['tu atteindras', 'garanti', 'certain', 'sûr']) {
+      vrai(!new RegExp(mot, 'i').test(src), `« ${mot} » serait une promesse`);
+    }
+  });
+
+  test('trois états, et aucun n’invente de date', () => {
+    const src = projection();
+    /* Deja atteinte : pas de date future, pas de delai. */
+    vrai(/anneeAtteinte\.dejaAtteinte \? trad\('déjà atteinte'\)/.test(src),
+      'une cible déjà franchie se dit telle quelle');
+    vrai(/anneeAtteinte\.dejaAtteinte \? ''/.test(src), 'et ne porte aucun délai');
+    /* Hors horizon : aucune date inventee, et l'horizon simule est nomme. */
+    vrai(/trad\('non atteinte sur l’horizon simulé'\)/.test(src),
+      'hors de l’horizon, aucune date n’est fabriquée');
+    vrai(/trad\('jusqu’en'\)/.test(src), 'et l’horizon simulé se dit');
+    /* Le moteur, lui, distingue bien les trois cas. */
+    Fixture.poser(s => { s.meta.projTarget = 1e12; s.meta.projHorizon = 20; });
+    eq(capitalisation({ years: 20 }).targetReached, null, 'une cible hors d’atteinte ne rend rien');
+    Fixture.poser(s => { s.meta.projTarget = 1; s.meta.projHorizon = 20; });
+    const deja = capitalisation({ years: 20 }).targetReached;
+    eq(deja.dejaAtteinte, true, 'une cible déjà franchie le dit');
+    eq(deja.monthsFromNow, 0, 'et son délai est nul');
+  });
+
+  test('Projection et « À retenir » lisent la même date, au même mois', () => {
+    Fixture.poser(s => { s.meta.projTarget = 200000; s.meta.projHorizon = 30; });
+    const a = capitalisation({ years: horizonProjection() }).targetReached;
+    vrai(!!a && !a.dejaAtteinte, 'la fixture atteint sa cible dans l’horizon');
+    /* UNE SEULE SOURCE. Les deux écrans lisent `targetReached` du même moteur,
+       avec le même horizon, et le formatent avec la même fonction. Diverger
+       demanderait d'en écrire une seconde. */
+    const i = evaluerInsights().find(x => x.id === 'goal_projected_date');
+    vrai(!!i, 'la lecture de l’accueil produit');
+    eq(i.params.year, a.year, 'même année');
+    eq(i.params.month, a.month, 'même mois');
+    eq(i.params.monthsFromNow, a.monthsFromNow, 'même délai');
+    /* Et les deux passent par `moisEtAnnee` : la chaîne affichée est la même. */
+    const app = lireSource('assets/app.js');
+    const bloc = app.slice(app.indexOf('goal_projected_date: {'),
+                           app.indexOf('liquidity_runway_shift: {'));
+    vrai(/moisEtAnnee\(p\.year, p\.month\)/.test(bloc), 'l’accueil formate avec moisEtAnnee');
+    vrai(/moisEtAnnee\(anneeAtteinte\.year, anneeAtteinte\.month\)/.test(projection()),
+      'la Projection aussi');
+    /* Un seul horizon, et un test le figeait déjà : `projHorizon` de la vue et
+       `horizonProjection()` du moteur sont la même dérivation. */
+    eq(horizonProjection(), num(Store.state.meta.projHorizon) || 20,
+      'et le même horizon des deux côtés');
+  });
+
+  test('le mois vient du moteur, pas d’une interpolation', () => {
+    const st = lireSource('assets/store.js');
+    /* La cible se franchit un mois donne : la boucle mensuelle note le passage
+       au moment ou il a lieu, elle n'interpole pas entre deux points annuels. */
+    const bloc = st.slice(st.indexOf('let atteinte = c.target > 0'),
+                          st.indexOf('if (mois % 12 === 0) points.push'));
+    vrai(/monthsFromNow: mois,/.test(bloc), 'le délai est le compteur de la boucle');
+    vrai(/month: date\.getMonth\(\) \+ 1/.test(bloc), 'et le mois vient de ce compteur');
+    vrai(!/interpol/i.test(bloc), 'aucune interpolation entre deux années');
   });
 });
 
