@@ -2008,6 +2008,15 @@ const fmtPoids = (valeur, base) => {
   const p = poidsDansTotal(valeur, base);
   return p == null ? '' : fmtPct(p, 1);
 };
+const fmtDelaiMois = v => {
+  const n = Math.max(0, Math.round(num(v)));
+  const ans = Math.floor(n / 12), mois = n % 12;
+  const partAns = ans ? `${ans} ${ans > 1 ? trad('ans') : trad('an')}` : '';
+  const partMois = mois ? `${mois} ${trad('mois')}` : '';
+  if (partAns && partMois) return `${partAns} ${trad('et')} ${partMois}`;
+  return partAns || partMois || trad('moins d’un mois');
+};
+
 const fmtSigned = v => (v >= 0 ? '+' : '−') + fmtEUR(Math.abs(v), 0);
 /* Un montant signe, sauf a zero : « +584 € », « −300 € », et « 0 € » plutot que
    « +0 € ». Un plus devant un zero se lit comme une addition qui n'a pas eu

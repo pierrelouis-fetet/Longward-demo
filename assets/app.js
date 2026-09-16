@@ -2078,12 +2078,13 @@ function viewObjective() {
       }</dt><dd>${fmtEUR(dernier.real)}</dd>` : ''}
     </dl>
     ${s.target ? `<p class="ligne-cible">${trad('Cible de')} ${fmtEUR0(s.target)}${deuxPoints()}
-      <b>${!anneeAtteinte ? `${trad('non atteinte')} ${trad('d’ici')} ${dernier.year}`
+      <b>${!anneeAtteinte ? trad('non atteinte sur l’horizon simulé')
         : anneeAtteinte.dejaAtteinte ? trad('déjà atteinte')
-        : `${trad('franchie en')} ${anneeAtteinte.year}`}</b>${
-        anneeAtteinte && !anneeAtteinte.dejaAtteinte
-        ? ` <span class="muted">(${trad('dans')} ${Math.round(anneeAtteinte.yearsFromNow)} ${trad('ans')})</span>`
-        : ''}</p>` : ''}
+        : `${trad('vers')} ${moisEtAnnee(anneeAtteinte.year, anneeAtteinte.month)}`}</b>${
+        !anneeAtteinte
+        ? ` <span class="muted">(${trad('jusqu’en')} ${dernier.year})</span>`
+        : anneeAtteinte.dejaAtteinte ? ''
+        : ` <span class="muted">· ${trad('dans')} ${fmtDelaiMois(anneeAtteinte.monthsFromNow)}</span>`}</p>` : ''}
   </div>`;
   })()}
 
