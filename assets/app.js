@@ -1330,6 +1330,8 @@ function viewSettings() {
     <div class="regl-liste">
       ${ligneReglage({ action: 'regl-theme', label: t('settings.theme'), valeur: LIBELLES_THEME()[themeChoisi()] || t('settings.theme.dark') })}
       ${ligneReglage({ action: 'regl-langue', label: t('settings.language'), valeur: langue, sous: t('settings.language.hint') })}
+      ${ligneReglage({ action: 'regl-devise', label: trad('Devise principale'),
+          valeur: trad((DEVISES_BASE.find(([id]) => id === deviseBase()) || DEVISES_BASE[0])[1]) })}
     </div>
   </section>
   <section class="regl-groupe">
@@ -2274,7 +2276,7 @@ function champsPartage(charge) {
     { cle: 'section_partage', label: 'Partage', type: 'section' },
     ...gens.map(g => ({
       cle: CLE_PART(g.id),
-      label: trad('Part de {n} (€)').replace('{n}', g.name),
+      label: trad('Part de {n} ({dev})').replace('{n}', g.name),
       type: 'nombre', exemple: '0',
       valeur: estDeclare(((charge || {}).shares || {})[g.id])
         ? num(charge.shares[g.id]) : '',
@@ -2721,8 +2723,8 @@ function viewPositions() {
             'Prix de revient unitaire, dans la devise de cotation.', ` <span class="u">${trad('dev.')}</span>`)}
           ${sortableTh('cours', 'Cours', '',
             'Dernier cours connu, dans la devise de cotation.', ` <span class="u">${trad('dev.')}</span>`)}
-          ${sortableTh('value', 'Valeur €')}${sortableTh('invested', 'Investi €')}
-          ${sortableTh('perfEur', 'Perf €')}${sortableTh('perfPct', 'Perf %')}
+          ${sortableTh('value', 'Valeur {dev}')}${sortableTh('invested', 'Investi {dev}')}
+          ${sortableTh('perfEur', 'Perf {dev}')}${sortableTh('perfPct', 'Perf %')}
           ${sortableTh('poids', '% portef.', '',
             'Part de cette ligne dans l’ensemble de ton portefeuille Marchés, cash à '
             + 'investir inclus. Le même calcul que la colonne « Poids » de la carte du jour '
@@ -4887,7 +4889,7 @@ function reglagesExploitation(c, idx) {
         <input type="number" step="1" min="0" max="12" class="champ-large"
                data-path="comptes.${idx}.moisLoues" value="${estDeclare(c.moisLoues) ? num(c.moisLoues) : ''}"
                placeholder="12"></div>
-      <div class="field"><label>${trad('Fiscalité estimée (€ / an)')}${aide(trad("Ce que ce bien te coûte en impôt sur une année, tel que tu le lis sur ta déclaration. L'application ne modélise aucun régime : micro-foncier, réel, meublé, SCI, les règles changent et une estimation automatique finirait par mentir. Laisse vide tant que tu ne le sais pas : la carte écrira « non estimée » plutôt qu'un zéro qui passerait pour un calcul."))}</label>
+      <div class="field"><label>${trad('Fiscalité estimée ({dev} / an)')}${aide(trad("Ce que ce bien te coûte en impôt sur une année, tel que tu le lis sur ta déclaration. L'application ne modélise aucun régime : micro-foncier, réel, meublé, SCI, les règles changent et une estimation automatique finirait par mentir. Laisse vide tant que tu ne le sais pas : la carte écrira « non estimée » plutôt qu'un zéro qui passerait pour un calcul."))}</label>
         <input type="number" step="1" min="0" class="champ-large"
                data-path="comptes.${idx}.fiscaliteEstimeeAnnuelle"
                value="${estDeclare(c.fiscaliteEstimeeAnnuelle) ? num(c.fiscaliteEstimeeAnnuelle) : ''}"
@@ -5324,13 +5326,13 @@ function carteAcquisition(c, idx) {
       return `
       ${!plusieurs ? '' : `<p class="sous-titre-carte">${esc(l.libelle || trad('Lot'))}</p>`}
       <div class="grid g-2 g-paire">
-        ${champ(i, 'prixAchat', 'Prix d’achat (€)',
+        ${champ(i, 'prixAchat', 'Prix d’achat ({dev})',
           'Le prix du bien seul, hors frais de notaire et hors travaux. C’est celui qui figure sur le compromis.', l)}
-        ${champ(i, 'fraisAcquisition', 'Frais d’acquisition (€)',
+        ${champ(i, 'fraisAcquisition', 'Frais d’acquisition ({dev})',
           'Notaire, garantie, frais de dossier, commission d’agence. Ils sont partis en frais le jour de l’achat et ne se revendent pas.', l)}
       </div>
       <div class="grid g-2 g-paire">
-        ${champ(i, 'travauxInitiaux', 'Travaux initiaux (€)',
+        ${champ(i, 'travauxInitiaux', 'Travaux initiaux ({dev})',
           'Ce que tu as engagé pour le mettre en état avant d’y vivre ou de le louer. Les travaux d’entretien qui suivent sont des charges, pas de l’acquisition.', l)}
       </div>
       ${(() => {
@@ -5358,7 +5360,7 @@ function carteAcquisition(c, idx) {
         <dd class="muted">${trad('À compléter')}</dd>`}
     </dl>
     <div class="field" style="margin-top:12px">
-      <label>${trad('Apport initial (€)')}${aide(trad('Ce que tu as sorti de ta poche le jour de l’achat. C’est un fait historique : il ne s’ajoute pas à ton patrimoine aujourd’hui, il ne se retire pas de ton cash, et il ne change pas la valeur nette du bien. Il sert à lire le financement, et le rendement sur apport d’un locatif.'))}</label>
+      <label>${trad('Apport initial ({dev})')}${aide(trad('Ce que tu as sorti de ta poche le jour de l’achat. C’est un fait historique : il ne s’ajoute pas à ton patrimoine aujourd’hui, il ne se retire pas de ton cash, et il ne change pas la valeur nette du bien. Il sert à lire le financement, et le rendement sur apport d’un locatif.'))}</label>
       <input type="number" step="any" class="champ-large"
              data-path="comptes.${idx}.apport" value="${estDeclare(c.apport) ? num(c.apport) : ''}"
              placeholder="${trad('facultatif')}"></div>
@@ -5479,21 +5481,21 @@ function carteCredit(c, d, i, idxEtab) {
         </dl>`;
         })()}
         <div class="grid g-3" style="margin-top:12px">
-          <div class="field"><label>${trad('Capital emprunté au départ (€)')}${
+          <div class="field"><label>${trad('Capital emprunté au départ ({dev})')}${
             aide(trad('Ce que la banque t’a prêté le jour de la signature. Il ne bouge jamais, contrairement au capital restant dû : c’est lui qui dit quelle part tu as déjà remboursée.'))}</label>
             <input type="number" step="any" class="champ-large"
                    data-path="etabs.${idxEtab}.dettes.${i}.initial"
                    value="${estDeclare(d.initial) ? num(d.initial) : ''}"
                    placeholder="${trad('facultatif')}"></div>
-          <div class="field"><label>${trad('Capital restant dû (€)')}</label>
+          <div class="field"><label>${trad('Capital restant dû ({dev})')}</label>
             <input type="number" step="any" class="champ-large"
                    data-path="etabs.${idxEtab}.dettes.${i}.montant" value="${num(d.montant)}"></div>
           ${chargeDuCredit(d.id) ? `
-          <div class="field"><label>${trad('Mensualité (€)')}${aide(trad("Elle se règle dans la charge fixe qui rembourse ce crédit, pour n'exister qu'à un seul endroit. Un second champ ici laisserait les deux diverger, et c'est celui-ci que rien ne relirait."))}</label>
+          <div class="field"><label>${trad('Mensualité ({dev})')}${aide(trad("Elle se règle dans la charge fixe qui rembourse ce crédit, pour n'exister qu'à un seul endroit. Un second champ ici laisserait les deux diverger, et c'est celui-ci que rien ne relirait."))}</label>
             <p class="hint" style="margin:0">${fmtEUR(mens)} ${trad('par mois, depuis la charge')}
               <b>${esc(chargeDuCredit(d.id).charge.label || trad('Charge fixe'))}</b></p></div>`
           : `
-          <div class="field"><label>${trad('Mensualité totale (€)')}${
+          <div class="field"><label>${trad('Mensualité totale ({dev})')}${
             aide(trad('Assurance emprunteur incluse : c’est le prélèvement que tu vois sur ton relevé.'))}</label>
             <input type="number" step="any" class="champ-large"
                    data-path="etabs.${idxEtab}.dettes.${i}.mensualite"
@@ -5565,7 +5567,7 @@ function espaceBien(c, idx, t) {
           <input data-action-change="renommer-bien" data-compte="${esc(c.id)}"
                  value="${esc(l.libelle || '')}" placeholder="${trad('ex. Studio Lyon 3e')}"></div>
         <div class="grid g-2 g-paire">
-          <div class="field"><label>${trad('Valeur estimée aujourd\'hui (€)')}${aide(trad("Ce qu'un acheteur te paierait aujourd'hui, frais de notaire exclus : ceux-là sont partis en taxes le jour de l'achat et ne se revendent pas. C'est pour ça qu'un achat récent financé à crédit peut afficher un patrimoine net négatif, sans que rien ne soit faux."))}</label>
+          <div class="field"><label>${trad('Valeur estimée aujourd\'hui ({dev})')}${aide(trad("Ce qu'un acheteur te paierait aujourd'hui, frais de notaire exclus : ceux-là sont partis en taxes le jour de l'achat et ne se revendent pas. C'est pour ça qu'un achat récent financé à crédit peut afficher un patrimoine net négatif, sans que rien ne soit faux."))}</label>
             <input type="number" step="any" class="champ-large"
                    data-path="comptes.${idx}.lignes.${i}.valeur" value="${num(l.valeur)}"></div>
           <div class="field"><label>${trad('Date d\'acquisition')}</label>
@@ -5579,7 +5581,7 @@ function espaceBien(c, idx, t) {
               ${USAGES_BIEN.map(([cle, label]) => `<option value="${cle}"
                 ${usageLigne(l) === cle ? 'selected' : ''}>${trad(label)}</option>`).join('')}
             </select></div>`}
-          ${!estBienEnDirect(c) ? '' : `<div class="field"><label>${trad('Surface (m²)')}${aide(trad("Elle donne le prix au mètre carré, le seul chiffre qui permette de confronter ton estimation aux annonces du quartier. Sans elle, « 150 000 € » ne se vérifie contre rien."))}</label>
+          ${!estBienEnDirect(c) ? '' : `<div class="field"><label>${trad('Surface (m²)')}${aide(trad("Elle donne le prix au mètre carré, le seul chiffre qui permette de confronter ton estimation aux annonces du quartier. Sans elle, « 150 000 {dev} » ne se vérifie contre rien."))}</label>
             <input type="number" step="any" class="champ-large"
                    data-path="comptes.${idx}.lignes.${i}.surface" value="${num(l.surface) || ''}"></div>`}
         </div>
@@ -5805,7 +5807,7 @@ function viewFicheCompte(id) {
           ${AFFECTATIONS.map(([v, l]) => `<option value="${v}" ${v === e.affectation ? 'selected' : ''}>${l}</option>`).join('')}
         </select>
         <input type="number" step="any" class="champ-inline" data-path="comptes.${idx}.cash.${i}.montant" value="${num(e.montant)}">
-        <span class="champ-unite" aria-hidden="true">€</span>
+        <span class="champ-unite" aria-hidden="true">${signeDeviseBase()}</span>
         ${t.interne && (c.cash || []).length < 2 ? ''
           : `<button class="btn sm ghost danger" data-action="retirer-cash" data-id="${esc(c.id)}" data-i="${i}" title="${trad('Retirer cette part')}">${trad('Retirer')}</button>`}
       </div>`).join('')
@@ -6127,11 +6129,11 @@ function viewStrategy() {
     </div>
     <div class="card">
       <div class="card-head"><h2>${trad('Réserve tactique')}</h2></div>
-      <div class="field"><label>${trad('Épargne mensuelle (€)')}${aide(trad('Le montant que tu places chaque mois, saisi à la main. Il sert de base au partage ci-dessous, et il est indépendant de la capacité d’épargne que Budget calcule.'))}</label>
+      <div class="field"><label>${trad('Épargne mensuelle ({dev})')}${aide(trad('Le montant que tu places chaque mois, saisi à la main. Il sert de base au partage ci-dessous, et il est indépendant de la capacité d’épargne que Budget calcule.'))}</label>
         <input type="number" step="50" data-path="strategy.reserveBase" value="${st.reserveBase}"></div>
       <div class="field" style="margin-top:12px"><label>${trad('Part réservée au tactique (%)')}</label>
         <input type="number" step="5" data-path="strategy.reservePct" value="${st.reservePct}"></div>
-      <div class="field" style="margin-top:12px"><label>${trad('Réserve mensuelle (€)')}</label>
+      <div class="field" style="margin-top:12px"><label>${trad('Réserve mensuelle ({dev})')}</label>
         <input type="number" step="50" data-path="strategy.reserveMonthly" value="${st.reserveMonthly}"></div>
       <p class="small muted" style="margin:12px 0 0">
         ${fmtPct(st.reservePct, 0)} de ${fmtEUR0(st.reserveBase)} = ${fmtEUR0(st.reserveBase * st.reservePct / 100)}.
@@ -6624,7 +6626,7 @@ function viewBudget(section = 'depenses') {
         </div>
         <div class="ct-cote">
           <div class="ct-petit">
-            <span class="muted">${trad('Sur douze mois')}${aide(trad("Le même total, vu à l’année. Un abonnement de 30 € par mois coûte 360 € par an : c’est à cette échelle qu’on décide de le garder ou non."))}</span>
+            <span class="muted">${trad('Sur douze mois')}${aide(trad("Le même total, vu à l’année. Un abonnement de 30 {dev} par mois coûte 360 {dev} par an : c’est à cette échelle qu’on décide de le garder ou non."))}</span>
             <b>${fmtEUR0(f.fixed * 12)}</b>
           </div>
         </div>
@@ -6693,7 +6695,7 @@ function viewBudget(section = 'depenses') {
         <table class="editable">
           <thead><tr>
             <th class="sticky-col">${trad('Poste')}</th><th>${trad('Montant')}</th><th>${trad('Facturé')}</th>
-            <th title="${trad('Ce que la ligne pèse chaque mois, quelle que soit sa périodicité')}">${trad('€ / mois')}</th>
+            <th title="${trad('Ce que la ligne pèse chaque mois, quelle que soit sa périodicité')}">${trad('{dev} / mois')}</th>
             <th>${trad('% charges')}</th>
             <th>${trad('Organisme')}</th><th></th>
           </tr></thead>
@@ -6866,7 +6868,7 @@ function viewData() {
     <div class="donnees-section">
       <h2>${trad('Exporter pour analyse')}</h2>
       <button class="btn ghost" data-action="export-xlsx-all">⤓ ${trad('Exporter vers Excel')}</button>
-      <p class="small muted">${trad('Consulte tes données dans Excel ou un tableur.')}${aide(trad("L’Excel est une photo pour lire et retravailler ailleurs : une feuille par thème, montants au format €, pourcentages calculables. Le découpage d’une catégorie de dépenses y a sa propre feuille, une ligne par montant. Il ne contient pas tous les réglages, il ne peut donc pas être rechargé ici : pour restaurer, c’est la sauvegarde JSON."))}</p>
+      <p class="small muted">${trad('Consulte tes données dans Excel ou un tableur.')}${aide(trad("L’Excel est une photo pour lire et retravailler ailleurs : une feuille par thème, montants au format {dev}, pourcentages calculables. Le découpage d’une catégorie de dépenses y a sa propre feuille, une ligne par montant. Il ne contient pas tous les réglages, il ne peut donc pas être rechargé ici : pour restaurer, c’est la sauvegarde JSON."))}</p>
     </div>
     <div class="donnees-section donnees-annuler">
       <div class="controle-texte">
@@ -7028,7 +7030,7 @@ function sheetPositions() {
       { h: 'Cours', t: 'num', w: 11 }, { h: 'Devise', t: 'text', w: 9 },
       { h: 'FX', t: 'num', w: 8 },
       { h: 'Valeur', t: 'eur', w: 15 }, { h: 'Investi', t: 'eur', w: 15 },
-      { h: 'Perf €', t: 'eur', w: 14 }, { h: 'Perf %', t: 'pct', w: 11 },
+      { h: 'Perf {dev}', t: 'eur', w: 14 }, { h: 'Perf %', t: 'pct', w: 11 },
       { h: '% portefeuille', t: 'pct', w: 14 },
     ],
     rows: Store.state.positions.map(p => [
@@ -7258,7 +7260,7 @@ function sheetFixedCharges() {
     name: 'Charges fixes',
     cols: [
       { h: 'Poste', t: 'text', w: 32 }, { h: 'Montant', t: 'eur', w: 15 },
-      { h: 'Période', t: 'text', w: 13 }, { h: '€ / mois', t: 'eur', w: 15 },
+      { h: 'Période', t: 'text', w: 13 }, { h: '{dev} / mois', t: 'eur', w: 15 },
       { h: '% des charges', t: 'pct', w: 15 },
       ...gens.map(g => ({ h: `Part théorique de ${g.name} / mois`, t: 'eur', w: 26 })),
       { h: 'Organisme', t: 'text', w: 24 },
@@ -7407,7 +7409,7 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
       aide: trad('il se déduit du montant investi, et commande la valeur du jour') }] : []),
     ...(type && type.parts ? [{ cle: 'section_valeur', label: 'Valeur actuelle', type: 'section' }] : []),
     { cle: 'valeur',
-      label: `${estime ? 'Valeur estimée' : 'Valeur aujourd’hui'} (€)`, type: 'nombre',
+      label: `${estime ? 'Valeur estimée' : 'Valeur aujourd’hui'} ({dev})`, type: 'nombre',
       valeur: l ? num(l.valeur) : '', exemple: '0',
       aide: estime ? 'ce que tu en tirerais en le vendant aujourd’hui'
           : publiee ? 'la dernière valeur liquidative publiée, pour les parts que tu détiens'
@@ -7415,13 +7417,13 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
       /* Le TOTAL reste la donnee stockee, le prix par part n'est qu'une autre
          facon de l'ecrire. Voir le cablage dans `askForm`. */
       ...(type && type.parts
-        ? { parPart: 'parts', parPartLabel: 'Prix de la part aujourd’hui (€)' } : {}) },
+        ? { parPart: 'parts', parPartLabel: 'Prix de la part aujourd’hui ({dev})' } : {}) },
     ...(type && type.parts ? [{ cle: 'section_invest', label: 'Investissement initial', type: 'section' }] : []),
-    { cle: 'prixDeRevient', label: trad('Montant investi (€)'), type: 'nombre',
+    { cle: 'prixDeRevient', label: trad('Montant investi ({dev})'), type: 'nombre',
       valeur: l ? (num(l.prixDeRevient) || '') : '', exemple: '0',
       aide: trad('facultatif, il donne la plus-value'),
       ...(type && type.parts
-        ? { parPart: 'parts', parPartLabel: 'Prix d’achat de la part (€)',
+        ? { parPart: 'parts', parPartLabel: 'Prix d’achat de la part ({dev})',
             parPartSous: 'il donne le nombre de parts',
             parPartDeduitParts: true } : {}) },
     { cle: 'dateAcquisition', label: trad('Date d’entrée'), type: 'date',
@@ -7677,6 +7679,23 @@ const ACTIONS = {
   },
   'regl-autorefresh'() {
     Store.state.meta.autoRefresh = !Store.state.meta.autoRefresh;
+    Store.save(); render(); retourHaptique();
+  },
+  async 'regl-devise'() {
+    const avant = deviseBase();
+    const v = await askOptions({
+      titre: trad('Devise principale'), sous: trad('Les montants gardent leur format local.'),
+      valeur: avant, options: DEVISES_BASE.map(([id, nom]) => ({ v: id, l: trad(nom) })),
+    });
+    if (v == null || v === avant) return;
+    if (aDesMontantsSaisis()) {
+      const suite = await askConfirm(
+        trad('Changer de devise ne convertit pas tes montants\nTes chiffres restent les mêmes, '
+          + 'ils s’affichent simplement dans la nouvelle devise. Longward ne fait aucune conversion de change.'),
+        { danger: false, ok: trad('Changer la devise'), refus: trad('Annuler') });
+      if (!suite) return;
+    }
+    Store.state.meta.devise = v;
     Store.save(); render(); retourHaptique();
   },
   async 'regl-place'() {
@@ -8092,7 +8111,7 @@ const ACTIONS = {
           aide: trad('un crédit se pose sur ce niveau : deux biens rattachés au même le partagent') });
       }
 
-      if (t.id === 'livret') champs.push({ cle: 'plafond', label: trad('Plafond de versement (€)'),
+      if (t.id === 'livret') champs.push({ cle: 'plafond', label: trad('Plafond de versement ({dev})'),
         type: 'nombre', valeur: valeur('plafond', num(c.plafond) || ''), exemple: 'ex. 22950',
         aide: trad('facultatif') });
 
@@ -8450,26 +8469,26 @@ const ACTIONS = {
           aide: trad('il se déduit du montant investi, et commande la valeur du jour') }] : []),
         ...(t.parts ? [{ cle: 'section_valeur', label: 'Valeur actuelle', type: 'section' }] : []),
         { cle: 'valeur', requis: true,
-          label: estDetenuEnDirect(t) ? trad('Valeur estimée du bien entier (€)')
-                                      : trad('Valeur actuelle (€)'),
+          label: estDetenuEnDirect(t) ? trad('Valeur estimée du bien entier ({dev})')
+                                      : trad('Valeur actuelle ({dev})'),
           type: 'nombre', exemple: '0',
           aide: estDetenuEnDirect(t)
               ? trad('Sa valeur totale aujourd’hui. Si tu n’en détiens qu’une part, renseigne ta quote-part séparément.')
               : 'ce que cela vaut aujourd’hui',
-          ...(t.parts ? { parPart: 'parts', parPartLabel: 'Prix de la part aujourd’hui (€)' } : {}) },
+          ...(t.parts ? { parPart: 'parts', parPartLabel: 'Prix de la part aujourd’hui ({dev})' } : {}) },
         ...(bien && estDetenuEnDirect(t) ? [
         { cle: 'section_acq', label: 'Acquisition', type: 'section' },
-        { cle: 'prixAchat', label: trad('Prix d’achat (€)'), type: 'nombre', exemple: '0',
+        { cle: 'prixAchat', label: trad('Prix d’achat ({dev})'), type: 'nombre', exemple: '0',
           aide: trad('le prix du bien seul, hors frais et hors travaux') },
-        { cle: 'fraisAcquisition', label: trad('Frais d’acquisition (€)'), type: 'nombre',
+        { cle: 'fraisAcquisition', label: trad('Frais d’acquisition ({dev})'), type: 'nombre',
           exemple: '0', aide: trad('notaire, garantie, dossier, agence') },
-        { cle: 'travauxInitiaux', label: trad('Travaux initiaux (€)'), type: 'nombre',
+        { cle: 'travauxInitiaux', label: trad('Travaux initiaux ({dev})'), type: 'nombre',
           exemple: '0', aide: trad('ceux du départ, pour le mettre en état') },
         ] : [
         ...(t.parts ? [{ cle: 'section_invest', label: 'Investissement initial', type: 'section' }] : []),
-        { cle: 'revient', label: trad('Montant investi (€)'), type: 'nombre', exemple: '0',
+        { cle: 'revient', label: trad('Montant investi ({dev})'), type: 'nombre', exemple: '0',
           aide: trad('prix d’acquisition, frais compris'),
-          ...(t.parts ? { parPart: 'parts', parPartLabel: 'Prix d’achat de la part (€)',
+          ...(t.parts ? { parPart: 'parts', parPartLabel: 'Prix d’achat de la part ({dev})',
             parPartSous: 'il donne le nombre de parts',
             parPartDeduitParts: true } : {}) },
         ]),
@@ -8521,16 +8540,16 @@ const ACTIONS = {
         { cle: 'section_fin', label: 'Financement', type: 'section' },
         { cle: 'aCredit', label: trad('As-tu encore un crédit sur ce bien ?'), type: 'liste',
           valeur: 'non', options: [['non', trad('Non')], ['oui', trad('Oui')]] },
-        { cle: 'credit', label: trad('Capital restant dû (€)'), type: 'nombre', exemple: '0',
+        { cle: 'credit', label: trad('Capital restant dû ({dev})'), type: 'nombre', exemple: '0',
           montreSi: avecCredit,
           aide: trad('Ce que tu dois encore personnellement aujourd’hui. Cette dette se déduit de ton patrimoine net.') },
-        { cle: 'initial', label: trad('Capital emprunté au départ (€)'), type: 'nombre',
+        { cle: 'initial', label: trad('Capital emprunté au départ ({dev})'), type: 'nombre',
           exemple: '0', montreSi: avecCredit,
           aide: trad('Le capital emprunté à ta charge au départ, facultatif. Il permet de suivre ce que tu as déjà remboursé.') },
         { cle: 'preteur', label: 'Prêteur', type: 'texte', exemple: 'ex. Ma banque',
           suggestions: valeursConnues('preteur'), montreSi: avecCredit,
           aide: trad('la banque qui prête, si ce n’est pas toi') },
-        { cle: 'mensualite', label: trad('Mensualité facturée (€)'), type: 'nombre', exemple: '0',
+        { cle: 'mensualite', label: trad('Mensualité facturée ({dev})'), type: 'nombre', exemple: '0',
           montreSi: avecCredit,
           aide: trad('Assurance incluse. Elle sera ajoutée aux charges fixes ; tu pourras ensuite indiquer la part payée par quelqu’un d’autre.') },
         { cle: 'taux', label: trad('Taux annuel (%)'), type: 'nombre', exemple: '0',
@@ -8544,7 +8563,7 @@ const ACTIONS = {
           aide: trad('seulement si tu renseignes une mensualité : elle entrera dans ton ')
               + 'budget sous ce nom' },
         ...(!(bien && estDetenuEnDirect(t)) ? [] : [
-        { cle: 'apport', label: trad('Apport initial (€)'), type: 'nombre', exemple: '0',
+        { cle: 'apport', label: trad('Apport initial ({dev})'), type: 'nombre', exemple: '0',
           aide: trad('facultatif, ce que tu as sorti de ta poche le jour de l’achat') },
         ]),
         ];
@@ -8556,7 +8575,7 @@ const ACTIONS = {
                    : enContrat(t) ? 'c’est lui qui distingue deux contrats du même type'
                    : 'c’est lui qui distingue deux plans du même type') },
         ...(t.sansCash ? [] : [
-        { cle: 'montant', label: trad('Montant (€)'), type: 'nombre', exemple: '0' },
+        { cle: 'montant', label: trad('Montant ({dev})'), type: 'nombre', exemple: '0' },
         { cle: 'usage', label: trad('À quoi sert cet argent ?'), type: 'liste',
           options: AFFECTATIONS, valeur: t.defaut,
           aide: trad('pré-rempli selon le type de compte, modifiable librement') },
@@ -8643,7 +8662,7 @@ const ACTIONS = {
           titre: trad('Seconde part'), sous: trad('Le même compte, un autre usage'),
           ok: 'Ajouter cette part',
           champs: [
-            { cle: 'montant', label: trad('Montant (€)'), type: 'nombre', exemple: '0' },
+            { cle: 'montant', label: trad('Montant ({dev})'), type: 'nombre', exemple: '0' },
             { cle: 'usage', label: trad('À quoi sert cet argent ?'), type: 'liste',
               options: AFFECTATIONS.filter(([v]) => v !== e3.usage),
               valeur: AFFECTATIONS.find(([v]) => v !== e3.usage)[0] },
@@ -9058,7 +9077,7 @@ const ACTIONS = {
           valeur: direct ? `Loyer ${nomCompteV2(c)}`
                          : `${trad('Distribution')} ${nomCompteV2(c)}`,
           exemple: 'ex. Loyer studio Lyon' },
-        { cle: 'amount', label: trad('Montant mensuel (€)'), type: 'nombre',
+        { cle: 'amount', label: trad('Montant mensuel ({dev})'), type: 'nombre',
           requis: true, exemple: '0' },
       ],
     });
@@ -9127,13 +9146,13 @@ const ACTIONS = {
       valide: v => validerCreditSaisi(v),
       champs: [
         { cle: 'libelle', label: 'Intitulé', type: 'texte', requis: true, max: NOM_LIGNE_MAX, exemple: 'ex. Prêt immobilier' },
-        { cle: 'montant', label: trad('Capital restant dû (€)'), type: 'nombre', exemple: '0',
+        { cle: 'montant', label: trad('Capital restant dû ({dev})'), type: 'nombre', exemple: '0',
           aide: trad('La dette qui reste personnellement à ta charge. Elle se déduit de ton '
             + 'patrimoine net et n’est jamais divisée par une quote-part de bien ou une '
             + 'répartition de charge.') },
-        { cle: 'initial', label: trad('Capital emprunté au départ (€)'), type: 'nombre', exemple: '0',
+        { cle: 'initial', label: trad('Capital emprunté au départ ({dev})'), type: 'nombre', exemple: '0',
           aide: trad('facultatif, sert à mesurer ce qui est déjà remboursé') },
-        { cle: 'mensualite', label: trad('Mensualité (€)'), type: 'nombre', exemple: '0', aide: trad('facultatif') },
+        { cle: 'mensualite', label: trad('Mensualité ({dev})'), type: 'nombre', exemple: '0', aide: trad('facultatif') },
         { cle: 'taux', label: trad('Taux annuel (%)'), type: 'nombre', exemple: '0',
           aide: trad('facultatif, noté pour mémoire') },
         { cle: 'tauxAssurance', label: trad('Taux d’assurance (%)'), type: 'nombre', exemple: '0',
@@ -9197,7 +9216,7 @@ const ACTIONS = {
       ].filter(Boolean).join(' · '),
       ok: 'Enregistrer',
       champs: [
-        { cle: 'montant', label: trad('Capital restant dû (€)'), type: 'nombre', valeur: num(d.montant),
+        { cle: 'montant', label: trad('Capital restant dû ({dev})'), type: 'nombre', valeur: num(d.montant),
           aide: (() => {
             const pr = projectionCredit(d);
             if (pr.projete == null || pr.ecart < 1) {
@@ -9208,10 +9227,10 @@ const ACTIONS = {
               .replace('{v}', fmtEUR0(pr.projete)).replace('{n}', pr.moisDepuis);
           })() },
         { cle: 'libelle', label: 'Intitulé', type: 'texte', requis: true, max: NOM_LIGNE_MAX, valeur: d.libelle || '' },
-        { cle: 'initial', label: trad('Capital emprunté au départ (€)'), type: 'nombre',
+        { cle: 'initial', label: trad('Capital emprunté au départ ({dev})'), type: 'nombre',
           valeur: estDeclare(d.initial) ? num(d.initial) : '',
           aide: trad('facultatif, sert à mesurer ce qui est déjà remboursé') },
-        ...(lien ? [] : [{ cle: 'mensualite', label: trad('Mensualité (€)'), type: 'nombre',
+        ...(lien ? [] : [{ cle: 'mensualite', label: trad('Mensualité ({dev})'), type: 'nombre',
           valeur: estDeclare(d.mensualite) ? num(d.mensualite) : '',
           aide: trad('facultatif. Mieux : rattache-le à une charge fixe, le montant ')
               + 'ne sera alors saisi qu’une fois' }]),
@@ -9433,8 +9452,8 @@ const ACTIONS = {
           aide: trad('elle décide de la période où la vente compte, donc de la barre où elle apparaît') },
         { cle: 'name', label: 'Nom', type: 'texte', valeur: v.name, max: NOM_LIGNE_MAX },
         ...(v.declaree ? [
-          { cle: 'gross', label: trad('Produit encaissé (€)'), type: 'nombre', valeur: num(v.gross) },
-          { cle: 'realised', label: trad('Plus ou moins-value réalisée (€)'), type: 'nombre',
+          { cle: 'gross', label: trad('Produit encaissé ({dev})'), type: 'nombre', valeur: num(v.gross) },
+          { cle: 'realised', label: trad('Plus ou moins-value réalisée ({dev})'), type: 'nombre',
             valeur: num(v.realised),
             aide: trad('le prix de revient s’en déduit : produit moins plus-value') },
         ] : [
@@ -9515,7 +9534,7 @@ const ACTIONS = {
     const r = await askForm({
       titre: trad('Objectif de dépenses'),
       sous: trad('Ce que tu ne veux pas dépasser sur un mois'),
-      champs: [{ cle: 'montant', label: trad('Objectif de dépenses mensuel (€)'),
+      champs: [{ cle: 'montant', label: trad('Objectif de dépenses mensuel ({dev})'),
                  type: 'nombre', valeur: actuel || '', exemple: '1000',
                  aide: trad('À l’euro. Laisse vide pour ne pas te fixer d’objectif.') }],
       ok: 'Enregistrer',
@@ -9659,7 +9678,7 @@ const ACTIONS = {
       champs: [
         { cle: 'libelle', label: trad('De quoi s’agit-il ?'), type: 'texte', requis: true,
           exemple: sortie ? 'ex. Voiture' : 'ex. Succession' },
-        { cle: 'montant', label: sortie ? 'Montant dépensé (€)' : 'Montant reçu (€)',
+        { cle: 'montant', label: sortie ? 'Montant dépensé ({dev})' : 'Montant reçu ({dev})',
           type: 'nombre', requis: true, exemple: '0' },
         { cle: 'date', label: 'Date', type: 'date', valeur: todayISO(),
           requis: true, mois: true,
@@ -9691,7 +9710,7 @@ const ACTIONS = {
         { cle: 'sens', label: 'Nature', type: 'liste',
           options: [['entree', 'Entrée, de l’argent reçu'], ['sortie', 'Dépense, de l’argent parti']],
           valeur: etaitSortie ? 'sortie' : 'entree' },
-        { cle: 'montant', label: trad('Montant (€)'), type: 'nombre', requis: true,
+        { cle: 'montant', label: trad('Montant ({dev})'), type: 'nombre', requis: true,
           valeur: Math.abs(num(a.montant)) },
         { cle: 'date', label: 'Date', type: 'date', requis: true, mois: true,
           valeur: a.date || '' },
@@ -9887,7 +9906,7 @@ const ACTIONS = {
       champs: [
         { cle: 'label', label: 'Source', type: 'texte', requis: true, exemple: 'ex. Salaire net',
           suggestions: valeursConnues('source') },
-        { cle: 'amount', label: trad('Montant (€)'), type: 'nombre', exemple: '0' },
+        { cle: 'amount', label: trad('Montant ({dev})'), type: 'nombre', exemple: '0' },
         { cle: 'period', label: trad('Période'), type: 'liste',
           options: CHARGE_PERIODES.map(([cle, label]) => [cle, trad(label)]),
           valeur: 'mois' },
@@ -10484,10 +10503,10 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
           <span class="formule-val" data-role="total">…</span><span class="formule-op">÷</span>
           <span class="formule-val" data-role="parts">…</span><span class="formule-op">=</span>
           <input id="${id}_part" type="number" step="any" inputmode="decimal" placeholder="0"
-                 aria-label="${esc(trad(c.parPartLabel))}"><span class="formule-unite">${esc(trad('€ / part'))}</span>` : `
+                 aria-label="${esc(trad(c.parPartLabel))}"><span class="formule-unite">${esc(trad('{dev} / part'))}</span>` : `
           <span class="formule-val" data-role="parts">…</span><span class="formule-op">×</span>
           <input id="${id}_part" type="number" step="any" inputmode="decimal" placeholder="0"
-                 aria-label="${esc(trad(c.parPartLabel))}"><span class="formule-unite">${esc(trad('€ / part'))}</span>
+                 aria-label="${esc(trad(c.parPartLabel))}"><span class="formule-unite">${esc(trad('{dev} / part'))}</span>
           <span class="formule-op" data-role="egal">=</span><span class="formule-val" data-role="total">…</span>`}
           ${c.parPartSous ? `<span class="sub formule-sous">${esc(trad(c.parPartSous))}</span>` : ''}
         </div>`}
@@ -10587,7 +10606,8 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
     const fmtPartsFormule = v => `${moinsTypographique(num(v).toLocaleString(locale(),
       { maximumFractionDigits: 4 }))} ${trad('parts')}`;
     const fmtMontantFormule = v => moinsTypographique(new Intl.NumberFormat(locale(), {
-      style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 2,
+      style: 'currency', currency: deviseBase(), currencyDisplay: 'narrowSymbol',
+      minimumFractionDigits: 0, maximumFractionDigits: 2,
     }).format(num(v)));
     const paires = [];
     for (const c of champs.filter(x => x.parPart)) {
@@ -10605,7 +10625,7 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
         const terme = role => formule.querySelector(`[data-role="${role}"]`);
         terme('parts').textContent = n() > 0 ? fmtPartsFormule(n()) : `… ${trad('parts')}`;
         const aTotal = total.value !== '';
-        terme('total').textContent = aTotal ? fmtMontantFormule(total.value) : '… €';
+        terme('total').textContent = aTotal ? fmtMontantFormule(total.value) : `… ${signeDeviseBase()}`;
         const egal = terme('egal');
         if (egal) { egal.hidden = !aTotal; terme('total').hidden = !aTotal; }
       };
@@ -10873,9 +10893,9 @@ function askSale(indexInitial) {
         <div class="field" data-vente="reelle" id="veFxWrap" hidden><label>${trad('Taux de change à la vente')}</label>
           <input type="number" step="any" id="veFx" autocomplete="off">
           <span class="hint">${trad('1 unité de devise = ce montant en euros')}</span></div>
-        <div class="field" data-vente="passee" hidden><label>${trad('Montant encaissé (€)')}</label>
+        <div class="field" data-vente="passee" hidden><label>${trad('Montant encaissé ({dev})')}</label>
           <input type="number" step="any" id="vePasGross" autocomplete="off"></div>
-        <div class="field" data-vente="passee" hidden><label>${trad('Plus ou moins-value réalisée (€)')}</label>
+        <div class="field" data-vente="passee" hidden><label>${trad('Plus ou moins-value réalisée ({dev})')}</label>
           <input type="number" step="any" id="vePasPnl" autocomplete="off">
           <span class="hint">${trad('négative si la vente a perdu : le prix de revient s’en déduit')}</span></div>
         <div class="field"><label>${trad('Date')}</label>
@@ -11069,7 +11089,7 @@ function askPosition(index) {
         <div class="field"><label>${trad('Quantité')}</label>
           <input type="number" step="any" data-path="positions.${index}.qty" value="${p.qty ?? ''}"></div>
         ${p.manual ? `
-        <div class="field"><label>${trad('Prix de revient')} (€)</label>
+        <div class="field"><label>${trad('Prix de revient')} ({dev})</label>
           <input type="number" step="any" data-path="positions.${index}.invested" value="${p.invested ?? ''}"></div>`
         : `
         <div class="field"><label>${trad('Prix de revient unitaire')} (${esc(dev)})</label>
@@ -11187,7 +11207,7 @@ function askPosition(index) {
           </select></div>
 
         ${p.manual ? `
-        <div class="field"><label>${trad('Valeur')} (€)</label>
+        <div class="field"><label>${trad('Valeur')} ({dev})</label>
           <input type="number" step="any" data-path="positions.${index}.value" value="${p.value ?? ''}"></div>`
         : num(p.quoteTime) ? `
         <div class="field"><label>${trad('Cours')} (${esc(dev)})</label>
@@ -11858,7 +11878,7 @@ function askMonthlySnapshot(index) {
         ${trad('Afficher les comptes clôturés')} (${masques})
       </label>` : ''}
       <div class="field" style="margin-top:12px">
-        <label>${trad('Crédits en cours ce mois-là (€)')}${aide(trad("Le total du capital restant dû à cette date. Il ne se soustrait pas des champs ci-dessus (ceux-ci portent la valeur brute de chaque compte), mais il fait monter la part nette de tes biens, mois après mois, à mesure que tu rembourses."))}</label>
+        <label>${trad('Crédits en cours ce mois-là ({dev})')}${aide(trad("Le total du capital restant dû à cette date. Il ne se soustrait pas des champs ci-dessus (ceux-ci portent la valeur brute de chaque compte), mais il fait monter la part nette de tes biens, mois après mois, à mesure que tu rembourses."))}</label>
         <input type="number" step="any" inputmode="decimal" id="relDettes"
                class="champ-large" value="${num(r.dettes) || ''}" placeholder="0">
       </div>
@@ -12286,7 +12306,7 @@ const APERCUS = {
         { label: `${trad('Fin')} ${an} ${trad('à ce rythme')}`, meta: pj.onTrackPace ? trad('objectif atteint') : trad('sous l’objectif'), valeur: pj.atPace },
       ],
       champs: [
-        { label: `${trad('Montant visé pour fin')} ${an} (€)`, path: 'meta.objective', step: 500 },
+        { label: `${trad('Montant visé pour fin')} ${an} ({dev})`, path: 'meta.objective', step: 500 },
         { label: trad('Objectif à fin…'), path: 'meta.objectiveYear',
           options: Array.from({ length: 31 }, (_, i) => {
             const y = anCourante + i;

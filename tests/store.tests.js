@@ -3572,7 +3572,7 @@ suite('Apport, capital restant et valeur nette ne se mélangent jamais', () => {
     /* Le mot qui manquait : l'aide expliquait a quoi il sert, jamais ce qu'il
        ne change pas. C'est pourtant la seule chose qu'on peut croire a tort. */
     const app = lireSource('assets/app.js');
-    const bloc = app.slice(app.indexOf("trad('Apport initial (€)')"),
+    const bloc = app.slice(app.indexOf("trad('Apport initial ({dev})')"),
                            app.indexOf("data-path=\"comptes.${idx}.apport\""));
     vrai(bloc.length > 100, 'le champ doit être trouvable');
     /* Trois choses qu'il ne fait pas, et c'est tout le sujet : un apport est un
@@ -4426,7 +4426,7 @@ suite('Créer une rentrée offre les mêmes champs que la corriger', () => {
     /* Le motif vise le CODE et non la prose : le commentaire juste au-dessus
        du champ nomme l'ancien libellé pour dire pourquoi il est parti, et un
        contrôle qui attrape un commentaire passe au rouge sans rien protéger. */
-    vrai(!/label: trad\('Montant mensuel \(€\)'\)/.test(f),
+    vrai(!/label: trad\('Montant mensuel \({dev}\)'\)/.test(f),
       '« Montant mensuel » ne répond plus à la place de la période');
   });
 
@@ -5009,7 +5009,7 @@ suite('Formulaire de placement : les intitulés composés sont traduits aussi', 
     const dico = lireSource('assets/i18n.js');
     const declaree = cle => dico.includes('"' + cle + '":')
       || dico.includes("'" + cle + "':");
-    for (const cle of ['Valeur aujourd’hui (€)', 'Valeur estimée (€)',
+    for (const cle of ['Valeur aujourd’hui ({dev})', 'Valeur estimée ({dev})',
                        'ce que la ligne vaut, capital et intérêts courus compris',
                        'ce que tu en tirerais en le vendant aujourd’hui',
                        'la dernière valeur liquidative publiée, pour les parts que tu détiens'])
@@ -5020,7 +5020,7 @@ suite('Formulaire de placement : les intitulés composés sont traduits aussi', 
     /* Une clef recopiee de travers ne casse rien de visible : elle rend juste
        le francais en anglais. Le test relit donc la vue plutot que sa memoire. */
     const app = lireSource('assets/app.js');
-    vrai(app.includes("${estime ? 'Valeur estimée' : 'Valeur aujourd’hui'} (€)"),
+    vrai(app.includes("${estime ? 'Valeur estimée' : 'Valeur aujourd’hui'} ({dev})"),
       'le gabarit du montant n’a pas changé de forme');
   });
 });
@@ -11485,7 +11485,7 @@ suite('Créer un bien ne laisse plus passer une réponse sans suite', () => {
 
   test('la mensualité se saisit facturée, avant tout partage', () => {
     const s = app();
-    vrai(/label: trad\('Mensualité facturée \(€\)'\)/.test(s), 'le mot le dit');
+    vrai(/label: trad\('Mensualité facturée \({dev}\)'\)/.test(s), 'le mot le dit');
     vrai(/Assurance incluse\. Elle sera ajoutée aux charges fixes ; tu pourras ensuite indiquer la part payée par quelqu’un d’autre\./.test(s),
       'et l’aide dit ce qui vient après');
     /* Le modele ne bouge pas : la charge nait avec le montant facture et des
@@ -11511,7 +11511,7 @@ suite('Créer un bien ne laisse plus passer une réponse sans suite', () => {
     vrai(/valide: v => num\(v\.amount\) > 0 \? null/.test(f),
       'vide, zéro et négatif sont refusés ensemble');
     vrai(/Le loyer mensuel doit être supérieur à 0\./.test(f), 'le message le dit');
-    vrai(/cle: 'amount', label: trad\('Montant mensuel \(€\)'\), type: 'nombre',\s*\n\s*requis: true/.test(f),
+    vrai(/cle: 'amount', label: trad\('Montant mensuel \({dev}\)'\), type: 'nombre',\s*\n\s*requis: true/.test(f),
       'et le champ est requis');
     vrai(/que tu perçois personnellement/.test(f),
       'la convention du loyer personnel est écrite');
@@ -17354,9 +17354,9 @@ suite('Un bien se crée seul, s’estime, et se modifie par un bouton', () => {
     /* Le parcours de creation dit la meme chose, et un mot de plus : la valeur
        saisie est celle du bien ENTIER, ce qui compte des qu'une quote-part
        existe. Les deux intitules passent par le dictionnaire. */
-    vrai(/estDetenuEnDirect\(t\) \? trad\('Valeur estimée du bien entier \(€\)'\)/.test(src),
+    vrai(/estDetenuEnDirect\(t\) \? trad\('Valeur estimée du bien entier \({dev}\)'\)/.test(src),
       'le parcours de création parle de valeur estimée, du bien entier');
-    vrai(/: trad\('Valeur actuelle \(€\)'\)/.test(src), 'et de valeur actuelle sinon');
+    vrai(/: trad\('Valeur actuelle \({dev}\)'\)/.test(src), 'et de valeur actuelle sinon');
     vrai(!/t\.classes\.includes\('bienValeur'\) \? 'Valeur estimée'/.test(src),
       'plus de test sur une classe en particulier');
 
@@ -19713,7 +19713,7 @@ suite('Un patrimoine net négatif a deux causes', () => {
     /* Deux champs voisins, l'un frais compris et l'autre pas : saisir ici le prix
        paye frais compris surevalue le bien de ses frais de notaire. */
     const src = lireSource('assets/app.js');
-    const i = src.indexOf("trad('Valeur estimée aujourd\\'hui (€)')");
+    const i = src.indexOf("trad('Valeur estimée aujourd\\'hui ({dev})')");
     vrai(i > 0, 'le champ doit être trouvable');
     vrai(/frais de notaire exclus/.test(src.slice(i, i + 400)),
       'son aide dit ce qu’elle exclut, comme celle du prix d’acquisition dit ce qu’elle inclut');
@@ -19817,7 +19817,7 @@ suite('Une application vide dit quoi faire', () => {
        le montant investi, sur la fiche et a la creation. */
     eq((src.match(/parPart: 'parts'/g) || []).length, 4,
       'les quatre montants se remplissent par leur prix par part');
-    for (const libelle of ['Prix de la part aujourd’hui (€)', 'Prix d’achat de la part (€)']) {
+    for (const libelle of ['Prix de la part aujourd’hui ({dev})', 'Prix d’achat de la part ({dev})']) {
       eq((src.match(new RegExp(libelle.replace(/[().€]/g, '\\$&'), 'g')) || []).length, 2,
         `« ${libelle} » existe des deux côtés, la création et la fiche`);
     }
@@ -19848,7 +19848,7 @@ suite('Une application vide dit quoi faire', () => {
        la valeur du jour : deux declarations, la fiche et la creation. */
     eq((src.match(/parPartDeduitParts: true/g) || []).length, 2,
       'le montant investi le porte, à la fiche comme à la création');
-    const dujour = "parPartLabel: 'Prix de la part aujourd’hui (€)'";
+    const dujour = "parPartLabel: 'Prix de la part aujourd’hui ({dev})'";
     let vus = 0;
     for (let i = src.indexOf(dujour); i >= 0; i = src.indexOf(dujour, i + 1)) {
       vus++;
@@ -27220,7 +27220,7 @@ suite('Aucun français ne s’affiche hors du dictionnaire', () => {
      qu'une clef existe. Ils sont aveugles a ce qui ne passe pas par `trad()` du
      tout, et c'est la que le francais se cache :
 
-       <label>Prix d'acquisition (€)${aide(...)}</label>
+       <label>Prix d'acquisition ({dev})${aide(...)}</label>
        aria-label="Variation mensuelle du patrimoine"
        ? 'Rouvrir tous les groupes' : 'Ne garder que les totaux'
        btn.setAttribute('title', 'Vider le champ')
@@ -29223,7 +29223,7 @@ suite('Zéro euro par mois est une réponse', () => {
 
   test('choisir 0 €/mois donne vraiment une courbe plate', () => {
     /* `num(m.projMonthly) || suggestedMonthly()` traitait zero comme une
-       absence : le menu offrait « 0 € / mois », et le choisir affichait la
+       absence : le menu offrait « 0 {dev} / mois », et le choisir affichait la
        suggestion du budget a la place. Un reglage qui refuse la valeur qu'il
        propose. */
     Fixture.poser(s => {
@@ -35277,7 +35277,7 @@ suite('Un apport est un fait d’hier, pas un mouvement d’aujourd’hui', () =
        sur le commentaire voisin serait vert ici et muet sur l'arbre publie, ou
        les commentaires sont retires. */
     const src = lireSource('assets/app.js');
-    const champ = src.slice(src.indexOf("trad('Apport initial (€)')"),
+    const champ = src.slice(src.indexOf("trad('Apport initial ({dev})')"),
                             src.indexOf('${blocFinancementInitial(c)}'));
     vrai(champ.length > 100, 'le champ doit être trouvable');
     vrai(/estDeclare\(c\.apport\) \? num\(c\.apport\) : ''/.test(champ),
@@ -35608,7 +35608,7 @@ suite('Créer un bien ne force aucune donnée inconnue', () => {
       'l’acquisition détaillée est réservée au bien détenu en direct');
     vrai(/\.\.\.\(!\(bien && estDetenuEnDirect\(t\)\) \? \[\] : \[\n?\s*\{ cle: 'apport'/.test(p),
       'l’apport aussi');
-    vrai(/cle: 'revient', label: trad\('Montant investi \(€\)'\)/.test(p),
+    vrai(/cle: 'revient', label: trad\('Montant investi \({dev}\)'\)/.test(p),
       'et la pierre papier garde son montant investi');
   });
 });
@@ -35906,7 +35906,7 @@ suite('Créer un bien se ramifie, et ne laisse pas naître un appartement à zé
     const p = parcours();
     vrai(/\.\.\.\(bien && estDetenuEnDirect\(t\) \? \[\n?\s*\{ cle: 'section_acq'/.test(p),
       'l’acquisition détaillée reste réservée au bien détenu en direct');
-    vrai(/cle: 'revient', label: trad\('Montant investi \(€\)'\)/.test(p),
+    vrai(/cle: 'revient', label: trad\('Montant investi \({dev}\)'\)/.test(p),
       'et la pierre papier garde son montant investi');
   });
 });
@@ -36992,7 +36992,7 @@ suite('Modifier les parts ne change jamais le total des charges', () => {
       'et 1 200 + 800 tiennent exactement');
     for (const cle of ['Une part théorique ne peut pas être négative.',
                        'Les parts théoriques ne peuvent pas dépasser le montant facturé.',
-                       'Part de {n} (€)', 'Part théorique de {n}',
+                       'Part de {n} ({dev})', 'Part théorique de {n}',
                        'Part théorique de {n} sur cette charge. Elle sert au suivi de la '
                        + 'répartition et ne réduit pas le montant compté dans ton budget.']) {
       vrai(I18N.en[cle], `« ${cle} » doit avoir sa traduction`);
@@ -37097,7 +37097,7 @@ suite('Modifier les parts ne change jamais le total des charges', () => {
     });
     const c = Store.state.budget.fixedCharges[0];
     pres(num(c.amount), 1890, 'Montant : le facturé');
-    pres(chargeMensuelle(c), 1890, '€ / mois : le facturé ramené au mois');
+    pres(chargeMensuelle(c), 1890, '{dev} / mois : le facturé ramené au mois');
     pres(shareMensuelle(c, 'pk'), 945, 'et la part théorique à côté');
     pres(fixedTotal(), 1890, 'le total des charges est 1 890 €, pas 945 €');
     pres(partTheoriqueMensuelle('pk'), 945, 'la part totale vit dans sa colonne');
@@ -38390,7 +38390,7 @@ suite('Projection : le moteur se réconcilie', () => {
   test('« ce que tu verses » ne compte que ce qu’on verse', () => {
     /* LE DEFAUT. Le montant valait `contributed - patrimoine net`, et
        `contributed` porte la part plate, qui MONTE quand le credit s'amortit.
-       Sur un appartement finance, avec « 0 € / mois » ecrit deux lignes plus
+       Sur un appartement finance, avec « 0 {dev} / mois » ecrit deux lignes plus
        bas, la carte annoncait donc « Ce que tu verses : 196 531 € ». */
     etat({ comptes: [BIEN(300000), CTO([], [{ montant: 20000, affectation: 'courant' }])],
            dettes: [{ id: 'd', libelle: 'Prêt', montant: 200000, taux: 2, mensualite: 1000 }],
@@ -38556,7 +38556,7 @@ suite('Le bruit informatif', () => {
 
   test('la moyenne des dépenses se lit dans sa tuile, pas trois fois', () => {
     /* La brique du mois disait « Moyenne 2026 1 166 € » pendant que la tuile
-       donnait « 1 166,25 € » et le pied du graphique « 1 166 € / mois ».
+       donnait « 1 166,25 € » et le pied du graphique « 1 166 {dev} / mois ».
        Même métrique, deux précisions : on se demandait si c'était la même
        chose. La tuile la porte avec sa base et sa fiche ; le pied du graphique
        la garde parce qu'il la met face à l'objectif. La brique parle du mois. */
@@ -38900,20 +38900,20 @@ suite('Actif non coté : la formule montre pourquoi les montants sont liés', ()
     const r = rendu();
     const produit = r.slice(r.indexOf('` : `'), );
     const division = r.slice(0, r.indexOf('` : `'));
-    vrai(/data-role="parts"[\s\S]*×[\s\S]*id="\$\{id\}_part"[\s\S]*€ \/ part[\s\S]*data-role="egal"[\s\S]*data-role="total"/.test(produit),
-      'valeur du jour : parts × [prix] € / part = total');
-    vrai(/data-role="total"[\s\S]*÷[\s\S]*data-role="parts"[\s\S]*=[\s\S]*id="\$\{id\}_part"[\s\S]*€ \/ part/.test(division),
-      'investissement : montant ÷ parts = [prix] € / part');
+    vrai(/data-role="parts"[\s\S]*×[\s\S]*id="\$\{id\}_part"[\s\S]*{dev} \/ part[\s\S]*data-role="egal"[\s\S]*data-role="total"/.test(produit),
+      'valeur du jour : parts × [prix] {dev} / part = total');
+    vrai(/data-role="total"[\s\S]*÷[\s\S]*data-role="parts"[\s\S]*=[\s\S]*id="\$\{id\}_part"[\s\S]*{dev} \/ part/.test(division),
+      'investissement : montant ÷ parts = [prix] {dev} / part');
     vrai(/c\.parPartDeduitParts \? `/.test(r), 'et c’est le drapeau du champ qui choisit le sens');
     vrai(/aria-label="\$\{esc\(trad\(c\.parPartLabel\)\)\}"/.test(r), 'le champ garde son nom pour qui ne voit pas la formule');
-    vrai(!!I18N.en['€ / part'] && !!I18N.en['Investissement initial'] && !!I18N.en['Valeur actuelle'],
+    vrai(!!I18N.en['{dev} / part'] && !!I18N.en['Investissement initial'] && !!I18N.en['Valeur actuelle'],
       'les mots neufs existent en anglais');
   });
 
   test('les termes écrits suivent les champs, formatés comme le reste', () => {
     const c = cablage();
     vrai(/maximumFractionDigits: 4/.test(c), 'le nombre de parts garde ses quatre décimales');
-    vrai(/style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 2/.test(c),
+    vrai(/style: 'currency', currency: deviseBase\(\), currencyDisplay: 'narrowSymbol'/.test(c),
       'le montant en euros, sans décimales inutiles : « 8 223 € »');
     vrai(/moinsTypographique/.test(c) && /locale\(\)/.test(c), 'séparateurs et signe moins de la langue');
     vrai(/n\(\) > 0 \? fmtPartsFormule\(n\(\)\) : `… \$\{trad\('parts'\)\}`/.test(c), 'un terme absent s’écrit « … », le tiret cadratin étant proscrit à l’écran');
@@ -40103,5 +40103,169 @@ suite('L’âge exact le long de la projection', () => {
     }
     vrai(I18N.en['{a} ans et {m} mois'].includes('{a}') && I18N.en['{a} ans et {m} mois'].includes('{m}'),
       'et les deux marques survivent à l’anglais');
+  });
+});
+
+/* --- Une devise principale par profil -------------------------------------
+   Un profil, une devise. Elle change l'unite, jamais les nombres, et la langue
+   ne la decide pas. */
+suite('Une devise principale par profil', () => {
+  const neuf = () => { Store.state = blankState(); Store.migrate(); };
+  const enLangue = (l, f) => {
+    const avant = currentLang();
+    try { setLang(l); return f(); } finally { setLang(avant); }
+  };
+  /* Les separateurs d'`Intl` sont des espaces insecables ou fines : les
+     comparer a une espace ordinaire ferait echouer un format pourtant juste. */
+  const plat = s => String(s).replace(/[\u00a0\u202f\u2009]/g, ' ');
+
+  test('1. un état sans devise compte en euros', () => {
+    neuf();
+    delete Store.state.meta.devise;
+    Store.migrate();
+    eq(Store.state.meta.devise, 'EUR', 'la migration la pose');
+    eq(deviseBase(), 'EUR');
+    /* Idempotente : la rejouer ne change rien, et une valeur inconnue retombe. */
+    Store.migrate();
+    eq(Store.state.meta.devise, 'EUR');
+    Store.state.meta.devise = 'XAU';
+    Store.migrate();
+    eq(Store.state.meta.devise, 'EUR', 'une devise inconnue redevient l’euro');
+    Store.state.meta.devise = 'USD';
+    Store.migrate();
+    eq(Store.state.meta.devise, 'USD', 'un choix valide survit à la migration');
+  });
+
+  test('2. langue et devise sont indépendantes : les quatre croisements', () => {
+    neuf();
+    const cas = [];
+    for (const [langue, devise] of [['fr', 'EUR'], ['en', 'USD'], ['fr', 'USD'], ['en', 'EUR']]) {
+      Store.state.meta.devise = devise;
+      cas.push(enLangue(langue, () => plat(fmtEUR0(1000))));
+    }
+    const [frEur, enUsd, frUsd, enEur] = cas;
+    eq(frEur, '1 000 €', 'français + euro');
+    eq(enUsd, '$1,000', 'anglais + dollar');
+    vrai(/^1 000 \$/.test(frUsd), `français + dollar : le nombre au format français, le signe du dollar (${frUsd})`);
+    eq(enEur, '€1,000', 'anglais + euro');
+    /* Et la preuve que ce sont deux axes : quatre résultats distincts. */
+    eq(new Set(cas).size, 4, 'aucune combinaison n’en recopie une autre');
+  });
+
+  test('3. changer de devise ne touche aucun nombre', () => {
+    neuf();
+    Store.state.now = { especes: 50000 };
+    Store.state.budget.income = [{ label: 'Salaire', amount: 6200, period: 'mois' }];
+    Store.state.budget.fixedCharges = [{ label: 'Loyer', amount: 2900, period: 'mois' }];
+    Store.state.meta.projMonthly = 500;
+    refreshAccounts();
+    const photo = () => JSON.stringify({
+      patrimoine: patrimoine(), budget: budgetFrame(), projection: capitalisation({ years: 20 }).points,
+    });
+    Store.state.meta.devise = 'EUR';
+    const eur = photo();
+    Store.state.meta.devise = 'USD';
+    const usd = photo();
+    eq(usd, eur, 'patrimoine, budget et projection rendent exactement les mêmes nombres');
+    eq(num(Store.state.now.especes), 50000, 'et la donnée saisie n’a pas bougé');
+  });
+
+  test('4. le signe se pose dans t(), une seule fois, et seulement sur la marque', () => {
+    const i = lireSource('assets/i18n.js');
+    vrai(/function uniteMonetaire\(s\) \{/.test(i), 'un seul endroit pose le signe');
+    vrai(/return uniteMonetaire\(s\);/.test(i), 'et t() y passe toute chaîne affichée');
+    neuf();
+    Store.state.meta.devise = 'EUR';
+    eq(trad('Montant ({dev})'), 'Montant (€)');
+    Store.state.meta.devise = 'USD';
+    eq(trad('Montant ({dev})'), 'Montant ($)');
+    /* La marque est explicite : une phrase qui parle de l'euro lui-meme, un
+       plafond de la loi francaise, ne devient jamais un dollar. */
+    const avecEuro = Object.keys(FR).filter(c => c.includes('€') && c.includes('{dev}'));
+    eq(avecEuro.length, 0, 'aucune clef ne mélange le signe en dur et la marque');
+    eq(trad('Aucune donnée'), 'Aucune donnée', 'une chaîne sans marque traverse t() intacte');
+  });
+
+  test('5. aucun montant affiché n’échappe au formateur', () => {
+    const s = lireSource('assets/store.js');
+    vrai(/currency: deviseBase\(\), currencyDisplay: 'narrowSymbol'/.test(s), 'fmtEUR lit la devise du profil');
+    vrai(/montantsMasques \? masque\(deviseBase\(\)\)/.test(s), 'le masque aussi');
+    vrai(/const fmtPart = v => fmtEUR\(v,/.test(s), 'et le prix par part');
+    const c = lireSource('assets/charts.js');
+    vrai(/currency: deviseBase\(\)/.test(c), 'les axes des graphiques aussi');
+    vrai(!/\+ ' k€'/.test(c), 'plus aucun « k€ » collé à la main');
+    const a = lireSource('assets/app.js');
+    vrai(/style: 'currency', currency: deviseBase\(\)/.test(a), 'et la formule des parts');
+  });
+
+  test('6. le compact des axes suit la devise et la langue', () => {
+    neuf();
+    /* `Charts` n'expose pas son compact : on verifie la forme que produit la
+       meme specification, celle qu'un axe rend a 125 000. */
+    const compact = (v, devise) => plat(new Intl.NumberFormat(locale(), {
+      style: 'currency', currency: devise, currencyDisplay: 'narrowSymbol',
+      maximumFractionDigits: 1, notation: 'compact',
+    }).format(v));
+    eq(enLangue('en', () => compact(125000, 'USD')), '$125k', 'anglais, dollar');
+    vrai(/125/.test(enLangue('fr', () => compact(125000, 'EUR'))), 'français, euro');
+  });
+
+  test('7. deux devises, et la table gouverne tout ce qui les liste', () => {
+    eq(DEVISES_BASE.length, 2, 'EUR et USD pour cette passe');
+    eq(DEVISES_BASE.map(([id]) => id).join(','), 'EUR,USD');
+    const a = lireSource('assets/app.js');
+    vrai(/options: DEVISES_BASE\.map\(/.test(a), 'le réglage se dérive de la table, il ne la recopie pas');
+    vrai(/action: 'regl-devise'/.test(a), 'et la préférence existe, à côté de la langue');
+    for (const [, nom] of DEVISES_BASE) vrai(!!I18N.en[nom], `« ${nom} » a sa traduction`);
+    vrai(!!I18N.en['Devise principale'], 'et l’intitulé du réglage');
+  });
+
+  test('8. l’avertissement ne paraît que s’il y a des montants à relire', () => {
+    const a = lireSource('assets/app.js');
+    vrai(/if \(aDesMontantsSaisis\(\)\) \{/.test(a), 'la confirmation est conditionnelle');
+    vrai(/Changer de devise ne convertit pas tes montants/.test(a), 'et elle le dit franchement');
+    neuf();
+    eq(aDesMontantsSaisis(), false, 'un profil neuf n’a rien à relire');
+    Store.state.now = { especes: 8500 };
+    refreshAccounts();
+    eq(aDesMontantsSaisis(), true, 'un solde suffit');
+    neuf();
+    Store.state.budget.income = [{ label: 'Salaire', amount: 6200, period: 'mois' }];
+    eq(aDesMontantsSaisis(), true, 'un revenu aussi');
+  });
+
+  test('9. la devise se persiste, s’exporte et ne contamine pas la démo', () => {
+    neuf();
+    Store.state.meta.devise = 'USD';
+    /* Elle vit dans `meta`, donc elle suit l'etat partout ou il va : le
+       stockage local, la sauvegarde en ligne, l'export JSON. */
+    const copie = JSON.parse(JSON.stringify(Store.state));
+    eq(copie.meta.devise, 'USD', 'un export la porte');
+    Store.state = copie; Store.migrate();
+    eq(deviseBase(), 'USD', 'et un import la rend');
+    /* La demonstration ecrit sous sa propre clef de stockage : sa devise est
+       celle de sa graine, et le profil reel ne la voit jamais. */
+    const s = lireSource('assets/store.js');
+    /* Cette instance-ci n'a pas de mode demonstration : la question de la
+       contamination ne s'y pose pas, et l'exiger ferait echouer un test qui
+       n'a rien a verifier. */
+    if (/const cleStockage = /.test(s)) {
+      vrai(/const cleStockage = \(\) => cleParUtilisateur\(modeDemo\(\) \? CLE_DEMO : CLE_REELLE\);/.test(s),
+        'les deux états ne partagent pas leur clef');
+    }
+    vrai(/devise: 'EUR',/.test(lireSource('assets/seed.js')), 'et la graine déclare la sienne');
+  });
+
+  test('10. le change des cours pivote sur la devise du profil', () => {
+    const q = lireSource('assets/quotes.js');
+    vrai(/p\.currency !== deviseBase\(\)/.test(q), 'une ligne dans la devise du profil ne se convertit pas');
+    vrai(/`\$\{deviseBase\(\)\}\$\{c\}=X`/.test(q), 'la paire demandée part de la devise du profil');
+    vrai(/pos\.currency !== deviseBase\(\)/.test(q), 'et le taux ne s’applique qu’aux lignes étrangères');
+    neuf();
+    Store.state.meta.devise = 'USD';
+    Store.state.positions = [{ id: 'p1', name: 'S&P 500', symbol: 'SPY', qty: 10, price: 500,
+                               currency: 'USD', fx: 1, account: null }];
+    eq(tauxAchat(Store.state.positions[0]), 1, 'un titre en dollars, un profil en dollars : aucun change');
+    eq(posValue(Store.state.positions[0]), 5000, 'et la valeur est le produit nu');
   });
 });

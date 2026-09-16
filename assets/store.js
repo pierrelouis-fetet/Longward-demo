@@ -1869,6 +1869,45 @@ const OEIL_MASQUE = '<svg class="oeil-masque" viewBox="0 0 24 24" role="img"'
   + ` aria-label="${trad('montant masqué')}">`
   + '<path d="M1.9 12S5.9 5.6 12 5.6 22.1 12 22.1 12 18.1 18.4 12 18.4 1.9 12 1.9 12Z"/>'
   + '<line x1="4.5" y1="19.5" x2="19.5" y2="4.5"/></svg>';
+
+/* --- UNE DEVISE PRINCIPALE PAR PROFIL ------------------------------------
+
+   Un profil Longward, une devise. Elle dit dans quelle monnaie se lisent TOUS
+   les montants saisis : un solde, une mensualite, un budget, un objectif.
+
+   CE QU'ELLE N'EST PAS. Ce n'est pas un moteur multi-devises. Changer de
+   devise ne convertit rien, et c'est deliberе : convertir demanderait un taux
+   et une date, donc inventer deux nombres que personne n'a declares. Cent
+   mille euros deviennent cent mille dollars, le nombre ne bouge pas, seule son
+   unite change. L'interface le dit avant de le faire.
+
+   La langue ne la decide pas. Un francais peut compter en dollars, un
+   anglophone vivant en France en euros : `locale()` gouverne le format des
+   nombres, la devise gouverne le signe. Les deux sont independants, et un test
+   croise les quatre combinaisons.
+
+   Deux devises pour cette passe, et la table reste extensible. */
+const DEVISES_BASE = [['EUR', 'Euro (€)'], ['USD', 'Dollar américain ($)']];
+
+function deviseBase() {
+  const d = Store && Store.state && Store.state.meta ? Store.state.meta.devise : null;
+  return DEVISES_BASE.some(([id]) => id === d) ? d : 'EUR';
+}
+const signeDeviseBase = () => symboleDevise(deviseBase());
+
+function aDesMontantsSaisis() {
+  const s = Store.state;
+  if (!s) return false;
+  const b = s.budget || {};
+  return (s.comptes || []).some(c => (c.lignes || []).some(l => num(l.montant) || num(l.valeur)))
+    || Object.values(s.now || {}).some(v => num(v) !== 0)
+    || (s.positions || []).length > 0
+    || (b.income || []).some(r => num(r.amount))
+    || (b.fixedCharges || []).some(r => num(r.amount))
+    || aDesDepensesSaisies()
+    || num(s.meta && s.meta.objective) > 0;
+}
+
 const masque = devise => `${OEIL_MASQUE} ${symboleDevise(devise)}`;
 
 /* Le meme masque en texte pur. Deux endroits l'exigent, et pour la meme
@@ -1894,9 +1933,10 @@ const masqueTexte = devise => '••• ' + symboleDevise(devise);
    n'est legitime — une date ou un identifiant passe par d'autres chemins. */
 const moinsTypographique = s => String(s).replace(/-/g, '−');
 
-const fmtEUR = (v, dec = 2) => montantsMasques ? masque('EUR')
+const fmtEUR = (v, dec = 2) => montantsMasques ? masque(deviseBase())
   : moinsTypographique(new Intl.NumberFormat(locale(), {
-      style: 'currency', currency: 'EUR', minimumFractionDigits: dec, maximumFractionDigits: dec,
+      style: 'currency', currency: deviseBase(), currencyDisplay: 'narrowSymbol',
+      minimumFractionDigits: dec, maximumFractionDigits: dec,
     }).format(num(v)));
 
 const fmtEUR0 = v => fmtEUR(v, 0);
@@ -1905,7 +1945,7 @@ const fmtEUR0 = v => fmtEUR(v, 0);
    « 0.8 mois » au milieu d'une interface qui met des virgules partout. */
 const fmtMois = v => new Intl.NumberFormat(locale(),
   { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(num(v));
-const fmtEUR0Texte = v => montantsMasques ? masqueTexte('EUR') : fmtEUR0(v);
+const fmtEUR0Texte = v => montantsMasques ? masqueTexte(deviseBase()) : fmtEUR0(v);
 
 const fmtCur = (v, devise = 'EUR', dec = 2) => montantsMasques ? masque(devise)
   : moinsTypographique(new Intl.NumberFormat(locale(), {
@@ -1913,11 +1953,11 @@ const fmtCur = (v, devise = 'EUR', dec = 2) => montantsMasques ? masque(devise)
       minimumFractionDigits: dec, maximumFractionDigits: dec,
     }).format(num(v)));
 
-const fmtPart = v => fmtCur(v, 'EUR',
+const fmtPart = v => fmtEUR(v,
   Math.abs(num(v)) > 0 && Math.abs(num(v)) < 0.01 ? 4 : 2);
 
 function fmtCurEur(v, devise, taux) {
-  if (!devise || devise === 'EUR') return fmtEUR(v);
+  if (!devise || devise === deviseBase()) return fmtEUR(v);
   return `${fmtCur(v, devise)} <span class="muted">≈ ${fmtEUR(num(v) * (num(taux) || 1))}</span>`;
 }
 
@@ -2233,6 +2273,10 @@ const Store = {
         if (!s.accountTypes.some(x => x.id === t.id)) s.accountTypes.push(t);
       }
       s.meta.typesEnrichis = true;
+    }
+
+    if (!DEVISES_BASE.some(([id]) => id === s.meta.devise)) {
+      s.meta.devise = 'EUR';
     }
     const parDefaut = Object.fromEntries(SEED_ACCOUNTS.map(a => [a.id, a]));
     for (const a of s.accounts) {
@@ -2613,7 +2657,7 @@ function posValue(p) {
 
    Une ligne en euros vaut 1 sans discussion : c'est sa devise qui le dit. */
 function tauxAchat(p) {
-  if ((p.currency || 'EUR') === 'EUR') return 1;
+  if ((p.currency || deviseBase()) === deviseBase()) return 1;
   return num(p.fx) || 1;
 }
 function posInvested(p) {
@@ -7334,10 +7378,10 @@ function healthChecks() {
         trad('Ni ISIN ni symbole : le cours ne peut pas être récupéré'), 'positions');
     if (!p.manual && !num(p.qty))
       add('warn', trad('{n} a une quantité nulle').replace('{n}', guill(p.name)),
-        trad('La ligne compte pour 0 € dans le portefeuille'), 'positions');
+        trad('La ligne compte pour 0 {dev} dans le portefeuille'), 'positions');
     if (!p.manual && !num(p.price))
       add('warn', trad('{n} n’a pas de cours').replace('{n}', guill(p.name)),
-        trad('Valeur calculée à 0 €'), 'positions');
+        trad('Valeur calculée à 0 {dev}'), 'positions');
   }
 
   if (Store.state.positions.length) {

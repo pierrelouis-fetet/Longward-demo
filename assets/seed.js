@@ -261,6 +261,7 @@ function blankState() {
   return {
     version: 1,
     meta: { objective: 0, objectiveYear: an, expectedInflow: 0, modelCapital: 100000,
+            devise: 'EUR',
             autoRefresh: true, preferredExchange: 'auto',
             projScenario: 'dynamique', projInflation: 2,
             projTarget: 0, projHorizon: 20 },
