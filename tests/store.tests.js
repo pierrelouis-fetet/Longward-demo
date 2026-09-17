@@ -7301,10 +7301,13 @@ suite('Pièges de source', () => {
        rendre rouge. */
     const appel = source.slice(source.indexOf('Charts.sparkline('),
                                source.indexOf(';', source.indexOf('Charts.sparkline(')));
-    for (const interdit of ['axis', 'ticks', 'legend', 'zoom', 'range', 'height']) {
+    /* `height` N'EST PLUS INTERDIT : c'est lui qui rabaisse la courbe au rang de
+       support. Ce que ce contrôle garde, c'est qu'elle ne devienne pas un
+       graphique — axes, plage, légende, zoom. */
+    for (const interdit of ['axis', 'ticks', 'legend', 'zoom', 'range']) {
       vrai(!appel.includes(interdit), `la petite courbe ne reçoit pas ${interdit}`);
     }
-    eq((appel.match(/labels/g) || []).length, 1, 'une seule option, les étiquettes');
+    vrai(/height: 36/.test(appel), 'et sa hauteur se passe à la construction');
     /* Un seul endroit remplit le conteneur de la courbe d'évolution. Compter
        tous les `Charts.stackedArea` serait faux : la projection en appelle un
        aussi, sur une série qui n'a rien à voir. */
@@ -41534,7 +41537,7 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
     /* `labels` allume l'exploration : le code du curseur et de l'infobulle
        existait, il dormait faute d'étiquettes à montrer. */
     const a = app();
-    vrai(/\{ labels: pts\.map\(p => p\.label\) \}/.test(a),
+    vrai(/labels: pts\.map\(p => p\.label\)/.test(a),
       'le montage passe les étiquettes, et c’est ce qui câble le doigt');
     vrai(/if \(!opts\.labels\) return;/.test(c), 'sans elles, rien ne se câble');
     /* Le défilement vertical de la page reste possible depuis la courbe. */
@@ -41554,10 +41557,17 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
     vrai(a.indexOf('hero-barre') > a.indexOf('${blocSpark}'),
       'la barre reste sous les deux colonnes');
     const css = lireSource('assets/styles.css');
-    vrai(/\.hero-haut \{ display: flex; align-items: end; gap: 24px; \}/.test(css),
-      'la rangée est une flexbox, calée sur la ligne de base');
-    vrai(/\.hero-gauche \{ min-width: 0;/.test(css),
-      'et la colonne gauche accepte de se comprimer, sinon un gros montant pousse la courbe dehors');
+    /* SOIXANTE / QUARANTE, pose par la grille et non par le contenu. En flex, la
+       courbe prenait tout ce que le texte ne demandait pas : 742 px sur 1 040 à
+       1440, soit soixante et onze pour cent de la carte pour l'illustration d'un
+       chiffre écrit à côté. */
+    vrai(/\.hero-haut \{ display: grid; grid-template-columns: 3fr 2fr; align-items: end; gap: 16px; \}/.test(css),
+      'la rangée partage en trois cinquièmes et deux');
+    /* `3fr 2fr` et non `60% 40%` : les fractions se partagent ce qui reste APRÈS
+       l'écart, donc le total tombe juste. */
+    vrai(!/grid-template-columns: 60%/.test(css), 'sans pourcentages, qui déborderaient de l’écart');
+    vrai(/\.hero-gauche \{ min-width: 0; \}/.test(css),
+      'et la colonne gauche accepte de se comprimer, sinon un gros montant la fait déborder');
   });
 
   test('elle reste à droite à toutes les largeurs, téléphone compris', () => {
@@ -41568,8 +41578,8 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
        prend son plancher de 120 : rien ne déborde. */
     vrai(!/@media[^{]*\{\s*\.hero-(haut|spark)/.test(css),
       'aucune requête de média ne la déplace ni ne la masque');
-    vrai(/\.hero-spark \{ flex: 1 1 auto; min-width: 120px; \}/.test(css),
-      'son plancher la garde lisible quand la place manque');
+    vrai(/\.hero-spark \{ min-width: 0; \}/.test(css),
+      'la colonne de droite fait deux cinquièmes, quelle que soit la longueur du montant');
     /* AUCUNE HAUTEUR IMPOSÉE EN CSS, et c'est un piège mesuré : poser `height`
        sur le SVG ne l'aplatit pas, sa `viewBox` se recentre et le tracé
        rétrécit EN LARGEUR au milieu d'un conteneur pleine largeur. */
@@ -41577,15 +41587,15 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
       'et aucune hauteur n’est imposée au SVG depuis le CSS');
   });
 
-  test('la courbe prend le vide au lieu d’être poussée au bord', () => {
+  test('aucun blanc ne peut revenir entre le texte et la courbe', () => {
     const css = lireSource('assets/styles.css');
-    /* EN GRANDISSANT, LA COLONNE DE LECTURE ABSORBAIT L'ESPACE LIBRE et poussait
-       la courbe contre le cadre : trois cents pixels de texte, deux cents de
-       blanc, puis un trait collé au bord. C'est la courbe qui prend le vide. */
-    vrai(/\.hero-gauche \{ min-width: 0; flex: 0 1 auto; \}/.test(css),
-      'la colonne de lecture ne grandit plus');
-    vrai(/\.hero-spark \{ flex: 1 1 auto; min-width: 120px; \}/.test(css),
-      'et la courbe prend tout ce qui reste, sans plafond qui recréerait le vide');
+    /* LE PARTAGE NE DEPEND PLUS DU CONTENU. En flex, la colonne qui grandissait
+       décidait où tombait le blanc : contre le cadre quand c'était le texte,
+       derrière la courbe quand celle-ci portait un plafond. Deux fractions ne
+       laissent aucun reste à placer. */
+    vrai(/grid-template-columns: 3fr 2fr/.test(css), 'deux fractions, aucun reste');
+    vrai(!/\.hero-(gauche|spark) \{[^}]*flex:/.test(css),
+      'et plus aucune règle de croissance pour en décider autrement');
   });
 
   test('le hero garde un seul chiffre principal', () => {
