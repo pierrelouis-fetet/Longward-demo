@@ -351,6 +351,50 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* RIEN NE SE SELECTIONNE DANS L'APPLICATION, SAUF CE QUI S'EDITE.
+
+   Sur iPhone, un appui maintenu sur un montant ouvrait la loupe, posait les deux
+   poignees bleues et sortait le menu Copier / Chercher / Traduire. Le geste qui
+   sert a lire — poser le doigt et le laisser une seconde — declenchait donc une
+   selection dont personne n'avait besoin, sur du mobilier : un titre, un libelle,
+   un chiffre affiche. Une application native ne fait pas cela.
+
+   LA REGLE VIT SUR `body` ET NON SUR `html` : tout ce qui s'affiche est dedans —
+   ecran de lancement, barre laterale, fiches, barre de navigation, infobulles —
+   et `user-select` comme `-webkit-touch-callout` s'heritent, donc une seule
+   declaration suffit a couvrir l'arbre entier. Elle remplace une demi-douzaine de
+   gardes posees une par une, dont l'une rendait justement la selection aux
+   paragraphes et aux tableaux des cartes a graphique : deux regles qui se
+   contredisaient, et la plus specifique gagnait.
+
+   `-webkit-touch-callout: none` EN PLUS de `user-select`, et non a sa place : le
+   premier supprime le menu contextuel et la loupe d'iOS, que le second laisse
+   apparaitre. Il en faut les deux pour faire taire un appui long.
+
+   ET SURTOUT PAS `pointer-events: none`, qui eteindrait du meme coup les boutons,
+   les renvois, le survol, la navigation et le doigt sur la courbe. Ce qui est
+   coupe ici est la selection native, rien d'autre : aucun evenement ne change de
+   chemin, `touch-action` n'est pas touche, le defilement vertical reste au
+   navigateur. */
+body {
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none;
+}
+/* CE QUI S'EDITE GARDE TOUT. Un champ sans selection ne se corrige plus : ni
+   double-appui sur un mot, ni poignees pour deplacer le curseur, ni menu Coller.
+   `-webkit-touch-callout: default` va avec, sinon iOS retire aussi le menu
+   d'edition A L'INTERIEUR du champ. Deux appels a `champ.select()` vivent dans
+   `app.js` — quantite d'une ligne, code d'un doublon — et ils ont besoin de cette
+   exception pour faire quelque chose.
+
+   `[contenteditable]` n'est employe nulle part aujourd'hui. La ligne est posee
+   pour que le jour ou il le sera, il le soit normalement. */
+input, textarea,
+[contenteditable="true"], [contenteditable=""] {
+  -webkit-user-select: text; user-select: text;
+  -webkit-touch-callout: default;
+}
+
 /* La barre latérale ne défile pas avec la page, et elle défile en elle-même.
 
    Et il n'y a rien à y gagner. Si la barre du haut se retire sur téléphone,
@@ -526,21 +570,11 @@ body {
   background: var(--sidebar-hover); border: 1px solid var(--sidebar-border);
   border-radius: var(--radius-sm); padding: 11px 12px; display: flex; flex-direction: column; gap: 2px;
 }
-/* Rien ne se surligne dans ce bloc.
-
-   Le patrimoine net y restait allume en violet apres un clic, signale deux fois.
-   Le nombre portait deja `user-select: none` et un `:focus-visible` — donc ni la
-   selection de son propre texte ni le focus a la souris — et le defaut ne se
-   reproduit pas dans un navigateur de bureau pilote. Restait une voie : une
-   selection commencee ailleurs et tiree jusqu'ici, que `user-select: none` sur le
-   seul nombre n'empeche pas de peindre dans tous les moteurs.
-
-   La regle couvre donc le bloc entier et eteint la couleur de surbrillance a
-   l'interieur. Aucune perte : ce sont trois lignes d'affichage, pas du texte
-   qu'on copie, et le montant est deja masquable au clic. */
-.sb-net, .sb-net * { user-select: none; -webkit-user-select: none; }
-.sb-net ::selection { background: transparent; }
-.sb-net::selection { background: transparent; }
+/* Ce bloc portait sa propre garde contre le surlignage, ecrite quand on a cru
+   que l'aplat violet du patrimoine net etait une selection — il venait en fait
+   d'une animation sans `fill-mode`, et un test le tient depuis. La garde reste
+   juste, mais elle n'est plus a elle : la regle de `body` la couvre, et une
+   selection tiree depuis ailleurs ne peut plus commencer nulle part. */
 
 .sb-label { font-size: var(--font-xs); color: var(--sidebar-faible); text-transform: uppercase; letter-spacing: .06em; }
 .sb-net strong { font-size: var(--font-xl); font-weight: 700; letter-spacing: -.03em; color: var(--sidebar-ink); }
@@ -1223,12 +1257,14 @@ table .field :is(input, select) { max-width: none; }
    montants : `font: inherit` neutralise le style que le navigateur impose
    aux <button>, et doit donc ceder ensuite a `.hero-value`. Place apres, il
    ramenait le patrimoine de 52 px a 14 px. */
+/* Le montant est un bouton : il masque les chiffres au clic. Ce qu'on touche
+   pour agir ne doit pas se comporter comme du texte — c'est desormais vrai de
+   toute l'application, par la regle posee sur `body`, et ce bouton n'a plus de
+   garde a lui. */
 .val-masquable {
   background: none; border: none; padding: 0; cursor: pointer;
   color: inherit; font: inherit; letter-spacing: inherit; text-align: left;
   display: block; transition: opacity .15s;
-  user-select: none; -webkit-user-select: none;
-  -webkit-touch-callout: none;
 }
 @media (hover: hover) { .val-masquable:hover { opacity: .72; } }
 .val-masquable:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
@@ -1281,13 +1317,17 @@ table .field :is(input, select) { max-width: none; }
    de descendre sous la largeur de son contenu, et un montant a sept chiffres
    ferait deborder sa colonne au lieu de s'y ajuster. */
 .hero-gauche { min-width: 0; }
-/* La colonne de droite fait exactement deux cinquiemes, quelle que soit la
-   longueur du montant a gauche. `min-width: 0` pour la meme raison que sa
-   voisine : une cellule de grille ne descend pas sous son contenu sans lui. */
-/* PAS DE SELECTION NATIVE SOUS LE DOIGT. Un appui maintenu sur un telephone
-   ouvre la loupe et la poignee de selection : c'est exactement le geste qui
-   sert ici a lire la courbe. Le defilement vertical, lui, reste au navigateur
-   par `touch-action: pan-y`, pose a la construction. */
+/* La colonne de droite prend la moitie de la rangee. `min-width: 0` pour la
+   meme raison que sa voisine : une cellule de grille ne descend pas sous son
+   contenu sans lui.
+
+   ELLE GARDE SA PROPRE GARDE CONTRE LA SELECTION, alors que la regle de `body`
+   la couvre deja, et c'est le seul endroit du fichier ou cette redite est
+   voulue : ici, l'appui maintenu N'EST PAS un geste parasite, c'est le geste de
+   lecture lui-meme. Une regle racine qu'on restreindrait un jour ne doit pas
+   emporter celle-la sans qu'on s'en apercoive. Le defilement vertical reste au
+   navigateur par le `touch-action: pan-y` pose a la construction, et rien ici
+   ne le touche. */
 .hero-spark {
   min-width: 0;
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
@@ -1976,29 +2016,12 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 .chart > svg { display: block; width: 100%; height: auto; overflow: visible; }
 .chart { contain: paint; }
 
-/* Rien ne se selectionne dans un graphique.
-   Un appui maintenu sur le dessin declenchait la selection de texte du
-   telephone : la zone passait en bleu, avec ses deux poignees et la loupe, et
-   il fallait toucher ailleurs pour s'en debarrasser. Les etiquettes d'axe sont
-   bien du texte, techniquement, mais personne ne vient copier « 30 k€ » : le
-   geste attendu sur un graphique est de le parcourir, pas de le selectionner.
-
-   `touch-callout` supprime en plus le menu contextuel et la loupe d'iOS, que
-   `user-select` seul laisse apparaitre. La regle s'arrete au graphique : les
-   textes d'aide et les montants des cartes restent copiables. */
-.chart, .chart * {
-  -webkit-user-select: none; user-select: none;
-  -webkit-touch-callout: none;
-}
-
-.card:has(> .chart), .card:has(> * > .chart) {
-  -webkit-user-select: none; user-select: none;
-  -webkit-touch-callout: none;
-}
-.card:has(.chart) :is(.kv, table, p, .data-view) {
-  -webkit-user-select: text; user-select: text;
-  -webkit-touch-callout: default;
-}
+/* Le graphique n'a plus sa garde a lui : elle vivait ici en trois regles, dont
+   la derniere RENDAIT la selection aux paragraphes et aux tableaux de la carte —
+   c'est-a-dire aux montants, aux titres et aux textes d'aide, exactement ce qui
+   ne doit plus se selectionner. La regle de `body`, en tete de fichier, couvre le
+   dessin, ses etiquettes d'axe et la carte qui le porte, sans exception a lever
+   ni ancetre a remonter. */
 .chart text { font-family: var(--font); }
 .tick { font-size: var(--font-xs); fill: var(--muted); font-variant-numeric: tabular-nums; }
 .tick-strong { fill: var(--text-secondary); font-weight: 600; }
@@ -2057,8 +2080,10 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
    glisse d'un mois a l'autre : sans chiffres de largeur egale, la bulle change
    de largeur a chaque point et se recale, donc elle saute lateralement sous le
    doigt qui la lit. */
-.tip-spark { padding: 5px 9px; min-width: 0; line-height: 1.25; }
-.tip-spark { user-select: none; -webkit-user-select: none; }
+.tip-spark {
+  padding: 5px 9px; min-width: 0; line-height: 1.25;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
 .tip-spark .tt-head { margin-bottom: 1px; }
 .tip-spark b { font-variant-numeric: tabular-nums; }
 
@@ -2164,10 +2189,14 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
      fichier l'applique deja aux bandes collantes du haut. */
   will-change: transform, opacity;
 }
+/* L'en-tete d'une fiche ne se selectionne pas — pas plus que son corps depuis
+   que la regle de `body` couvre l'application entiere. Les trois declarations
+   qui vivaient ici ne disaient plus rien de neuf ; seuls les champs de saisie du
+   corps gardent leur selection, et c'est l'exception d'en-tete de fichier qui le
+   dit. */
 .modal-head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
   padding: 16px 18px 12px; border-bottom: 1px solid var(--grid);
-  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
 }
 .modal-head h2 { margin: 0; font-size: var(--font-lg); letter-spacing: -.01em; }
 .modal-sub { margin: 3px 0 0; font-size: var(--font-sm); color: var(--muted); }
@@ -3616,7 +3645,7 @@ tr.flash-target td { animation: flash-row 1.6s ease; }
               background: color-mix(in oklab, var(--warning) 10%, var(--surface-1)); }
 .chk .btn { flex-shrink: 0; text-decoration: none; }
 
-th.sortable { user-select: none; white-space: nowrap; }
+th.sortable { white-space: nowrap; }
 th.sortable .th-tri {
   all: unset; cursor: pointer; font: inherit; color: inherit;
   display: inline-flex; align-items: baseline; gap: 0;
