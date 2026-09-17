@@ -825,19 +825,21 @@ const PRESENTATION_INSIGHT = {
   liquidity_runway: {
     titre: 'Réserve de sécurité',
     valeur: p => fmtMois(p.months) + ' ' + trad('mois'),
-    phrase: p => trad('de dépenses couvertes par ton épargne immédiatement disponible.')
-      + (p.complementMonths >= 0.1
-        ? ' ' + trad('{c} supplémentaires sont mobilisables, mais fléchés ou nécessitent une vente.')
-          .replace('{c}', fmtMois(p.complementMonths) + ' ' + trad('mois'))
-        : ''),
+    phrase: () => trad('de dépenses immédiatement couvertes'),
+    secondaire: p => p.complementMonths >= 0.1
+      ? trad('+{c} mobilisables, mais fléchés ou à vendre')
+        .replace('{c}', fmtMois(p.complementMonths) + ' ' + trad('mois'))
+      : '',
     cta: { vue: 'overview', ancre: 'autonomie', libelle: 'Voir ma réserve' },
   },
   allocation_target_gap: {
     titre: 'Allocation et cible',
-    phrase: p => trad(p.deltaPct >= 0
-      ? '{c} : {a} de tes investissements, soit {e} points au-dessus de ta cible de {b}.'
-      : '{c} : {a} de tes investissements, soit {e} points en dessous de ta cible de {b}.')
-      .replace('{c}', esc(trad(p.label))).replace('{a}', fmtPct(p.currentPct, 1))
+    valeur: p => fmtPct(p.currentPct, 1),
+    phrase: p => trad('de tes investissements sont sur {c}')
+      .replace('{c}', esc(trad(p.label))),
+    secondaire: p => trad(p.deltaPct >= 0
+      ? 'soit {e} points au-dessus de ta cible de {b}'
+      : 'soit {e} points en dessous de ta cible de {b}')
       /* Une decimale suffit : `fmtNombre` en rend deux, on arrondit avant
          plutot que d'ajouter un formateur de plus pour un seul appel. */
       .replace('{e}', fmtNombre(Math.round(Math.abs(p.deltaPct) * 10) / 10))
@@ -847,81 +849,90 @@ const PRESENTATION_INSIGHT = {
   wealth_pace_shift: {
     titre: 'Progression du patrimoine',
     valeur: p => montantSigne(p.currentMonthly, fmtEUR0) + trad('/mois'),
-    phrase: p => trad('sur les {n} derniers mois, contre {b} sur les {m} mois précédents.')
-      .replace('{n}', p.currentMonths)
-      .replace('{b}', montantSigne(p.previousMonthly, fmtEUR0) + trad('/mois'))
-      .replace('{m}', p.previousMonths),
+    phrase: p => trad('sur les {n} derniers mois').replace('{n}', p.currentMonths),
+    secondaire: p => trad('contre {b} auparavant')
+      .replace('{b}', montantSigne(p.previousMonthly, fmtEUR0) + trad('/mois')),
     cta: { vue: 'overview', ancre: 'evolution', libelle: 'Voir l’évolution' },
   },
   goal_projected_date: {
     titre: 'Horizon de l’objectif',
-    phrase: p => trad('Ta cible de {t} serait atteinte vers {d}, selon tes hypothèses actuelles.')
-      .replace('{t}', fmtEUR0(p.target)).replace('{d}', moisEtAnnee(p.year, p.month)),
+    valeur: p => moisEtAnnee(p.year, p.month),
+    phrase: p => trad('pour atteindre ta cible de {t}').replace('{t}', fmtEUR0(p.target)),
+    secondaire: () => trad('selon tes hypothèses actuelles'),
     cta: { vue: 'objective', ancre: 'trajectoire', libelle: 'Voir ma projection' },
   },
   liquidity_runway_shift: {
     titre: 'Évolution de ta trésorerie',
-    phrase: p => trad('Ta trésorerie couvre {a} mois de dépenses, contre {b} il y a trois mois, à dépenses constantes.')
-      .replace('{a}', fmtMois(p.months)).replace('{b}', fmtMois(p.previousMonths)),
+    valeur: p => fmtMois(p.months) + ' ' + trad('mois'),
+    phrase: () => trad('de dépenses couvertes par ta trésorerie'),
+    secondaire: p => trad('contre {b} il y a trois mois, à dépenses constantes')
+      .replace('{b}', fmtMois(p.previousMonths) + ' ' + trad('mois')),
     cta: { vue: 'overview', ancre: 'evolution', libelle: 'Voir l’évolution' },
   },
   pocket_share_shift: {
     titre: 'Poids d’une poche',
-    phrase: p => trad('{c} pèse {a} de ton patrimoine, contre {b} il y a {m} mois.')
-      .replace('{c}', esc(libellePoche(p.poche)))
-      .replace('{a}', fmtPct(p.currentPct, 1)).replace('{b}', fmtPct(p.previousPct, 1))
-      .replace('{m}', p.months),
+    valeur: p => fmtPct(p.currentPct, 1),
+    phrase: p => trad('de ton patrimoine sur {c}')
+      .replace('{c}', esc(libellePoche(p.poche))),
+    secondaire: p => trad('contre {b} il y a {m} mois')
+      .replace('{b}', fmtPct(p.previousPct, 1)).replace('{m}', p.months),
     cta: { vue: 'overview', ancre: 'evolution', libelle: 'Voir l’évolution' },
   },
   wealth_growth_origin: {
     titre: 'Origine de ta progression',
     valeur: p => fmtPct(p.contributionsPct, 0),
-    phrase: p => trad('de ta progression sur {m} mois vient de tes versements ; le reste mêle valorisation, capital remboursé et réévaluation.')
+    phrase: p => trad('de ta progression sur {m} mois vient de tes versements')
       .replace('{m}', p.months),
+    secondaire: () => trad('le reste mêle valorisation, capital remboursé et réévaluation'),
     cta: { vue: 'overview', ancre: 'evolution', libelle: 'Voir l’évolution' },
   },
   goal_date_shift: {
     titre: 'Ta cible a bougé',
-    phrase: p => trad(p.monthsEarlier >= 0
-      ? 'Ta cible de {t} tomberait vers {d}, soit {n} mois plus tôt qu’à la dernière lecture.'
-      : 'Ta cible de {t} tomberait vers {d}, soit {n} mois plus tard qu’à la dernière lecture.')
-      .replace('{t}', fmtEUR0(p.target)).replace('{d}', moisEtAnnee(p.year, p.month))
+    valeur: p => moisEtAnnee(p.year, p.month),
+    phrase: p => trad('pour atteindre ta cible de {t}').replace('{t}', fmtEUR0(p.target)),
+    secondaire: p => trad(p.monthsEarlier >= 0
+      ? 'soit {n} mois plus tôt qu’à la dernière lecture'
+      : 'soit {n} mois plus tard qu’à la dernière lecture')
       .replace('{n}', fmtMois(Math.abs(p.monthsEarlier))),
     cta: { vue: 'objective', ancre: 'trajectoire', libelle: 'Voir ma projection' },
   },
   debt_soon_free: {
     titre: 'Mensualité bientôt libérée',
     valeur: p => fmtEUR0(p.monthly) + trad('/mois'),
-    phrase: p => trad('se libèrent dans {n} mois, à la dernière échéance de ce crédit.')
-      .replace('{n}', p.months),
+    phrase: p => trad('se libèrent dans {n} mois').replace('{n}', p.months),
+    secondaire: () => trad('à la dernière échéance de ce crédit'),
     cta: { vue: 'accounts', libelle: 'Voir mes crédits' },
   },
   spending_shift: {
     titre: 'Niveau de tes dépenses',
     valeur: p => fmtEUR0(p.current) + trad('/mois'),
-    phrase: p => trad('sur les {n} derniers mois clos, contre {b} sur les {m} mois précédents.')
-      .replace('{n}', p.months).replace('{m}', p.months)
+    phrase: p => trad('sur les {n} derniers mois clos').replace('{n}', p.months),
+    secondaire: p => trad('contre {b} auparavant')
       .replace('{b}', fmtEUR0(p.previous) + trad('/mois')),
     cta: { vue: 'budget', libelle: 'Voir mes dépenses' },
   },
   spending_month_anomaly: {
     titre: 'Un mois à part',
     valeur: p => fmtEUR0(p.total),
-    phrase: p => trad('en {d}, contre {b} pour un mois ordinaire chez toi.')
-      .replace('{d}', esc(fmtMoisAn(p.month.slice(0, 7) + '-15'))).replace('{b}', fmtEUR0(p.usual)),
+    phrase: p => trad('en {d}')
+      .replace('{d}', esc(fmtMoisAn(p.month.slice(0, 7) + '-15'))),
+    secondaire: p => trad('contre {b} pour un mois ordinaire chez toi')
+      .replace('{b}', fmtEUR0(p.usual)),
     cta: { vue: 'budget', libelle: 'Voir mes dépenses' },
   },
   concentration_top_line: {
     titre: 'Ta première ligne',
     valeur: p => fmtPct(p.pct, 1),
-    phrase: p => trad('de tes actifs financiers tiennent sur {c}, autant que les deux lignes suivantes réunies.')
+    phrase: p => trad('de tes actifs financiers tiennent sur {c}')
       .replace('{c}', esc(trad(p.label))),
+    secondaire: () => trad('autant que les deux lignes suivantes réunies'),
     cta: { vue: 'positions', libelle: 'Voir mes positions' },
   },
   debt_principal_share: {
     titre: 'Capital remboursé',
-    phrase: p => trad('{a} par mois de ta progression patrimoniale viennent du capital remboursé sur tes crédits, et non de ton épargne disponible.')
-      .replace('{a}', fmtEUR0(p.monthlyPrincipalRepaid)),
+    valeur: p => fmtEUR0(p.monthlyPrincipalRepaid) + trad('/mois'),
+    phrase: () => trad('de ta progression patrimoniale'),
+    secondaire: () => trad('viennent de tes crédits, pas de ton épargne disponible'),
     cta: { vue: 'overview', ancre: 'accumulation', libelle: 'Voir mon accumulation' },
   },
 };
@@ -1020,6 +1031,10 @@ function carteARetenir() {
         <b class="retenir-titre">${esc(trad(p.titre))}</b>
         ${p.valeur ? `<p class="retenir-valeur">${escMontant(p.valeur(i.params))}</p>` : ''}
         <p class="retenir-texte">${p.phrase(i.params)}</p>
+        ${(() => {
+          const s = p.secondaire && p.secondaire(i.params);
+          return s ? `<p class="retenir-second">${s}</p>` : '';
+        })()}
         ${!p.cta ? '' : p.cta.ancre
           /* Une ancre vise un endroit DANS une vue : c'est `goto` qui sait
              faire les deux, changer d'ecran s'il le faut puis defiler jusqu'a

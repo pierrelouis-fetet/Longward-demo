@@ -3462,7 +3462,7 @@ tr.flash-target td { animation: flash-row 1.6s ease; }
     var(--accent), color-mix(in oklab, var(--accent) 35%, transparent));
 }
 
-.retenir-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 18px; }
+.retenir-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
 .retenir-item { position: relative; padding-left: 16px; }
 .retenir-item::before {
   content: ''; position: absolute; left: 0; top: .52em; width: 6px; height: 6px;
@@ -3485,11 +3485,20 @@ tr.flash-target td { animation: flash-row 1.6s ease; }
    signe monetaire si on le laisse faire, et une unite orpheline sur la ligne
    suivante se lit comme une faute. */
 .retenir-valeur {
-  margin: 4px 0 2px; font-size: var(--font-xl); font-weight: 700;
+  margin: 2px 0 0; font-size: var(--font-xl); font-weight: 700;
   letter-spacing: -.02em; color: var(--text-primary);
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
-.retenir-texte { margin: 3px 0 0; color: var(--text-secondary); max-width: 62ch; }
+/* UNE CAPITALE SUR LA PREMIERE LETTRE, ET SUR ELLE SEULE. « janvier 2030 » est
+   une valeur autant que « 0,8 mois » : elle ouvre sa ligne et merite la majuscule
+   qu'un debut de ligne appelle. `text-transform: capitalize` aurait ecrit « 0,8
+   Mois » ; `::first-letter` ne touche qu'au premier caractere, et les valeurs qui
+   commencent par un chiffre ou un signe n'en ont pas. */
+.retenir-valeur::first-letter { text-transform: uppercase; }
+.retenir-texte { margin: 2px 0 0; color: var(--text-secondary); max-width: 62ch; }
+.retenir-second {
+  margin: 2px 0 0; color: var(--muted); font-size: var(--font-sm); max-width: 62ch;
+}
 .retenir-lien { display: inline-block; margin-top: 8px; font-size: var(--font-sm); font-weight: 550; }
 
 .retenir-tete { align-items: center; }
