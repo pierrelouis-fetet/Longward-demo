@@ -825,12 +825,11 @@ const PRESENTATION_INSIGHT = {
   liquidity_runway: {
     titre: 'Réserve de sécurité',
     valeur: p => fmtMois(p.months) + ' ' + trad('mois'),
-    phrase: p => trad('d’épargne immédiatement disponible.')
+    phrase: p => trad('de dépenses couvertes par ton épargne immédiatement disponible.')
       + (p.complementMonths >= 0.1
-        ? ' ' + trad('{c} de plus seraient mobilisables, mais cet argent est fléché ou demande une vente.')
+        ? ' ' + trad('{c} supplémentaires sont mobilisables, mais fléchés ou nécessitent une vente.')
           .replace('{c}', fmtMois(p.complementMonths) + ' ' + trad('mois'))
-        : '')
-      + (p.belowTargetMonths > 0 ? ' ' + trad('L’objectif indicatif retenu dans l’app est de 3 à 6 mois.') : ''),
+        : ''),
     cta: { vue: 'overview', ancre: 'autonomie', libelle: 'Voir ma réserve' },
   },
   allocation_target_gap: {
@@ -1107,9 +1106,12 @@ function viewOverview() {
      une ligne entre deux releves reste une vraie lecture. Aucun mois manquant
      n'est comble.
 
-     Elle ne porte ni chiffre, ni axe, ni legende, ni infobulle — `labels` reste
-     eteint — et elle est `aria-hidden` : tout ce qu'elle montre est deja dit en
-     toutes lettres trois lignes plus haut. */
+     Elle ne porte ni chiffre permanent, ni axe, ni plage, ni selection de
+     periode : ce qui s'y ajoute est une infobulle au doigt, qui repond a
+     « combien avais-je a ce moment-la » sans quitter l'apercu. Le trace reste
+     `aria-hidden` : le montant, la variation et la periode sont ecrits en
+     toutes lettres trois lignes plus haut, et l'onglet Historique donne l'acces
+     detaille. */
   const serieHero = varAn ? serieAn(varAn.depuis, evoNet) : [];
   const blocSpark = serieHero.length < 2 ? ''
     : `<div class="hero-spark" id="heroSpark"></div>`;
@@ -1397,7 +1399,17 @@ function mountOverview() {
      en silence quand le conteneur n'est pas rendu, donc rien a garder ici. */
   (() => {
     const v = variationAn(todayISO(), evoNet);
-    if (v) Charts.sparkline($('#heroSpark'), serieAn(v.depuis, evoNet));
+    if (!v) return;
+    /* `labels` ALLUME L'EXPLORATION, et c'est tout ce qu'il faut : `sparkline()`
+       porte deja le curseur, l'infobulle, le choix du point le plus proche et
+       le `touch-action: pan-y` qui laisse la page defiler. Le code dormait
+       faute d'etiquettes a montrer.
+
+       Le point retenu est toujours un releve REEL : l'abscisse du doigt se
+       arrondit au point le plus proche, aucun patrimoine intermediaire n'est
+       calcule. */
+    const pts = pointsAn(v.depuis, evoNet);
+    Charts.sparkline($('#heroSpark'), pts.map(p => p.valeur), { labels: pts.map(p => p.label) });
   })();
 
   const t = nowTotals();
