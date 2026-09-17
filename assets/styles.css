@@ -1251,22 +1251,30 @@ table .field :is(input, select) { max-width: none; }
    plutot que de flotter en haut, ou elle aurait concurrence le grand chiffre.
    `min-width: 0` sur la colonne gauche, sans quoi un montant a sept chiffres
    refuserait de se laisser comprimer et pousserait la courbe hors de la carte. */
-/* SOIXANTE POUR CENT EST UN PLAFOND POUR LE TEXTE, PAS UN PLANCHER.
+/* MOITIE-MOITIE, ET LE PARTAGE NE DEPEND PLUS DU CONTENU.
 
-   Avec `3fr 2fr`, la colonne de gauche prenait toujours ses trois cinquiemes,
-   meme quand « 49 517 € » n'en demandait que la moitie : le reste devenait un
-   blanc entre le texte et la courbe, et la courbe paraissait tassee a droite.
-   Avec `fit-content(60%)`, elle prend ce que son contenu demande et pas un
-   pixel de plus, plafonne a soixante pour cent — donc un montant a sept
-   chiffres n'est jamais ecrase, et un montant court ne reserve pas de vide.
-   La courbe prend exactement ce qui reste : plus de trou possible entre les
-   deux, l'ecart est le seul espace qui les separe.
+   Deux tentatives ont precede celle-ci et chacune laissait le contenu decider.
+   `3fr 2fr` donnait toujours ses trois cinquiemes a la colonne de gauche, meme
+   quand « 49 517 € » n'en demandait que la moitie : le reste devenait un blanc
+   entre le texte et la courbe. `fit-content(60%)` a corrige ce blanc, mais en
+   rendant a la courbe TOUT ce que le texte ne prenait pas — sur un ecran large,
+   « 50 578 € » ne demande pas grand-chose, et la courbe s'etirait sur les trois
+   quarts de la carte pour illustrer un chiffre ecrit a cote.
 
-   Sur un telephone, ou le montant remplit presque ses soixante pour cent, le
-   partage reste celui qu'on visait ; c'est sur les ecrans larges que la courbe
-   s'allonge, et c'est la qu'il y avait un trou a combler. */
+   Deux fractions egales tranchent : chaque colonne prend la moitie de ce qui
+   reste APRES l'ecart, a toutes les largeurs, quelle que soit la longueur du
+   montant. Mesure a 1440 : la courbe passe de 750 a 485 px.
+
+   `min-content` EST LA SEULE EXCEPTION, ET ELLE EST MESUREE. Le `clamp()` du
+   grand chiffre suit la largeur de la fenetre, pas celle de sa colonne : a
+   375 px il reste a 34 px de police, et « 4 200 909 € » demande alors 166 px
+   la ou la moitie n'en donne que 148 — les separateurs de milliers sont
+   insecables, rien ne se replie. Avec `minmax(0, 1fr)` le montant debordait de
+   dix-huit pixels ; avec `minmax(min-content, 1fr)` la colonne de lecture
+   grandit juste assez (166/129) et seulement dans ce cas. Un patrimoine
+   ordinaire garde ses deux moities exactes. */
 .hero-haut {
-  display: grid; grid-template-columns: fit-content(60%) minmax(0, 1fr);
+  display: grid; grid-template-columns: minmax(min-content, 1fr) minmax(0, 1fr);
   align-items: end; gap: 16px;
 }
 /* `min-width: 0` reste indispensable : sans lui, une cellule de grille refuse

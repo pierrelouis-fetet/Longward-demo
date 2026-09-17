@@ -41559,14 +41559,25 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
     vrai(a.indexOf('hero-barre') > a.indexOf('${blocSpark}'),
       'la barre reste sous les deux colonnes');
     const css = lireSource('assets/styles.css');
-    /* SOIXANTE POUR CENT EST UN PLAFOND POUR LE TEXTE, PAS UN PLANCHER. Avec
-       `3fr 2fr`, la colonne de gauche prenait toujours ses trois cinquièmes même
-       quand le montant n'en demandait que la moitié : le reste devenait un blanc
-       entre le texte et la courbe. */
-    vrai(/grid-template-columns: fit-content\(60%\) minmax\(0, 1fr\);/.test(css),
-      'la colonne de lecture prend ce qu’elle demande, plafonnée à soixante pour cent');
+    /* MOITIÉ-MOITIÉ. `3fr 2fr` réservait au texte trois cinquièmes qu'il ne
+       demandait pas, `fit-content(60%)` rendait à la courbe tout ce que le texte
+       laissait — sur un écran large elle s'étirait sur les trois quarts de la
+       carte. Deux fractions égales ne dépendent ni de l'un ni de l'autre. */
+    vrai(/grid-template-columns: minmax\(min-content, 1fr\) minmax\(0, 1fr\);/.test(css),
+      'les deux colonnes se partagent la rangée en deux moitiés');
     vrai(/gap: 16px;/.test(css), 'et un écart normal les sépare');
-    vrai(!/grid-template-columns: 60%/.test(css), 'sans pourcentages, qui déborderaient de l’écart');
+    vrai(!/grid-template-columns: 50%/.test(css), 'sans pourcentages, qui déborderaient de l’écart');
+    /* LE PLANCHER `min-content` N'EST PAS DÉCORATIF, il est mesuré : à 375 px le
+       `clamp()` du grand chiffre reste à 34 px — il suit la fenêtre, pas sa
+       colonne — et « 4 200 909 € », dont les séparateurs sont insécables,
+       demande 166 px quand la moitié n'en donne que 148. Sans lui, dix-huit
+       pixels de débordement ; avec lui, la lecture prend 166 et la courbe 129,
+       et dans ce cas seulement. */
+    const rangee = css.slice(css.indexOf('.hero-haut {'), css.indexOf('}', css.indexOf('.hero-haut {')));
+    vrai(!/1fr 1fr/.test(rangee),
+      'ni deux fractions nues, qui ne diraient rien du montant trop long');
+    vrai(!/minmax\(0, 1fr\) minmax\(0, 1fr\)/.test(rangee),
+      'ni deux moitiés strictes, où un patrimoine à sept chiffres déborderait');
     vrai(/\.hero-gauche \{ min-width: 0; \}/.test(css),
       'et la colonne gauche accepte de se comprimer, sinon un gros montant la fait déborder');
   });
@@ -41596,11 +41607,12 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
 
   test('aucun blanc ne peut revenir entre le texte et la courbe', () => {
     const css = lireSource('assets/styles.css');
-    /* LE BLANC NAISSAIT D'UNE COLONNE PLUS LARGE QUE SON CONTENU. `fit-content`
-       la réduit à ce qu'elle demande, et `1fr` donne tout le reste à la courbe :
-       il ne subsiste aucun espace à placer entre les deux, hormis l'écart. */
-    vrai(/grid-template-columns: fit-content\(60%\) minmax\(0, 1fr\);/.test(css),
-      'ce que le texte ne prend pas revient à la courbe');
+    /* DEUX FRACTIONS ÉGALES NE LAISSENT AUCUN RESTE À PLACER : ce qui n'est pas
+       dans une moitié est dans l'autre, et l'écart est le seul espace entre
+       elles. Le blanc d'autrefois naissait d'une colonne plus large que son
+       contenu ; il ne peut plus revenir puisque aucune ne suit le sien. */
+    vrai(/grid-template-columns: minmax\(min-content, 1fr\) minmax\(0, 1fr\);/.test(css),
+      'aucune des deux colonnes ne suit la longueur de son contenu');
     vrai(!/\.hero-(gauche|spark) \{[^}]*flex:/.test(css),
       'et plus aucune règle de croissance pour en décider autrement');
     vrai(!/\.hero-spark \{[^}]*max-width/.test(css),
