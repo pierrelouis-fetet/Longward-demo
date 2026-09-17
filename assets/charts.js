@@ -1192,16 +1192,56 @@ const Charts = (() => {
     });
   }
 
+  const AMPLITUDE_MINIMALE = 0.005;
+
   function sparkline(el, values, opts = {}) {
     mount(el, () => {
       const W = Math.max(el.clientWidth, 80), H = opts.height || 44;
       if (values.length < 2) { el.innerHTML = ''; return; }
       const min = Math.min(...values), max = Math.max(...values);
-      const span = (max - min) || 1;
+      /* UN PLANCHER D'AMPLITUDE, SINON TOUTE VARIATION DEVIENT UNE FALAISE.
+
+         Le cadrage sur min/max donne toujours toute la hauteur a l'ecart
+         existant, quel qu'il soit. Mesure faite sur le trace : `[100 000,
+         110 000]` et `[100 000, 100 012]` rendent exactement le meme dessin,
+         « 0,32 200,4 ». Douze euros de mouvement se lisaient donc comme dix
+         mille, et c'est sur deux points — le cas de qui commence — que le
+         malentendu est le plus fort, puisqu'aucune forme ne vient le nuancer.
+
+         Sous un demi pour cent du niveau, l'echelle s'ouvre donc a ce demi
+         pour cent AUTOUR DU MILIEU. La ligne ne ment plus dans les deux sens :
+         un patrimoine immobile se pose au milieu du cadre au lieu de se coller
+         au bord bas — `(max - min) || 1` envoyait toutes les valeurs egales sur
+         la meme ligne, celle du plancher — et un mouvement negligeable reste
+         visiblement negligeable. Rien n'est cache pour autant : le montant
+         exact et son pourcentage sont ecrits juste a cote.
+
+         `Number.EPSILON` comme minimum absolu : sur une serie entierement a
+         zero, un plancher proportionnel vaudrait zero lui aussi, et la ligne
+         retomberait au bord bas par la porte qu'on vient de fermer.
+
+         LA COULEUR SUIT LA PENTE DESSINEE, ET NON LE DRAPEAU CI-DESSUS. Vert
+         sur un patrimoine qui n'a pas bouge, c'etait une bonne nouvelle
+         inventee ; mais lier l'encre au drapeau donnait pire, et c'est une
+         mesure au seuil qui l'a montre : a +500 sur 100 000, l'ecart passe tout
+         juste sous le plancher, l'echelle s'ouvre a peine et le trait monte
+         donc de presque toute la hauteur — en gris. Une pente franche peinte
+         comme une ligne morte.
+
+         Le critere est donc geometrique et se suffit : on mesure ce que le
+         trace occupe VRAIMENT en pixels apres l'ouverture, et l'encre devient
+         neutre quand il n'y a plus de pente a colorer. Aucun second seuil
+         metier, et les deux decisions ne peuvent plus se contredire. */
+      const milieu = (min + max) / 2;
+      const plancher = Math.max(Math.abs(milieu) * AMPLITUDE_MINIMALE, Number.EPSILON);
+      const bas = (max - min) < plancher ? milieu - plancher / 2 : min;
+      const span = ((max - min) < plancher ? plancher : max - min) || 1;
       const x = i => i * W / (values.length - 1);
-      const y = v => H - 4 - ((v - min) / span) * (H - 8);
+      const y = v => H - 4 - ((v - bas) / span) * (H - 8);
       const pts = values.map((v, i) => `${x(i)},${y(v)}`).join(' ');
-      const col = opts.color || (values[values.length - 1] >= values[0] ? cssv('--good') : cssv('--critical'));
+      const penteEnPixels = ((max - min) / span) * (H - 8);
+      const col = opts.color || (penteEnPixels < 1 ? cssv('--muted')
+        : values[values.length - 1] >= values[0] ? cssv('--good') : cssv('--critical'));
       el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">
         <polygon points="0,${H} ${pts} ${W},${H}" fill="${col}" fill-opacity=".12"/>
         <polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>
