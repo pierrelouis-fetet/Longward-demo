@@ -41759,6 +41759,146 @@ suite('Rien ne se sélectionne dans l’interface, sauf ce qui s’édite', () =
   });
 });
 
+/* --- COPIER SANS ROUVRIR LA SELECTION --------------------------------------
+
+   La regle de la maison est « rien ne se selectionne ». Son prix : une donnee
+   qu'on recopie vraiment ailleurs n'a plus de chemin. Deux en ont un — le numero
+   de compte et l'ISIN — par un bouton, jamais par une exception CSS. Ces
+   controles tiennent les deux bords : que le bouton existe la ou il sert, et
+   qu'aucune classe ne reprenne la selection par la fenetre. */
+suite('La copie est un geste explicite, jamais une exception de sélection', () => {
+  const app = () => lireSource('assets/app.js');
+  const nu = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
+
+  test('aucune classe ne reprend la sélection pour permettre la copie', () => {
+    const css = lireSource('assets/styles.css').replace(/\/\*[\s\S]*?\*\//g, '');
+    /* LA TENTATION A UN NOM : `.iban { user-select: text }`. Elle rouvre la
+       loupe, les poignees et le menu natif sur la donnee la plus sensible de
+       l'ecran, pour economiser un bouton. */
+    for (const classe of ['iban', 'account-number', 'copyable', 'selectionnable',
+                          'numero', 'montant', 'amount', 'retenir', 'hero-value']) {
+      vrai(!new RegExp('\\.' + classe + '[^{]*\\{[^}]*user-select: text').test(css),
+        `« .${classe} » ne rend pas la sélection`);
+    }
+    /* Et le compte global tient : une seule paire rend la selection, celle des
+       champs de saisie. Ce controle-ci echoue AUSSI si quelqu'un en ajoute une
+       ailleurs, quel que soit le nom qu'il lui donne. */
+    eq((css.match(/user-select: text/g) || []).length, 2,
+      'une seule exception dans toute la feuille, celle de la saisie');
+  });
+
+  test('une seule porte mène au presse-papiers', () => {
+    const a = nu(app());
+    vrai(/async function copierDansLePressePapiers\(valeur\)/.test(a),
+      'le helper existe et il est unique');
+    eq((a.match(/navigator\.clipboard/g) || []).length, 1,
+      'un seul appel à l’API dans toute l’application');
+    /* La reussite s'annonce APRES l'attente, sinon elle s'annoncerait avant de
+       savoir : `await` puis le toast, dans cet ordre. */
+    const bloc = a.slice(a.indexOf('async function copierDansLePressePapiers'),
+                         a.indexOf('\n}', a.indexOf('async function copierDansLePressePapiers')));
+    vrai(bloc.indexOf('await navigator.clipboard.writeText') < bloc.indexOf("trad('Copié')"),
+      'le succès ne s’annonce qu’une fois la copie faite');
+    vrai(/catch \(err\)[\s\S]*Impossible de copier/.test(bloc),
+      'et l’échec le dit, sans faire croire au succès');
+    vrai(/return false;/.test(bloc), 'et il se rend, il ne jette pas');
+    /* Un toast, pas une fenetre : l'echec d'une copie n'interrompt personne. */
+    vrai(!/askConfirm|modal/.test(bloc), 'aucune fenêtre modale pour un échec de copie');
+  });
+
+  test('la copie part d’un bouton, et de rien d’autre', () => {
+    const a = nu(app());
+    /* NI SURVOL, NI FOCUS, NI APPUI MAINTENU, NI CLIC SUR LA LIGNE. Le seul
+       appelant est l'action du bouton, et le seul declencheur de cette action
+       est le `data-action` que la delegation de clic lit. */
+    const appels = (a.match(/copierDansLePressePapiers\(/g) || []).length;
+    eq(appels, 2, 'une déclaration, un appel : celui de l’action');
+    vrai(/'copier'\(btn\) \{ copierDansLePressePapiers\(btn\.dataset\.copie\); \}/.test(a),
+      'l’action lit la valeur portée par le bouton');
+    for (const piege of ['onmouseenter', 'onfocus', 'onpointerdown', 'oncontextmenu']) {
+      vrai(!new RegExp(piege + '[^\\n]*copier', 'i').test(a),
+        `la copie ne part pas sur ${piege}`);
+    }
+  });
+
+  test('le bouton porte son nom, sa cible et sa discrétion', () => {
+    const a = nu(app());
+    const b = a.slice(a.indexOf('const boutonCopier ='), a.indexOf('\n};', a.indexOf('const boutonCopier =')));
+    /* UN NOM PRECIS, PAS « Copier » TOUT SEUL : a l'oreille, « Copier » ne dit
+       pas quoi. Le meme mot sert d'infobulle a la souris. */
+    vrai(/aria-label="\$\{nom\}"/.test(b) && /title="\$\{nom\}"/.test(b),
+      'il porte un nom accessible et le même en infobulle');
+    vrai(/trad\(libelle\)/.test(b), 'et ce nom passe par la traduction');
+    /* Une valeur vide ne laisse pas une icone morte derriere elle. */
+    vrai(/if \(!v\) return '';/.test(b), 'et il ne s’écrit pas sans valeur à copier');
+    vrai(/data-copie="\$\{esc\(v\)\}"/.test(b), 'la valeur traverse l’échappement');
+
+    const css = lireSource('assets/styles.css');
+    const regle = css.slice(css.indexOf('.btn-copie {'), css.indexOf('}', css.indexOf('.btn-copie {')));
+    vrai(/background: none/.test(regle) && /border: none/.test(regle),
+      'le bouton reste secondaire : ni fond, ni bordure');
+    /* QUARANTE-QUATRE PIXELS DE CIBLE POUR QUINZE DE DESSIN. Au doigt, une
+       icone se manque ; la zone s'etend sans que rien ne bouge a l'ecran. */
+    const cible = css.slice(css.indexOf('.btn-copie::after {'), css.indexOf('}', css.indexOf('.btn-copie::after {')));
+    vrai(/width: 44px/.test(cible) && /height: 44px/.test(cible),
+      'sa zone tactile fait quarante-quatre pixels');
+    vrai(/margin-left: 10px/.test(regle), 'et il ne colle pas au texte qu’il copie');
+    vrai(/\.btn-copie:focus-visible \{[^}]*outline/.test(css),
+      'le clavier voit où il est');
+    vrai(!/\.btn-copie[^{]*\{[^}]*pointer-events: none/.test(css),
+      'et aucun événement n’est coupé au passage');
+  });
+
+  test('seules deux données portent un bouton, et ce sont les bonnes', () => {
+    const a = nu(app());
+    /* TROIS APPELS POUR DEUX DONNEES : le numero de compte se lit a deux
+       endroits — la fiche d'un placement et celle d'un compte — et l'ISIN a un.
+       Un quatrieme appel serait une icone de plus dans une interface qui n'en
+       demande pas. */
+    const appels = [...a.matchAll(/boutonCopier\(([^,]+), '([^']+)'\)/g)].map(m => [m[1], m[2]]);
+    eq(appels.length, 3, `${appels.length} boutons de copie dans toute l’application`);
+    for (const [valeur, libelle] of appels) {
+      vrai(/^(c\.numero|p\.isin)$/.test(valeur.trim()),
+        `« ${valeur.trim()} » est une donnée qu’on recopie ailleurs`);
+      vrai(/^Copier (le numéro de compte|l’ISIN)$/.test(libelle),
+        `« ${libelle} » nomme ce qu’il copie`);
+    }
+    /* ET AUCUN MONTANT. « Est-ce qu'on le colle dans un autre formulaire ? »
+       Pour un patrimoine, une variation ou un solde : non. */
+    vrai(!/boutonCopier\([^)]*(fmtEUR|montant|solde|total|valeur\()/i.test(a),
+      'aucun montant ne porte de bouton de copie');
+  });
+
+  test('le bouton copie la valeur du modèle, jamais une version affichée à part', () => {
+    const a = nu(app());
+    /* Le meme `c.numero` alimente le `<dd>` et le bouton : il n'y a pas deux
+       verites, donc pas de version masquee a reconstituer. */
+    vrai(/<dd>\$\{esc\(c\.numero\)\}\$\{boutonCopier\(c\.numero, 'Copier le numéro de compte'\)\}<\/dd>/.test(a),
+      'le numéro affiché et le numéro copié sont la même donnée');
+    vrai(/\$\{esc\(p\.isin\)\}<\/span>`\s*\+ boutonCopier\(p\.isin, 'Copier l’ISIN'\)/.test(a),
+      'et l’ISIN aussi');
+    /* RIEN DE MASQUE N'EST RENDU LISIBLE POUR L'OCCASION : le mode discret
+       couvre les montants, et aucun montant ne porte de bouton. */
+    const css = lireSource('assets/styles.css');
+    const discret = css.slice(css.indexOf('body.discret'), css.indexOf('}', css.indexOf('body.discret')));
+    vrai(!/btn-copie/.test(discret), 'le mode discret ne connaît pas ce bouton, et n’a rien à lui cacher');
+  });
+
+  test('les deux langues disent la réussite et l’échec', () => {
+    for (const [fr, en] of [['Copié', 'Copied'],
+                            ['Impossible de copier', 'Couldn’t copy'],
+                            ['Copier le numéro de compte', 'Copy account number'],
+                            ['Copier l’ISIN', 'Copy ISIN']]) {
+      eq(I18N.en[fr], en, `« ${fr} » a sa traduction`);
+    }
+    /* Le message vit le temps d'un toast ordinaire, celui que la maison a deja
+       retenu pour ce qui n'attend pas de reponse. */
+    const a = lireSource('assets/app.js');
+    vrai(/const vie = action \? 6000 : 2300;/.test(a),
+      'et il s’efface seul, comme tous les messages sans bouton');
+  });
+});
+
 /* --- La courbe du hero s'explore, et la reserve cesse de prescrire ---------
 
    Deux gestes sans rapport, sur le meme ecran. La courbe portait une forme et
