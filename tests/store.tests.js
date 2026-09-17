@@ -41653,6 +41653,112 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
   });
 });
 
+/* --- RIEN NE SE SELECTIONNE, SAUF CE QUI S'EDITE ---------------------------
+
+   Sur iPhone, un appui maintenu sur un montant ouvrait la loupe, posait les deux
+   poignees bleues et sortait le menu Copier / Chercher / Traduire. La coupure est
+   posee une fois, sur `body`. Une regle de ce genre ne vaut que par ce qui ne la
+   contredit pas : ces controles cherchent donc surtout les exceptions, et
+   verifient qu'il n'en reste qu'une, celle des champs de saisie. */
+suite('Rien ne se sélectionne dans l’interface, sauf ce qui s’édite', () => {
+  const css = () => lireSource('assets/styles.css');
+  /* La fenetre s'ancre en debut de ligne : `html, body { background }` contient
+     `body {` et serait trouve le premier. */
+  const bloc = (c, sel) => {
+    const i = c.indexOf('\n' + sel + ' {');
+    return i < 0 ? '' : c.slice(i, c.indexOf('}', i));
+  };
+
+  test('la coupure est posée une fois, à la racine', () => {
+    const c = css();
+    vrai(c, 'assets/styles.css doit être lisible pour ce contrôle');
+    /* `body` et non `html` : tout ce qui s'affiche est dedans, et les deux
+       propriétés s'héritent, donc une déclaration couvre l'arbre entier.
+
+       DEUX RÈGLES « body » COHABITENT, et l'ordre entre elles est tenu ailleurs :
+       la première porte la police, un contrôle de la maison le vérifie en la
+       lisant. La coupure vit donc dans la seconde, et ce contrôle-ci les lit
+       toutes plutôt que de parier sur laquelle. */
+    const regles = [];
+    for (let i = c.indexOf('\nbody {'); i >= 0; i = c.indexOf('\nbody {', i + 1)) {
+      regles.push(c.slice(i, c.indexOf('}', i)));
+    }
+    vrai(regles.length >= 1, 'la feuille déclare au moins une règle « body »');
+    const b = regles.join('\n');
+    vrai(/user-select: none/.test(b) && /-webkit-user-select: none/.test(b),
+      'le corps de page ne se sélectionne pas');
+    /* LES DEUX, ET PAS L'UN : `user-select` laisse passer la loupe et le menu
+       contextuel d'iOS, que seul `-webkit-touch-callout` fait taire. */
+    vrai(/-webkit-touch-callout: none/.test(b),
+      'et il ne sort ni loupe, ni menu Copier / Chercher / Traduire');
+  });
+
+  test('ce qui s’édite garde sa sélection, et rien d’autre ne la reprend', () => {
+    const c = css();
+    const nu = c.replace(/\/\*[\s\S]*?\*\//g, '');
+    /* L'exception nomme les trois formes editables. `contenteditable` n'est
+       employe nulle part aujourd'hui : la ligne est posee pour le jour ou. */
+    const exception = nu.slice(nu.indexOf('input, textarea,'),
+                               nu.indexOf('}', nu.indexOf('input, textarea,')));
+    for (const forme of ['input', 'textarea', '[contenteditable="true"]']) {
+      vrai(exception.includes(forme), `« ${forme} » garde sa sélection`);
+    }
+    vrai(/user-select: text/.test(exception), 'et elle est rendue, pas seulement héritée');
+    /* Sans `touch-callout: default`, iOS retire aussi le menu d'edition A
+       L'INTERIEUR du champ : plus de Coller, plus de poignees de curseur. */
+    vrai(/-webkit-touch-callout: default/.test(exception),
+      'avec le menu d’édition qui va avec');
+    /* ET C'EST LA SEULE. Une seconde regle qui rendrait la selection quelque
+       part la reprendrait par specificite, sans que personne ne le voie : c'est
+       exactement ce qui se passait sur les cartes a graphique, ou paragraphes et
+       tableaux redevenaient selectionnables. */
+    const rendus = (nu.match(/user-select: text/g) || []).length;
+    eq(rendus, 2, `${rendus} déclarations rendent la sélection (une paire, la seule)`);
+  });
+
+  test('aucun événement n’est coupé au passage', () => {
+    const c = css();
+    /* `pointer-events: none` sur le shell ou sur les textes eteindrait boutons,
+       renvois, survol, navigation et doigt sur la courbe. Ce qui est coupe est
+       la selection native, rien d'autre. */
+    for (const sel of ['body', '.main', '.view']) {
+      vrai(!/pointer-events: none/.test(bloc(c, sel)),
+        `« ${sel} » laisse passer les événements`);
+    }
+    /* Et le defilement vertical reste au navigateur : la sparkline le lui laisse
+       par `touch-action: pan-y`, pose a la construction et non en CSS. */
+    const ch = lireSource('assets/charts.js');
+    vrai(/el\.style\.touchAction = 'pan-y'/.test(ch),
+      'et le glissement vertical reste possible sur la courbe');
+  });
+
+  test('la courbe et sa bulle gardent leur propre garde', () => {
+    const c = css();
+    /* SEULE REDITE VOULUE DU FICHIER. Ailleurs l'appui maintenu est un geste
+       parasite ; ici c'est le geste de lecture lui-meme, et une regle racine
+       qu'on restreindrait un jour ne doit pas l'emporter sans qu'on le voie. */
+    for (const sel of ['.hero-spark', '.tip-spark']) {
+      const b = bloc(c, sel);
+      vrai(/-webkit-user-select: none/.test(b) && /-webkit-touch-callout: none/.test(b),
+        `« ${sel} » se défend seule aussi`);
+    }
+  });
+
+  test('plus une seule garde locale ne dit ce que la racine dit déjà', () => {
+    const nu = css().replace(/\/\*[\s\S]*?\*\//g, '');
+    /* Six gardes avaient ete posees une par une — graphique, carte a graphique,
+       en-tete de fiche, patrimoine de la barre laterale, montant masquable,
+       colonnes triables. Elles disaient toutes la meme chose, et l'une d'elles
+       la contredisait. Il en reste deux, et ce sont celles de la courbe. */
+    const gardes = (nu.match(/user-select: none/g) || []).length;
+    eq(gardes, 6, `${gardes} déclarations coupent la sélection, soit trois paires : la racine, la courbe, sa bulle`);
+    /* Et la couleur de surbrillance n'a plus a etre eteinte a la main : il n'y a
+       plus de surbrillance a peindre. */
+    vrai(!/::selection \{ background: transparent/.test(nu),
+      'aucun rattrapage de surbrillance ne subsiste');
+  });
+});
+
 /* --- La courbe du hero s'explore, et la reserve cesse de prescrire ---------
 
    Deux gestes sans rapport, sur le meme ecran. La courbe portait une forme et
