@@ -1252,8 +1252,14 @@ table .field :is(input, select) { max-width: none; }
    `min-width: 0` sur la colonne gauche, sans quoi un montant a sept chiffres
    refuserait de se laisser comprimer et pousserait la courbe hors de la carte. */
 .hero-haut { display: flex; align-items: end; gap: 24px; }
-.hero-gauche { min-width: 0; flex: 1 1 auto; }
-.hero-spark { flex: 0 0 auto; width: clamp(120px, 30%, 280px); }
+/* `flex: 0 1 auto` ET NON `1 1 auto`, ET C'EST TOUT LE PLACEMENT DE LA COURBE.
+   En grandissant, cette colonne absorbait l'espace libre et poussait la courbe
+   contre le bord droit : trois cents pixels de texte, deux cents de blanc, puis
+   un trait colle au cadre. C'est la courbe qui prend le vide desormais, donc
+   elle commence juste apres la lecture. La colonne garde `min-width: 0`, sans
+   quoi un montant a sept chiffres refuserait de se comprimer. */
+.hero-gauche { min-width: 0; flex: 0 1 auto; }
+.hero-spark { flex: 1 1 auto; min-width: 120px; }
 /* SOUS 560 PX, ELLE S'EFFACE, ET LA RAISON EST UNE PROPORTION, PAS UNE CASSE.
    Mesure faite a 375 : la colonne de lecture tombe de 311 a 167 px, la courbe
    prend son plancher de 120. Rien ne deborde et le montant tient encore sur une
@@ -1264,7 +1270,19 @@ table .field :is(input, select) { max-width: none; }
    carte se lit vraiment, l'illustration cede.
    Rien ne reste a sa place : la colonne gauche reprend toute la largeur, et la
    carte retrouve exactement la mise en page qu'elle avait. */
-@media (max-width: 560px) { .hero-spark { display: none; } }
+/* SOUS 560 PX, ELLE PASSE DESSOUS PLUTOT QUE DE DISPARAITRE. Cote a cote sur un
+   telephone, elle prenait quarante pour cent de la colonne ou l'on vient lire un
+   chiffre — mesure a 375 : la lecture tombait de 311 a 167 px. En pleine largeur
+   sous la periode, elle ne dispute plus rien au montant et reste lisible : c'est
+   la meme fenetre, au meme endroit de la carte, juste dans l'autre sens.
+   AUCUNE HAUTEUR IMPOSEE ICI, ET C'EST UN PIEGE MESURE. Poser `height` en CSS
+   sur le SVG ne l'aplatit pas : sa `viewBox` se recentre pour tenir dans la
+   boite, donc le dessin RETRECIT EN LARGEUR et flotte au milieu d'un conteneur
+   pleine largeur. La hauteur du trace se decide a la construction, dans
+   `sparkline()`, ou nulle part. */
+@media (max-width: 560px) {
+  .hero-haut { flex-direction: column; align-items: stretch; gap: 14px; }
+}
 
 .hero-deltas { display: flex; gap: 20px; flex-wrap: wrap; }
 .hero-delta { display: flex; flex-direction: column; gap: 1px; }

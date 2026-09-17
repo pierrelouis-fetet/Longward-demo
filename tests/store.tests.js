@@ -41530,13 +41530,30 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
       'et la colonne gauche accepte de se comprimer, sinon un gros montant pousse la courbe dehors');
   });
 
-  test('sur téléphone, la courbe cède la place au chiffre', () => {
+  test('sur téléphone, elle passe dessous au lieu de disparaître', () => {
     const css = lireSource('assets/styles.css');
-    vrai(/@media \(max-width: 560px\) \{ \.hero-spark \{ display: none; \} \}/.test(css),
-      'sous 560 px elle s’efface');
-    /* Elle ne laisse aucun trou : la colonne gauche reprend toute la largeur. */
-    vrai(/\.hero-spark \{ flex: 0 0 auto; width: clamp\(120px, 30%, 280px\); \}/.test(css),
-      'et sur grand écran elle reste bornée des deux côtés');
+    /* CÔTE À CÔTE SUR UN TÉLÉPHONE, elle prenait quarante pour cent de la colonne
+       où l'on vient lire un chiffre. En pleine largeur sous la période, elle ne
+       dispute plus rien au montant : même fenêtre, même endroit de la carte,
+       juste dans l'autre sens. */
+    vrai(/@media \(max-width: 560px\) \{\s*\.hero-haut \{ flex-direction: column; align-items: stretch; gap: 14px; \}\s*\}/.test(css),
+      'sous 560 px la rangée s’empile');
+    /* AUCUNE HAUTEUR IMPOSÉE EN CSS, et c'est un piège mesuré : poser `height`
+       sur le SVG ne l'aplatit pas, sa `viewBox` se recentre et le tracé
+       rétrécit EN LARGEUR au milieu d'un conteneur pleine largeur. */
+    vrai(!/\.hero-spark svg \{[^}]*height/.test(css),
+      'et aucune hauteur n’est imposée au SVG depuis le CSS');
+  });
+
+  test('la courbe prend le vide au lieu d’être poussée au bord', () => {
+    const css = lireSource('assets/styles.css');
+    /* EN GRANDISSANT, LA COLONNE DE LECTURE ABSORBAIT L'ESPACE LIBRE et poussait
+       la courbe contre le cadre : trois cents pixels de texte, deux cents de
+       blanc, puis un trait collé au bord. C'est la courbe qui prend le vide. */
+    vrai(/\.hero-gauche \{ min-width: 0; flex: 0 1 auto; \}/.test(css),
+      'la colonne de lecture ne grandit plus');
+    vrai(/\.hero-spark \{ flex: 1 1 auto; min-width: 120px; \}/.test(css),
+      'et la courbe prend tout ce qui reste, sans plafond qui recréerait le vide');
   });
 
   test('le hero garde un seul chiffre principal', () => {
