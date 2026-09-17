@@ -1409,7 +1409,13 @@ function mountOverview() {
        arrondit au point le plus proche, aucun patrimoine intermediaire n'est
        calcule. */
     const pts = pointsAn(v.depuis, evoNet);
-    Charts.sparkline($('#heroSpark'), pts.map(p => p.valeur), { labels: pts.map(p => p.label) });
+    /* `height` PLUS BASSE QUE LE DEFAUT DE QUARANTE-QUATRE, et elle se passe ici
+       et nulle part ailleurs : posee en CSS sur le SVG, elle ne l'aplatirait pas
+       — la `viewBox` se recentre et le trace retrecit EN LARGEUR. Trente-six
+       pixels suffisent a lire une tendance, et rendent a la courbe son rang :
+       elle soutient le chiffre, elle ne le concurrence pas. */
+    Charts.sparkline($('#heroSpark'), pts.map(p => p.valeur),
+      { labels: pts.map(p => p.label), height: 36 });
   })();
 
   const t = nowTotals();

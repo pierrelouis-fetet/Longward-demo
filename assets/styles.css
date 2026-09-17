@@ -1251,15 +1251,24 @@ table .field :is(input, select) { max-width: none; }
    plutot que de flotter en haut, ou elle aurait concurrence le grand chiffre.
    `min-width: 0` sur la colonne gauche, sans quoi un montant a sept chiffres
    refuserait de se laisser comprimer et pousserait la courbe hors de la carte. */
-.hero-haut { display: flex; align-items: end; gap: 24px; }
-/* `flex: 0 1 auto` ET NON `1 1 auto`, ET C'EST TOUT LE PLACEMENT DE LA COURBE.
-   En grandissant, cette colonne absorbait l'espace libre et poussait la courbe
-   contre le bord droit : trois cents pixels de texte, deux cents de blanc, puis
-   un trait colle au cadre. C'est la courbe qui prend le vide desormais, donc
-   elle commence juste apres la lecture. La colonne garde `min-width: 0`, sans
-   quoi un montant a sept chiffres refuserait de se comprimer. */
-.hero-gauche { min-width: 0; flex: 0 1 auto; }
-.hero-spark { flex: 1 1 auto; min-width: 120px; }
+/* SOIXANTE / QUARANTE, ET C'EST UNE GRILLE POUR CETTE RAISON PRECISE. En flex,
+   la part de chacun dependait de son contenu : la courbe prenait tout ce que le
+   texte ne demandait pas, soit 742 px sur 1 040 — soixante et onze pour cent de
+   la carte pour l'illustration d'un chiffre ecrit a cote. Deux fractions, et le
+   partage cesse de dependre de la longueur d'un montant.
+
+   `3fr 2fr` ET NON `60% 40%` : les fractions se partagent ce qui reste APRES
+   l'ecart, donc le total tombe juste. Deux pourcentages plus un ecart de seize
+   pixels debordent de seize pixels. */
+.hero-haut { display: grid; grid-template-columns: 3fr 2fr; align-items: end; gap: 16px; }
+/* `min-width: 0` reste indispensable : sans lui, une cellule de grille refuse
+   de descendre sous la largeur de son contenu, et un montant a sept chiffres
+   ferait deborder sa colonne au lieu de s'y ajuster. */
+.hero-gauche { min-width: 0; }
+/* La colonne de droite fait exactement deux cinquiemes, quelle que soit la
+   longueur du montant a gauche. `min-width: 0` pour la meme raison que sa
+   voisine : une cellule de grille ne descend pas sous son contenu sans lui. */
+.hero-spark { min-width: 0; }
 /* SOUS 560 PX, ELLE S'EFFACE, ET LA RAISON EST UNE PROPORTION, PAS UNE CASSE.
    Mesure faite a 375 : la colonne de lecture tombe de 311 a 167 px, la courbe
    prend son plancher de 120. Rien ne deborde et le montant tient encore sur une
