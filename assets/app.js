@@ -4690,7 +4690,7 @@ function espaceTerminal(c, idx, t, seule) {
   if (t.parts) return detailsPlacement(c, idx, t, seule);
   return `
   <div class="card">
-    <div class="card-head"><h2>${trad('Le placement')}</h2>
+    <div class="card-head"><h2>${trad(titreActif(t))}</h2>
       <span class="hint">${esc(trad(t.label))}</span></div>
     ${lignePlacement(seule, c, true, true)}
   </div>`;
@@ -4727,9 +4727,9 @@ function detailsPlacement(c, idx, t, l) {
 
   return `
   <div class="card">
-    <div class="card-head"><h2>${trad('Détails du placement')}</h2>
+    <div class="card-head"><h2>${trad(titreActif(t))}</h2>
       <button class="btn sm ghost" data-action="editer-placement"
-              data-id="${esc(c.id)}" data-i="${l.ref}">${trad('Modifier')}</button></div>
+              data-id="${esc(c.id)}" data-i="${l.ref}">${trad('Parts et valeur')}</button></div>
     <dl class="kv">
       ${ligne(trad('Parts détenues'), u ? fmtNombre(u.parts) : null)}
       ${ligne(trad('Valeur estimée / part') + aide(trad('La valeur que tu as déclarée, divisée par le nombre de parts. Ce placement n’est pas coté : c’est une estimation, pas un cours.')),
@@ -4741,21 +4741,7 @@ function detailsPlacement(c, idx, t, l) {
       ${ligne(trad('Plus-value latente') + aide(trad('La valeur d’aujourd’hui moins ce que tu as payé. Latente : elle n’est encaissée qu’à la revente, et la valeur d’un placement non coté est une estimation. Aucun impôt n’en est déduit : l’application ne modélise aucun régime fiscal, ici pas plus qu’ailleurs.')),
               plusValue)}
       ${ligne(trad('Liquidité'), champMobilite(l, c, true))}
-      ${t.dateSensible ? '' :
-        `<dt>${motDateCompte(t)}</dt><dd>${c.ouvertLe ? esc(fmtDate(c.ouvertLe))
-          : nonRenseigne}</dd>`}
-      ${c.statut === 'archive' ? `<dt>${trad('Date de clôture')}</dt>
-        <dd>${c.clotureLe ? esc(fmtDate(c.clotureLe))
-              : `<span class="muted">${trad('non renseignée')}</span>`}</dd>` : ''}
-      ${!t.interne && c.numero ? `<dt>${trad('Numéro de compte')}</dt><dd>${esc(c.numero)}${boutonCopier(c.numero, 'Copier le numéro de compte')}</dd>` : ''}
     </dl>
-    ${!c.notes ? '' : `
-    <div class="fiche-note">
-      <span class="sub">${trad('Notes')}</span>
-      <p>${esc(c.notes)}</p>
-    </div>`}
-    <button type="button" class="lien-nu fiche-plus" data-action="modifier-compte"
-            data-id="${esc(c.id)}">${trad('Nom, dates et notes')}</button>
   </div>`;
 }
 
@@ -6397,7 +6383,6 @@ function viewFicheCompte(id) {
   </div>`;
   })()}
 
-  ${t.parts && seule ? '' : `
   <div class="card">
       <div class="card-head"><h2>${trad('Informations')}</h2>
         <button class="btn sm ghost" data-action="modifier-compte" data-id="${esc(c.id)}">${trad('Modifier')}</button></div>
@@ -6427,7 +6412,9 @@ function viewFicheCompte(id) {
         <dt>${trad('Date d’ouverture')}${aide(trad("Elle donne l’ancienneté du contrat, affichée en tête de cette fiche : cinq ans pour un PEA, huit pour une assurance-vie. Ce sont des seuils d’impôt, pas des barrières à la sortie : avant eux, retirer reste possible, on y perd l’avantage fiscal et non l’accès à l’argent. C’est pour cela qu’elle est demandée ici et pas sur les autres types de compte."))}</dt>
         <dd>${c.ouvertLe ? esc(fmtDate(c.ouvertLe))
               : `<span class="muted">${trad('à renseigner')}</span>`}</dd>`
-        : c.ouvertLe ? `<dt>${motDateCompte(t)}</dt><dd>${esc(fmtDate(c.ouvertLe))}</dd>` : ''}
+        : (c.ouvertLe || estActifTerminal(t))
+          ? `<dt>${motDateCompte(t)}</dt><dd>${c.ouvertLe ? esc(fmtDate(c.ouvertLe))
+              : `<span class="muted">${trad('à renseigner')}</span>`}</dd>` : ''}
         ${c.statut === 'archive' ? `<dt>${trad('Date de clôture')}</dt>
         <dd>${c.clotureLe ? esc(fmtDate(c.clotureLe))
               : `<span class="muted">${trad('non renseignée')}</span>`}</dd>` : ''}
@@ -6437,7 +6424,7 @@ function viewFicheCompte(id) {
         <input data-path="comptes.${idx}.notes" value="${esc(c.notes || '')}"
                placeholder="${trad('facultatif')}" style="text-align:left"></div>
       ${barreValiderFiche()}
-    </div>`}
+    </div>
     <div class="card">
       <div class="card-head"><h2>${trad('actions.fiche', 'Actions')}</h2></div>
       <div class="fiche-actes">

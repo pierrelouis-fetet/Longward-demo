@@ -4355,7 +4355,11 @@ suite('Une valeur qu’on apprécie porte la date où on l’a établie', () => 
        découvert, et c'est bien le même `comptes.N.notes`. */
     vrai(/data-path="comptes\.\$\{idx\}\.notes"/.test(app),
       'la saisie à découvert reste, sur le même chemin');
-    vrai(/trad\('Nom, dates et notes'\)/.test(app), 'et le lien garde son libellé');
+    /* ET C'EST DESORMAIS LE SEUL REGIME : le lien « Nom, dates et notes » a
+       disparu avec la carte fusionnee qui le portait. Un actif en parts a la
+       meme carte « Informations » que les autres, donc la meme note ouverte. */
+    vrai(!/trad\('Nom, dates et notes'\)/.test(app),
+      'et le lien de contournement n’a plus lieu d’être');
   });
 });
 
@@ -4857,14 +4861,17 @@ suite('Une valeur estimée ne se compare pas au relevé du mois dernier', () => 
        actif terminal ce sont deux écritures d'un seul fait, donc la date
        saisie ne s'affichait pas. Vu à l'écran, sur une part de société. */
     const src = app();
-    const carte = src.slice(src.indexOf("trad('Détails du placement')"),
-                            src.indexOf("trad('Nom, dates et notes')"));
-    vrai(/\$\{t\.dateSensible \? '' :/.test(carte),
-      'seule une date sans objet reste masquée');
-    vrai(!/!c\.ouvertLe \? ''/.test(carte),
-      'une date absente ne fait plus disparaître sa ligne');
-    vrai(/c\.ouvertLe \? esc\(fmtDate\(c\.ouvertLe\)\)\s*\n?\s*: nonRenseigne/.test(carte),
-      'elle invite à la renseigner, comme ses deux voisines');
+    /* LA DATE A CHANGE DE CARTE, PAS DE COMPORTEMENT. Elle vivait sur la carte
+       de valeur, seule de son espece ; elle est revenue dans « Informations »
+       avec le nom, le type et le numero, comme sur toutes les autres fiches.
+       Ce qu'elle garde, c'est d'INVITER : sur un actif terminal, une date
+       absente affiche sa ligne au lieu de disparaitre. */
+    const infos = src.slice(src.indexOf("trad('Informations')"),
+                            src.indexOf("trad('actions.fiche'"));
+    vrai(/\(c\.ouvertLe \|\| estActifTerminal\(t\)\)/.test(infos),
+      'un actif terminal montre sa ligne de date même vide');
+    vrai(/trad\('à renseigner'\)/.test(infos),
+      'et elle invite à la renseigner');
 
     const dp = src.indexOf("async 'editer-placement'(btn)");
     const place = src.slice(dp, dp + 3200);
@@ -5262,7 +5269,7 @@ suite('Parts de société : le total saisi ne se reconstruit jamais', () => {
 /* ------------------------------------------------------------------
    Une seule carte pose la question de ce qu'on detient
    ------------------------------------------------------------------ */
-suite('Fiche d’une participation : une carte, pas deux', () => {
+suite('Fiche d’une participation : la valeur d’un côté, l’identité de l’autre', () => {
 
   const vue = () => lireSource('assets/app.js');
   const corps = () => {
@@ -5291,21 +5298,34 @@ suite('Fiche d’une participation : une carte, pas deux', () => {
     vrai(pret.terminal && !pret.parts, 'et un prêt participatif est bien de ceux-là');
   });
 
-  test('« Informations » se tait quand la carte fusionnée a pris sa place', () => {
-    vrai(/\$\{t\.parts && seule \? '' : `/.test(vue()),
-      'la carte doublon est conditionnée, pas supprimée');
+  test('« Informations » paraît sur toutes les fiches, sans exception', () => {
+    /* ELLE SE TAISAIT SUR UN ACTIF EN PARTS, ou la carte de valeur avait absorbe
+       ses lignes. Deux consequences, vues a l'ecran : le nom et le type d'une
+       part de societe ne se lisaient nulle part, et son bouton « Modifier » se
+       trouvait sur une autre carte que partout ailleurs. Un geste qui change de
+       place d'un ecran a l'autre se cherche a chaque fois. */
+    vrai(!/\$\{t\.parts && seule \? '' : `/.test(vue()),
+      'plus aucune condition ne la fait disparaître');
+    const v = vue();
+    const i = v.indexOf("trad('Informations')");
+    vrai(i > 0 && /data-action="modifier-compte"/.test(v.slice(i, i + 400)),
+      'et c’est elle qui porte « Modifier », sur toutes les fiches');
   });
 
-  test('un seul bouton « Modifier », et un lien qui dit ce qu’il ouvre', () => {
+  test('chaque bouton dit ce qu’il ouvre, et il n’y en a qu’un ici', () => {
     /* Deux boutons identiques que rien ne distinguait, c'etait le defaut de
-       depart. Le second geste existe toujours, mais il s'annonce. */
+       depart ; le nommer suffit a le lever, et c'est ce qui permet a
+       « Informations » de reprendre le sien. */
     const d = corps();
-    eq((d.match(/class="btn sm ghost"/g) || []).length, 1, 'un seul bouton');
+    eq((d.match(/class="btn sm ghost"/g) || []).length, 1, 'un seul bouton sur cette carte');
     eq((d.match(/data-action="editer-placement"/g) || []).length, 1,
-      'qui ouvre le formulaire du placement');
-    eq((d.match(/data-action="modifier-compte"/g) || []).length, 1,
-      'et un second chemin, qui n’est pas un bouton');
-    vrai(/class="lien-nu fiche-plus"/.test(d), 'le nom et les dates passent par un lien');
+      'qui ouvre les parts et la valeur');
+    vrai(/trad\('Parts et valeur'\)/.test(d), 'et il le dit');
+    vrai(!/trad\('Modifier'\)/.test(d),
+      'il ne s’appelle plus « Modifier », qui ne disait pas quoi');
+    /* L'identite a la sienne : ce chemin-ci ne double plus l'autre. */
+    eq((d.match(/data-action="modifier-compte"/g) || []).length, 0,
+      'et le nom, le type et les dates ne se modifient plus depuis ici');
   });
 
   test('le nom, le type et la classe ne se répètent pas sous le bandeau', () => {
@@ -5314,13 +5334,22 @@ suite('Fiche d’une participation : une carte, pas deux', () => {
     vrai(!/trad\(t\.label\)/.test(d), 'ni son type');
   });
 
-  test('la note se lit, elle ne s’édite pas dans la fiche', () => {
-    /* Un champ de saisie ouvert donnait a une fiche en lecture l'air d'un
-       formulaire a moitie rempli. */
+  test('la carte de valeur ne dit plus que ce que l’actif vaut', () => {
+    /* Elle portait aussi la note, le numero et les deux dates : tout ce qui fait
+       l'identite d'un compte, absorbe le jour ou elle remplaçait deux cartes
+       redondantes. Ces lignes sont revenues dans « Informations », ou elles
+       vivent pour tous les autres types. */
     const d = corps();
     vrai(!/<input|<textarea/.test(d), 'aucun champ de saisie dans la carte');
-    vrai(/\$\{!c\.notes \? '' :/.test(d), 'et une note vide ne laisse pas de cadre');
-    vrai(/esc\(c\.notes\)/.test(d), 'la note s’échappe avant de s’afficher');
+    for (const parti of ['c.notes', 'c.numero', 'c.clotureLe', 'motDateCompte']) {
+      vrai(!d.includes(parti), `« ${parti} » a rejoint la carte d’identité`);
+    }
+    /* Ce qui reste est ce qu'on vient y chercher : combien j'en ai, ce que ça
+       vaut, ce que je l'ai paye, et ce que cela fait. */
+    for (const reste of ['Parts détenues', 'Valeur estimée / part', 'Valeur actuelle',
+                         'Plus-value latente']) {
+      vrai(d.includes(reste), `« ${reste} » y reste`);
+    }
   });
 
   test('une ligne sans réponse ne se rend pas', () => {
@@ -5393,13 +5422,10 @@ suite('Fiche d’une participation : une carte, pas deux', () => {
        couvrir : un non coté qui se revend sur un marché secondaire n'est pas
        bloqué. Vu à l'écran. */
     vrai(/champMobilite\(l, c, true\)/.test(d), 'la liquidité est demandée, et réglable');
-    vrai(/motDateCompte\(t\)/.test(d), 'et le mot de la date suit le type');
-    /* La seconde moitié de la garde est tombée : une date absente faisait
-       disparaître sa ligne, donc rien ne disait qu'il en manquait une. Seul
-       un type à date sensible reste muet ici, parce qu'il la montre
-       ailleurs avec ce qu'elle commande. */
-    vrai(/\$\{t\.dateSensible \? '' :/.test(d),
-      'un type à date sensible ne l’affiche pas');
+    /* La date, elle, a rejoint « Informations » avec le reste de l'identite :
+       elle est verifiee la-bas, y compris son invitation a se remplir. */
+    vrai(!/motDateCompte\(t\)/.test(d),
+      'la date ne vit plus sur la carte de valeur');
   });
 
   test('le menu de disponibilité n’existe qu’une fois', () => {
@@ -5996,8 +6022,14 @@ suite('Actifs terminaux : pas de placement dans un placement', () => {
     /* Deux conditions ecrites a la main auraient fini par diverger, et l'ecran
        aurait montre les deux cartes ou aucune. */
     const app = lireSource('assets/app.js');
-    eq((app.match(/estActifTerminal\(t\)/g) || []).length, 1,
-      'la condition ne s’écrit qu’une fois dans la vue');
+    /* Deux emplois, et ils ne decident pas de la meme chose : l'un aiguille la
+       carte de l'actif, l'autre decide qu'une date absente s'affiche quand meme.
+       Ce que le controle interdit, c'est de RECRIRE la condition — `t.direct ||
+       t.terminal` a la main — pas de s'en servir deux fois. */
+    eq((app.match(/estActifTerminal\(t\)/g) || []).length, 2,
+      'la condition se lit, elle ne se réécrit pas');
+    vrai(!/t\.direct \|\| t\.terminal/.test(app),
+      'et personne ne la recopie à la main dans la vue');
     vrai(/espaceTerminal\(c, idx, t, seule\)/.test(app),
       'et la carte reçoit son résultat plutôt que de le recalculer');
   });
@@ -17443,6 +17475,52 @@ suite('Un bien se crée seul, s’estime, et se modifie par un bouton', () => {
     vrai(/hero-label">\$\{majuscule\(motCompte\(t\)\)\}/.test(src),
       'l’étiquette de tête aussi');
     vrai(!/<dt>Nom du compte<\/dt>/.test(src), 'plus aucun intitulé écrit en dur');
+  });
+
+  test('un mot par nature, et la fiche ne se contredit plus', () => {
+    /* TROIS ECRANS SE CONTREDISAIENT EUX-MEMES, et c'est ce que ce controle
+       interdit : un pret participatif titrait « Le placement » et demandait le
+       « Nom du compte » ; un bien de valeur titrait « Le placement » et demandait
+       le « Nom du bien ». Le titre et les champs se derivent maintenant du meme
+       drapeau, donc ils ne peuvent plus diverger. */
+    for (const [id, mot] of [['pe', 'placement'], ['fondsNonCote', 'placement'],
+                             ['crowdfunding', 'placement'],
+                             ['immo', 'bien'], ['bienValeur', 'bien'],
+                             ['scpi', 'compte'], ['courant', 'compte'], ['pea', 'compte']]) {
+      eq(motCompte(typeCompte(id)), mot, `« ${id} » s’annonce « ${mot} »`);
+    }
+    /* Une SCPI reste un compte : on y detient des parts, et le compte porte des
+       lignes. Ce n'est pas un bien detenu en direct, quoi qu'en dise la carte de
+       ses lots. */
+    vrai(!estActifTerminal(typeCompte('scpi')), 'une SCPI n’est pas un actif terminal');
+    /* Et le titre de la carte suit le meme drapeau, mot pour mot. */
+    for (const [id, titre] of [['pe', 'Le placement'], ['fondsNonCote', 'Le placement'],
+                               ['crowdfunding', 'Le placement'],
+                               ['immo', 'Le bien'], ['bienValeur', 'Le bien']]) {
+      eq(titreActif(typeCompte(id)), titre, `« ${id} » se titre « ${titre} »`);
+    }
+    /* LES DEUX SE DERIVENT DU MEME FAIT : un actif detenu en direct est un bien,
+       partout. Un controle qui recopierait la liste des types aurait laisse le
+       prochain type diverger en silence. */
+    for (const t of TYPES_COMPTE) {
+      if (!estActifTerminal(t)) continue;
+      eq(titreActif(t) === 'Le bien', motCompte(t) === 'bien',
+        `« ${t.id} » dit la même chose dans son titre et dans ses champs`);
+    }
+  });
+
+  test('les deux langues portent les trois mots', () => {
+    /* « compte » et « bien » vivaient deja dans le dictionnaire ; « placement »
+       aussi, ecrit avec des guillemets doubles plus bas dans le fichier — c'est
+       le piege de la maison, une clef presente qui se donne pour absente. */
+    for (const mot of ['compte', 'bien', 'placement']) {
+      vrai(!!I18N.en[mot], `« ${mot} » a sa traduction`);
+    }
+    const src = lireSource('assets/i18n.js');
+    for (const mot of ['compte', 'bien', 'placement']) {
+      const fois = (src.match(new RegExp(`['"]${mot}['"]:`, 'g')) || []).length;
+      eq(fois, 1, `« ${mot} » ne se déclare qu’une fois (${fois})`);
+    }
   });
 
   test('l’édition d’un placement se prend par un bouton, pas par son nom', () => {
@@ -41911,7 +41989,11 @@ suite('La copie est un geste explicite, jamais une exception de sélection', () 
        Un quatrieme appel serait une icone de plus dans une interface qui n'en
        demande pas. */
     const appels = [...a.matchAll(/boutonCopier\(([^,]+), '([^']+)'\)/g)].map(m => [m[1], m[2]]);
-    eq(appels.length, 3, `${appels.length} boutons de copie dans toute l’application`);
+    /* Deux : le numero de compte sur la carte d'identite, et l'ISIN sur la fiche
+       d'une ligne de titres. Il y en avait trois tant que la carte de valeur
+       d'un actif en parts portait sa propre copie du numero ; elle l'a rendue a
+       « Informations » avec le reste de l'identite. */
+    eq(appels.length, 2, `${appels.length} boutons de copie dans toute l’application`);
     for (const [valeur, libelle] of appels) {
       vrai(/^(c\.numero|p\.isin)$/.test(valeur.trim()),
         `« ${valeur.trim()} » est une donnée qu’on recopie ailleurs`);

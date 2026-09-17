@@ -290,6 +290,7 @@ const I18N = {
     'Impossible de copier': 'Couldn’t copy',
     'Copier le numéro de compte': 'Copy account number',
     'Copier l’ISIN': 'Copy ISIN',
+    'Parts et valeur': 'Units and value',
     'À retenir': 'Worth noting',
     'Réserve disponible': 'Available reserve',
     'Tes liquidités mobilisables couvrent environ {n} mois de dépenses renseignées.': 'Your available cash covers about {n} months of recorded spending.',
