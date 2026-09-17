@@ -41633,11 +41633,17 @@ suite('La courbe du hero s’explore au doigt', () => {
     const st = lireSource('assets/store.js');
     vrai(/const serieAn = \(depuis, net = true\) => pointsAn\(depuis, net\)\.map\(p => p\.valeur\);/.test(st),
       'et cela se lit dans le code');
-    /* L'étiquette vient du relevé lui-même, donc du même formateur que la courbe
-       d'évolution et que le journal. */
+    /* L'ANNÉE EN ENTIER, par le formateur qui existe déjà pour ça. Le ruban des
+       relevés abrège parce que ses colonnes sont étroites ; une bulle de deux
+       lignes n'a pas cette contrainte. `fmtMoisAn()` sert déjà aux échéances de
+       crédit : en poser un second ici aurait donné deux façons de nommer le
+       même mois. */
     const dans = historySeries({ includeNow: false }).filter(p => String(p.date) >= String(v.depuis));
-    eq(pts.slice(0, -1).map(p => p.label).join('|'), dans.map(p => p.label).join('|'),
+    eq(pts.slice(0, -1).map(p => p.label).join('|'), dans.map(p => fmtMoisAn(p.date)).join('|'),
       'aucun second format de mois');
+    setLang('fr');
+    vrai(/^[a-zéû.]+ \d{4}$/.test(pts[0].label), `« ${pts[0].label} » porte son année entière`);
+    vrai(!/ \d{2}$/.test(pts[0].label), 'et jamais une année sur deux chiffres');
     eq(pts[pts.length - 1].label, trad('Auj.'), 'et le dernier point porte le mot du jour');
   });
 
@@ -41649,8 +41655,15 @@ suite('La courbe du hero s’explore au doigt', () => {
       'l’abscisse s’arrondit au point le plus proche');
     vrai(/Math\.max\(0, Math\.min\(values\.length - 1,/.test(b),
       'et reste dans les bornes de la série');
-    vrai(/tip\.innerHTML = `<b>\$\{fmtEUR0\(values\[i\]\)\}<\/b> · \$\{opts\.labels\[i\]\}`/.test(b),
-      'l’infobulle lit la valeur du point, pas une moyenne');
+    /* DEUX LIGNES, LA DATE AU-DESSUS. En ligne, séparées d'un point médian, les
+       deux se disputaient la même lecture et c'est la date qui gagnait, puisque
+       qu'elle finissait la phrase. */
+    vrai(/tip\.innerHTML = `<div class="tt-head">\$\{opts\.labels\[i\]\}<\/div>`/.test(b),
+      'la date ouvre la bulle, dans l’intitulé partagé des infobulles');
+    vrai(/\+ `<b>\$\{fmtEUR0\(values\[i\]\)\}<\/b>`;/.test(b),
+      'et le montant la suit, lu au point et non à la moyenne');
+    vrai(!/·/.test(b.replace(/\/\*[\s\S]*?\*\//g, '')),
+      'plus aucune séparation en ligne');
     /* Deux informations, pas dix. */
     vrai(!/variation|apport|composition|performance/i.test(b.replace(/\/\*[\s\S]*?\*\//g, '')),
       'date et montant, rien d’autre');

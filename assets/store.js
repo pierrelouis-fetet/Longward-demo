@@ -4685,7 +4685,13 @@ function pointsAn(depuis, net = true) {
   const t = nowTotals();
   const pts = historySeries({ includeNow: false })
     .filter(p => String(p.date) >= String(depuis))
-    .map(p => ({ valeur: num(net ? p.net : p.total), label: p.label }));
+    /* L'ANNEE EN ENTIER, ET LE FORMATEUR QUI EXISTE DEJA POUR CA. Le ruban des
+       releves abrege — « sept. 25 » — parce que ses colonnes sont etroites ;
+       une bulle de deux lignes n'a pas cette contrainte, et « mars 26 » se lit
+       moins bien que « mars 2026 » quand rien n'oblige a serrer. `fmtMoisAn()`
+       est ecrit pour ce cas et sert deja aux echeances de credit : en poser un
+       second ici aurait donne deux facons de nommer le meme mois. */
+    .map(p => ({ valeur: num(net ? p.net : p.total), label: fmtMoisAn(p.date) }));
   pts.push({ valeur: num(net ? t.total : t.brut), label: trad('Auj.') });
   return pts;
 }

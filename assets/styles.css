@@ -2013,6 +2013,22 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 .tt-note { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--grid); color: var(--muted); font-size: var(--font-sm); white-space: normal; max-width: 260px; }
 .sw { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
 
+/* --- La bulle de la sparkline : deux lignes, et rien de plus ----------------
+
+   Elle emprunte tout au reste — le fond, la bordure, l'ombre, l'intitule en
+   petites capitales de `tt-head` — et ne change que ce qu'une bulle de deux
+   lignes demande : un remplissage plus serre, et aucun plancher de largeur.
+   Celui des grandes infobulles, 170 px, la rendait deux fois trop large pour
+   « MARS 2026 » et la poussait contre les bords sans raison.
+
+   `tabular-nums` SUR LE MONTANT, ET CE N'EST PAS UNE COQUETTERIE. Le doigt
+   glisse d'un mois a l'autre : sans chiffres de largeur egale, la bulle change
+   de largeur a chaque point et se recale, donc elle saute lateralement sous le
+   doigt qui la lit. */
+.tip-spark { padding: 6px 9px; min-width: 0; }
+.tip-spark .tt-head { margin-bottom: 1px; }
+.tip-spark b { font-variant-numeric: tabular-nums; }
+
 /* --- L'infobulle de l'historique, en trois colonnes ------------------------
 
    Libelle, montant, poids. Les trois colonnes s'alignent d'une ligne a l'autre,

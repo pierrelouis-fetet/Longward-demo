@@ -1214,6 +1214,7 @@ const Charts = (() => {
       const svg = el.querySelector('svg');
       const curseur = el.querySelector('.spark-curseur');
       const tip = ensureTip(el);
+      tip.classList.add('tip-spark');
       el.style.position = 'relative';
       el.style.touchAction = 'pan-y';        // le defilement vertical reste possible
 
@@ -1224,7 +1225,14 @@ const Charts = (() => {
         curseur.style.display = '';
         curseur.setAttribute('cx', x(i));
         curseur.setAttribute('cy', y(values[i]));
-        tip.innerHTML = `<b>${fmtEUR0(values[i])}</b> · ${opts.labels[i]}`;
+        /* LA DATE AU-DESSUS, LE MONTANT EN DESSOUS. En ligne, separes d'un point
+           median, les deux se disputaient la meme lecture et c'est la date qui
+           gagnait — elle finissait la phrase. Empiles, l'oeil prend le montant
+           d'un coup et la date le situe. `tt-head` est le meme intitule que la
+           bulle de la courbe d'evolution : petites capitales, encre secondaire,
+           aucune couleur nouvelle. */
+        tip.innerHTML = `<div class="tt-head">${opts.labels[i]}</div>`
+          + `<b>${fmtEUR0(values[i])}</b>`;
         tip.hidden = false;                  // l'attribut hidden gagnerait sur un style inline
         const tw = tip.offsetWidth;
         tip.style.left = Math.max(0, Math.min(W - tw, x(i) - tw / 2)) + 'px';
