@@ -1270,19 +1270,19 @@ table .field :is(input, select) { max-width: none; }
    carte se lit vraiment, l'illustration cede.
    Rien ne reste a sa place : la colonne gauche reprend toute la largeur, et la
    carte retrouve exactement la mise en page qu'elle avait. */
-/* SOUS 560 PX, ELLE PASSE DESSOUS PLUTOT QUE DE DISPARAITRE. Cote a cote sur un
-   telephone, elle prenait quarante pour cent de la colonne ou l'on vient lire un
-   chiffre — mesure a 375 : la lecture tombait de 311 a 167 px. En pleine largeur
-   sous la periode, elle ne dispute plus rien au montant et reste lisible : c'est
-   la meme fenetre, au meme endroit de la carte, juste dans l'autre sens.
-   AUCUNE HAUTEUR IMPOSEE ICI, ET C'EST UN PIEGE MESURE. Poser `height` en CSS
-   sur le SVG ne l'aplatit pas : sa `viewBox` se recentre pour tenir dans la
-   boite, donc le dessin RETRECIT EN LARGEUR et flotte au milieu d'un conteneur
-   pleine largeur. La hauteur du trace se decide a la construction, dans
-   `sparkline()`, ou nulle part. */
-@media (max-width: 560px) {
-  .hero-haut { flex-direction: column; align-items: stretch; gap: 14px; }
-}
+/* ELLE RESTE A DROITE A TOUTES LES LARGEURS, telephone compris. Deux essais
+   l'ont precede et aucun ne tenait : l'effacer sous 560 px la faisait
+   simplement manquer, la passer sous la lecture l'eloignait du chiffre qu'elle
+   illustre. A 375 px la lecture tombe a 167 px et la courbe prend son plancher
+   de 120 : rien ne deborde, et le montant tient sur une ligne meme a sept
+   chiffres, `clamp()` le ramenant a 38 px.
+
+   AUCUNE HAUTEUR IMPOSEE EN CSS SUR LE SVG, ET C'EST UN PIEGE MESURE. Poser
+   `height` ne l'aplatit pas : sa `viewBox` se recentre pour tenir dans la
+   boite, donc le dessin RETRECIT EN LARGEUR et flotte au milieu de son
+   conteneur — trois cent onze pixels de place, deux cent cinquante-quatre de
+   trace. La hauteur se decide a la construction, dans `sparkline()`, ou nulle
+   part. */
 
 .hero-deltas { display: flex; gap: 20px; flex-wrap: wrap; }
 .hero-delta { display: flex; flex-direction: column; gap: 1px; }

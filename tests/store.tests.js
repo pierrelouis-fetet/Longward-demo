@@ -41530,14 +41530,16 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
       'et la colonne gauche accepte de se comprimer, sinon un gros montant pousse la courbe dehors');
   });
 
-  test('sur téléphone, elle passe dessous au lieu de disparaître', () => {
+  test('elle reste à droite à toutes les largeurs, téléphone compris', () => {
     const css = lireSource('assets/styles.css');
-    /* CÔTE À CÔTE SUR UN TÉLÉPHONE, elle prenait quarante pour cent de la colonne
-       où l'on vient lire un chiffre. En pleine largeur sous la période, elle ne
-       dispute plus rien au montant : même fenêtre, même endroit de la carte,
-       juste dans l'autre sens. */
-    vrai(/@media \(max-width: 560px\) \{\s*\.hero-haut \{ flex-direction: column; align-items: stretch; gap: 14px; \}\s*\}/.test(css),
-      'sous 560 px la rangée s’empile');
+    /* DEUX ESSAIS L'ONT PRÉCÉDÉ ET AUCUN NE TENAIT : l'effacer sous 560 px la
+       faisait simplement manquer, la passer sous la lecture l'éloignait du
+       chiffre qu'elle illustre. À 375 px la lecture tombe à 167 px et la courbe
+       prend son plancher de 120 : rien ne déborde. */
+    vrai(!/@media[^{]*\{\s*\.hero-(haut|spark)/.test(css),
+      'aucune requête de média ne la déplace ni ne la masque');
+    vrai(/\.hero-spark \{ flex: 1 1 auto; min-width: 120px; \}/.test(css),
+      'son plancher la garde lisible quand la place manque');
     /* AUCUNE HAUTEUR IMPOSÉE EN CSS, et c'est un piège mesuré : poser `height`
        sur le SVG ne l'aplatit pas, sa `viewBox` se recentre et le tracé
        rétrécit EN LARGEUR au milieu d'un conteneur pleine largeur. */
