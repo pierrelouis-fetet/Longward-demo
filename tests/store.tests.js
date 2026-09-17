@@ -40855,11 +40855,13 @@ suite('La réserve de sécurité passe devant le mobilisable', () => {
     /* Et la phrase le range derrière, avec sa raison. */
     const p = lireSource('assets/app.js');
     const bloc = p.slice(p.indexOf('liquidity_runway: {'), p.indexOf('allocation_target_gap: {'));
-    vrai(/de dépenses couvertes par ton épargne immédiatement disponible\./.test(bloc),
+    vrai(/de dépenses immédiatement couvertes/.test(bloc),
       'le chiffre de tête dit ce qu’il couvre');
-    vrai(/supplémentaires sont mobilisables, mais fléchés ou nécessitent une vente/.test(bloc),
+    vrai(/mobilisables, mais fléchés ou à vendre/.test(bloc),
       'le complément dit pourquoi il ne compte pas');
-    vrai(bloc.indexOf('immédiatement disponible') < bloc.indexOf('sont mobilisables'),
+    /* ET IL EST DESCENDU D'UN CRAN : il n'est plus la fin de la phrase, il est
+       la ligne secondaire, sous elle. L'ordre de lecture ne change pas. */
+    vrai(bloc.indexOf('phrase:') < bloc.indexOf('secondaire:'),
       'et il vient après, jamais avant');
   });
 
@@ -41736,6 +41738,118 @@ suite('La courbe du hero s’explore au doigt', () => {
   });
 });
 
+/* --- UN SEUL SQUELETTE, PARCE QU'ON BALAYE CETTE CARTE ---------------------
+   « À retenir » ne se lit pas ligne a ligne, on la parcourt. Un parcours
+   suppose que le meme element se trouve toujours au meme endroit — titre,
+   chiffre, contexte, complement, renvoi — et que rien d'important ne se cache
+   au milieu d'une phrase. Ces controles tiennent l'ordre et la hierarchie, pas
+   les mots : les mots, eux, ont leurs propres suites plus bas. */
+suite('À retenir : chaque insight se lit dans le même ordre', () => {
+  const app = () => lireSource('assets/app.js');
+  const presentation = () => {
+    const a = app();
+    return a.slice(a.indexOf('const PRESENTATION_INSIGHT'), a.indexOf('function carteARetenir()'));
+  };
+  const rendu = () => {
+    const a = app();
+    return a.slice(a.indexOf('function carteARetenir()'), a.indexOf('function viewOverview()'));
+  };
+  const entree = (id, suivant) => {
+    const p = presentation();
+    return p.slice(p.indexOf(id + ': {'), p.indexOf(suivant + ': {'));
+  };
+
+  test('une seule carte porte toutes les lectures', () => {
+    const r = rendu();
+    /* UNE CARTE, PLUSIEURS LECTURES DEDANS. Une carte par insight aurait trois
+       cadres, trois ombres et trois en-tetes pour trois phrases, et la page
+       d'accueil se serait allongee d'autant. */
+    eq((r.match(/class="retenir-liste"/g) || []).length, 1, 'une liste, et une seule');
+    eq((r.match(/<section/g) || []).length, 1, 'dans une seule section');
+  });
+
+  test('le gabarit pose les cinq blocs dans cet ordre', () => {
+    const r = rendu();
+    /* La fenetre commence a la boucle : l'etat calme, plus haut, porte lui
+       aussi un titre et un texte, et brouillerait l'ordre recherche. */
+    const item = r.slice(r.indexOf('${lus.map('));
+    vrai(item.length > 200, 'la boucle des insights est bien la fenêtre lue');
+    const rang = c => item.indexOf('retenir-' + c);
+    const ordre = ['titre', 'valeur', 'texte', 'second', 'lien'];
+    for (let k = 1; k < ordre.length; k++) {
+      vrai(rang(ordre[k - 1]) > 0 && rang(ordre[k - 1]) < rang(ordre[k]),
+        `« ${ordre[k - 1]} » vient avant « ${ordre[k]} »`);
+    }
+  });
+
+  test('les trois lectures de tête portent les cinq blocs', () => {
+    /* Trois insights se disputent les trois places de la carte sur un etat
+       nourri : ce sont eux qui doivent se ressembler en premier. */
+    for (const [id, suivant] of [['liquidity_runway', 'allocation_target_gap'],
+                                 ['wealth_pace_shift', 'goal_projected_date'],
+                                 ['goal_projected_date', 'liquidity_runway_shift']]) {
+      const b = entree(id, suivant).replace(/\/\*[\s\S]*?\*\//g, '');
+      vrai(b.length > 80, `« ${id} » a bien été trouvé`);
+      for (const [champ, motif] of [['un titre', /\n    titre: '/],
+                                    ['une valeur forte', /\n    valeur: /],
+                                    ['un contexte', /\n    phrase: /],
+                                    ['une information secondaire', /\n    secondaire: /],
+                                    ['un renvoi', /\n    cta: \{/]]) {
+        vrai(motif.test(b), `« ${id} » a ${champ}`);
+      }
+    }
+  });
+
+  test('le contexte prolonge le chiffre, il ne recommence pas une phrase', () => {
+    const p = presentation();
+    for (const c of ['de dépenses immédiatement couvertes',
+                     'sur les {n} derniers mois',
+                     'pour atteindre ta cible de {t}']) {
+      vrai(p.includes(`trad('${c}')`), `« ${c} » est le contexte affiché`);
+      /* Pas de majuscule, pas de point : cette ligne continue la valeur du
+         dessus, elle ne s'en detache pas. */
+      vrai(!/[.]$/.test(c), `« ${c} » ne se ferme pas par un point`);
+      vrai(c[0] === c[0].toLowerCase(), `« ${c} » ne reprend pas une majuscule`);
+      vrai(c.length <= 40, `« ${c} » se lit d’un coup d’œil (${c.length} caractères)`);
+      vrai(!!I18N.en[c], `« ${c} » a sa traduction`);
+    }
+  });
+
+  test('l’information secondaire situe, elle ne juge pas et ne conseille pas', () => {
+    const p = presentation();
+    for (const s of ['+{c} mobilisables, mais fléchés ou à vendre',
+                     'contre {b} auparavant',
+                     'selon tes hypothèses actuelles']) {
+      vrai(p.includes(`trad('${s}')`), `« ${s} » est écrit`);
+      vrai(!!I18N.en[s], `« ${s} » a sa traduction`);
+      for (const mot of ['devrais', 'il faut', 'pense à', 'insuffisant', 'faible',
+                         'idéal', 'recommand', '3 à 6']) {
+        vrai(!new RegExp(mot, 'i').test(s), `« ${mot} » serait un jugement`);
+      }
+    }
+  });
+
+  test('la hiérarchie se voit avant de se lire', () => {
+    const css = lireSource('assets/styles.css');
+    const bloc = c => css.slice(css.indexOf(`.retenir-${c} {`),
+      css.indexOf('}', css.indexOf(`.retenir-${c} {`)));
+    vrai(/font-size: var\(--font-xl\)/.test(bloc('valeur'))
+      && /font-weight: 700/.test(bloc('valeur')),
+      'la valeur est le plus gros et le plus gras de l’entrée');
+    vrai(/var\(--text-secondary\)/.test(bloc('texte')) && !/font-size/.test(bloc('texte')),
+      'le contexte garde la taille du texte courant');
+    vrai(/font-size: var\(--font-sm\)/.test(bloc('second'))
+      && /var\(--muted\)/.test(bloc('second')),
+      'et l’information secondaire est plus petite et plus pâle que lui');
+    /* « janvier 2030 » ouvre sa ligne comme un chiffre et merite la capitale
+       qu'un debut de ligne appelle ; `capitalize` aurait ecrit « 0,8 Mois ». */
+    vrai(/\.retenir-valeur::first-letter \{ text-transform: uppercase; \}/.test(css),
+      'la date porte sa capitale sans que les autres valeurs y perdent');
+    vrai(!/\.retenir-valeur \{[^}]*text-transform: capitalize/.test(css),
+      'jamais « capitalize », qui toucherait aussi l’unité');
+  });
+});
+
 /* --- La reserve decrit, elle ne prescrit plus ------------------------------ */
 suite('La réserve de sécurité tient en deux lignes', () => {
   const presentation = () => {
@@ -41745,9 +41859,9 @@ suite('La réserve de sécurité tient en deux lignes', () => {
 
   test('le wording est court, factuel, et sans palier', () => {
     const p = presentation().replace(/\/\*[\s\S]*?\*\//g, '');
-    vrai(/de dépenses couvertes par ton épargne immédiatement disponible\./.test(p),
+    vrai(/phrase: \(\) => trad\('de dépenses immédiatement couvertes'\)/.test(p),
       'la première ligne dit ce que le chiffre couvre');
-    vrai(/\{c\} supplémentaires sont mobilisables, mais fléchés ou nécessitent une vente\./.test(p),
+    vrai(/secondaire: p => p\.complementMonths[\s\S]*\+\{c\} mobilisables, mais fléchés ou à vendre/.test(p),
       'la seconde dit ce qui existe à côté, et pourquoi il ne compte pas');
     /* AUCUNE NORME : ni palier, ni conseil, ni jugement. */
     for (const mot of ['3 à 6', 'objectif indicatif', 'recommand', 'idéal', 'suffisant',
@@ -41760,15 +41874,20 @@ suite('La réserve de sécurité tient en deux lignes', () => {
     const p = presentation().replace(/\/\*[\s\S]*?\*\//g, '');
     vrai(/p\.complementMonths >= 0\.1/.test(p),
       'sous un dixième de mois, la seconde ligne ne paraît pas');
-    vrai(/: ''\),/.test(p), 'et elle ne laisse aucune phrase vide');
+    vrai(/: '',/.test(p), 'et elle ne dit rien plutôt que de dire « 0 mois »');
+    /* ET LE GABARIT NE L'ECRIT PAS NON PLUS : une chaine vide ne doit pas
+       devenir un paragraphe vide sous le contexte, qui laisserait un trou. */
+    const a = lireSource('assets/app.js');
+    vrai(/const s = p\.secondaire && p\.secondaire\(i\.params\);/.test(a)
+      && /return s \? `<p class="retenir-second">/.test(a),
+      'et la ligne ne se rend que si elle dit quelque chose');
   });
 
   test('les deux langues disent la même chose, avec les mêmes mots qu’ailleurs', () => {
     for (const [fr, en] of [
-      ['de dépenses couvertes par ton épargne immédiatement disponible.',
-       'of spending covered by immediately available savings.'],
-      ['{c} supplémentaires sont mobilisables, mais fléchés ou nécessitent une vente.',
-       'Another {c} are accessible, but earmarked or require selling assets.'],
+      ['de dépenses immédiatement couvertes', 'of spending immediately covered'],
+      ['+{c} mobilisables, mais fléchés ou à vendre',
+       '+{c} accessible, but earmarked or to be sold'],
     ]) eq(I18N.en[fr], en, `« ${fr.slice(0, 32)}… » a sa traduction`);
     /* UN SEUL NOM ANGLAIS POUR UN SEUL CONCEPT : la carte, le renvoi et le titre
        de la lecture emploient tous « safety reserve ». */
@@ -42777,8 +42896,14 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
     vrai(!/performance|rendement/i.test(bloc.replace(/\/\*[\s\S]*?\*\//g, '')),
       'le rythme patrimonial garde son nom');
     /* Et la date d'objectif reste au conditionnel. */
-    vrai(/Ta cible de \{t\} serait atteinte vers \{d\}/.test(p),
+    vrai(/valeur: p => moisEtAnnee\(p\.year, p\.month\)/.test(p)
+      && /pour atteindre ta cible de \{t\}/.test(p),
       'la date est projetée, jamais promise, et la cible porte son montant');
+    /* LA RESERVE D'USAGE NE DISPARAIT PAS EN CHANGEANT DE LIGNE. Elle descend
+       en information secondaire, juste sous la date : c'est la meme phrase, au
+       meme endroit du regard, et la date reste une estimation. */
+    vrai(/secondaire: \(\) => trad\('selon tes hypothèses actuelles'\)/.test(p),
+      'et l’hypothèse reste écrite sous elle');
     vrai(!/tu atteindras/i.test(sansCommentaires), 'aucune promesse dans le texte affiché');
   });
 
@@ -43121,10 +43246,12 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
       vrai(!new RegExp(mot, 'i').test(bloc.replace(/\/\*[\s\S]*?\*\//g, '')),
         `« ${mot} » serait un conseil`);
     }
-    for (const c of ['{c} : {a} de tes investissements, soit {e} points au-dessus de ta cible de {b}.',
-                     '{c} : {a} de tes investissements, soit {e} points en dessous de ta cible de {b}.']) {
+    vrai(I18N.en['de tes investissements sont sur {c}'].includes('{c}'),
+      'le contexte garde le nom de la classe d’actif');
+    for (const c of ['soit {e} points au-dessus de ta cible de {b}',
+                     'soit {e} points en dessous de ta cible de {b}']) {
       vrai(!!I18N.en[c], 'les deux sens ont leur traduction');
-      for (const m of ['{c}', '{a}', '{e}', '{b}']) vrai(I18N.en[c].includes(m), `et gardent ${m}`);
+      for (const m of ['{e}', '{b}']) vrai(I18N.en[c].includes(m), `et gardent ${m}`);
     }
   });
 
@@ -43134,8 +43261,13 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
     /* Le montant se lit seul, signe compris, et porte son unite de temps. */
     vrai(/valeur: p => montantSigne\(p\.currentMonthly, fmtEUR0\) \+ trad\('\/mois'\)/.test(bloc),
       'le chiffre principal est un montant signé, par mois');
-    vrai(/sur les \{n\} derniers mois, contre \{b\} sur les \{m\} mois précédents/.test(bloc),
+    vrai(/phrase: p => trad\('sur les \{n\} derniers mois'\)/.test(bloc),
       'et la phrase ne fait plus que le situer dans le temps');
+    /* LA FENETRE PRECEDENTE DESCEND D'UN CRAN. Deux montants signes dans la
+       meme phrase se concurrencent : celui de tete se lit seul, l'autre se lit
+       sous lui, et on sait lequel est le chiffre d'aujourd'hui. */
+    vrai(/secondaire: p => trad\('contre \{b\} auparavant'\)/.test(bloc),
+      'la comparaison passe derrière, sur sa propre ligne');
     /* « EN MOYENNE » SERAIT FAUX. Ce chiffre est une mediane : c'est ce qui
        l'empeche d'etre gonfle par une prime ou une vente, et le mot ne manque
        pas a la phrase. */
@@ -43164,6 +43296,21 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
       'le montant et son unité ne se séparent jamais');
     vrai(/\.retenir-valeur \{[\s\S]*?font-variant-numeric: tabular-nums;/.test(css),
       'et deux montants voisins alignent leurs chiffres');
+    /* LE REGROUPEMENT NE TIENT QU'AU RAPPORT DES ECARTS. Les quatre lignes
+       d'une entree se lisent ensemble parce que ce qui les separe est plus
+       petit que ce qui separe deux entrees ; l'inverse donnerait quatre
+       fragments flottants, et aucun filet ne rattraperait cela. */
+    const ecart = r => {
+      const b = css.slice(css.indexOf(`.retenir-${r} {`), css.indexOf('}', css.indexOf(`.retenir-${r} {`)));
+      const m = b.match(/margin(?:-top)?: (\d+)px/);
+      return m ? Number(m[1]) : null;
+    };
+    const dedans = ['valeur', 'texte', 'second', 'lien'].map(ecart);
+    vrai(dedans.every(v => v !== null), 'chaque ligne déclare son écart');
+    const liste = css.slice(css.indexOf('.retenir-liste {'), css.indexOf('}', css.indexOf('.retenir-liste {')));
+    const entre = Number(liste.match(/gap: (\d+)px/)[1]);
+    vrai(entre >= 2 * Math.max(...dedans),
+      `${entre}px entre deux lectures pour ${Math.max(...dedans)}px au plus à l’intérieur`);
   });
 
   test('le capital remboursé dit de quelle progression il parle', () => {
@@ -43171,7 +43318,7 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
     const bloc = p.slice(p.indexOf('debt_principal_share: {'), p.indexOf('};', p.indexOf('debt_principal_share: {')));
     vrai(/ta progression patrimoniale/.test(bloc),
       '« ta progression » pouvait se lire comme celle du budget');
-    vrai(/sur tes crédits/.test(bloc),
+    vrai(/de tes crédits/.test(bloc),
       'le pluriel reste : le montant agrège tous les crédits');
     /* Et c'est bien une agregation : le moteur somme les credits. */
     const s = lireSource('assets/store.js');
@@ -43369,7 +43516,7 @@ suite('Le rythme résiste à un mois exceptionnel', () => {
 });
 
 /* --- Le chiffre principal ------------------------------------------------- */
-suite('Une entrée peut porter son chiffre devant', () => {
+suite('Chaque entrée porte son chiffre devant', () => {
   const app = () => lireSource('assets/app.js');
 
   test('le gabarit ne rend la valeur que si la règle en déclare une', () => {
@@ -43381,12 +43528,20 @@ suite('Une entrée peut porter son chiffre devant', () => {
        barre en SVG, et `esc` l'afficherait en clair. */
     vrai(/escMontant\(p\.valeur/.test(rendu), 'et elle traverse l’échappement des montants');
     const p = a.slice(a.indexOf('const PRESENTATION_INSIGHT'), a.indexOf('function carteARetenir()'));
-    /* Toutes n'en portent pas : une date d'objectif ou un écart d'allocation se
-       lisent en une phrase, et sortir un nombre de leur milieu le rendrait muet.
-       Le gabarit reste donc facultatif, et une règle sur deux s'en passe. */
-    const combien = (p.match(/valeur: p =>/g) || []).length;
-    vrai(combien >= 2 && combien < REGLES_INSIGHT.length,
+    /* TOUTES EN PORTENT UN, ET C'EST LE BUT : cette carte se balaye, et on
+       balaye des chiffres, pas des phrases. Une date d'objectif se lit « Janvier
+       2030 », un ecart d'allocation se lit « 42,0 % » — il a suffi de sortir le
+       nombre de la phrase au lieu de le laisser au milieu.
+
+       Le gabarit reste conditionnel pour autant, et ce n'est pas une precaution
+       morte : l'etat calme n'a pas de chiffre, et une regle ecrite demain sans
+       en avoir doit rendre un paragraphe de moins, jamais « undefined » en gros
+       et en gras. */
+    const combien = (p.match(/\n    valeur: /g) || []).length;
+    eq(combien, REGLES_INSIGHT.length,
       `${combien} règles sur ${REGLES_INSIGHT.length} portent un chiffre devant`);
+    const calme = rendu.slice(rendu.indexOf('retenir-calme'), rendu.indexOf('${lus.map('));
+    vrai(!calme.includes('retenir-valeur'), 'et l’état calme n’en affiche aucun');
   });
 
   test('le chiffre ne prend pas la couleur de l’accent', () => {
@@ -43408,12 +43563,12 @@ suite('Une entrée peut porter son chiffre devant', () => {
       'et la carte visée est bien celle de la courbe');
     eq(I18N.en['Évolution du patrimoine'], 'Wealth over time', 'qui a déjà son nom anglais');
     for (const c of ['Progression du patrimoine', '/mois', 'Voir l’évolution',
-                     'sur les {n} derniers mois, contre {b} sur les {m} mois précédents.']) {
+                     'sur les {n} derniers mois', 'contre {b} auparavant']) {
       vrai(!!I18N.en[c], `« ${c} » a sa traduction`);
     }
-    for (const m of ['{n}', '{b}', '{m}']) {
-      vrai(I18N.en['sur les {n} derniers mois, contre {b} sur les {m} mois précédents.'].includes(m),
-        `et le gabarit garde ${m}`);
+    for (const [c, m] of [['sur les {n} derniers mois', '{n}'],
+                          ['contre {b} auparavant', '{b}']]) {
+      vrai(I18N.en[c].includes(m), `et le gabarit garde ${m}`);
     }
   });
 });
