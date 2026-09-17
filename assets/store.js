@@ -453,7 +453,10 @@ const motDateCompte = t => trad(estUnBien(t) ? 'Date d’achat' : 'Date d’ouve
 
    Le mot se derive du meme drapeau `direct` que tout le reste, pour qu'un type
    ajoute demain n'ait qu'une chose a declarer. */
-const motCompte = t => trad(estDetenuEnDirect(t) ? 'bien' : 'compte');
+const motCompte = t => trad(estDetenuEnDirect(t) ? 'bien'
+  : estActifTerminal(t) ? 'placement' : 'compte');
+
+const titreActif = t => estDetenuEnDirect(t) ? 'Le bien' : 'Le placement';
 
 /* `contenu` : le mot pour ce que le contenant abrite.
 
