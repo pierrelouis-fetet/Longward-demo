@@ -107,6 +107,54 @@ function toast(msg, action) {
   t._t = setTimeout(() => { t.hidden = true; t.classList.remove('toast-sort'); }, vie + 350);
 }
 
+/* UNE SEULE PORTE VERS LE PRESSE-PAPIERS, ET ELLE DIT CE QU'ELLE A FAIT.
+
+   L'interface entiere est non selectionnable : un appui maintenu n'ouvre plus
+   ni loupe, ni poignees, ni menu Copier / Chercher / Traduire. Le prix de cette
+   regle, c'est qu'une donnee qu'on recopie vraiment ailleurs — un numero de
+   compte dans un virement, un ISIN dans la recherche d'un courtier — n'a plus
+   aucun chemin. Elle en recoit un explicite, en un appui, et lui seul.
+
+   `navigator.clipboard` n'existe pas hors contexte securise, et il refuse aussi
+   quand l'appui ne vient pas d'un geste : les deux cas passent par le meme
+   `catch`, et AUCUN des deux ne fait croire que la copie a eu lieu. Le canal est
+   le toast de la maison — 2 300 ms, la duree deja retenue pour un message qui
+   n'attend pas de reponse — et non une nouvelle infrastructure.
+
+   Le texte affiche est ici le texte complet : rien n'est masque dans ces deux
+   endroits, donc rien n'est reconstitue pour l'occasion. */
+async function copierDansLePressePapiers(valeur) {
+  const texte = String(valeur ?? '').trim();
+  if (!texte) return false;
+  try {
+    await navigator.clipboard.writeText(texte);
+    toast(trad('Copié'));
+    return true;
+  } catch (err) {
+    toast(trad('Impossible de copier'));
+    return false;
+  }
+}
+
+/* LE BOUTON RESTE UNE ICONE, ET IL PORTE SON NOM.
+
+   Secondaire par le dessin — pas de fond, pas de bordure, l'encre en retrait —
+   et precis par le nom : « Copier le numéro de compte », jamais « Copier » seul,
+   qui ne dirait pas quoi a qui lit l'ecran a l'oreille. `title` porte le meme
+   mot pour la souris.
+
+   Il ne s'ecrit pas si la valeur est vide : une ligne absente n'a rien a rendre,
+   et une icone morte se cliquerait quand meme. */
+const boutonCopier = (valeur, libelle) => {
+  const v = String(valeur ?? '').trim();
+  if (!v) return '';
+  const nom = esc(trad(libelle));
+  return `<button type="button" class="btn-copie" data-action="copier"
+     data-copie="${esc(v)}" aria-label="${nom}" title="${nom}"
+     ><svg viewBox="0 0 24 24" aria-hidden="true"
+       ><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg></button>`;
+};
+
 /* La porte de sortie d'une ecriture, a passer en second argument de `toast`.
 
    Elle n'existe que si la pile a de quoi revenir. Offrir « Annuler » sur une
@@ -4699,7 +4747,7 @@ function detailsPlacement(c, idx, t, l) {
       ${c.statut === 'archive' ? `<dt>${trad('Date de clôture')}</dt>
         <dd>${c.clotureLe ? esc(fmtDate(c.clotureLe))
               : `<span class="muted">${trad('non renseignée')}</span>`}</dd>` : ''}
-      ${!t.interne && c.numero ? `<dt>${trad('Numéro de compte')}</dt><dd>${esc(c.numero)}</dd>` : ''}
+      ${!t.interne && c.numero ? `<dt>${trad('Numéro de compte')}</dt><dd>${esc(c.numero)}${boutonCopier(c.numero, 'Copier le numéro de compte')}</dd>` : ''}
     </dl>
     ${!c.notes ? '' : `
     <div class="fiche-note">
@@ -6383,7 +6431,7 @@ function viewFicheCompte(id) {
         ${c.statut === 'archive' ? `<dt>${trad('Date de clôture')}</dt>
         <dd>${c.clotureLe ? esc(fmtDate(c.clotureLe))
               : `<span class="muted">${trad('non renseignée')}</span>`}</dd>` : ''}
-        ${!t.interne && c.numero ? `<dt>${trad('Numéro de compte')}</dt><dd>${esc(c.numero)}</dd>` : ''}
+        ${!t.interne && c.numero ? `<dt>${trad('Numéro de compte')}</dt><dd>${esc(c.numero)}${boutonCopier(c.numero, 'Copier le numéro de compte')}</dd>` : ''}
       </dl>
       <div class="field" style="margin-top:12px"><label>${trad('Notes')}</label>
         <input data-path="comptes.${idx}.notes" value="${esc(c.notes || '')}"
@@ -7959,6 +8007,7 @@ const ACTIONS = {
     render();
   },
   'go-performance'() { location.hash = '#/performance'; },
+  'copier'(btn) { copierDansLePressePapiers(btn.dataset.copie); },
   async 'del-sale'(btn) {
     const i = +btn.dataset.i;
     const v = Store.state.sales[i];
@@ -11594,6 +11643,7 @@ function askPosition(index) {
           : `<span class="muted">${trad('inconnue, le cours ne l’a pas dit')}</span>`)}
         ${ligne('ISIN', p.isin
           ? `<span style="font-family:var(--font-nb)">${esc(p.isin)}</span>`
+            + boutonCopier(p.isin, 'Copier l’ISIN')
           : (assetClassDe(p) === 'crypto' || p.manual
              ? `<span class="muted">${trad('sans objet')}</span>`
              : `<span class="muted">${trad('à copier depuis ton courtier')}${aide(trad("Aucune source gratuite ne donne l’ISIN à partir d’un symbole : Yahoo ne le publie pas, et OpenFIGI ne fait que le chemin inverse. Ton relevé de courtier le porte, et le bouton « Vérifier » plus bas confirme qu’il désigne le bon titre."))}</span>`))}

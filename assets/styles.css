@@ -761,6 +761,45 @@ body.nav-open .burger span::after  { transform: translateX(-50%) translateY(-6px
   stroke-linecap: round; stroke-linejoin: round;
 }
 
+/* L'ICONE EST PETITE, SA CIBLE NE L'EST PAS.
+
+   Dix-sept pixels de dessin se pointent a la souris et se manquent au doigt.
+   Le `::after` porte donc une zone de quarante-quatre pixels centree sur le
+   bouton — la mesure d'Apple pour une cible tactile — sans peindre quoi que ce
+   soit ni deplacer une ligne. Le bouton, lui, garde sa taille : une icone de
+   quarante-quatre pixels dans une fiche serait un bouton plein, ce qu'il n'est
+   pas.
+
+   `margin-left` de dix pixels : colle au texte, l'icone se lirait comme une
+   suite du numero, et le doigt qui vise l'un attraperait l'autre. */
+.btn-copie {
+  position: relative;
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); opacity: .55;
+  line-height: 0; padding: 5px; margin-left: 10px;
+  vertical-align: -.35em;
+  border-radius: var(--radius-xs); transition: opacity .15s, color .15s, background .15s;
+}
+/* ANCREE A DROITE DU BOUTON, ET NON CENTREE SUR LUI. Mesure a 390 px, sur un
+   numero de vingt-sept caracteres : centree, la zone depassait de neuf pixels
+   la boite du bouton — invisible, mais la ligne ne se replie pas et le
+   debordement se lisait sur son `scrollWidth`. Ancree a droite, elle s'etend
+   vers le texte qu'elle copie, ou le doigt est de toute facon, et la ligne
+   retombe juste. */
+.btn-copie::after {
+  content: ''; position: absolute; right: 0; top: 50%;
+  width: 44px; height: 44px; transform: translateY(-50%);
+}
+@media (hover: hover) {
+  .btn-copie:hover { opacity: 1; color: var(--text-secondary); background: var(--surface-2); }
+}
+.btn-copie:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; opacity: 1; }
+.btn-copie svg {
+  width: 15px; height: 15px; display: block;
+  fill: none; stroke: currentColor; stroke-width: 1.7;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+
 svg.oeil-masque {
   width: 1.05em; height: 1.05em; vertical-align: -.15em; display: inline-block;
   fill: none; stroke: currentColor; stroke-width: 1.7;
