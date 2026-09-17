@@ -4680,15 +4680,17 @@ function variationAn(aujourdhui = todayISO(), net = true) {
    aujourd'hui — en se rappelant que le mot `total` designe le brut sur un
    releve et le net sur la photo du jour. Aucun mois n'est interpole, aucun trou
    n'est comble : ce sont les releves qui existent, et rien d'autre. */
-function serieAn(depuis, net = true) {
+function pointsAn(depuis, net = true) {
   if (!depuis) return [];
   const t = nowTotals();
-  const valeurs = historySeries({ includeNow: false })
+  const pts = historySeries({ includeNow: false })
     .filter(p => String(p.date) >= String(depuis))
-    .map(p => num(net ? p.net : p.total));
-  valeurs.push(num(net ? t.total : t.brut));
-  return valeurs;
+    .map(p => ({ valeur: num(net ? p.net : p.total), label: p.label }));
+  pts.push({ valeur: num(net ? t.total : t.brut), label: trad('Auj.') });
+  return pts;
 }
+
+const serieAn = (depuis, net = true) => pointsAn(depuis, net).map(p => p.valeur);
 
 function deltas() {
   const pts = historySeries({ includeNow: false });

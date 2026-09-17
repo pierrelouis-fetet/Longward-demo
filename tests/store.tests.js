@@ -7291,10 +7291,20 @@ suite('Pièges de source', () => {
       'une seule sparkline, et une seule montee');
     vrai(/serieAn\(varAn\.depuis, evoNet\)/.test(source),
       'sa fenêtre est celle de la variation annoncée à côté, jamais une autre');
-    vrai(/Charts\.sparkline\(\$\('#heroSpark'\), serieAn\(v\.depuis, evoNet\)\)/.test(source),
+    vrai(/const pts = pointsAn\(v\.depuis, evoNet\);/.test(source),
       'et le montage lit la même');
-    /* Ni axe, ni plage, ni infobulle : `labels` reste éteint. */
-    vrai(!/sparkline\([^)]*labels/.test(source), 'aucune infobulle sur la petite courbe');
+    /* Ni axe, ni plage, ni sélection de période : une infobulle au doigt n'en
+       fait pas un graphique d'historique, elle répond à « combien avais-je à ce
+       moment-là » sans quitter l'aperçu. */
+    /* La fenetre est l'APPEL, et rien d'autre : ouverte sur le mot `sparkline`,
+       elle attrapait les commentaires voisins, ou « ni legende » suffisait a la
+       rendre rouge. */
+    const appel = source.slice(source.indexOf('Charts.sparkline('),
+                               source.indexOf(';', source.indexOf('Charts.sparkline(')));
+    for (const interdit of ['axis', 'ticks', 'legend', 'zoom', 'range', 'height']) {
+      vrai(!appel.includes(interdit), `la petite courbe ne reçoit pas ${interdit}`);
+    }
+    eq((appel.match(/labels/g) || []).length, 1, 'une seule option, les étiquettes');
     /* Un seul endroit remplit le conteneur de la courbe d'évolution. Compter
        tous les `Charts.stackedArea` serait faux : la projection en appelle un
        aussi, sur une série qui n'a rien à voir. */
@@ -40842,10 +40852,11 @@ suite('La réserve de sécurité passe devant le mobilisable', () => {
     /* Et la phrase le range derrière, avec sa raison. */
     const p = lireSource('assets/app.js');
     const bloc = p.slice(p.indexOf('liquidity_runway: {'), p.indexOf('allocation_target_gap: {'));
-    vrai(/d’épargne immédiatement disponible\./.test(bloc), 'le chiffre de tête est nommé');
-    vrai(/de plus seraient mobilisables, mais cet argent est fléché ou demande une vente/.test(bloc),
+    vrai(/de dépenses couvertes par ton épargne immédiatement disponible\./.test(bloc),
+      'le chiffre de tête dit ce qu’il couvre');
+    vrai(/supplémentaires sont mobilisables, mais fléchés ou nécessitent une vente/.test(bloc),
       'le complément dit pourquoi il ne compte pas');
-    vrai(bloc.indexOf('immédiatement disponible') < bloc.indexOf('seraient mobilisables'),
+    vrai(bloc.indexOf('immédiatement disponible') < bloc.indexOf('sont mobilisables'),
       'et il vient après, jamais avant');
   });
 
@@ -40880,19 +40891,29 @@ suite('La réserve de sécurité passe devant le mobilisable', () => {
       'la garde ne tient que sous le repère');
   });
 
-  test('le repère se nomme comme un objectif de l’app, jamais comme une vérité', () => {
+  test('la réserve décrit, elle n’énonce aucune norme', () => {
     const p = lireSource('assets/app.js');
     const bloc = p.slice(p.indexOf('liquidity_runway: {'), p.indexOf('allocation_target_gap: {'));
     const sansCommentaires = bloc.replace(/\/\*[\s\S]*?\*\//g, '');
-    /* Attribué, et conditionnel : il ne paraît que lorsqu'il sert. */
-    vrai(/L’objectif indicatif retenu dans l’app est de 3 à 6 mois\./.test(sansCommentaires),
-      'la phrase attribue le repère à l’application');
-    vrai(/p\.belowTargetMonths > 0 \? /.test(sansCommentaires),
-      'et il ne paraît que sous le repère');
+    /* LA PHRASE A PORTE « l'objectif indicatif retenu dans l'app est de 3 à 6
+       mois » : attribuée, conditionnelle, et malgré tout une heuristique
+       générique transformée en objectif par le fait de l'écrire sous le chiffre
+       de quelqu'un. */
+    vrai(!/3 à 6 mois|objectif indicatif/.test(sansCommentaires),
+      'aucun palier ne s’écrit sous le chiffre');
+    vrai(!/belowTargetMonths/.test(sansCommentaires),
+      'et la présentation ne lit même plus le manque');
+    /* Le palier reste dans le moteur, où il ne sert qu'à décider de l'ordre. */
+    const m = lireSource('assets/insights.js');
+    vrai(/const reserveSousCible = m =>/.test(m), 'il vit toujours dans la sélection');
     /* Aucun jugement, aucun conseil. */
-    for (const mot of ['insuffisant', 'trop peu', 'tu devrais', 'il faut', 'dangereux', 'risqué']) {
+    for (const mot of ['insuffisant', 'trop peu', 'tu devrais', 'il faut', 'dangereux', 'risqué',
+                       'recommand', 'idéal']) {
       vrai(!new RegExp(mot, 'i').test(sansCommentaires), `« ${mot} » serait un jugement`);
     }
+    /* Deux lignes, pas trois : le résultat doit rester court. */
+    eq((sansCommentaires.match(/trad\('[^']{30,}'\)/g) || []).length, 2,
+      'la phrase tient en deux propositions');
   });
 
   test('« autonomie financière » a cédé la place, partout où c’était son nom', () => {
@@ -41501,15 +41522,24 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
     }
   });
 
-  test('elle ne parle ni au lecteur d’écran ni au doigt', () => {
+  test('elle s’explore au doigt, sans parler au lecteur d’écran', () => {
     const c = lireSource('assets/charts.js');
     const f = c.slice(c.indexOf('function sparkline'), c.indexOf('function sparkline') + 1400);
-    vrai(/aria-hidden="true"/.test(f), 'la courbe est décorative, tout est déjà écrit');
-    /* `labels` reste éteint : pas d'infobulle, pas de curseur, pas de zoom. */
+    /* LE DESSIN RESTE DÉCORATIF : le montant, la variation et la période sont
+       écrits en toutes lettres à côté, et l'onglet Historique donne l'accès
+       détaillé. Rien n'est piégé au clavier : l'infobulle est un div posé par
+       `ensureTip`, sans tabindex. */
+    vrai(/aria-hidden="true"/.test(f), 'le tracé ne se lit pas deux fois');
+    vrai(!/tabindex/.test(f), 'et rien n’entre dans l’ordre de tabulation');
+    /* `labels` allume l'exploration : le code du curseur et de l'infobulle
+       existait, il dormait faute d'étiquettes à montrer. */
     const a = app();
-    vrai(/Charts\.sparkline\(\$\('#heroSpark'\), serieAn\(v\.depuis, evoNet\)\);/.test(a),
-      'le montage ne passe aucune option d’interaction');
-    vrai(/if \(!opts\.labels\) return;/.test(c), 'et sans elle, rien n’est câblé');
+    vrai(/\{ labels: pts\.map\(p => p\.label\) \}/.test(a),
+      'le montage passe les étiquettes, et c’est ce qui câble le doigt');
+    vrai(/if \(!opts\.labels\) return;/.test(c), 'sans elles, rien ne se câble');
+    /* Le défilement vertical de la page reste possible depuis la courbe. */
+    vrai(/el\.style\.touchAction = 'pan-y';/.test(c),
+      'un geste vertical fait défiler la page, il n’est pas capturé');
   });
 
   test('deux colonnes en haut, la barre de composition sur toute la largeur', () => {
@@ -41575,6 +41605,150 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
       'et la rangee n’en ajoute aucun autre');
     vrai(!/rendement|performance|benchmark|objectif/i.test(bloc.replace(/\/\*[\s\S]*?\*\//g, '')),
       'et aucun indicateur concurrent');
+  });
+});
+
+/* --- La courbe du hero s'explore, et la reserve cesse de prescrire ---------
+
+   Deux gestes sans rapport, sur le meme ecran. La courbe portait une forme et
+   rien d'autre ; elle repond maintenant a « combien avais-je a ce moment-la ».
+   La reserve, elle, ecrivait un palier generique sous le chiffre de quelqu'un. */
+suite('La courbe du hero s’explore au doigt', () => {
+  const c = () => lireSource('assets/charts.js');
+  const bloc = () => {
+    const s = c();
+    return s.slice(s.indexOf('function sparkline'), s.indexOf('return { stackedArea'));
+  };
+
+  test('chaque valeur porte sa date, et les deux viennent du même parcours', () => {
+    Fixture.poser();
+    const v = variationAn(todayISO(), true);
+    const pts = pointsAn(v.depuis, true);
+    vrai(pts.length >= 2, `${pts.length} points`);
+    /* UN SEUL PARCOURS : deux filtres écrits côte à côte auraient fini par ne
+       pas retenir les mêmes relevés, et la courbe aurait porté des étiquettes
+       décalées d'un cran sur ses propres montants. */
+    eq(pts.map(p => p.valeur).join('|'), serieAn(v.depuis, true).join('|'),
+      'la série des valeurs dérive des points, elle ne les refait pas');
+    const st = lireSource('assets/store.js');
+    vrai(/const serieAn = \(depuis, net = true\) => pointsAn\(depuis, net\)\.map\(p => p\.valeur\);/.test(st),
+      'et cela se lit dans le code');
+    /* L'étiquette vient du relevé lui-même, donc du même formateur que la courbe
+       d'évolution et que le journal. */
+    const dans = historySeries({ includeNow: false }).filter(p => String(p.date) >= String(v.depuis));
+    eq(pts.slice(0, -1).map(p => p.label).join('|'), dans.map(p => p.label).join('|'),
+      'aucun second format de mois');
+    eq(pts[pts.length - 1].label, trad('Auj.'), 'et le dernier point porte le mot du jour');
+  });
+
+  test('le point retenu est un relevé réel, jamais un entre-deux', () => {
+    const b = bloc();
+    /* L'abscisse du doigt s'arrondit au point le plus proche : aucun patrimoine
+       intermédiaire n'est calculé. */
+    vrai(/Math\.round\(\(ev\.clientX - r\.left\) \/ r\.width \* \(values\.length - 1\)\)/.test(b),
+      'l’abscisse s’arrondit au point le plus proche');
+    vrai(/Math\.max\(0, Math\.min\(values\.length - 1,/.test(b),
+      'et reste dans les bornes de la série');
+    vrai(/tip\.innerHTML = `<b>\$\{fmtEUR0\(values\[i\]\)\}<\/b> · \$\{opts\.labels\[i\]\}`/.test(b),
+      'l’infobulle lit la valeur du point, pas une moyenne');
+    /* Deux informations, pas dix. */
+    vrai(!/variation|apport|composition|performance/i.test(b.replace(/\/\*[\s\S]*?\*\//g, '')),
+      'date et montant, rien d’autre');
+  });
+
+  test('elle ne déborde jamais de son cadre', () => {
+    const b = bloc();
+    /* Près du bord droit elle se décale à gauche, près du gauche elle se cale à
+       zéro : le clamp le dit en une ligne. */
+    vrai(/tip\.style\.left = Math\.max\(0, Math\.min\(W - tw, x\(i\) - tw \/ 2\)\) \+ 'px';/.test(b),
+      'l’infobulle se recale dans la largeur du tracé');
+  });
+
+  test('le doigt explore, le défilement reste au doigt aussi', () => {
+    const b = bloc();
+    vrai(/el\.style\.touchAction = 'pan-y';/.test(b),
+      'un geste vertical fait défiler la page');
+    const s = c();
+    const g = s.slice(s.indexOf('function cablerInfobulle'), s.indexOf('function ensureTip'));
+    /* À ÉGALITÉ, LE GESTE VA AU DÉFILEMENT : c'est celui qu'on perd le plus mal,
+       et une infobulle manquée se rattrape en reposant le doigt. */
+    vrai(/if \(dy > SEUIL_GLISSE && dy >= dx\)/.test(g), 'un glissement vertical abandonne');
+    vrai(/if \(dx > SEUIL_GLISSE\)/.test(g), 'un glissement horizontal ouvre');
+    vrai(!/preventDefault/.test(g), 'et rien n’est capturé de force');
+    /* La levée referme, sans minuteur. */
+    vrai(/cible\.addEventListener\('pointerup', cacher\);/.test(g), 'lever le doigt referme');
+    vrai(/cible\.addEventListener\('pointerleave', cacher\);/.test(g), 'sortir referme aussi');
+  });
+
+  test('rien ne se rend à nouveau pendant le mouvement', () => {
+    const b = bloc();
+    const montrer = b.slice(b.indexOf('const montrer = ev =>'), b.indexOf('const cacher ='));
+    /* Seuls le curseur et l'infobulle bougent : pas un rendu de page par pixel. */
+    for (const interdit of ['render(', 'innerHTML =', 'Store.', 'mount(']) {
+      if (interdit === 'innerHTML =') continue;   // l'infobulle, et elle seule
+      vrai(!montrer.includes(interdit), `le mouvement n’appelle pas ${interdit}`);
+    }
+    eq((montrer.match(/innerHTML/g) || []).length, 1, 'une seule écriture, celle de l’infobulle');
+  });
+});
+
+/* --- La reserve decrit, elle ne prescrit plus ------------------------------ */
+suite('La réserve de sécurité tient en deux lignes', () => {
+  const presentation = () => {
+    const a = lireSource('assets/app.js');
+    return a.slice(a.indexOf('liquidity_runway: {'), a.indexOf('allocation_target_gap: {'));
+  };
+
+  test('le wording est court, factuel, et sans palier', () => {
+    const p = presentation().replace(/\/\*[\s\S]*?\*\//g, '');
+    vrai(/de dépenses couvertes par ton épargne immédiatement disponible\./.test(p),
+      'la première ligne dit ce que le chiffre couvre');
+    vrai(/\{c\} supplémentaires sont mobilisables, mais fléchés ou nécessitent une vente\./.test(p),
+      'la seconde dit ce qui existe à côté, et pourquoi il ne compte pas');
+    /* AUCUNE NORME : ni palier, ni conseil, ni jugement. */
+    for (const mot of ['3 à 6', 'objectif indicatif', 'recommand', 'idéal', 'suffisant',
+                       'seuil de sécurité', 'devrais']) {
+      vrai(!new RegExp(mot, 'i').test(p), `« ${mot} » n’est plus écrit sous le chiffre`);
+    }
+  });
+
+  test('le complément se tait quand il n’y a rien à dire', () => {
+    const p = presentation().replace(/\/\*[\s\S]*?\*\//g, '');
+    vrai(/p\.complementMonths >= 0\.1/.test(p),
+      'sous un dixième de mois, la seconde ligne ne paraît pas');
+    vrai(/: ''\),/.test(p), 'et elle ne laisse aucune phrase vide');
+  });
+
+  test('les deux langues disent la même chose, avec les mêmes mots qu’ailleurs', () => {
+    for (const [fr, en] of [
+      ['de dépenses couvertes par ton épargne immédiatement disponible.',
+       'of spending covered by immediately available savings.'],
+      ['{c} supplémentaires sont mobilisables, mais fléchés ou nécessitent une vente.',
+       'Another {c} are accessible, but earmarked or require selling assets.'],
+    ]) eq(I18N.en[fr], en, `« ${fr.slice(0, 32)}… » a sa traduction`);
+    /* UN SEUL NOM ANGLAIS POUR UN SEUL CONCEPT : la carte, le renvoi et le titre
+       de la lecture emploient tous « safety reserve ». */
+    eq(I18N.en['Réserve de sécurité'], 'Safety reserve');
+    eq(I18N.en['Voir ma réserve'], 'View my safety reserve');
+    /* L'ancienne phrase du palier est partie des deux côtés. */
+    vrai(!I18N.en['L’objectif indicatif retenu dans l’app est de 3 à 6 mois.'],
+      'et le palier a quitté le dictionnaire');
+  });
+
+  test('le renvoi et les deux niveaux n’ont pas bougé', () => {
+    const p = presentation();
+    vrai(/libelle: 'Voir ma réserve'/.test(p), 'le renvoi garde son libellé');
+    vrai(/ancre: 'autonomie'/.test(p), 'et sa destination');
+    /* Les deux niveaux restent ceux de `runway()` : la présentation explique,
+       elle ne redéfinit rien. */
+    Fixture.poser();
+    const r = runway();
+    const i = evaluerInsights().find(x => x.id === 'liquidity_runway');
+    if (i) {
+      eq(i.params.months, num(r.reserveMois), 'le premier niveau est la réserve');
+      pres(i.params.months + i.params.complementMonths, num(r.liquidMonths),
+        'et le second complète jusqu’aux mobilisables');
+    }
   });
 });
 
