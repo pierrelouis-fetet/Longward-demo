@@ -41512,9 +41512,61 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
       'et le dessin se tait aussi');
   });
 
+  test('sous un demi pour cent, la pente s’efface au lieu de se dramatiser', () => {
+    const c = lireSource('assets/charts.js');
+    const f = c.slice(c.indexOf('function sparkline'), c.indexOf('cablerInfobulle(svg', c.indexOf('function sparkline')));
+    /* LE DEFAUT MESURE : cadree sur min/max, `[100 000, 110 000]` et
+       `[100 000, 100 012]` rendaient le meme trace, « 0,32 200,4 ». Douze euros
+       se lisaient comme dix mille, et c'est sur deux points — celui qui commence
+       — que rien ne vient nuancer la pente. */
+    vrai(/const AMPLITUDE_MINIMALE = 0\.005;/.test(c),
+      'le plancher vaut un demi pour cent du niveau');
+    eq((c.match(/AMPLITUDE_MINIMALE\s*=/g) || []).length, 1,
+      'et il ne se declare qu’une fois');
+    /* RELATIF, ET NON EN EUROS : un seuil ecrit en monnaie vaudrait pour un
+       patrimoine et pas pour un autre, et il faudrait le convertir. */
+    vrai(/Math\.abs\(milieu\) \* AMPLITUDE_MINIMALE/.test(f),
+      'il se mesure sur le niveau, pas en monnaie');
+    /* L'ECHELLE S'OUVRE AUTOUR DU MILIEU, ce qui pose une serie immobile au
+       centre du cadre au lieu de la coller au bord bas. */
+    vrai(/const milieu = \(min \+ max\) \/ 2;/.test(f), 'le milieu est le milieu');
+    vrai(/const bas = \(max - min\) < plancher \? milieu - plancher \/ 2 : min;/.test(f),
+      'sous le plancher, le cadre s’ouvre de part et d’autre du milieu');
+    vrai(/const span = \(\(max - min\) < plancher \? plancher : max - min\) \|\| 1;/.test(f),
+      'et au-dessus, rien ne change');
+    /* Sur une serie entierement a zero, un plancher proportionnel vaudrait zero
+       et la ligne retomberait au bord bas par la porte qu'on vient de fermer. */
+    vrai(/Number\.EPSILON/.test(f), 'une série entièrement à zéro garde un plancher');
+  });
+
+  test('un patrimoine immobile ne se peint pas en bonne nouvelle', () => {
+    const c = lireSource('assets/charts.js');
+    const f = c.slice(c.indexOf('function sparkline'), c.indexOf('cablerInfobulle(svg', c.indexOf('function sparkline')));
+    /* Vert veut dire « ça monte ». Sur une ligne qui n'a pas bouge, c'etait une
+       bonne nouvelle inventee : l'encre neutre ne dit rien, ce qui est juste.
+
+       LE CRITERE EST LA PENTE DESSINEE, PAS LE DRAPEAU DU CADRAGE, et c'est une
+       mesure au seuil qui l'a impose : a +500 sur 100 000, l'ecart passe tout
+       juste sous le plancher, l'echelle s'ouvre a peine, et le trait montait
+       de presque toute la hauteur en se peignant en gris. On mesure donc les
+       pixels que la pente occupe vraiment, et les deux decisions ne peuvent
+       plus se contredire. */
+    vrai(/const penteEnPixels = \(\(max - min\) \/ span\) \* \(H - 8\);/.test(f),
+      'la pente se mesure en pixels, après l’ouverture de l’échelle');
+    vrai(/penteEnPixels < 1 \? cssv\('--muted'\)/.test(f),
+      'sous un pixel de pente, le trait passe en encre neutre');
+    /* Au-dessus du plancher, le sens vient toujours du premier et du dernier
+       point : la regle d'avant, intacte. */
+    vrai(/values\[values\.length - 1\] >= values\[0\] \? cssv\('--good'\) : cssv\('--critical'\)/.test(f),
+      'et au-dessus, la hausse et la baisse gardent leurs couleurs');
+  });
+
   test('la couleur vient de la palette existante, et rien n’est ajouté', () => {
     const c = lireSource('assets/charts.js');
-    const f = c.slice(c.indexOf('function sparkline'), c.indexOf('function sparkline') + 1400);
+    /* La fenetre se borne sur la FIN du dessin et non sur un nombre de
+       caracteres : un commentaire ajoute en tete la faisait glisser, et le
+       controle finissait par lire autre chose que ce qu'il croyait. */
+    const f = c.slice(c.indexOf('function sparkline'), c.indexOf('cablerInfobulle(svg', c.indexOf('function sparkline')));
     vrai(/cssv\('--good'\)/.test(f) && /cssv\('--critical'\)/.test(f),
       'hausse et baisse prennent les deux couleurs du projet');
     vrai(!/#[0-9a-f]{3,6}/i.test(f.replace(/cssv\([^)]*\) \|\| '#fff'/g, '')),
@@ -41529,7 +41581,10 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
 
   test('elle s’explore au doigt, sans parler au lecteur d’écran', () => {
     const c = lireSource('assets/charts.js');
-    const f = c.slice(c.indexOf('function sparkline'), c.indexOf('function sparkline') + 1400);
+    /* La fenetre se borne sur la FIN du dessin et non sur un nombre de
+       caracteres : un commentaire ajoute en tete la faisait glisser, et le
+       controle finissait par lire autre chose que ce qu'il croyait. */
+    const f = c.slice(c.indexOf('function sparkline'), c.indexOf('cablerInfobulle(svg', c.indexOf('function sparkline')));
     /* LE DESSIN RESTE DÉCORATIF : le montant, la variation et la période sont
        écrits en toutes lettres à côté, et l'onglet Historique donne l'accès
        détaillé. Rien n'est piégé au clavier : l'infobulle est un div posé par
