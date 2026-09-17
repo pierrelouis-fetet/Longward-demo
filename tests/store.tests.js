@@ -7278,10 +7278,23 @@ suite('Pièges de source', () => {
        garde les deux règles : aucun conteneur de sparkline dans le source, et
        une seule fabrique de courbe d'évolution, `monterEvolution()`. */
     vrai(source, 'assets/app.js doit être lisible pour ce contrôle');
-    eq((source.match(/sparkNW/g) || []).length, 0,
-      'la sparkline du patrimoine a quitté le hero');
-    eq((source.match(/Charts\.sparkline/g) || []).length, 0,
-      'et plus personne ne la monte');
+    /* UNE COURBE EST REVENUE DANS LE HERO, ET LA REGLE N'A PAS CHANGE POUR
+       AUTANT. Ce que ce test interdit est le DOUBLON : une petite courbe qui
+       resumerait ce que la grande montre en mieux. Celle-ci est d'une autre
+       nature, et la difference est structurelle plutot que cosmetique : sa
+       fenêtre est celle que `variationAn()` a retenue, exactement celle du
+       « +13 895 € · +7,6 % » posé à sa gauche. Elle illustre CE chiffre-là.
+       La carte du dessous, elle, porte sa propre plage et son axe.
+       C'est cette liaison que le test fige : si la courbe cessait de lire
+       `varAn.depuis`, elle redeviendrait le doublon qu'on avait retiré. */
+    eq((source.match(/Charts\.sparkline/g) || []).length, 1,
+      'une seule sparkline, et une seule montee');
+    vrai(/serieAn\(varAn\.depuis, evoNet\)/.test(source),
+      'sa fenêtre est celle de la variation annoncée à côté, jamais une autre');
+    vrai(/Charts\.sparkline\(\$\('#heroSpark'\), serieAn\(v\.depuis, evoNet\)\)/.test(source),
+      'et le montage lit la même');
+    /* Ni axe, ni plage, ni infobulle : `labels` reste éteint. */
+    vrai(!/sparkline\([^)]*labels/.test(source), 'aucune infobulle sur la petite courbe');
     /* Un seul endroit remplit le conteneur de la courbe d'évolution. Compter
        tous les `Charts.stackedArea` serait faux : la projection en appelle un
        aussi, sur une série qui n'a rien à voir. */
@@ -41399,6 +41412,150 @@ suite('Le hero dit sa fenêtre et ce qu’elle n’est pas', () => {
     const css = lireSource('assets/styles.css');
     vrai(/\.hero-label > \.segmented \{ margin-left: auto; \}/.test(css),
       'et la bascule garde sa place, la seule à droite');
+  });
+});
+
+/* --- La courbe du hero, sur la fenetre de la variation ---------------------
+
+   Le vide a droite du grand chiffre donnait une carte inachevee. Il porte
+   desormais l'image du « +13 895 € · +7,6 % » pose a sa gauche : la meme
+   fenetre, la meme serie, aucun chiffre de plus. */
+suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
+  const app = () => lireSource('assets/app.js');
+
+  test('la série couvre exactement la fenêtre que la variation annonce', () => {
+    Fixture.poser();
+    const v = variationAn(todayISO(), true);
+    vrai(!!v, 'la fixture a de quoi comparer');
+    const s = serieAn(v.depuis, true);
+    /* ELLE NE CHOISIT RIEN : la fenêtre lui est passée. Deux sélections côte à
+       côte auraient fini par ne pas désigner le même relevé, et la courbe
+       aurait illustré une autre période que le chiffre d'à côté. */
+    const dans = historySeries({ includeNow: false }).filter(p => String(p.date) >= String(v.depuis));
+    eq(s.length, dans.length + 1, 'un point par relevé de la fenêtre, plus la photo du jour');
+    eq(s[0], num(dans[0].net), 'elle commence au relevé retenu par la variation');
+    eq(s[s.length - 1], num(nowTotals().total), 'et finit sur le patrimoine d’aujourd’hui');
+    /* Le premier et le dernier point encadrent exactement l'écart annoncé. */
+    pres(s[s.length - 1] - s[0], v.eur, 'les deux bouts font la variation affichée');
+  });
+
+  test('aucun point n’est inventé, aucun mois n’est comblé', () => {
+    Fixture.poser();
+    const v = variationAn(todayISO(), true);
+    const s = serieAn(v.depuis, true);
+    const reels = historySeries({ includeNow: false })
+      .filter(p => String(p.date) >= String(v.depuis)).map(p => num(p.net));
+    eq(s.slice(0, -1).join('|'), reels.join('|'),
+      'chaque valeur est celle d’un relevé qui existe');
+    /* Aucune interpolation, aucun lissage : le modèle ne fabrique rien. */
+    const st = lireSource('assets/store.js');
+    const f = st.slice(st.indexOf('function serieAn'), st.indexOf('function deltas'));
+    for (const interdit of ['interpol', 'moyenne', 'lissa', 'fill(', 'while (']) {
+      vrai(!f.includes(interdit), `serieAn n’utilise pas ${interdit}`);
+    }
+    vrai(!/Math\.round|toFixed/.test(f), 'et n’arrondit rien');
+  });
+
+  test('net et brut lisent les mêmes champs que la variation', () => {
+    Fixture.poser();
+    const v = variationAn(todayISO(), false);
+    const s = serieAn(v.depuis, false);
+    eq(s[s.length - 1], num(nowTotals().brut), 'en brut, la photo du jour est le brut');
+    const dans = historySeries({ includeNow: false }).filter(p => String(p.date) >= String(v.depuis));
+    eq(s[0], num(dans[0].total), 'et un relevé passé porte son total d’avoirs');
+    /* ATTENTION AU MOT `total`, QUI DESIGNE DEUX CHOSES : le brut sur un relevé
+       passé, le net sur la photo du jour. Les deux accesseurs sont mot pour mot
+       ceux de variationAn(), et ce test le fige. */
+    const net = serieAn(v.depuis, true);
+    vrai(net[net.length - 1] !== s[s.length - 1] || num(patrimoine().dettes) === 0,
+      'net et brut diffèrent dès qu’un crédit existe');
+  });
+
+  test('pas assez d’historique : aucune courbe, et surtout aucune fausse', () => {
+    eq(serieAn(null, true).length, 0, 'sans fenêtre, aucune série');
+    Store.state = blankState(); Store.migrate(); refreshAccounts();
+    eq(variationAn(todayISO(), true), null, 'sans relevé, aucune variation');
+    /* La vue ne rend le conteneur que sur deux points au moins, et `sparkline()`
+       se tait de son côté sous le même seuil : une ligne entre deux relevés
+       reste une vraie lecture, un point seul n’en est pas une. */
+    const a = app();
+    vrai(/const blocSpark = serieHero\.length < 2 \? ''/.test(a),
+      'sous deux points, la vue ne pose même pas le conteneur');
+    const c = lireSource('assets/charts.js');
+    vrai(/if \(values\.length < 2\) \{ el\.innerHTML = ''; return; \}/.test(c),
+      'et le dessin se tait aussi');
+  });
+
+  test('la couleur vient de la palette existante, et rien n’est ajouté', () => {
+    const c = lireSource('assets/charts.js');
+    const f = c.slice(c.indexOf('function sparkline'), c.indexOf('function sparkline') + 1400);
+    vrai(/cssv\('--good'\)/.test(f) && /cssv\('--critical'\)/.test(f),
+      'hausse et baisse prennent les deux couleurs du projet');
+    vrai(!/#[0-9a-f]{3,6}/i.test(f.replace(/cssv\([^)]*\) \|\| '#fff'/g, '')),
+      'aucune couleur écrite en dur');
+    /* Discrète : un trait fin, un remplissage à douze pour cent, aucune ombre. */
+    vrai(/stroke-width="2"/.test(f), 'trait fin');
+    vrai(/fill-opacity="\.12"/.test(f), 'remplissage très léger');
+    for (const interdit of ['filter:', 'drop-shadow', 'animate', 'linearGradient']) {
+      vrai(!f.includes(interdit), `aucun ${interdit}`);
+    }
+  });
+
+  test('elle ne parle ni au lecteur d’écran ni au doigt', () => {
+    const c = lireSource('assets/charts.js');
+    const f = c.slice(c.indexOf('function sparkline'), c.indexOf('function sparkline') + 1400);
+    vrai(/aria-hidden="true"/.test(f), 'la courbe est décorative, tout est déjà écrit');
+    /* `labels` reste éteint : pas d'infobulle, pas de curseur, pas de zoom. */
+    const a = app();
+    vrai(/Charts\.sparkline\(\$\('#heroSpark'\), serieAn\(v\.depuis, evoNet\)\);/.test(a),
+      'le montage ne passe aucune option d’interaction');
+    vrai(/if \(!opts\.labels\) return;/.test(c), 'et sans elle, rien n’est câblé');
+  });
+
+  test('deux colonnes en haut, la barre de composition sur toute la largeur', () => {
+    const a = app();
+    /* La lecture reste à gauche ; la courbe prend le vide de droite ; la barre
+       passe sous les deux, comme avant. */
+    const i = a.indexOf('<div class="hero-haut">');
+    vrai(i > 0, 'le haut du hero est une rangée');
+    vrai(a.indexOf('<div class="hero-gauche">') > i, 'la colonne de lecture y entre');
+    vrai(a.indexOf('${blocSpark}') > a.indexOf('${blocVariation}'),
+      'et la courbe vient après elle');
+    vrai(a.indexOf('hero-barre') > a.indexOf('${blocSpark}'),
+      'la barre reste sous les deux colonnes');
+    const css = lireSource('assets/styles.css');
+    vrai(/\.hero-haut \{ display: flex; align-items: end; gap: 24px; \}/.test(css),
+      'la rangée est une flexbox, calée sur la ligne de base');
+    vrai(/\.hero-gauche \{ min-width: 0;/.test(css),
+      'et la colonne gauche accepte de se comprimer, sinon un gros montant pousse la courbe dehors');
+  });
+
+  test('sur téléphone, la courbe cède la place au chiffre', () => {
+    const css = lireSource('assets/styles.css');
+    vrai(/@media \(max-width: 560px\) \{ \.hero-spark \{ display: none; \} \}/.test(css),
+      'sous 560 px elle s’efface');
+    /* Elle ne laisse aucun trou : la colonne gauche reprend toute la largeur. */
+    vrai(/\.hero-spark \{ flex: 0 0 auto; width: clamp\(120px, 30%, 280px\); \}/.test(css),
+      'et sur grand écran elle reste bornée des deux côtés');
+  });
+
+  test('le hero garde un seul chiffre principal', () => {
+    const a = app();
+    const i = a.indexOf('<div class="hero-haut">');
+    const bloc = a.slice(i, a.indexOf('hero-barre', i));
+    /* Aucun second montant, aucun pourcentage de plus : la courbe est une
+       image, pas un indicateur. */
+    eq((bloc.match(/hero-value/g) || []).length, 1, 'un seul grand chiffre');
+    /* Le pourcentage vit dans `blocVariation`, construit plus haut : on le
+       compte la ou il est ecrit, et on verifie qu'il n'en est pas apparu un
+       second dans la rangee. */
+    const variation = a.slice(a.indexOf('const blocVariation = !varAn'),
+                              a.indexOf('`;', a.indexOf('</div>`', a.indexOf('const blocVariation = !varAn'))));
+    eq((variation.match(/fmtSignedPct/g) || []).length, 1, 'un seul pourcentage');
+    eq((bloc.match(/fmtSignedPct|fmtEUR0\(/g) || []).length, 1,
+      'et la rangee n’en ajoute aucun autre');
+    vrai(!/rendement|performance|benchmark|objectif/i.test(bloc.replace(/\/\*[\s\S]*?\*\//g, '')),
+      'et aucun indicateur concurrent');
   });
 });
 

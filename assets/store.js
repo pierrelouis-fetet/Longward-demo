@@ -4667,6 +4667,29 @@ function variationAn(aujourdhui = todayISO(), net = true) {
   return depuisLe(premier, 'debut');
 }
 
+/* --- LA SERIE DE LA FENETRE ANNUELLE ----------------------------------------
+
+   ELLE NE CHOISIT RIEN. La fenetre a deja ete choisie par `variationAn()`, qui
+   retient le releve le plus proche de douze mois dans sa tolerance et rend sa
+   date. On la lui passe : deux selections cote a cote auraient fini par ne pas
+   designer le meme releve, et la courbe aurait alors illustre une autre periode
+   que le chiffre pose juste a cote.
+
+   ET ELLE NE CALCULE RIEN. Les deux accesseurs sont mot pour mot ceux de
+   `variationAn()` : `net` sur un releve passe, `total` de `nowTotals()` pour
+   aujourd'hui — en se rappelant que le mot `total` designe le brut sur un
+   releve et le net sur la photo du jour. Aucun mois n'est interpole, aucun trou
+   n'est comble : ce sont les releves qui existent, et rien d'autre. */
+function serieAn(depuis, net = true) {
+  if (!depuis) return [];
+  const t = nowTotals();
+  const valeurs = historySeries({ includeNow: false })
+    .filter(p => String(p.date) >= String(depuis))
+    .map(p => num(net ? p.net : p.total));
+  valeurs.push(num(net ? t.total : t.brut));
+  return valeurs;
+}
+
 function deltas() {
   const pts = historySeries({ includeNow: false });
   const t = nowTotals();

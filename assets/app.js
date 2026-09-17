@@ -1091,6 +1091,29 @@ function viewOverview() {
       </div>
     </div>`;
 
+  /* --- LA COURBE DU VIDE DE DROITE --------------------------------------
+
+     UNE COURBE A DEJA VECU DANS CE HERO, ET ELLE EN EST PARTIE. Elle tracait la
+     meme serie que la carte « Evolution du patrimoine » deux cents pixels plus
+     bas, sans axe ni plage : une version plus faible de sa voisine, et deux
+     dessins du meme chiffre finissent par se contredire. Celle-ci est d'une
+     autre nature, et la difference est structurelle, pas cosmetique : sa
+     fenetre est celle que `variationAn()` a retenue, la meme exactement que le
+     « +13 895 € · +7,6 % » pose a sa gauche. Elle illustre CE chiffre-la, elle
+     ne resume pas l'historique. La carte du dessous, elle, porte sa propre
+     plage — YTD, un an, trois ans, tout — et son axe.
+
+     Deux points au moins, sinon rien : `sparkline()` se tait sous ce seuil, et
+     une ligne entre deux releves reste une vraie lecture. Aucun mois manquant
+     n'est comble.
+
+     Elle ne porte ni chiffre, ni axe, ni legende, ni infobulle — `labels` reste
+     eteint — et elle est `aria-hidden` : tout ce qu'elle montre est deja dit en
+     toutes lettres trois lignes plus haut. */
+  const serieHero = varAn ? serieAn(varAn.depuis, evoNet) : [];
+  const blocSpark = serieHero.length < 2 ? ''
+    : `<div class="hero-spark" id="heroSpark"></div>`;
+
   const moisEnAttente = currentMonthPending();
   const depEnAttente = depensesEnAttente();
   const guide = carteDemarrage();
@@ -1101,6 +1124,8 @@ function viewOverview() {
 
   ${!aUnComptePropre() ? '' : `
   <div class="hero">
+    <div class="hero-haut">
+    <div class="hero-gauche">
     <div>
       ${!aUnComptePropre() ? '' : `
       <div class="hero-label">
@@ -1115,6 +1140,9 @@ function viewOverview() {
       <div class="hero-value">${fmtEUR0(evoNet ? t.total : t.brut)}</div>`}
     </div>
     ${blocVariation}
+    </div>
+    ${blocSpark}
+    </div>
     ${(() => {
       const parts = repartitionClasses({ net: evoNet });
       if (!parts.length) return '';
@@ -1365,6 +1393,12 @@ function viewOverview() {
 function mountOverview() {
   noterInsightsVus();
   monterEvolution();
+  /* La courbe du hero, sur la fenetre que la variation annonce. `mount()` sort
+     en silence quand le conteneur n'est pas rendu, donc rien a garder ici. */
+  (() => {
+    const v = variationAn(todayISO(), evoNet);
+    if (v) Charts.sparkline($('#heroSpark'), serieAn(v.depuis, evoNet));
+  })();
 
   const t = nowTotals();
 
