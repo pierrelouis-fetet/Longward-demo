@@ -41557,14 +41557,13 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
     vrai(a.indexOf('hero-barre') > a.indexOf('${blocSpark}'),
       'la barre reste sous les deux colonnes');
     const css = lireSource('assets/styles.css');
-    /* SOIXANTE / QUARANTE, pose par la grille et non par le contenu. En flex, la
-       courbe prenait tout ce que le texte ne demandait pas : 742 px sur 1 040 à
-       1440, soit soixante et onze pour cent de la carte pour l'illustration d'un
-       chiffre écrit à côté. */
-    vrai(/\.hero-haut \{ display: grid; grid-template-columns: 3fr 2fr; align-items: end; gap: 16px; \}/.test(css),
-      'la rangée partage en trois cinquièmes et deux');
-    /* `3fr 2fr` et non `60% 40%` : les fractions se partagent ce qui reste APRÈS
-       l'écart, donc le total tombe juste. */
+    /* SOIXANTE POUR CENT EST UN PLAFOND POUR LE TEXTE, PAS UN PLANCHER. Avec
+       `3fr 2fr`, la colonne de gauche prenait toujours ses trois cinquièmes même
+       quand le montant n'en demandait que la moitié : le reste devenait un blanc
+       entre le texte et la courbe. */
+    vrai(/grid-template-columns: fit-content\(60%\) minmax\(0, 1fr\);/.test(css),
+      'la colonne de lecture prend ce qu’elle demande, plafonnée à soixante pour cent');
+    vrai(/gap: 16px;/.test(css), 'et un écart normal les sépare');
     vrai(!/grid-template-columns: 60%/.test(css), 'sans pourcentages, qui déborderaient de l’écart');
     vrai(/\.hero-gauche \{ min-width: 0; \}/.test(css),
       'et la colonne gauche accepte de se comprimer, sinon un gros montant la fait déborder');
@@ -41578,8 +41577,14 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
        prend son plancher de 120 : rien ne déborde. */
     vrai(!/@media[^{]*\{\s*\.hero-(haut|spark)/.test(css),
       'aucune requête de média ne la déplace ni ne la masque');
-    vrai(/\.hero-spark \{ min-width: 0; \}/.test(css),
-      'la colonne de droite fait deux cinquièmes, quelle que soit la longueur du montant');
+    vrai(/\.hero-spark \{\s*min-width: 0;/.test(css),
+      'la colonne de droite prend tout ce qui reste, sans plafond');
+    /* PAS DE SELECTION NATIVE SOUS LE DOIGT : un appui maintenu sur un téléphone
+       ouvrirait la loupe et la poignée de sélection, sur le geste même qui sert
+       à lire la courbe. */
+    const zone = css.slice(css.indexOf('.hero-spark {'), css.indexOf('}', css.indexOf('.hero-spark {')));
+    vrai(/-webkit-user-select: none/.test(zone) && /-webkit-touch-callout: none/.test(zone),
+      'et rien ne se sélectionne sous le doigt');
     /* AUCUNE HAUTEUR IMPOSÉE EN CSS, et c'est un piège mesuré : poser `height`
        sur le SVG ne l'aplatit pas, sa `viewBox` se recentre et le tracé
        rétrécit EN LARGEUR au milieu d'un conteneur pleine largeur. */
@@ -41589,13 +41594,29 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
 
   test('aucun blanc ne peut revenir entre le texte et la courbe', () => {
     const css = lireSource('assets/styles.css');
-    /* LE PARTAGE NE DEPEND PLUS DU CONTENU. En flex, la colonne qui grandissait
-       décidait où tombait le blanc : contre le cadre quand c'était le texte,
-       derrière la courbe quand celle-ci portait un plafond. Deux fractions ne
-       laissent aucun reste à placer. */
-    vrai(/grid-template-columns: 3fr 2fr/.test(css), 'deux fractions, aucun reste');
+    /* LE BLANC NAISSAIT D'UNE COLONNE PLUS LARGE QUE SON CONTENU. `fit-content`
+       la réduit à ce qu'elle demande, et `1fr` donne tout le reste à la courbe :
+       il ne subsiste aucun espace à placer entre les deux, hormis l'écart. */
+    vrai(/grid-template-columns: fit-content\(60%\) minmax\(0, 1fr\);/.test(css),
+      'ce que le texte ne prend pas revient à la courbe');
     vrai(!/\.hero-(gauche|spark) \{[^}]*flex:/.test(css),
       'et plus aucune règle de croissance pour en décider autrement');
+    vrai(!/\.hero-spark \{[^}]*max-width/.test(css),
+      'ni plafond de largeur, qui déplacerait le blanc derrière elle');
+  });
+
+  test('la bulle se pose au-dessus du tracé, sans en sortir', () => {
+    const c = lireSource('assets/charts.js');
+    const b = c.slice(c.indexOf('function sparkline'), c.indexOf('return { stackedArea'));
+    /* À `-6px` elle commençait six pixels au-dessus du cadre et retombait sur
+       toute la hauteur de la courbe : on lisait le chiffre à travers le dessin
+       qu'il commente. Son bas se pose maintenant au-dessus du cadre. */
+    vrai(/tip\.style\.top = -Math\.min\(tip\.offsetHeight \+ 8,/.test(b),
+      'son bas remonte au-dessus du cadre, de sa propre hauteur plus huit pixels');
+    /* Et la montée est bornée par la place mesurée sur la carte, jamais par un
+       nombre écrit : sinon elle sortirait par le haut. */
+    vrai(/el\.getBoundingClientRect\(\)\.top - carte\.getBoundingClientRect\(\)\.top/.test(b),
+      'la borne se mesure sur la carte qui porte le graphique');
   });
 
   test('le hero garde un seul chiffre principal', () => {

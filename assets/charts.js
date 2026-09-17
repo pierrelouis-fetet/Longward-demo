@@ -1236,7 +1236,23 @@ const Charts = (() => {
         tip.hidden = false;                  // l'attribut hidden gagnerait sur un style inline
         const tw = tip.offsetWidth;
         tip.style.left = Math.max(0, Math.min(W - tw, x(i) - tw / 2)) + 'px';
-        tip.style.top = '-6px';
+        /* AU-DESSUS DU TRACE, PAS DESSUS. A `-6px`, la bulle commencait six
+           pixels au-dessus du cadre et retombait sur toute la hauteur de la
+           courbe : on lisait le chiffre a travers le dessin qu'il commente.
+           Son BAS se pose desormais huit pixels au-dessus du cadre, donc elle
+           n'en couvre plus rien. La hauteur se mesure a chaque fois : elle
+           depend de la langue et de la taille de police du lecteur.
+
+           ET LA MONTEE EST BORNEE PAR LA PLACE QUI EXISTE, mesuree sur la carte
+           qui porte le graphique et non ecrite en dur : sans cette borne, une
+           bulle plus haute que l'espace disponible sortirait par le haut. Quand
+           la place manque, elle redescend juste ce qu'il faut plutot que de
+           depasser. */
+        const carte = el.closest('.card, .hero');
+        const placeAuDessus = carte
+          ? el.getBoundingClientRect().top - carte.getBoundingClientRect().top - 4
+          : el.clientHeight;
+        tip.style.top = -Math.min(tip.offsetHeight + 8, Math.max(0, placeAuDessus)) + 'px';
       };
       const cacher = () => { curseur.style.display = 'none'; tip.hidden = true; };
       /* Meme regle que la courbe d'evolution, et pour les memes raisons : le doigt
