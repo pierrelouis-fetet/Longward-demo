@@ -4683,17 +4683,23 @@ function ligneCompte(c, avecEtab = true) {
 
 function espaceTerminal(c, idx, t, seule) {
   if (!seule) return '';
-  /* Les actifs comptes EN PARTS ont leur propre carte, qui absorbe
-     « Informations » : voir `detailsPlacement`. Les autres actifs terminaux
-     gardent celle-ci — un pret participatif ou un bien de valeur n'ont ni parts
-     ni prix unitaire, et leur fiche n'a pas la meme question a poser. */
-  if (t.parts) return detailsPlacement(c, idx, t, seule);
-  return `
-  <div class="card">
-    <div class="card-head"><h2>${trad(titreActif(t))}</h2>
-      <span class="hint">${esc(trad(t.label))}</span></div>
-    ${lignePlacement(seule, c, true, true)}
-  </div>`;
+  /* LA MEME CARTE POUR LES QUATRE, ET C'EST LA LIGNE QUI S'EFFACE, PAS LA CARTE.
+
+     Deux presentations cohabitaient. Les actifs comptes en parts avaient une
+     liste cle-valeur ; les autres — pret participatif, bien de valeur —
+     recevaient `lignePlacement`, qui est une LIGNE DE LISTE promue carte : un
+     nom, une pastille, un montant et un gain colles en rangee, avec les faits du
+     pret entasses dans un sous-titre en gris. Cote a cote, deux placements non
+     cotes du meme portefeuille ne se lisaient pas de la meme façon, et l'un
+     n'avait ni « Prix d'achat », ni « Valeur actuelle », ni « Plus-value »
+     nommes.
+
+     Le motif qui justifiait la separation — « ils n'ont ni parts ni prix
+     unitaire » — n'en etait pas un : le gabarit ne rend deja QUE les lignes qui
+     ont un objet. Un pret sans parts n'affiche pas « Parts detenues », il
+     affiche son prix d'achat en totalite ; un actif en parts fait l'inverse.
+     Une seule carte, et chacun y trouve ses lignes. */
+  return detailsPlacement(c, idx, t, seule);
 }
 
 /* UNE SEULE CARTE POUR « QU'EST-CE QUE JE DETIENS EXACTEMENT ? ».
@@ -4729,7 +4735,8 @@ function detailsPlacement(c, idx, t, l) {
   <div class="card">
     <div class="card-head"><h2>${trad(titreActif(t))}</h2>
       <button class="btn sm ghost" data-action="editer-placement"
-              data-id="${esc(c.id)}" data-i="${l.ref}">${trad('Parts et valeur')}</button></div>
+              data-id="${esc(c.id)}" data-i="${l.ref}"
+              >${trad(t.parts ? 'Parts et valeur' : 'Valeur et prix d’achat')}</button></div>
     <dl class="kv">
       ${ligne(trad('Parts détenues'), u ? fmtNombre(u.parts) : null)}
       ${ligne(trad('Valeur estimée / part') + aide(trad('La valeur que tu as déclarée, divisée par le nombre de parts. Ce placement n’est pas coté : c’est une estimation, pas un cours.')),
@@ -4737,9 +4744,17 @@ function detailsPlacement(c, idx, t, l) {
       ${ligne(trad('Prix d’achat / part'),
               u && u.revient != null ? fmtPart(u.revient)
                 : (u ? nonRenseigne : null))}
+      ${ligne(trad('Prix d’achat'), u ? null
+              : (l.prixDeRevient ? fmtEUR(l.prixDeRevient) : nonRenseigne))}
       ${ligne(trad('Valeur actuelle'), fmtEUR(l.valeur))}
-      ${ligne(trad('Plus-value latente') + aide(trad('La valeur d’aujourd’hui moins ce que tu as payé. Latente : elle n’est encaissée qu’à la revente, et la valeur d’un placement non coté est une estimation. Aucun impôt n’en est déduit : l’application ne modélise aucun régime fiscal, ici pas plus qu’ailleurs.')),
+      ${ligne(t.prete
+          ? trad('Écart depuis le prêt') + aide(trad('La valeur d’aujourd’hui moins ce que tu as prêté. Sur un prêt, l’écart vient des intérêts courus ou d’une révision de la valeur : il ne s’encaisse qu’au remboursement, et un défaut peut le ramener à zéro.'))
+          : trad('Plus-value latente') + aide(trad('La valeur d’aujourd’hui moins ce que tu as payé. Latente : elle n’est encaissée qu’à la revente, et la valeur d’un placement non coté est une estimation. Aucun impôt n’en est déduit : l’application ne modélise aucun régime fiscal, ici pas plus qu’ailleurs.')),
               plusValue)}
+      ${ligne(trad('Taux annoncé'), l.taux ? `${fmtNombre(num(l.taux))} %` : null)}
+      ${ligne(trad('Échéance'), l.echeance ? fmtJourMois(l.echeance) : null)}
+      ${ligne(trad('Statut'), statutLigne(l) === 'encours'
+              ? null : trad(STATUTS_LIGNE[statutLigne(l)]))}
       ${ligne(trad('Liquidité'), champMobilite(l, c, true))}
     </dl>
   </div>`;
@@ -4776,7 +4791,13 @@ function champMobilite(l, compte, editable) {
     </span>`;
 }
 
-function lignePlacement(l, compte, editable = false, sansNom = false) {
+/* `sansNom` A DISPARU AVEC SON SEUL APPELANT. Ce quatrieme argument servait a
+   promouvoir une ligne de liste en carte, sur la fiche d'un actif terminal :
+   elle y taisait son nom — deja ecrit deux fois plus haut — et prenait celui de
+   sa classe. Ces fiches rendent maintenant la meme carte cle-valeur que les
+   actifs en parts, donc plus rien ne demande ce mode, et un mode d'affichage que
+   personne n'exerce finit par mentir sans qu'on le sache. */
+function lignePlacement(l, compte, editable = false) {
   const gain = l.prixDeRevient ? l.valeur - l.prixDeRevient : null;
   /* La disponibilite se lit comme une pastille, pas comme un menu deroulant.
 
@@ -4793,14 +4814,7 @@ function lignePlacement(l, compte, editable = false, sansNom = false) {
      faux menu reconstruit aurait fallu refaire. */
   const dispo = champMobilite(l, compte, editable);
   const st = statutLigne(l);
-  /* Le nom affiche de la ligne.
-
-     `sansNom` : sur la fiche d'un actif terminal, ce nom est celui de la fiche
-     elle-meme, ecrit deux fois plus haut. La ligne prend alors le nom de sa
-     classe, qui dit quelque chose de neuf, et le sous-titre garde ce qui ne se
-     lit nulle part ailleurs. */
-  const libelle = sansNom ? trad(CLASSES_ACTIFS[l.classe] || l.classe)
-                          : nomLignePlacement(l, compte);
+  const libelle = nomLignePlacement(l, compte);
   const replie = x => String(x || '').trim().toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '');
   const pareil = (a, b) => {
@@ -4822,7 +4836,7 @@ function lignePlacement(l, compte, editable = false, sansNom = false) {
     return seul == null ? combien : `${combien} · ${fmtPart(seul)} ${trad('la part')}`;
   })();
 
-  const sousTitre = [...(sansNom ? [] : [CLASSES_ACTIFS[l.classe] || l.classe, nomCompteV2(compte)]),
+  const sousTitre = [CLASSES_ACTIFS[l.classe] || l.classe, nomCompteV2(compte),
     parPart,
     l.taux ? `${fmtNombre(num(l.taux))} % ${trad('annoncé')}` : '',
     l.echeance ? `${trad('échéance')} ${fmtJourMois(l.echeance)}` : '',
