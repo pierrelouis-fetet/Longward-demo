@@ -1264,9 +1264,15 @@ table .field :is(input, select) { max-width: none; }
   padding: 24px 26px;
   display: flex; flex-direction: column; gap: 16px;
 }
+/* Elle est fille de la carte, pas de la colonne de lecture : c'est ce qui lui
+   rend toute la largeur, et donc le bord droit ou sa bascule se cale.
+   `margin-bottom: -10px` reprend une part de l'ecart de seize pixels de la
+   carte : l'intitule appartient au chiffre qu'il nomme, il ne flotte pas a
+   mi-chemin entre lui et le bord. */
 .hero-label {
   font-size: var(--font-sm); text-transform: uppercase; letter-spacing: .08em; color: var(--text-secondary);
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: -10px;
 }
 .hero-label > .segmented { margin-left: auto; }
 

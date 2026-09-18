@@ -41781,6 +41781,34 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
       'ni plafond de largeur, qui déplacerait le blanc derrière elle');
   });
 
+  test('l’intitulé et sa bascule couvrent la carte, pas une colonne', () => {
+    const a = app();
+    const i = a.indexOf('<div class="hero">');
+    const hero = a.slice(i, a.indexOf('hero-barre', i));
+    /* LE DEFAUT, MESURE AVANT CORRECTION. L'intitule et sa bascule vivaient dans
+       la colonne de lecture. Tant qu'elle prenait la plus grande part de la
+       rangee, ils tenaient sur une ligne ; le jour ou les deux colonnes sont
+       passees a la moitie chacune, la place a manque — a 390 px, 155 px de
+       colonne pour 78 d'intitule, 10 d'ecart et 107 de pilule, soit 195. La
+       pilule passait a la ligne, et sa marge automatique la posait au bord droit
+       DE LA COLONNE, c'est-a-dire au milieu de la carte, juste au-dessus du
+       grand chiffre. Vu a l'ecran, sur un telephone. */
+    vrai(hero.indexOf('hero-label') < hero.indexOf('hero-haut'),
+      'l’intitulé se rend avant la grille des deux colonnes');
+    vrai(hero.indexOf('hero-label') < hero.indexOf('hero-gauche'),
+      'et il n’est donc pas dans la colonne de lecture');
+    /* La bascule se cale au bord droit de la carte, convention des autres
+       cartes : l'intitule a gauche, sa bascule en haut a droite. */
+    const css = lireSource('assets/styles.css');
+    vrai(/\.hero-label > \.segmented \{ margin-left: auto; \}/.test(css),
+      'la bascule se cale au bord droit');
+    /* Et la grille ne porte plus que ce qui se partage vraiment en deux. */
+    const haut = hero.slice(hero.indexOf('hero-haut'));
+    vrai(!haut.includes('hero-label'), 'la grille ne porte plus l’intitulé');
+    vrai(haut.includes('hero-value') && haut.includes('${blocSpark}'),
+      'elle garde le chiffre et sa courbe');
+  });
+
   test('la bulle se pose au-dessus du tracé, sans en sortir', () => {
     const c = lireSource('assets/charts.js');
     const b = c.slice(c.indexOf('function sparkline'), c.indexOf('return { stackedArea'));
