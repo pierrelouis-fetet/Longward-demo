@@ -2696,7 +2696,7 @@ const POS_SORT_KEYS = {
   poids:    p => posValue(p),
   assetClass: p => ASSET_CLASSES[assetClassDe(p)],
   role:       p => ROLES[roleDe(p)],
-  account:  p => ACC[p.account]?.short || '',
+  account:  p => ACC[p.account]?.label || '',
 };
 
 function sortPositions(entries) {
@@ -2983,7 +2983,7 @@ function viewPositions() {
             title="${trad('Ouvrir la fiche : quantité, prix de revient, ISIN, compte…')}"
             >${esc(p.name || 'Sans nom')}<span class="sub">${
               esc([ASSET_CLASSES[assetClassDe(p)], ROLES[roleDe(p)],
-                   ACC[p.account]?.short || ''].filter(Boolean).join(' · '))
+                   ACC[p.account]?.label || ''].filter(Boolean).join(' · '))
             }</span></button></td>
       <td class="muted">${p.qty != null && p.qty !== '' ? num(p.qty).toLocaleString(locale()) : ''}</td>
       <td class="muted">${num(p.buyPrice) ? fmtCur(p.buyPrice, dev(p)) : ''}</td>
@@ -3196,7 +3196,7 @@ function viewPositions() {
                           title="${trad('Ne montrer que les lignes d’un compte')}">
             <option value="tous" ${posCompte === 'tous' ? 'selected' : ''}>${trad('Tous les comptes')}</option>
             ${ids.map(id => `<option value="${esc(id)}" ${posCompte === id ? 'selected' : ''}>${
-              esc(ACC[id]?.label || ACC[id]?.short || id)}</option>`).join('')}
+              esc(ACC[id]?.label || id)}</option>`).join('')}
           </select>`;
         })()}
         <span class="hint">${ps.length} ${ps.length > 1 ? trad('lignes') : trad('ligne')}${
@@ -3212,7 +3212,7 @@ function viewPositions() {
         return ligneListe({
           action: 'open-position', index: i,
           titre: p.name || 'Sans nom',
-          sous: `${ASSET_CLASSES[assetClassDe(p)]} · ${ROLES[roleDe(p)]} · ${ACC[p.account]?.short || ''}`,
+          sous: `${ASSET_CLASSES[assetClassDe(p)]} · ${ROLES[roleDe(p)]} · ${ACC[p.account]?.label || ''}`,
           valeur: fmtEUR(v),
           second: pp == null ? trad('prix de revient manquant') : fmtSignedPct(pp, 1),
           classeSecond: pp == null ? 'muted' : cls(pp),
@@ -3835,7 +3835,7 @@ function mountSymbolSearch() {
               const e = cashInvestirEntree(cc, true);
               e.montant = round2(num(e.montant) - enEuros);
               Store.save(); render();
-              toast(`${fmtEUR0(enEuros)} ${trad('débité de')} ${ACC[v.cash]?.short || 'cash'}`);
+              toast(`${fmtEUR0(enEuros)} ${trad('débité de')} ${ACC[v.cash]?.label || 'cash'}`);
             }
           }
         });
@@ -7540,7 +7540,7 @@ function sheetPositions() {
       { h: '% portefeuille', t: 'pct', w: 14 },
     ],
     rows: Store.state.positions.map(p => [
-      p.name, p.isin || '', p.symbol || '', ACC[p.account]?.short || p.account,
+      p.name, p.isin || '', p.symbol || '', ACC[p.account]?.label || p.account,
       ASSET_CLASSES[assetClassDe(p)], ROLES[roleDe(p)],
       num(p.qty), num(p.buyPrice), num(p.price), p.currency || 'EUR', num(p.fx || 1),
       round2(posValue(p)), round2(posInvested(p)),
@@ -8026,7 +8026,7 @@ const ACTIONS = {
       toast(trad('Vente retirée du journal'));
       return;
     }
-    const ou = v.cashAccount ? ACC[v.cashAccount]?.short || compteById(v.cashAccount)
+    const ou = v.cashAccount ? ACC[v.cashAccount]?.label || compteById(v.cashAccount)
       && nomCompteV2(compteById(v.cashAccount)) || 'le cash' : null;
     if (!await askConfirm(trad('Annuler cette vente ?') + '\n'
       + `${v.name}, ${num(v.qty)} × ${fmtCur(num(v.price), v.currency)}, ${fmtSigned(v.realised)}.\n\n`
@@ -8056,7 +8056,7 @@ const ACTIONS = {
     if (!a) { toast(trad('Vente impossible')); return; }
     Store.save(); render();
     const ou = v.cashAccount
-      ? ` · ${trad('encaissé sur')} ${ACC[v.cashAccount]?.short || trad('le cash')}` : '';
+      ? ` · ${trad('encaissé sur')} ${ACC[v.cashAccount]?.label || trad('le cash')}` : '';
     toast(`${a.realised >= 0 ? trad('Plus-value') : trad('Moins-value')} ${trad('de')} ${fmtSigned(a.realised)}${ou}`);
   },
   /* Ajouter une ligne : un seul chemin, et c'est la recherche.
@@ -10058,7 +10058,7 @@ const ACTIONS = {
       }
       Store.save(); render();
       toast(`${a.qty} × ${fmtCur(a.price, p.currency)} · ${trad('nouveau PRU')} ${fmtCur(p.buyPrice, p.currency)}`
-        + (a.cashAccount ? ` · ${trad('débité de')} ${ACC[a.cashAccount]?.short || 'cash'}` : ''));
+        + (a.cashAccount ? ` · ${trad('débité de')} ${ACC[a.cashAccount]?.label || 'cash'}` : ''));
     }
   },
   async 'regler-objectif-depenses'() {
@@ -12889,7 +12889,7 @@ const APERCUS = {
 
   bourse: () => {
     const lignes = Store.state.positions.map(p => ({
-      label: p.name, meta: `${ACC[p.account]?.short || ''} · ${ASSET_CLASSES[assetClassDe(p)]}`,
+      label: p.name, meta: `${ACC[p.account]?.label || ''} · ${ASSET_CLASSES[assetClassDe(p)]}`,
       valeur: posValue(p), perf: posPerfPct(p),
     }));
     for (const a of accountsWhere(x => x.group === 'bourse' && !x.holdings)) {
@@ -13168,7 +13168,7 @@ const APERCUS = {
         : `${fmtSignedPct(lat.pct)} ${trad('sur.investis', 'sur')} ${fmtEUR0(lat.invested)} ${trad('investis')}`,
         noteSansBase(lat)].filter(Boolean).join(', '),
       lignes: Store.state.positions
-        .map(p => ({ label: p.name, meta: `${ACC[p.account]?.short || ''} · ${ASSET_CLASSES[assetClassDe(p)]}`,
+        .map(p => ({ label: p.name, meta: `${ACC[p.account]?.label || ''} · ${ASSET_CLASSES[assetClassDe(p)]}`,
                      valeur: posPerfEur(p), perf: posPerfPct(p) }))
         .sort(parGainDecroissant),
       vue: 'positions', ancre: 'titres', cta: trad('Voir les lignes'),
@@ -13349,7 +13349,7 @@ const APERCUS = {
         ? trad('prix de revient non renseigné')
         : `${fmtSignedPct(pnl.pct)} ${trad('sur le prix de revient')}`,
       lignes: Store.state.positions
-        .map(p => ({ label: p.name, meta: `${ACC[p.account]?.short || ''} · ${num(p.qty)} × ${fmtCur(p.price, p.currency)}`,
+        .map(p => ({ label: p.name, meta: `${ACC[p.account]?.label || ''} · ${num(p.qty)} × ${fmtCur(p.price, p.currency)}`,
                      valeur: posValue(p), perf: posPerfPct(p) }))
         .sort((a, b) => b.valeur - a.valeur),
       vue: 'positions', ancre: 'titres', cta: trad('Voir les lignes'),
@@ -13382,7 +13382,7 @@ const APERCUS = {
         trad('avant impôt'),
         noteSansBase(pnl)].filter(Boolean).join(', '),
       lignes: Store.state.positions
-        .map(p => ({ label: p.name, meta: `${ACC[p.account]?.short || ''} · ${ASSET_CLASSES[assetClassDe(p)]}`,
+        .map(p => ({ label: p.name, meta: `${ACC[p.account]?.label || ''} · ${ASSET_CLASSES[assetClassDe(p)]}`,
                      valeur: posPerfEur(p), perf: posPerfPct(p) }))
         .sort(parGainDecroissant),
       vue: 'positions', ancre: '', cta: trad('Voir tes lignes'),
