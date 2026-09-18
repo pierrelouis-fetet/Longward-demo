@@ -5208,8 +5208,23 @@ details[open]::details-content { block-size: auto; }
 .vue-entre .chart-trace {
   animation: chart-balaye .78s cubic-bezier(.3, .8, .4, 1) .1s backwards;
 }
+/* PAS DE `backwards` ICI, ET C'EST UNE MESURE QUI L'A DIT. Ce mode applique
+   l'image de depart avant que l'animation parte — soit un decoupage a zero pour
+   cette image-la. Mesure dans un panneau masque, ou le navigateur ne fait pas
+   avancer les animations : la classe restait posee, l'animation n'avait jamais
+   commence, et le graphique etait INVISIBLE. Le balayage d'arrivee s'en tire
+   parce que sa classe vit sur la vue et disparait toute seule ; celle-ci
+   attendait la fin d'une animation qui n'arrivait pas.
+
+   Sans `backwards`, le pire qui arrive est un dessin pose d'un coup, ce qui est
+   exactement ce qu'on avait avant. Le retard de cent millisecondes de l'arrivee
+   n'existe pas ici non plus, donc le mode ne servait a rien d'autre. */
+.chart-trace.chart-rejoue {
+  animation: chart-balaye .45s cubic-bezier(.3, .8, .4, 1);
+}
 @media (prefers-reduced-motion: reduce) {
-  .vue-entre .chart-trace { animation: none; }
+  .vue-entre .chart-trace,
+  .chart-trace.chart-rejoue { animation: none; }
 }
 
 .vue-entre.barre-immobile > .sous-onglets { animation: none; }
