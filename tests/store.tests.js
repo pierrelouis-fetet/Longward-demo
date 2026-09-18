@@ -5282,18 +5282,36 @@ suite('Fiche d’une participation : la valeur d’un côté, l’identité de l
     /* Deux types portent le drapeau, et la carte les sert tous les deux. */
     const avecParts = TYPES_COMPTE.filter(t => t.parts).map(t => t.id).sort();
     eq(avecParts.join(','), 'fondsNonCote,pe', 'les deux types qui se divisent en parts');
-    vrai(/if \(t\.parts\) return detailsPlacement\(c, idx, t, seule\);/.test(vue()),
-      'l’aiguillage lit le drapeau du type');
+    /* IL N'Y A PLUS D'AIGUILLAGE : les quatre actifs terminaux rendent la meme
+       carte, et c'est la LIGNE qui s'efface quand elle n'a pas d'objet. Un
+       branchement sur `t.parts` avait donne deux presentations a la meme
+       question, et deux placements non cotes du meme portefeuille ne se lisaient
+       pas de la meme façon. */
+    vrai(/return detailsPlacement\(c, idx, t, seule\);/.test(vue()),
+      'la carte est la même pour tous');
+    vrai(!/if \(t\.parts\) return/.test(vue()),
+      'et le drapeau des parts ne choisit plus une présentation');
   });
 
-  test('les actifs terminaux sans parts gardent « Le placement »', () => {
-    /* Un pret participatif ou un bien de valeur n'ont ni parts ni prix
-       unitaire : leur fiche n'a pas la meme question a poser. */
+  test('un actif sans parts trouve ses lignes, et pas celles des autres', () => {
+    /* Un pret participatif n'a ni parts ni prix unitaire ; il a un prix d'achat,
+       une valeur, un ecart, un taux, une echeance et un statut. Il avait une
+       ligne de liste en guise de carte, et aucun de ces intitules. */
     const app = vue();
-    const e = app.slice(app.indexOf('function espaceTerminal'),
-                        app.indexOf('\n}', app.indexOf('function espaceTerminal')));
-    vrai(/lignePlacement\(seule, c, true, true\)/.test(e),
-      'l’ancienne carte reste servie aux autres');
+    const carte = app.slice(app.indexOf('function detailsPlacement'),
+                            app.indexOf('\n}', app.indexOf('function detailsPlacement')));
+    /* SANS PARTS, LE PRIX SE LIT EN TOTALITE ; avec des parts, les deux lignes
+       a l'unite le disent deja et un total serait la meme chose deux fois. */
+    vrai(/ligne\(trad\('Prix d’achat'\), u \? null/.test(carte),
+      'le prix total ne paraît que faute de parts');
+    vrai(/ligne\(trad\('Parts détenues'\), u \? fmtNombre\(u\.parts\) : null\)/.test(carte),
+      'et les parts ne paraissent que s’il y en a');
+    /* Les faits d'un pret prennent chacun leur ligne, au lieu d'un sous-titre. */
+    for (const fait of ['Taux annoncé', 'Échéance', 'Statut']) {
+      vrai(carte.includes(`trad('${fait}')`), `« ${fait} » a sa ligne`);
+    }
+    vrai(/statutLigne\(l\) === 'encours'\s*\n?\s*\? null/.test(carte),
+      'et un prêt en cours ne dit pas son statut, qui n’apprendrait rien');
     const pret = TYPES_COMPTE.find(t => t.id === 'crowdfunding');
     vrai(pret.terminal && !pret.parts, 'et un prêt participatif est bien de ceux-là');
   });
@@ -5320,7 +5338,10 @@ suite('Fiche d’une participation : la valeur d’un côté, l’identité de l
     eq((d.match(/class="btn sm ghost"/g) || []).length, 1, 'un seul bouton sur cette carte');
     eq((d.match(/data-action="editer-placement"/g) || []).length, 1,
       'qui ouvre les parts et la valeur');
-    vrai(/trad\('Parts et valeur'\)/.test(d), 'et il le dit');
+    /* Et son nom suit le type : « Parts et valeur » n'aurait rien voulu dire
+       sur un pret participatif, qui n'a pas de parts. */
+    vrai(/trad\(t\.parts \? 'Parts et valeur' : 'Valeur et prix d’achat'\)/.test(d),
+      'et il le dit, dans les mots du type');
     vrai(!/trad\('Modifier'\)/.test(d),
       'il ne s’appelle plus « Modifier », qui ne disait pas quoi');
     /* L'identite a la sienne : ce chemin-ci ne double plus l'autre. */
@@ -5370,9 +5391,15 @@ suite('Fiche d’une participation : la valeur d’un côté, l’identité de l
     /* Ce placement n'est pas cote : un prix unitaire y est une division, pas
        un cours, et une plus-value latente n'est pas encaissee. */
     const d = corps();
-    eq((d.match(/aide\(trad\(/g) || []).length, 2, 'deux bulles, deux mesures déduites');
+    /* Trois maintenant : la troisieme est celle d'un pret, ou l ecart n est pas
+       une plus-value — il vient des interets courus, il s encaisse au
+       remboursement, et un defaut peut le ramener a zero. Le calcul est le meme,
+       le fait ne l est pas, et le mot suit le fait. */
+    eq((d.match(/aide\(trad\(/g) || []).length, 3, 'trois bulles, trois mesures déduites');
     vrai(/n’est pas coté/.test(d), 'la première rappelle que rien n’est coté');
     vrai(/à la revente/.test(d), 'la seconde, que rien n’est encaissé');
+    vrai(/au remboursement/.test(d), 'et celle d’un prêt, qu’il faut être remboursé');
+    vrai(/t\.prete/.test(d), 'le mot se choisit sur le drapeau du type, pas sur son nom');
   });
 
   test('la réserve d’impôt se dit là où le chiffre imposable se lit', () => {
@@ -6050,14 +6077,16 @@ suite('Actifs terminaux : pas de placement dans un placement', () => {
     /* Le nom du compte est celui de la fiche, ecrit deux fois plus haut. La
        ligne prend celui de sa classe, qui dit quelque chose de neuf. */
     const app = lireSource('assets/app.js');
-    vrai(/function lignePlacement\(l, compte, editable = false, sansNom = false\)/.test(app),
-      'la ligne sait se rendre sans son nom');
-    vrai(/const libelle = sansNom \? trad\(CLASSES_ACTIFS\[l\.classe\] \|\| l\.classe\)/.test(app),
-      'elle porte alors le nom de sa classe');
-    vrai(/\.\.\.\(sansNom \? \[\] : \[CLASSES_ACTIFS\[l\.classe\] \|\| l\.classe, nomCompteV2\(compte\)\]\)/.test(app),
-      'et son sous-titre ne répète ni la classe ni le compte');
-    vrai(/lignePlacement\(seule, c, true, true\)/.test(app),
-      'la carte du placement terminal s’en sert');
+    vrai(/function lignePlacement\(l, compte, editable = false\)/.test(app),
+      'la ligne se rend d’une seule façon');
+    vrai(/const libelle = nomLignePlacement\(l, compte\);/.test(app),
+      'elle tire son nom de la fonction qui en décide, une seule fois');
+    /* ET LE MODE « SANS NOM » A DISPARU AVEC SON SEUL APPELANT : la fiche d'un
+       actif terminal ne promeut plus une ligne de liste en carte, elle rend la
+       meme carte cle-valeur que les autres. Un mode que personne n'exerce finit
+       par mentir sans qu'on le sache. */
+    vrai(!/sansNom/.test(app.replace(/\/\*[\s\S]*?\*\//g, '')),
+      'et le mode « sans nom » n’a plus lieu d’être');
   });
 
   test('l’architecture ne bouge pas : établissement, puis compte', () => {
@@ -16914,10 +16943,10 @@ suite('Un bien de valeur se tient tout seul, et se nomme une fois', () => {
        la fiche, et la classe devient au contraire ce qu'elle apporte. Un
        parametre d'affichage se juge donc sur ce qu'il tait, jamais sur le
        nombre d'arguments. */
-    vrai(/function lignePlacement\(l, compte, editable = false, sansNom = false\) \{/.test(src),
-      'le quatrième argument dit lequel des deux noms se tait');
-    eq((src.match(/[^m]lignePlacement\(/g) || []).length, 3,
-      'une déclaration et deux appelants : la liste d’un compte, et sa ligne unique');
+    vrai(/function lignePlacement\(l, compte, editable = false\) \{/.test(src),
+      'trois arguments, et plus de mode d’affichage caché dans un quatrième');
+    eq((src.match(/[^m]lignePlacement\(/g) || []).length, 2,
+      'une déclaration et un appelant : la liste des placements d’un compte');
 
     /* Le repli vit cote store, et les vues le partagent : la liste, la fenetre
        d'apercu d'une classe, et tout ce qui viendra. Une seule des deux le
