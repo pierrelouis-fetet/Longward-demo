@@ -1189,19 +1189,20 @@ function viewOverview() {
 
   ${!aUnComptePropre() ? '' : `
   <div class="hero">
+    ${!aUnComptePropre() ? '' : `
+    <div class="hero-label">
+      <span>${trad(evoNet ? 'Patrimoine net' : 'Patrimoine brut')}</span>
+      ${basculesAffichees().netBrut ? `<span class="segmented seg-mini">
+        <button data-action="hero-base" data-net="1" class="${evoNet ? 'on' : ''}"
+                title="${trad('Tes avoirs moins tes crédits')}">${trad('Net')}</button>
+        <button data-action="hero-base" data-net="" class="${evoNet ? '' : 'on'}"
+                title="${trad('La valeur de tes avoirs, crédits non déduits')}">${trad('Brut')}</button>
+      </span>` : ''}
+    </div>`}
     <div class="hero-haut">
     <div class="hero-gauche">
     <div>
       ${!aUnComptePropre() ? '' : `
-      <div class="hero-label">
-        <span>${trad(evoNet ? 'Patrimoine net' : 'Patrimoine brut')}</span>
-        ${basculesAffichees().netBrut ? `<span class="segmented seg-mini">
-          <button data-action="hero-base" data-net="1" class="${evoNet ? 'on' : ''}"
-                  title="${trad('Tes avoirs moins tes crédits')}">${trad('Net')}</button>
-          <button data-action="hero-base" data-net="" class="${evoNet ? '' : 'on'}"
-                  title="${trad('La valeur de tes avoirs, crédits non déduits')}">${trad('Brut')}</button>
-        </span>` : ''}
-      </div>
       <div class="hero-value">${fmtEUR0(evoNet ? t.total : t.brut)}</div>`}
     </div>
     ${blocVariation}
