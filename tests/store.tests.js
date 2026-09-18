@@ -17484,6 +17484,36 @@ suite('Un bien se crée seul, s’estime, et se modifie par un bouton', () => {
       'la date accompagne toujours la valeur estimée');
   });
 
+  test('un compte n’a qu’un nom, et c’est celui qu’on a tapé', () => {
+    /* « Crypto · Satellite · Crypto » : le troisieme mot d'un sous-titre de
+       ligne de titres est le nom du COMPTE, et il affichait un nom court herite
+       des anciennes donnees. Un portefeuille nomme « Crypto wallet TR » se
+       lisait « Crypto » sous chacune de ses lignes — ce qui ne dit meme pas
+       duquel il s'agit quand il y en a deux. Vu a l'ecran.
+
+       `c.court` n'est modifiable par AUCUN ecran depuis le passage au modele
+       actuel : il ne pouvait donc que vieillir, et il gagnait. */
+    Fixture.poser();
+    refreshAccounts();
+    const projetes = Object.values(ACC).filter(a => !a.fantome);
+    vrai(projetes.length > 0, 'la fixture projette des comptes');
+    for (const a of projetes) {
+      vrai(!('short' in a), `« ${a.label} » ne porte plus de nom court`);
+      eq(a.label, nomCompteV2(a.compte), `« ${a.label} » porte le nom du compte`);
+    }
+    /* ET AUCUN ECRAN NE PEUT PLUS EN LIRE UN SECOND. Treize endroits affichaient
+       `short` ; la decision avait pourtant deja ete prise pour le menu de choix
+       d'un compte, avec ce motif exact. Elle n'avait ete appliquee qu'a un
+       endroit, et deux champs pour un meme fait finissent par diverger. */
+    const app = lireSource('assets/app.js');
+    vrai(!/\?\.short/.test(app), 'aucune vue ne lit de nom court');
+    /* La donnee, elle, reste : une pierre tombale de compte supprime la porte,
+       et on ne jette pas une donnee parce qu'elle a cesse de s'afficher. */
+    const store = lireSource('assets/store.js');
+    vrai(/court: a\.short \|\| ''/.test(store),
+      'la migration continue de la conserver');
+  });
+
   test('la fiche appelle un bien un bien', () => {
     /* « Nom du compte », « Type de compte », « Compte » en etiquette de tete : on
        n'a pas de compte dans une montre. Le mot se derive du meme drapeau que

@@ -1682,7 +1682,26 @@ function refreshAccounts() {
                  : t.classes.includes('bienValeur') ? 'biens'
                  : t.groupe;
       const nom = nomCompteV2(c), etab = nomEtabDe(c);
-      return { id: c.id, label: nom, short: c.court || nom,
+      /* UN SEUL NOM, ET C'EST CELUI QU'ON A TAPE.
+
+         La projection en portait deux : `label`, le nom du compte, et `short`,
+         un nom court herite des anciennes donnees — `c.court`, que AUCUN ecran
+         ne permet de modifier depuis le passage au modele actuel. Treize
+         endroits affichaient le second, et il gagnait des qu'il existait : un
+         portefeuille nomme « Crypto wallet TR » se lisait « Crypto » sous
+         chacune de ses lignes de titres, ce qui ne dit meme pas de quel compte
+         il s'agit quand il y en a deux.
+
+         La decision avait deja ete prise pour le menu de choix d'un compte, avec
+         ce motif exact — « Crypto ne dit pas si c'est le portefeuille de
+         cryptomonnaies ou autre chose ». Elle n'avait ete appliquee qu'a un
+         endroit. Deux champs pour un meme fait finissent toujours par diverger ;
+         il n'en reste qu'un.
+
+         `c.court` reste dans le modele : les pierres tombales des comptes
+         supprimes le portent, et une donnee ne se jette pas parce qu'elle a
+         cesse de s'afficher. */
+      return { id: c.id, label: nom,
                broker: etab, type: c.type, group: t.groupe, gAff,
                holdings: !!t.titres, role: '', alloc: c.alloc,
                legacy: c.statut === 'archive', compte: c };
