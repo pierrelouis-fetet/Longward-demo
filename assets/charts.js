@@ -400,7 +400,10 @@ const Charts = (() => {
         </svg>`;
 
       const cle = cleTrace(el);
-      if (anime && cle && !mouvementRefuse()) animerDepuis(dernierTrace.get(cle));
+      /* Deformer quand les deux dessins parlent des memes mois, redecouvrir
+         sinon : `animerDepuis` dit lequel des deux elle a pu faire. */
+      if (anime && cle && !mouvementRefuse()
+          && !animerDepuis(dernierTrace.get(cle))) balayer();
       anime = false;
       if (cle) dernierTrace.set(cle, {
         genre: 'aire',
@@ -414,8 +417,8 @@ const Charts = (() => {
       });
 
       function animerDepuis(avant) {
-        if (!avant || avant.genre !== 'aire') return;
-        if (avant.dates !== points.map(p => p.date || p.label).join('|')) return;
+        if (!avant || avant.genre !== 'aire') return false;
+        if (avant.dates !== points.map(p => p.date || p.label).join('|')) return false;
         const cles = [...avant.cles];
         for (const k of series.map(sr => sr.key)) if (!cles.includes(k)) cles.push(k);
         const ordre = series.map(sr => sr.key);
@@ -427,7 +430,7 @@ const Charts = (() => {
 
         const svgEl = el.querySelector('svg');
         const trace = el.querySelector('.chart-trace');
-        if (!svgEl || !trace) return;
+        if (!svgEl || !trace) return false;
 
         const couleur = Object.fromEntries(series.map(sr => [sr.key, sr.color]));
         const partantes = cles.filter(k => !ordre.includes(k));
@@ -505,6 +508,36 @@ const Charts = (() => {
         requestAnimationFrame(pas);
         svgEl.addEventListener('pointerdown', finir, { once: true });
         svgEl.addEventListener('pointermove', finir, { once: true });
+        return true;
+      }
+
+      /* LE DESSIN SE REDECOUVRE, FAUTE DE POUVOIR SE DEFORMER.
+
+         Changer de plage change les abscisses : trois ans n'a pas les mois d'un
+         an, et interpoler une bande entre deux axes differents ferait glisser
+         des valeurs d'une date vers une autre. C'est pour cela que
+         `animerDepuis` refuse, et elle a raison de refuser.
+
+         Reste a ne pas poser le nouveau dessin d'un coup. Le balayage de gauche
+         a droite existe deja pour l'arrivee sur la vue : c'est le meme geste,
+         dans le sens du temps, et il ne raconte rien de faux — il ne pretend pas
+         qu'une valeur s'est deplacee, il decouvre une periode.
+
+         Plus court qu'a l'arrivee, et sans retard : ici on vient d'appuyer sur
+         un bouton qu'on peut reappuyer tout de suite, et une attente de huit
+         dixiemes entre deux plages se sentirait. */
+      function balayer() {
+        const trace = el.querySelector('.chart-trace');
+        if (!trace) return;
+        trace.classList.add('chart-rejoue');
+        /* LA CLASSE SE RETIRE, ET PAR DEUX CHEMINS. Sans retrait, un second
+           changement de plage ne rejouerait rien — la classe serait deja la.
+           Et `animationend` n'arrive pas toujours : un onglet en arriere-plan ne
+           fait pas avancer ses animations, et l'evenement n'est jamais emis. Le
+           minuteur est donc la deuxieme porte, un peu apres la duree declaree. */
+        const oter = () => trace.classList.remove('chart-rejoue');
+        trace.addEventListener('animationend', oter, { once: true });
+        setTimeout(oter, 900);
       }
 
       const tip = ensureTip(el);

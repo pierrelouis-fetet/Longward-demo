@@ -9856,7 +9856,12 @@ const ACTIONS = {
     Store.save(); render();
     toast(`${trad('Versement mensuel réglé sur')} ${fmtEUR0(m)}`);
   },
-  'evo-range'(btn) { evoRange = btn.dataset.range; render(); },
+  'evo-range'(btn) {
+    if (btn.dataset.range === evoRange) return;
+    evoRange = btn.dataset.range;
+    evoTransition = true;
+    render();
+  },
   /* Le perimetre de la courbe. Il ne touche a rien d'autre : le grand chiffre,
      la repartition et les autres cartes lisent le patrimoine complet, et c'est
      voulu — voir `evoFinancier`.

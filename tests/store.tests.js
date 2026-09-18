@@ -2670,7 +2670,7 @@ suite('Les anneaux d’Allocation se transforment quand le périmètre change', 
     const t = ch();
     vrai(/genre: 'aire'/.test(t) && /genre: 'donut'/.test(t),
       'les deux genres s’écrivent avec l’état');
-    vrai(/if \(!avant \|\| avant\.genre !== 'aire'\) return;/.test(t),
+    vrai(/if \(!avant \|\| avant\.genre !== 'aire'\) return false;/.test(t),
       'la pile ne part que d’une pile');
     vrai(/if \(!avant \|\| avant\.genre !== 'donut'\) return;/.test(t),
       'et l’anneau que d’un anneau');
@@ -22658,9 +22658,15 @@ suite('Changer de périmètre se voit, sans se rejouer tout seul', () => {
        poches empilees, net/brut change ce qu'on en retranche. Un geste qui ne
        toucherait pas a la courbe n'a rien a faire dans cette liste. */
     const sansCom = app.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
-    eq((sansCom.match(/evoTransition = true/g) || []).length, 2,
-      'deux gestes déclenchent une transition de la courbe');
-    for (const geste of ["'evo-perimetre'(btn) {", "'hero-base'(btn) {"]) {
+    /* TROIS, ET LE TROISIEME A DU SE DECLARER ICI POUR PASSER — c'est le role de
+       cette barriere, et elle l'a joue. La plage change ce que la courbe montre
+       autant que les deux autres : elle en change la PERIODE. Ce qu'elle
+       declenche n'est pas la meme chose pour autant — les abscisses changent,
+       donc le dessin se redecouvre au lieu de se deformer, et c'est le graphique
+       qui en decide. */
+    eq((sansCom.match(/evoTransition = true/g) || []).length, 3,
+      'trois gestes déclenchent une transition de la courbe');
+    for (const geste of ["'evo-perimetre'(btn) {", "'hero-base'(btn) {", "'evo-range'(btn) {"]) {
       const i = sansCom.indexOf(geste);
       vrai(i > 0, `${geste} doit être trouvable`);
       vrai(/evoTransition = true/.test(sansCom.slice(i, i + 400)),
@@ -22692,8 +22698,15 @@ suite('Changer de périmètre se voit, sans se rejouer tout seul', () => {
     /* La feuille de style tient la même règle pour le balayage d'arrivee : les
        deux mouvements du graphique s'arretent ensemble. */
     const css = lireSource('assets/styles.css');
-    vrai(/@media \(prefers-reduced-motion: reduce\) \{\s*\n\s*\.vue-entre \.chart-trace \{ animation: none; \}/.test(css),
-      'le balayage d’arrivée s’arrête aussi');
+    /* Les DEUX balayages s'arretent ensemble : celui de l'arrivee sur la vue et
+       celui qu'un changement de plage rejoue. Ils partagent la meme regle, donc
+       ils ne peuvent pas diverger. */
+    vrai(/@media \(prefers-reduced-motion: reduce\) \{\s*\n\s*\.vue-entre \.chart-trace,\s*\n\s*\.chart-trace\.chart-rejoue \{ animation: none; \}/.test(css),
+      'les deux balayages du graphique s’arrêtent aussi');
+    /* Et la garde JavaScript vaut pour les deux : elle entoure le choix entre
+       deformer et redecouvrir, pas seulement le premier. */
+    vrai(/!mouvementRefuse\(\)\s*\n?\s*&& !animerDepuis\(dernierTrace\.get\(cle\)\)\) balayer\(\);/.test(src),
+      'et aucun des deux ne part si le système refuse le mouvement');
   });
 
   test('un seul empilement sert le dessin et chacune de ses images', () => {
@@ -22753,12 +22766,33 @@ suite('Changer de périmètre se voit, sans se rejouer tout seul', () => {
     /* Changer de plage en même temps que de périmètre glisserait une courbe sur
        une autre abscisse : un mouvement qui ne veut rien dire. */
     const src = lireSource('assets/charts.js');
-    vrai(/if \(avant\.dates !== points\.map\(p => p\.date \|\| p\.label\)\.join\('\|'\)\) return;/.test(src),
-      'le montage se pose d’un coup quand les abscisses diffèrent');
+    vrai(/if \(avant\.dates !== points\.map\(p => p\.date \|\| p\.label\)\.join\('\|'\)\) return false;/.test(src),
+      'la fonte se refuse quand les abscisses diffèrent');
+    /* ET ELLE LE DIT, AU LIEU DE SE TAIRE. Elle rendait `undefined` et
+       l'appelant n'en faisait rien : le dessin se posait d'un coup. Elle rend
+       maintenant un booleen, et un refus declenche le balayage — qui, lui, ne
+       pretend rien sur les valeurs, il decouvre une periode. */
+    vrai(/return true;/.test(src), 'une fonte reussie se déclare');
+    vrai(/function balayer\(\) \{/.test(src) && /classList\.add\('chart-rejoue'\)/.test(src),
+      'et un refus redécouvre le dessin de gauche à droite');
+    /* La classe se retire d'elle-meme : sans cela, un second changement de plage
+       ne rejouerait rien, la classe etant deja posee. */
+    vrai(/trace\.addEventListener\('animationend', oter, \{ once: true \}\);/.test(src),
+      'la classe se retire à la fin, sinon le geste suivant ne rejouerait rien');
+    /* ET PAR UN MINUTEUR AUSSI : un onglet en arriere-plan ne fait pas avancer
+       ses animations, donc `animationend` n'arrive jamais. Mesure dans un
+       panneau masque — la classe restait posee. */
+    vrai(/setTimeout\(oter, 900\);/.test(src),
+      'et un minuteur la retire même si l’animation n’a jamais couru');
+    /* Sans `backwards`, le pire qui arrive est un dessin pose d'un coup. Avec,
+       c'etait un graphique decoupe a zero, donc invisible. */
+    const css2 = lireSource('assets/styles.css');
+    vrai(!/\.chart-trace\.chart-rejoue \{[^}]*backwards/.test(css2),
+      'et le dessin ne part jamais découpé à zéro');
     /* Et le registre est partage par tous les graphiques, clefe par
        identifiant : la pile refuse de partir d'un etat qu'un autre genre de
        dessin y aurait laisse. */
-    vrai(/if \(!avant \|\| avant\.genre !== 'aire'\) return;/.test(src),
+    vrai(/if \(!avant \|\| avant\.genre !== 'aire'\) return false;/.test(src),
       'la pile ne se fond que depuis une pile');
   });
 });
