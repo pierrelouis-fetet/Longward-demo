@@ -5330,14 +5330,25 @@ suite('Fiche d’une participation : la valeur d’un côté, l’identité de l
       'et c’est elle qui porte « Modifier », sur toutes les fiches');
   });
 
-  test('chaque bouton dit ce qu’il ouvre, et il n’y en a qu’un ici', () => {
+  test('chaque bouton dit ce qu’il ouvre, et aucun ne redit l’autre', () => {
     /* Deux boutons identiques que rien ne distinguait, c'etait le defaut de
        depart ; le nommer suffit a le lever, et c'est ce qui permet a
-       « Informations » de reprendre le sien. */
+       « Informations » de reprendre le sien.
+
+       LA REGLE EST « AUCUN NE REDIT L'AUTRE », ET NON « IL N'Y EN A QU'UN ». Ce
+       controle comptait les boutons, ce qui revenait a interdire le second
+       quelle que soit sa raison d'etre. La sortie du placement en est un, et il
+       ne ressemble a rien de ce qui existait : l'un corrige ce que le placement
+       vaut, l'autre l'enleve du patrimoine. */
     const d = corps();
-    eq((d.match(/class="btn sm ghost"/g) || []).length, 1, 'un seul bouton sur cette carte');
     eq((d.match(/data-action="editer-placement"/g) || []).length, 1,
       'qui ouvre les parts et la valeur');
+    eq((d.match(/data-action="ceder-placement"/g) || []).length, 1,
+      'et une seule porte de sortie, qui n’est pas la même chose');
+    /* Un acte se nomme par son acte, et le mot suit la nature : un pret ne se
+       vend pas, il se rembourse. */
+    vrai(/trad\(t\.prete \? 'Remboursement' : 'Céder'\)/.test(d),
+      'la sortie porte le nom de ce qu’elle fait, dans les mots du type');
     /* Et son nom suit le type : « Parts et valeur » n'aurait rien voulu dire
        sur un pret participatif, qui n'a pas de parts. */
     vrai(/trad\(t\.parts \? 'Parts et valeur' : 'Valeur et prix d’achat'\)/.test(d),
@@ -15514,6 +15525,189 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
        synchro disponible, ce controle n'a rien a dire. */
     vrai(/typeof CloudSync !== 'undefined' && CloudSync\.isAvailable\(\)/.test(store),
       'et elle se tait là où la synchro n’existe pas');
+  });
+});
+
+/* ------------------------------------------------------------------
+   Un non coté se cède, et la cession s'inscrit quelque part
+   ------------------------------------------------------------------ */
+suite('Un non coté se cède, et la cession s’inscrit quelque part', () => {
+
+  /* Une ligne cotee se vendait ; tout le reste ne pouvait que s'archiver, et
+     archiver ne dit rien de l'argent. La valeur quittait le patrimoine, le
+     produit se retapait a la main, et la plus-value realisee n'entrait nulle
+     part — la baisse tombait dans « ce qui ne vient pas du budget », c'est-a-dire
+     dans la case de ce qu'on n'explique pas.
+
+     Ces controles JOUENT la cession sur un etat pose, et verifient les trois
+     mouvements : le journal, le cash, la ligne. */
+
+  /* Une participation en parts, posee a cote de la graine : 4 000 parts payees
+     1 EUR, qui en valent 3 aujourd'hui. Les chiffres sont ronds pour que
+     l'assertion se lise, et synthetiques comme tout ce fixture. */
+  const poserParts = () => Fixture.poser(s => {
+    s.comptes.push({
+      id: 'c_parts', etabId: 'e_pe', type: 'pe', statut: 'ouvert',
+      ouvertLe: '2024-01-01', numero: '', notes: '',
+      libelle: 'Participation', court: 'Participation', alloc: '', cash: [],
+      lignes: [{ id: 'l_parts', classe: 'nonCote', libelle: 'Participation',
+                 parts: 4000, valeur: 12000, prixDeRevient: 4000,
+                 dateAcquisition: '2024-01-01' }],
+    });
+  });
+
+  const ligneParts = () => compteById('c_parts').lignes[0];
+
+  test('une cession partielle sort son prorata, et rien de plus', () => {
+    poserParts();
+    const a = cederPlacement({ compteId: 'c_parts', index: 0, parts: 1000,
+                               produit: 3300, cashAccount: 'c_courant',
+                               date: '2026-09-20' });
+    vrai(a, 'la cession doit aboutir');
+    pres(a.investi, 1000, 'le quart des parts emporte le quart de l’investi');
+    pres(a.realised, 2300, 'et la plus-value est le produit moins cet investi');
+    pres(a.sortie, 3000, 'la valeur qui quitte le patrimoine est le prorata de '
+      + 'la valeur, pas le produit encaissé');
+
+    const l = ligneParts();
+    pres(num(l.parts), 3000, 'il reste les trois quarts des parts');
+    pres(num(l.valeur), 9000, 'et les trois quarts de la valeur');
+    pres(num(l.prixDeRevient), 3000, 'et les trois quarts de l’investi');
+    /* LE PRIX UNITAIRE NE BOUGE PAS, et c'est toute la regle du prorata : il
+       vaut exactement ce qu'il valait avant la cession, des deux cotes. */
+    pres(num(l.valeur) / num(l.parts), 3, 'la valeur par part est inchangée');
+    pres(num(l.prixDeRevient) / num(l.parts), 1, 'le prix de revient par part aussi');
+  });
+
+  test('le produit devient des espèces, et la plus-value entre au journal', () => {
+    poserParts();
+    const avant = valeurCompte(compteById('c_courant'));
+    cederPlacement({ compteId: 'c_parts', index: 0, parts: 1000, produit: 3300,
+                     cashAccount: 'c_courant', date: '2026-09-20' });
+    pres(valeurCompte(compteById('c_courant')) - avant, 3300,
+      'le compte crédité reçoit le produit : sans ça le patrimoine chuterait '
+      + 'de la valeur cédée sans que rien ne la remplace');
+
+    const v = Store.state.sales[0];
+    vrai(v, 'le journal porte la cession');
+    eq(v.cession, 'vente', 'et dit de quelle nature elle est');
+    eq(v.account, 'c_parts', 'elle sait d’où elle vient');
+    pres(num(v.realised), 2300, 'et la plus-value réalisée y est');
+    /* Le meme journal que les ventes de titres, et non un second : deux listes
+       auraient donne deux totaux annuels qui finissent par se contredire. */
+    pres(num(v.qty), 1000, 'les parts tiennent lieu de quantité');
+    pres(num(v.price), 3.3, 'le prix de cession par part s’en dérive');
+    pres(num(v.buyPrice), 1, 'et le prix de revient par part aussi');
+  });
+
+  test('une cession totale retire la ligne et archive l’actif terminal', () => {
+    poserParts();
+    cederPlacement({ compteId: 'c_parts', index: 0, parts: 4000, produit: 13000,
+                     cashAccount: 'c_courant', date: '2026-09-20' });
+    const c = compteById('c_parts');
+    eq((c.lignes || []).length, 0, 'la ligne s’en va');
+    /* UN ACTIF TERMINAL EST SON PLACEMENT : vide, il n'a plus de raison de
+       figurer dans la liste des actifs, et le laisser ouvert a zéro euro y
+       ferait une ligne morte que personne ne saurait plus pourquoi fermer. */
+    eq(c.statut, 'archive', 'et le compte, qui EST le placement, s’archive');
+    eq(c.clotureLe, '2026-09-20', 'à la date de la cession');
+    pres(num(Store.state.sales[0].realised), 9000, 'la plus-value totale au journal');
+  });
+
+  test('un remboursement partiel de financement participatif rend les intérêts', () => {
+    /* Le fixture porte un prêt de 2 000 EUR. Il en rembourse la moitié, et
+       verse 1 100 : mille de capital, cent d'intérêts. */
+    Fixture.poser();
+    const a = cederPlacement({ compteId: 'c_pe', index: 0, nature: 'remboursement',
+                               capital: 1000, produit: 1100,
+                               cashAccount: 'c_courant', date: '2026-09-20' });
+    vrai(a, 'le remboursement doit aboutir');
+    pres(a.investi, 1000, 'la moitié du capital sort');
+    pres(a.realised, 100, 'et les intérêts perçus sont le résultat');
+    pres(num(compteById('c_pe').lignes[0].valeur), 1000, 'il reste la moitié du prêt');
+    eq(Store.state.sales[0].cession, 'remboursement', 'le journal dit sa nature');
+  });
+
+  test('un défaut total inscrit la perte, même sans un euro récupéré', () => {
+    Fixture.poser();
+    const a = cederPlacement({ compteId: 'c_pe', index: 0, nature: 'defaut',
+                               produit: 0, cashAccount: '', date: '2026-09-20' });
+    vrai(a, 'un défaut sans récupération reste une cession : c’est le produit '
+      + 'qui est nul, pas la fraction cédée');
+    pres(a.realised, -2000, 'la moins-value est tout l’investi');
+    eq((compteById('c_pe').lignes || []).length, 0, 'la ligne s’en va');
+    eq(Store.state.sales[0].cession, 'defaut', 'et le journal le nomme');
+  });
+
+  test('annuler une cession rend tout, et ne fabrique aucune ligne de titres', () => {
+    poserParts();
+    const titresAvant = Store.state.positions.length;
+    const cashAvant = valeurCompte(compteById('c_courant'));
+    cederPlacement({ compteId: 'c_parts', index: 0, parts: 4000, produit: 13000,
+                     cashAccount: 'c_courant', date: '2026-09-20' });
+    annulerVente(0);
+
+    /* Le defaut qu'on evite ici : `annulerVente()` rendait des TITRES. Sur une
+       cession de non coté, elle aurait poussé dans `positions` une ligne cotée
+       fantôme, avec un cours et un prix, pour un actif qui n'en a pas. */
+    eq(Store.state.positions.length, titresAvant,
+      'aucune position n’est fabriquée : un non coté n’est pas une ligne de titres');
+    pres(valeurCompte(compteById('c_courant')), cashAvant, 'les espèces repartent');
+    const c = compteById('c_parts');
+    eq(c.statut, 'ouvert', 'le compte rouvre');
+    vrai(!c.clotureLe, 'et un compte rouvert n’est pas clôturé');
+    eq((c.lignes || []).length, 1, 'la ligne revient');
+    pres(num(c.lignes[0].parts), 4000, 'avec ses parts');
+    pres(num(c.lignes[0].valeur), 12000, 'et sa valeur');
+    eq(Store.state.sales.length, 0, 'le journal oublie la cession');
+  });
+
+  test('annuler une cession partielle ne rend que ce qu’elle avait pris', () => {
+    poserParts();
+    cederPlacement({ compteId: 'c_parts', index: 0, parts: 1000, produit: 3300,
+                     cashAccount: 'c_courant', date: '2026-09-20' });
+    annulerVente(0);
+    const l = ligneParts();
+    pres(num(l.parts), 4000, 'les parts reviennent');
+    pres(num(l.valeur), 12000, 'la valeur revient');
+    pres(num(l.prixDeRevient), 4000, 'l’investi revient');
+  });
+
+  test('céder zéro part n’est pas une cession', () => {
+    poserParts();
+    const a = cederPlacement({ compteId: 'c_parts', index: 0, parts: 0,
+                               produit: 500, cashAccount: 'c_courant' });
+    eq(a, null, 'sans fraction cédée, il n’y a ni ligne à réduire ni résultat à inscrire');
+    eq((Store.state.sales || []).length, 0, 'et rien n’entre au journal');
+  });
+
+  test('le journal ne montre pas « 0 × 0 € » sous une cession sans parts', () => {
+    /* Vu a l'ecran avant d'etre corrige : la cession d'un fonds non cote
+       s'affichait « 20/09/2026 · 0 × 0,00 € ». Les deux zeros sont des cases
+       vides — un placement sans parts n'a ni quantite ni prix unitaire — et ils
+       se lisaient comme des faits.
+
+       La question se pose donc a la DONNEE et non au drapeau `declaree` : celui-
+       ci repondait « ce n'est pas une vente declaree, donc elle a une
+       quantite », ce qui n'a jamais ete la meme question. */
+    const app = lireSource('assets/app.js');
+    const i = app.indexOf("action: 'open-sale'");
+    vrai(i > 0, 'la ligne du journal doit être trouvable');
+    const bloc = app.slice(i, i + 600);
+    vrai(/num\(v\.qty\) \?/.test(bloc),
+      'le sous-titre demande à la vente si elle porte une quantité');
+    vrai(/trad\('\{m\} reçus'\)/.test(bloc),
+      'et sans quantité, il dit le montant reçu plutôt que deux zéros');
+  });
+
+  test('un pourcentage de cession n’existe que sur une base positive', () => {
+    poserParts();
+    const l = ligneParts();
+    delete l.prixDeRevient;
+    const a = apercuCession(l, typeCompte('pe'), { parts: 1000, produit: 3300 });
+    eq(a.pct, null, 'sans investi connu, la cession se dit en euros et se tait '
+      + 'sur le taux — diviser par zéro rendrait un pourcentage arbitraire');
+    pres(a.realised, 3300, 'le résultat, lui, reste le produit encaissé');
   });
 });
 

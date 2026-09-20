@@ -3583,6 +3583,12 @@ tr.flash-target td { animation: flash-row 1.6s ease; }
 }
 .retenir-lien { display: inline-block; margin-top: 8px; font-size: var(--font-sm); font-weight: 550; }
 
+/* Deux commandes dans un en-tete de carte. Sans ce groupe, le `space-between`
+   de `.card-head` traite chaque bouton comme un element a part et les eloigne
+   l'un de l'autre autant que du titre : trois blocs repartis sur la largeur, ou
+   rien ne dit que les deux derniers vont ensemble. */
+.tete-actes { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+
 .retenir-tete { align-items: center; }
 .retenir-actes { display: flex; align-items: center; gap: 2px; margin-left: auto; }
 .retenir-bascule {

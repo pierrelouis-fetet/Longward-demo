@@ -3330,11 +3330,21 @@ function salesCard() {
             const pct = num(v.invested) ? num(v.realised) / num(v.invested) * 100 : null;
             const part = plusGrand ? Math.abs(num(v.realised)) / plusGrand * 100 : 0;
             const teinte = num(v.realised) >= 0 ? 'var(--good)' : 'var(--critical)';
+            /* Une vente declaree n'a ni quantite ni prix : son sous-titre dit d'ou
+               elle vient plutot que d'afficher « 0 × 0 € ».
+
+               ET LA QUESTION SE POSE A LA DONNEE, PAS AU DRAPEAU. Elle se posait
+               a `declaree`, ce qui revenait a supposer que tout le reste se
+               compte en titres. La cession d'un placement non cote sans parts —
+               un fonds, un pret, un bien — n'en a pas davantage, et le journal
+               affichait « 0 × 0,00 € » sous son nom : deux zeros qui se lisent
+               comme des faits alors qu'ils ne sont que des cases vides. */
             return ligneListe({
               action: 'open-sale', index: toutes.indexOf(v),
               titre: v.name,
               sous: [fmtDate(v.date), v.declaree ? trad('déclarée, pour mémoire')
-                       : `${num(v.qty)} × ${fmtCur(v.price, dev)}`].filter(Boolean).join(' · '),
+                       : num(v.qty) ? `${num(v.qty)} × ${fmtCur(v.price, dev)}`
+                       : trad('{m} reçus').replace('{m}', fmtEUR(num(v.gross)))].filter(Boolean).join(' · '),
               valeur: `<span class="${cls(v.realised)}">${fmtSigned(v.realised)}</span>`,
               second: pct == null ? '' : fmtSignedPct(pct),
               classeSecond: cls(v.realised),
@@ -4735,9 +4745,14 @@ function detailsPlacement(c, idx, t, l) {
   return `
   <div class="card">
     <div class="card-head"><h2>${trad(titreActif(t))}</h2>
-      <button class="btn sm ghost" data-action="editer-placement"
-              data-id="${esc(c.id)}" data-i="${l.ref}"
-              >${trad(t.parts ? 'Parts et valeur' : 'Valeur et prix d’achat')}</button></div>
+      <div class="tete-actes">
+        <button class="btn sm ghost" data-action="editer-placement"
+                data-id="${esc(c.id)}" data-i="${l.ref}"
+                >${trad(t.parts ? 'Parts et valeur' : 'Valeur et prix d’achat')}</button>
+        <button class="btn sm ghost" data-action="ceder-placement"
+                data-id="${esc(c.id)}" data-i="${l.ref}"
+                >${trad(t.prete ? 'Remboursement' : 'Céder')}</button>
+      </div></div>
     <dl class="kv">
       ${ligne(trad('Parts détenues'), u ? fmtNombre(u.parts) : null)}
       ${ligne(trad('Valeur estimée / part') + aide(trad('La valeur que tu as déclarée, divisée par le nombre de parts. Ce placement n’est pas coté : c’est une estimation, pas un cours.')),
@@ -9530,6 +9545,30 @@ const ACTIONS = {
     toast(`${guill(v.libelle)} ${trad('ajouté')} · ${fmtEUR0(num(v.valeur))}`);
   },
 
+  /* La sortie d'un placement non coté, et les trois mouvements qu'elle écrit.
+
+     Elle passe par `cederPlacement()`, jamais par la fiche : une cession n'est
+     pas une correction de valeur. Corriger la valeur à zéro puis archiver aurait
+     donné le même patrimoine et perdu tout le reste — le produit encaissé, la
+     plus-value réalisée, la date. C'est ce que faisait « Archiver » tout seul,
+     et c'est ce qui manquait. */
+  async 'ceder-placement'(btn) {
+    const c = compteById(btn.dataset.id);
+    const i = +btn.dataset.i;
+    const l = c && (c.lignes || [])[i];
+    if (!l) return;
+    const v = await askCession(c.id, i);
+    if (!v) return;
+    const a = cederPlacement({ compteId: c.id, index: i, ...v });
+    if (!a) { toast(trad('Rien à enregistrer')); return; }
+    refreshAccounts(); Store.save();
+    if (c.statut === 'archive') ACTIONS.goto({ dataset: { view: 'accounts', anchor: '' } });
+    else render();
+    const mot = v.nature === 'defaut' ? trad('Défaut enregistré')
+      : v.nature === 'remboursement' ? trad('Remboursement enregistré')
+      : trad('Cession enregistrée');
+    toast(`${mot}${deuxPoints()} ${fmtSigned(a.realised)}`);
+  },
   async 'editer-placement'(btn) {
     const c = compteById(btn.dataset.id);
     const i = +btn.dataset.i;
@@ -9990,8 +10029,8 @@ const ACTIONS = {
             aide: trad('le prix de revient s’en déduit : produit moins plus-value') },
         ] : [
           { cle: 'lecture_montants', label: trad('Montants'), lecture: true,
-            valeur: `${num(v.qty)} × ${fmtCur(v.price, dev)} = ${fmtEUR(num(v.gross))}, ${
-              fmtSigned(v.realised)}`,
+            valeur: (num(v.qty) ? `${num(v.qty)} × ${fmtCur(v.price, dev)} = ` : '')
+              + `${fmtEUR(num(v.gross))}, ${fmtSigned(v.realised)}`,
             aide: trad('ils ont crédité un compte et réduit une ligne le jour de la vente. Pour les '
               + 'corriger : annuler cette vente, puis la ressaisir, ce qui remet le cash et les titres d’aplomb') },
         ]),
@@ -11396,6 +11435,132 @@ function askConfirm(texte, { danger = true, ok = 'Confirmer', refus = 'Annuler' 
     non.onclick = () => fermer(false);
     m.onclick = e => { if (e.target === m) fermer(null); };
     document.addEventListener('keydown', touche, true);
+  });
+}
+
+function askCession(compteId, index) {
+  return new Promise(resolve => {
+    const c = compteById(compteId);
+    const l = c && (c.lignes || [])[index];
+    if (!l) { resolve(null); return; }
+    const t = typeCompte(c.type);
+    const m = $('#modal');
+    apercuOuvert = null;
+
+    const aParts = !!t.parts && num(l.parts) > 0;
+    const prete = !!t.prete;
+    const valeur = num(l.valeur) * (partDetention(l) || 1);
+
+    $('#modalTitle').textContent = trad(prete ? 'Remboursement ou défaut'
+      : aParts ? 'Céder des parts' : 'Vendre ce placement');
+    $('#modalSub').textContent = trad(prete
+      ? 'Le résultat est calculé sur ce que tu avais prêté'
+      : 'Le résultat est calculé sur ton prix de revient');
+
+    const cibles = cashTargets();
+    const defaut = defaultCashTarget(c.id);
+    $('#modalBody').innerHTML = `
+      <div class="modal-champs">
+        ${!prete ? '' : `
+        <div class="field"><label>${trad('Que s’est-il passé ?')}</label>
+          <select id="ceNature">
+            <option value="remboursement">${trad('Remboursé, en tout ou en partie')}</option>
+            <option value="defaut">${trad('En défaut : ce qui rentre est perdu')}</option>
+          </select></div>`}
+        ${!aParts ? '' : `
+        <div class="field"><label>${trad('Parts cédées')}</label>
+          <input type="number" step="any" id="ceParts" value="${num(l.parts)}" autocomplete="off">
+          <span class="hint">${trad('tu en détiens {n} : laisse le total pour tout céder')
+            .replace('{n}', fmtNombre(num(l.parts)))}</span></div>`}
+        ${!prete ? '' : `
+        <div class="field" data-cession="remboursement"><label>${trad('Capital remboursé ({dev})')}</label>
+          <input type="number" step="any" id="ceCapital" value="${round2(valeur)}" autocomplete="off">
+          <span class="hint">${trad('le nominal qui revient, hors intérêts : laisse le total pour un remboursement final')}</span></div>`}
+        <div class="field"><label>${trad('Montant reçu ({dev})')}</label>
+          <input type="number" step="any" id="ceProduit" value="${round2(valeur)}" autocomplete="off">
+          <span class="hint">${trad(prete
+            ? 'capital et intérêts compris, tel qu’il est arrivé sur ton compte'
+            : 'net de frais, tel qu’il est arrivé sur ton compte')}</span></div>
+        <div class="field"><label>${trad('Date')}</label>
+          <input type="date" id="ceDate" value="${todayISO()}"></div>
+        <div class="field"><label>${trad('Le produit va sur')}</label>
+          <select id="ceCash">${cibles.map(x =>
+            `<option value="${x.id}" ${x.id === defaut ? 'selected' : ''}>${
+              esc(sousNom('', nomCompteV2(x), nomEtabDe(x)))}</option>`).join('')}<option
+            value="">${trad('Ne rien créditer')}</option></select>
+          <span class="hint">${trad('Sans ça, ton patrimoine baisserait de la valeur cédée')}</span></div>
+        <div class="field"><label>${trad('Note')}</label>
+          <input id="ceNote" placeholder="${trad('Pourquoi cette cession ?')}" autocomplete="off"></div>
+      </div>
+      <div id="ceApercu" style="margin-top:4px"></div>`;
+    $('#modalFoot').innerHTML =
+      `<button class="btn ghost" id="ceCancel" type="button">${trad('Annuler')}</button>
+       <button class="btn" id="ceOk" type="button">${trad('Enregistrer')}</button>`;
+    montrerModal(m);
+
+    const nature = () => (prete ? $('#ceNature').value : 'vente');
+    const saisie = () => ({
+      parts: aParts ? num($('#ceParts').value) : undefined,
+      produit: num($('#ceProduit').value),
+      capital: prete && nature() === 'remboursement' ? num($('#ceCapital').value) : undefined,
+    });
+
+    let natureVue = nature();
+    const majNature = () => {
+      $('#modalBody').querySelectorAll('[data-cession]').forEach(el => {
+        el.hidden = el.dataset.cession !== nature();
+      });
+      if (nature() === natureVue) return;
+      natureVue = nature();
+      $('#ceProduit').value = natureVue === 'defaut' ? 0 : round2(valeur);
+    };
+
+    const majApercu = () => {
+      const a = apercuCession(l, t, saisie());
+      const trop = aParts && num($('#ceParts').value) > num(l.parts);
+      $('#ceOk').disabled = trop || !(a.fraction > 0);
+      if (trop) {
+        $('#ceApercu').innerHTML = `<div class="note">⚠ <span>${
+          trad('Tu n’en détiens que {n}.').replace('{n}', fmtNombre(num(l.parts)))}</span></div>`;
+        return;
+      }
+      if (!(a.fraction > 0)) {
+        $('#ceApercu').innerHTML = `<div class="note">⚠ <span>${
+          trad('Indique ce qui sort : sans cela il n’y a rien à enregistrer.')}</span></div>`;
+        return;
+      }
+      const gain = a.realised;
+      const bon = gain >= 0;
+      const mot = trad(prete && nature() === 'defaut' ? 'Perte'
+        : bon ? 'Plus-value réalisée' : 'Moins-value réalisée');
+      const reste = a.totale ? trad('Le placement sort du patrimoine.')
+        : trad('Il reste {r}.').replace('{r}',
+            (aParts ? `${fmtNombre(a.partsRestantes)} ${trad('parts')}, ` : '')
+            + fmtEUR(round2(valeur - a.sortie)));
+      $('#ceApercu').innerHTML = `<div class="note" style="${bon
+        ? 'background:color-mix(in oklab, var(--good) 12%, var(--surface-1)); border-color:color-mix(in oklab, var(--good) 38%, transparent)'
+        : 'background:color-mix(in oklab, var(--critical) 10%, var(--surface-1)); border-color:color-mix(in oklab, var(--critical) 34%, transparent)'}">
+          ${bon ? '↗' : '↘'}
+          <span><b>${mot} ${trad('de')} ${fmtSigned(gain)}${
+            a.pct == null ? '' : ` · ${fmtSignedPct(a.pct)}`}</b><br>
+          ${trad('Sur {m} investis.').replace('{m}', fmtEUR(a.investi))} ${esc(reste)}</span>
+        </div>`;
+    };
+
+    $('#modalBody').addEventListener('input', () => { majNature(); majApercu(); });
+    $('#modalBody').addEventListener('change', () => { majNature(); majApercu(); });
+    majNature(); majApercu();
+
+    const fermer = v => { masquerModal(m); $('#modalClose').onclick = null; resolve(v); };
+    $('#ceCancel').onclick = () => fermer(null);
+    $('#modalClose').onclick = () => fermer(null);
+    $('#ceOk').onclick = () => {
+      const s = saisie();
+      const a = apercuCession(l, t, s);
+      if (!(a.fraction > 0)) return;
+      fermer({ ...s, nature: nature(), cashAccount: $('#ceCash').value,
+               date: $('#ceDate').value, note: $('#ceNote').value.trim() });
+    };
   });
 }
 

@@ -6446,6 +6446,147 @@ function sellPosition({ index, qty, price, fxSell, cashAccount, date, note }) {
   return ap;
 }
 
+/* --- CEDER UN PLACEMENT NON COTE ----------------------------------------
+
+   POURQUOI CETTE PORTE EXISTE. Une ligne cotee se vendait ; tout le reste ne
+   pouvait que s'archiver, et archiver ne dit rien de l'argent. La valeur
+   quittait le patrimoine, le produit encaisse se retapait a la main en rentree,
+   et la plus-value realisee n'entrait nulle part — ni au journal, ni dans la
+   performance. Sur la courbe, la baisse tombait dans « ce qui ne vient pas du
+   budget », c'est-a-dire dans la case de ce qu'on n'explique pas. Un total
+   egale la somme de ses parts, et une sortie de quinze mille euros ne peut pas
+   etre une difference inexpliquee.
+
+   L'asymetrie etait a l'envers du besoin : une ligne cotee se revend tous les
+   jours et avait tout le mecanisme ; un non cote se cede une fois en cinq ans,
+   c'est l'evenement dont on veut le plus garder la trace, et il n'avait rien.
+
+   TROIS NATURES, UNE SEULE MECANIQUE. Ce qui change est le mot et ce que le
+   detenteur sait dire ; le calcul, lui, ne change jamais — un produit encaisse,
+   un investi qui s'en va, la difference au journal.
+
+     `vente`         des parts de societe, un fonds non cote, un bien detenu en
+                     direct. Totale ou partielle.
+     `remboursement` un financement participatif qui rend du capital, et des
+                     interets par-dessus.
+     `defaut`        le meme, qui ne rend que ce qu'il a pu. Le produit peut
+                     etre nul, et la moins-value est alors tout l'investi.
+
+   LE PRORATA EST LA SEULE FACON HONNETE DE COUPER UNE LIGNE EN DEUX. Ceder
+   deux mille parts sur quatre mille sort la moitie de l'investi et la moitie de
+   la valeur : le prix de revient unitaire ne bouge pas, exactement comme pour
+   une ligne cotee, et la ligne qui reste vaut ce qu'elle valait par part.
+
+   ET C'EST LE MEME JOURNAL QUE LES VENTES DE TITRES. Deux journaux auraient
+   demande deux ecrans, deux totaux annuels et deux facons de compter une
+   plus-value — donc, tot ou tard, deux chiffres qui se contredisent. La
+   difference se dit par un mot porte sur l'enregistrement, pas par une seconde
+   liste. */
+function apercuCession(l, t, { parts, produit, capital } = {}) {
+  const q = partDetention(l);
+  /* Une quote-part invalide interdit le calcul plutot que de l'inventer : c'est
+     deja ce que `lignesDe()` fait des montants d'une telle ligne. */
+  const partOk = q !== null;
+  const valeurEntiere = num(l && l.valeur);
+  const investiEntier = coutAcquisition(l) || 0;
+  const partsTotal = num(l && l.parts);
+  const aParts = !!(t && t.parts) && partsTotal > 0;
+
+  let fraction = 1;
+  if (aParts) fraction = num(parts) / partsTotal;
+  else if (capital != null && valeurEntiere > 0) fraction = num(capital) / valeurEntiere;
+  fraction = Math.min(1, Math.max(0, fraction));
+
+  const g = num(produit);
+  const investi = partOk ? round2(investiEntier * q * fraction) : 0;
+  const sortie = partOk ? round2(valeurEntiere * q * fraction) : 0;
+  return {
+    fraction, partOk,
+    parts: aParts ? num(parts) : null,
+    partsRestantes: aParts ? round2(partsTotal - num(parts)) : null,
+    produit: g,
+    investi,
+    sortie,
+    realised: round2(g - investi),
+    pct: investi > 0 ? (g / investi - 1) * 100 : null,
+    totale: fraction >= 0.9999,
+  };
+}
+
+/* Applique la cession : journalise, credite le cash, reduit ou retire la ligne.
+
+   L'ORDRE N'EST PAS LIBRE. On lit la ligne AVANT de la reduire, et le journal
+   emporte de quoi tout defaire — pour une cession totale, la ligne elle-meme.
+   C'est ce que fait deja `sellPosition()` avec la quantite et le prix de
+   revient : un enregistrement qui ne porte pas de quoi s'annuler oblige a
+   deviner, et deviner un patrimoine ne se fait pas. */
+function cederPlacement({ compteId, index, nature = 'vente', parts, produit,
+                          capital, cashAccount, date, note } = {}) {
+  const c = compteById(compteId);
+  if (!c) return null;
+  const l = (c.lignes || [])[index];
+  if (!l) return null;
+  const t = typeCompte(c.type);
+  const a = apercuCession(l, t, { parts, produit, capital });
+  if (!a.partOk) return null;
+  if (!(a.fraction > 0)) return null;
+
+  Store.state.sales = Store.state.sales || [];
+  Store.state.sales.unshift({
+    id: 's' + Date.now(),
+    date: date || todayISO(),
+    name: l.libelle || nomCompteV2(c),
+    isin: '', symbol: '',
+    assetClass: l.classe || 'nonCote', role: '',
+    account: c.id, cashAccount: cashAccount || '',
+    /* Les parts tiennent lieu de quantite, et les deux prix unitaires s'en
+       derivent : le journal les affiche deja, et une cession de parts est une
+       vente de quantite comme une autre. Sans parts, les trois restent nuls —
+       `declarerVente()` a ouvert cette voie, le journal sait la lire. */
+    qty: a.parts, currency: 'EUR', fxSell: 1, fxBuy: 1,
+    price: a.parts ? round2(a.produit / a.parts) : null,
+    buyPrice: a.parts ? round2(a.investi / a.parts) : null,
+    gross: a.produit, invested: a.investi, realised: a.realised,
+    note: note || '',
+    /* Ce qui distingue cette ligne d'une vente de titres, et ce qu'il faut pour
+       la defaire. `sortie` n'est pas `gross` : c'est la valeur retiree du
+       patrimoine, et l'annulation la rend telle quelle. */
+    cession: nature, ligneIndex: index, sortie: a.sortie,
+    ...(a.totale ? { ligne: structuredClone(l) } : {}),
+  });
+
+  if (cashAccount && a.produit) {
+    const compteCash = compteById(cashAccount);
+    if (compteCash) {
+      const e = cashInvestirEntree(compteCash, true);
+      e.montant = round2(num(e.montant) + a.produit);
+    } else if (!ACC[cashAccount]?.holdings) {
+      Store.state.now[cashAccount] = round2(num(Store.state.now[cashAccount]) + a.produit);
+    }
+  }
+
+  if (a.totale) {
+    c.lignes.splice(index, 1);
+    const vide = !(c.lignes || []).length
+      && !(c.cash || []).some(e => num(e.montant));
+    if (estActifTerminal(t) && vide) {
+      c.statut = 'archive';
+      c.clotureLe = date || todayISO();
+      Store.state.sales[0].compteArchive = true;
+    }
+  } else {
+    const reste = 1 - a.fraction;
+    l.valeur = round2(num(l.valeur) * reste);
+    if (estDeclare(l.prixDeRevient)) l.prixDeRevient = round2(num(l.prixDeRevient) * reste);
+    for (const cle of ['prixAchat', 'fraisAcquisition', 'travauxInitiaux']) {
+      if (estDeclare(l[cle])) l[cle] = round2(num(l[cle]) * reste);
+    }
+    if (a.parts != null) l.parts = round2(num(l.parts) - a.parts);
+  }
+
+  return a;
+}
+
 /*   C'est la reponse au chantier note dans ETAT.md : noter une vente sur un
    PEA cloture demandait de recreer le compte, la ligne, de vendre, puis
    d'archiver — quatre gestes pour fabriquer un fait passe. Ici la vente
@@ -6484,6 +6625,12 @@ function annulerVente(i) {
     return v;
   }
 
+  /* Une cession de non cote ne rend pas des titres : elle rend une ligne de
+     placement, ou une part de celle-ci. Derouler la suite pousserait une
+     position fantome dans `positions` — un actif non cote apparaissant comme
+     une ligne de titres cotee, avec un prix et un cours. */
+  if (v.cession) return annulerCession(i, v);
+
   if (v.cashAccount) {
     const c = compteById(v.cashAccount);
     if (c) {
@@ -6510,6 +6657,40 @@ function annulerVente(i) {
       account: v.account, manual: false,
       assetClass: v.assetClass || '', role: v.role || '',
     });
+  }
+
+  Store.state.sales.splice(i, 1);
+  return v;
+}
+
+function annulerCession(i, v) {
+  if (v.cashAccount && num(v.gross)) {
+    const c = compteById(v.cashAccount);
+    if (c) {
+      const e = cashInvestirEntree(c, true);
+      e.montant = round2(num(e.montant) - num(v.gross));
+    } else if (!ACC[v.cashAccount]?.holdings) {
+      Store.state.now[v.cashAccount] = round2(num(Store.state.now[v.cashAccount]) - num(v.gross));
+    }
+  }
+
+  const c = compteById(v.account);
+  if (c) {
+    c.lignes = c.lignes || [];
+    if (v.ligne) {
+      c.lignes.splice(Math.min(num(v.ligneIndex), c.lignes.length), 0, structuredClone(v.ligne));
+    } else {
+      const l = c.lignes[num(v.ligneIndex)];
+      if (l) {
+        const q = partDetention(l) || 1;
+        l.valeur = round2(num(l.valeur) + num(v.sortie) / q);
+        if (estDeclare(l.prixDeRevient)) {
+          l.prixDeRevient = round2(num(l.prixDeRevient) + num(v.invested) / q);
+        }
+        if (num(v.qty)) l.parts = round2(num(l.parts) + num(v.qty));
+      }
+    }
+    if (v.compteArchive) { c.statut = 'ouvert'; delete c.clotureLe; }
   }
 
   Store.state.sales.splice(i, 1);
