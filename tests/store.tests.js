@@ -15349,7 +15349,7 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
     vrai(/aEnvoyer: verdict === 'envoyer'/.test(src),
       'init() doit dire à l’appelant que cet appareil porte des modifications non envoyées');
     const app = lireSource('assets/app.js');
-    /* MAIS PLUS EN FORCE, et c'est le correctif du 20 septembre 2026. Le `force`
+    /* MAIS PLUS EN FORCE, et c'est tout l'objet du correctif. Le `force`
        tenait sur un raisonnement qui paraissait solide : `init()` vient de lire
        le cloud et de le trouver plus ancien, donc la base connue ne peut pas
        correspondre, donc le garde-fou de filiation refuserait a tort.
@@ -15522,10 +15522,9 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
    ------------------------------------------------------------------ */
 suite('Une estampille fraîche ne prouve aucun contenu frais', () => {
 
-  /* « Si j'ouvre sur le web plusieurs jours apres, il charge une vieille
-     version, et en plus la sauvegarde ! J'ai 500 EUR de difference avec la
-     realite d'aujourd'hui. J'utilisais le mobile. » Le proprietaire, 20
-     septembre 2026, capture des sauvegardes a l'appui.
+  /* Un ordinateur rouvert apres plusieurs jours chargeait son contenu perime,
+     puis l'imposait en ligne par-dessus les saisies faites entre-temps sur le
+     telephone. Sans sauvegarde, sans question et sans message.
 
      CE CONTROLE JOUE LA REGLE AU LIEU DE LA LIRE. Les suites de synchro
      precedentes affirment que telle ligne est bien ecrite dans le fichier ;
@@ -15558,14 +15557,14 @@ suite('Une estampille fraîche ne prouve aucun contenu frais', () => {
 
   /* Trois jours, deux appareils, et la perte telle qu'elle s'est produite. */
   const J17 = '2026-09-17T09:57:00.000Z';   // les deux appareils s'alignent
-  const J19 = '2026-09-19T18:20:00.000Z';   // le telephone saisit les 500 EUR
+  const J19 = '2026-09-19T18:20:00.000Z';   // le telephone saisit, et pousse
   const J20 = '2026-09-20T08:05:00.000Z';   // l'ordinateur rouvre et rafraichit
 
   test('l’ordinateur rouvert après trois jours ne s’impose plus au téléphone', () => {
     /* L'ordinateur porte le patrimoine du 17 et l'estampille du 20, gagnee sur
        un rafraichissement de cours. Le telephone a saisi le 19 et pousse. La
        comparaison d'horloges donnait « le local est en avance » — donc envoi en
-       force, donc 500 EUR effaces sans un mot. */
+       force, donc la saisie du telephone effacee sans un mot. */
     eq(arbitre()({ localAt: J20, remoteAt: J19, syncedAt: J17 }), 'conflit',
       'un contenu périmé portant une estampille fraîche ne doit jamais '
       + 'écraser en ligne : le cloud a bougé depuis la dernière lecture de cet '
@@ -42830,14 +42829,49 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
     Store.state.meta.insightsVus = { [i.id]: { date: todayISO(), valeur: i.valeur } };
     vrai(evaluerInsights().some(x => x.id === i.id), 'noté aujourd’hui, il reste affiché');
 
-    /* Le lendemain, et tant que dure son repos, il attend son tour. */
+    /* Le lendemain, il attend son tour — DERRIERE les autres, pas dehors. Ce
+       controle exigeait son absence, et c'est ce qui rendait le defaut legitime
+       : un insight au repos etait retire de la liste, si bien qu'un patrimoine
+       calme, dont trois regles seulement parlent, voyait sa carte se vider le
+       lendemain de la premiere lecture et annoncer « rien d'inhabituel ». */
     Store.state.meta.insightsVus[i.id].date = ilYA(1);
-    vrai(!evaluerInsights().some(x => x.id === i.id),
-      'le lendemain, même chiffre : il se tait');
+    const apres = evaluerInsights();
+    const place = apres.findIndex(x => x.id === i.id);
+    vrai(place >= 0, 'le lendemain, même chiffre : il est toujours là');
+    eq(apres[place].repos, true, 'mais marqué au repos');
+    vrai(apres.slice(0, place).every(x => !x.repos),
+      'et rangé derrière tout ce qui est neuf : le repos classe, il ne fait pas taire');
 
     /* Il revient dès que sa propre matérialité est franchie, et pas avant. */
     Store.state.meta.insightsVus[i.id].valeur = i.valeur + num(regle.materialite) * 2 + 1;
     vrai(evaluerInsights().some(x => x.id === i.id), 'le chiffre a bougé : il revient');
+  });
+
+  test('tout le catalogue au repos ne fait pas dire « rien d’inhabituel »', () => {
+    /* La carte d'insights ne portait plus que son etat calme.
+
+     Le moteur avait pourtant trois choses a dire — sa reserve, son ecart de
+       cible, le glissement d'une poche. Les trois avaient ete lues la veille,
+       aucune n'avait bouge, et leurs repos durent vingt et un a quarante-cinq
+       jours : la carte se taisait donc pour des semaines en annoncant le calme.
+
+       L'ETAT CALME EST UNE REPONSE, ET ELLE DOIT RESTER VRAIE. « Rien
+       d'inhabituel a signaler » veut dire que le moteur a regarde et n'a rien
+       trouve. Il ne peut pas vouloir dire « tout ce qui a ete trouve dort ». */
+    Fixture.poser();
+    const avant = evaluerInsights();
+    vrai(avant.length > 0, 'la graine a de quoi parler');
+    const hier = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    Store.state.meta.insightsVus = {};
+    for (const x of avant) Store.state.meta.insightsVus[x.id] = { date: hier, valeur: x.valeur };
+
+    const apres = evaluerInsights();
+    eq(apres.length, avant.length,
+      'tout le catalogue au repos ne retire rien de la liste');
+    vrai(apres.every(x => x.repos), 'et chaque entrée se sait au repos');
+    vrai(construireInsights().length > 0,
+      'la carte a donc toujours quelque chose à dire, et ne peut pas annoncer '
+      + 'le calme sur un patrimoine dont trois choses sont à retenir');
   });
 
   test('le repos fini, il revient même sans rien de neuf', () => {

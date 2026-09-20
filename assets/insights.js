@@ -1067,8 +1067,24 @@ function evaluerInsights(ctx) {
     if (!regle.eligible(m, c)) return;
     const brut = regle.evaluer(m, c);
     if (!brut) return;
-    if (auRepos(regle, brut.valeur, c.aujourdhui)) return;
+    /* Deja dit recemment, et le chiffre n'a pas bouge : il attend son tour.
+
+       IL L'ATTEND, IL NE SE TAIT PAS. Cette ligne rendait `return` : l'insight
+       disparaissait de la liste au lieu de reculer dedans. Sur un patrimoine
+       calme, ou trois regles seulement ont quelque chose a dire, les trois
+       partaient au repos le lendemain de leur premiere lecture — vingt et un a
+       quarante-cinq jours — et la carte affichait alors « Rien d'inhabituel a
+       signaler ». C'etait faux : trois choses avaient ete trouvees, aucune
+       n'avait cesse d'etre vraie, et la carte annoncait le calme. L'etat calme
+       est une reponse, et il doit garder son sens ; il ne peut pas servir a dire
+       « tout dort ».
+
+       Le repos CLASSE donc, comme son commentaire l'a toujours dit : ce qui a
+       deja ete lu passe derriere tout ce qui est neuf. Il disparait quand
+       quelque chose de plus frais prend sa place, jamais parce qu'il est seul. */
+    const repos = auRepos(regle, brut.valeur, c.aujourdhui);
     sortis.push({
+      repos,
       id: regle.id,
       famille: regle.famille,
       categorie: regle.categorie,
@@ -1085,7 +1101,8 @@ function evaluerInsights(ctx) {
     });
   });
 
-  sortis.sort((a, b) => (b.poids - a.poids) || (a.rang - b.rang));
+  sortis.sort((a, b) => (Number(a.repos) - Number(b.repos))
+    || (b.poids - a.poids) || (a.rang - b.rang));
   return sortis;
 }
 
