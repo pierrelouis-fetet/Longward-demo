@@ -15305,19 +15305,34 @@ function ecranIdentiteManquante() {
       await prendreVersionEnLigne(cloud.data, cloud.at,
         'Version en ligne reprise. Ta saisie est dans les sauvegardes.');
     } else if (cloud.aEnvoyer) {
-      /* Cet appareil est en avance : il porte des modifications que le cloud
-         n'a pas encore. Elles partent maintenant, sans attendre la prochaine
-         frappe — c'est cette attente qui les perdait quand l'application
-         passait en veille avant l'envoi différé.
+      /* Cet appareil porte une modification jamais partie, et le cloud est
+         reste exactement la ou il l'avait laisse. Elle part maintenant, sans
+         attendre la prochaine frappe — c'est cette attente qui la perdait quand
+         l'application passait en veille avant l'envoi différé.
 
-         `force` parce que c'en est un, et un arbitrage deja tranche : `init()`
-         vient de lire le cloud et d'etablir qu'il est plus ancien. La base que
-         cet appareil connait ne peut pas correspondre — c'est justement le sens
-         de « jamais envoye » — donc le garde-fou de filiation refuserait une
-         ecriture qu'on sait pourtant la bonne. */
-      await CloudSync.push({ force: true });
+         SANS `force`, ET C'EST TOUT L'OBJET DU CORRECTIF. Il etait passe ici au
+         motif que l'arbitrage venait d'etre rendu : `init()` avait lu le cloud
+         et l'avait trouve plus ancien, donc la base ne pouvait pas correspondre.
+         Le raisonnement tenait sur une premisse fausse — qu'une estampille plus
+         fraiche designe un contenu plus frais. Le rafraichissement des cours
+         datait l'etat a chaque ouverture, si bien qu'un ordinateur qu'on rouvre
+         apres plusieurs jours se croyait en avance sur un telephone qui, lui,
+         avait vraiment saisi quelque chose. `force=1` disait au serveur de
+         sauter le garde-fou de filiation, celui-la meme qui avait ete pose pour
+         empecher exactement cette perte : le contenu perime ecrasait le contenu
+         reel, sans sauvegarde, sans question et sans message.
+
+         `init()` ne renvoie plus `aEnvoyer` que lorsque la base connue EST la
+         version en ligne. L'ecriture ordinaire passe donc, et si le cloud a
+         bouge entre la lecture et l'envoi, le refus nous ramene a l'arbitrage
+         plutot que de le supprimer. */
+      await CloudSync.push();
     } else if (cloud.empty) {
-      await CloudSync.push({ force: true });   // premier envoi
+      /* Premier envoi : rien en ligne, donc rien a perdre. Sans `force` non
+         plus — `init()` a efface le repere, l'ecriture part sans base, et c'est
+         le serveur qui n'insere que s'il n'y a toujours rien. Si cette lecture
+         a vide etait fausse, un refus vaut mieux qu'un patrimoine efface. */
+      await CloudSync.push();
     }
     /* Deux evenements, et c'est le second qui repare la perte.
 

@@ -89,7 +89,9 @@ const Quotes = (() => {
         done.push({ name: p.name, isin: p.isin, error: e.message });
       }
     }
-    if (done.some(d => d.symbol)) Store.save();
+    /* `derive` pour la meme raison : un ISIN resolu en symbole est une deduction
+       de la passerelle, pas une decision prise ici. */
+    if (done.some(d => d.symbol)) Store.save({ derive: true });
     return done;
   }
 
@@ -155,7 +157,12 @@ const Quotes = (() => {
     }
 
     Store.state.quotes = { lastRun: new Date().toISOString(), fx, changes, resolved };
-    Store.save();
+    /* `derive` : un cours vient du marche, pas du detenteur. L'enregistrer ne
+       doit pas dater l'etat, sinon ouvrir l'application suffit a faire passer
+       cet appareil pour porteur d'une modification — et c'est ainsi qu'un
+       ordinateur rouvert apres plusieurs jours imposait son contenu perime au
+       telephone sur lequel on avait reellement saisi. */
+    Store.save({ derive: true });
     return { changes, fx, resolved };
   }
 

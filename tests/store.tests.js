@@ -15328,8 +15328,15 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
     vrai(!/\n\s*if \(localAt\) markSynced\(localAt\);/.test(init[0]),
       'le repère était posé dès que l’état local existait, sans le comparer au '
       + 'cloud ni rien envoyer : il déclarait aligné ce qui ne l’était pas');
-    vrai(/localAt === remoteAt/.test(init[0]),
-      'il doit se poser sur l’égalité des deux horodatages, la seule preuve '
+    /* L'egalite des deux horodatages est desormais nommee par l'arbitre, et
+       `init()` ne fait que poser le repere sur son verdict. Le controle suit la
+       regle la ou elle vit : la suite « Une estampille fraiche ne prouve aucun
+       contenu frais » l'execute, celui-ci verifie qu'aucun autre chemin ne
+       marque un alignement. */
+    vrai(/if \(verdict === 'aligne'\) markSynced\(localAt\);/.test(init[0]),
+      'il ne se pose que sur un alignement constaté, et par ce seul chemin');
+    vrai(/localAt === remoteAt\) return 'aligne'/.test(src),
+      'et l’alignement reste l’égalité des deux horodatages, la seule preuve '
       + 'd’alignement dont on dispose au démarrage');
   });
 
@@ -15339,16 +15346,28 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
        en veille avant, et `sendBeacon` ne passe pas toujours. On l'envoie au
        démarrage plutôt que d'attendre la frappe suivante. */
     const src = sourceSync();
-    vrai(/aEnvoyer: !aligne && !!localAt/.test(src),
+    vrai(/aEnvoyer: verdict === 'envoyer'/.test(src),
       'init() doit dire à l’appelant que cet appareil porte des modifications non envoyées');
     const app = lireSource('assets/app.js');
-    /* En force, et c'est le seul endroit qui le justifie sans question : `init()`
-       vient de lire le cloud et d'etablir qu'il est plus ancien, et la base que
-       cet appareil connait ne peut pas correspondre — c'est le sens meme de
-       « jamais envoye ». Sans `force`, le garde-fou de filiation refuserait
-       l'ecriture qu'on sait pourtant la bonne. */
-    vrai(/cloud\.aEnvoyer[\s\S]{0,900}?CloudSync\.push\(\{ force: true \}\)/.test(app),
-      'et le démarrage doit les envoyer, en force puisque l’arbitrage est déjà tranché');
+    /* MAIS PLUS EN FORCE, et c'est le correctif du 20 septembre 2026. Le `force`
+       tenait sur un raisonnement qui paraissait solide : `init()` vient de lire
+       le cloud et de le trouver plus ancien, donc la base connue ne peut pas
+       correspondre, donc le garde-fou de filiation refuserait a tort.
+
+       Sa premisse etait fausse. « Plus ancien » y voulait dire « estampille plus
+       ancienne », et le rafraichissement des cours datait l'etat a chaque
+       ouverture : un ordinateur rouvert apres plusieurs jours portait l'heure la
+       plus fraiche et le contenu le plus vieux. `force=1` demandait alors au
+       serveur de sauter exactement le controle pose pour empecher cette
+       perte-la, et le patrimoine du telephone disparaissait sans sauvegarde,
+       sans question et sans message.
+
+       `init()` ne renvoie plus `aEnvoyer` que lorsque la base connue EST la
+       version en ligne. L'ecriture ordinaire passe donc toute seule. */
+    const sansCommentaires = app.replace(/\/\*[\s\S]*?\*\//g, '');
+    vrai(/cloud\.aEnvoyer\) \{\s*await CloudSync\.push\(\);/.test(sansCommentaires),
+      'et le démarrage doit les envoyer par une écriture ordinaire, qui déclare '
+      + 'sa base et accepte d’être refusée');
   });
 
   test('l’horodatage envoyé est celui qu’on a envoyé', () => {
@@ -15495,6 +15514,163 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
        synchro disponible, ce controle n'a rien a dire. */
     vrai(/typeof CloudSync !== 'undefined' && CloudSync\.isAvailable\(\)/.test(store),
       'et elle se tait là où la synchro n’existe pas');
+  });
+});
+
+/* ------------------------------------------------------------------
+   Une estampille fraîche ne prouve aucun contenu frais
+   ------------------------------------------------------------------ */
+suite('Une estampille fraîche ne prouve aucun contenu frais', () => {
+
+  /* « Si j'ouvre sur le web plusieurs jours apres, il charge une vieille
+     version, et en plus la sauvegarde ! J'ai 500 EUR de difference avec la
+     realite d'aujourd'hui. J'utilisais le mobile. » Le proprietaire, 20
+     septembre 2026, capture des sauvegardes a l'appui.
+
+     CE CONTROLE JOUE LA REGLE AU LIEU DE LA LIRE. Les suites de synchro
+     precedentes affirment que telle ligne est bien ecrite dans le fichier ;
+     aucune n'a jamais fait se rencontrer deux appareils, et c'est exactement
+     pour cela que ce defaut a vecu des semaines sous un vert complet. La regle
+     d'arbitrage est donc une fonction pure, extraite de `cloudsync.js` et
+     EXECUTEE ici sur des dates choisies.
+
+     Le defaut tenait en une phrase : l'application demandait « qui porte
+     l'estampille la plus fraiche ? » la ou il fallait demander « le cloud
+     est-il encore la ou cet appareil l'avait laisse ? ». Les deux questions ont
+     la meme reponse tant qu'un seul appareil ecrit. Elles divergent des que
+     `Store.save()` est appele par autre chose qu'une decision — le
+     rafraichissement des cours, toutes les cinq minutes et a chaque
+     ouverture. */
+  let arbitreMemo = null;
+  function arbitre() {
+    if (arbitreMemo) return arbitreMemo;
+    const src = lireSource('assets/cloudsync.js');
+    vrai(src, 'assets/cloudsync.js doit être lisible pour ce contrôle');
+    /* Les bornes sont du CODE et non des commentaires : une phrase se reformule,
+       et un `indexOf` sur une phrase vaut -1 le jour où elle bouge. */
+    const d = src.indexOf('function arbitrer({');
+    const f = src.indexOf('\n  }', d) + 4;
+    vrai(d > 0 && f > d,
+      'la règle d’arbitrage doit être isolable : c’est la condition pour la jouer');
+    arbitreMemo = new Function(`${src.slice(d, f)}\nreturn arbitrer;`)();
+    return arbitreMemo;
+  }
+
+  /* Trois jours, deux appareils, et la perte telle qu'elle s'est produite. */
+  const J17 = '2026-09-17T09:57:00.000Z';   // les deux appareils s'alignent
+  const J19 = '2026-09-19T18:20:00.000Z';   // le telephone saisit les 500 EUR
+  const J20 = '2026-09-20T08:05:00.000Z';   // l'ordinateur rouvre et rafraichit
+
+  test('l’ordinateur rouvert après trois jours ne s’impose plus au téléphone', () => {
+    /* L'ordinateur porte le patrimoine du 17 et l'estampille du 20, gagnee sur
+       un rafraichissement de cours. Le telephone a saisi le 19 et pousse. La
+       comparaison d'horloges donnait « le local est en avance » — donc envoi en
+       force, donc 500 EUR effaces sans un mot. */
+    eq(arbitre()({ localAt: J20, remoteAt: J19, syncedAt: J17 }), 'conflit',
+      'un contenu périmé portant une estampille fraîche ne doit jamais '
+      + 'écraser en ligne : le cloud a bougé depuis la dernière lecture de cet '
+      + 'appareil, et cela seul suffit à en faire un arbitrage');
+  });
+
+  test('et l’arbitrage rendu est celui du détenteur : la version en ligne', () => {
+    /* « conflit » n'est pas une question posee a l'utilisateur — le detenteur a
+       tranche le 15 septembre : c'est toujours la version en ligne, sans
+       demander, avec une sauvegarde et un message qui dit ou la retrouver. Le
+       verdict designe donc la branche `newer`, celle qui passe par la porte
+       commune. */
+    const src = lireSource('assets/cloudsync.js');
+    const i = src.indexOf("if (verdict === 'conflit')");
+    vrai(i > 0, 'le verdict de conflit doit être traité dans init()');
+    vrai(/newer: true/.test(src.slice(i, i + 200)),
+      'il mène à la branche qui adopte la version en ligne avec un point de retour');
+  });
+
+  test('une saisie jamais partie part, quand personne n’a écrit depuis', () => {
+    /* L'autre moitie, et elle doit continuer de marcher : c'est le cas du
+       telephone qu'on verrouille avant l'envoi differe. Le cloud est reste
+       exactement la ou cet appareil l'avait laisse, donc rien ne s'y perd. */
+    eq(arbitre()({ localAt: J20, remoteAt: J19, syncedAt: J19 }), 'envoyer',
+      'le cloud est là où on l’avait laissé : la saisie locale peut partir');
+  });
+
+  test('l’appareil simplement en retard adopte sans question', () => {
+    eq(arbitre()({ localAt: J17, remoteAt: J19, syncedAt: J17 }), 'adopter',
+      'rien n’a été saisi ici depuis la dernière synchro : c’est le cas normal '
+      + 'du deuxième appareil, et poser la question à chaque fois serait pénible');
+  });
+
+  test('le cloud en avance sur une saisie locale reste un arbitrage', () => {
+    eq(arbitre()({ localAt: J19, remoteAt: J20, syncedAt: J17 }), 'conflit',
+      'les deux côtés ont bougé depuis la dernière lecture : sauvegarde et message');
+  });
+
+  test('deux horodatages égaux sont un alignement, pas un envoi', () => {
+    eq(arbitre()({ localAt: J19, remoteAt: J19, syncedAt: J17 }), 'aligne',
+      'même contenu des deux côtés : il n’y a rien à faire, et surtout rien à écrire');
+  });
+
+  test('un appareil vierge prend ce qui est en ligne', () => {
+    eq(arbitre()({ localAt: undefined, remoteAt: J19, syncedAt: null }), 'adopter',
+      'un navigateur neuf n’a rien à perdre : il n’y a pas de conflit à arbitrer');
+  });
+
+  test('un appareil qui n’a jamais synchronisé ne s’impose pas', () => {
+    /* Le repere absent est la forme la plus franche de « je ne sais pas ou j'ai
+       laisse le cloud ». Elle ne peut pas valoir permission d'ecraser. */
+    eq(arbitre()({ localAt: J20, remoteAt: J19, syncedAt: null }), 'conflit',
+      'sans repère de filiation, l’estampille locale ne prouve rien');
+  });
+
+  test('rien en ligne et rien ici ne déclenche aucune écriture', () => {
+    eq(arbitre()({ localAt: undefined, remoteAt: undefined, syncedAt: null }), 'rien',
+      'un état sans horodatage se ferait refuser par le serveur — révision manquante');
+  });
+
+  test('le premier envoi ne force plus rien non plus', () => {
+    /* Une lecture a vide autorisait elle aussi un `force`, au motif qu'il n'y a
+       rien a perdre. C'est vrai tant que la lecture dit la verite ; si ce 204
+       venait d'une session qui a change de mains, il effacait un patrimoine
+       entier. Le repere est efface, l'ecriture part sans base, et c'est le
+       serveur qui n'insere que s'il n'y a toujours rien. */
+    const src = lireSource('assets/cloudsync.js');
+    vrai(/if \(!remote\) \{ markSynced\(''\); return \{ available: true, empty: true/.test(src),
+      'init() efface le repère avant d’annoncer un cloud vide');
+    const app = lireSource('assets/app.js').replace(/\/\*[\s\S]*?\*\//g, '');
+    vrai(/cloud\.empty\) \{\s*await CloudSync\.push\(\);/.test(app),
+      'et le premier envoi est une écriture ordinaire');
+  });
+
+  test('le démarrage n’impose plus rien, le bouton d’arbitrage garde sa porte', () => {
+    /* La distinction qui compte : un ecrasement en force est une decision, et
+       une decision se prend par quelqu'un. Le bouton « imposer les donnees de
+       cet appareil » le demande et l'annonce ; le demarrage, lui, s'executait
+       tout seul au reveil d'un onglet. */
+    const app = lireSource('assets/app.js');
+    const d = app.indexOf('const cloud = modeDemo()');
+    const f = app.indexOf('if (cloud.available) {', d);
+    vrai(d > 0 && f > d, 'le bloc de démarrage de la synchro doit être trouvable');
+    const demarrage = app.slice(d, f).replace(/\/\*[\s\S]*?\*\//g, '');
+    vrai(!/force/.test(demarrage),
+      'aucun chemin automatique ne saute le garde-fou de filiation');
+    vrai(/'cloud-force'[\s\S]{0,600}?CloudSync\.push\(\{ force: true \}\)/.test(app),
+      'mais l’arbitrage explicite du détenteur reste possible, et il se demande');
+  });
+
+  test('un cours rafraîchi ne date pas l’état', () => {
+    /* LA CAUSE, et non plus seulement sa consequence. Tant que `Quotes.refresh()`
+       estampille `savedAt`, ouvrir l'application suffit a faire passer un
+       appareil pour porteur d'une modification, et la question « qui est en
+       avance ? » reste sans reponse fiable. */
+    const store = lireSource('assets/store.js');
+    vrai(/if \(!opts\.derive\) this\.state\.meta\.savedAt = new Date\(\)\.toISOString\(\);/
+      .test(store),
+      'Store.save() ne date l’état que pour une écriture qui porte une décision');
+    const q = lireSource('assets/quotes.js');
+    const code = q.replace(/\/\*[\s\S]*?\*\//g, '');
+    vrai(!/\n\s*Store\.save\(\);/.test(code),
+      'aucune écriture de la passerelle de cours ne date l’état');
+    vrai((code.match(/Store\.save\(\{ derive: true \}\)/g) || []).length >= 2,
+      'ni le rafraîchissement des cours, ni la résolution des ISIN');
   });
 });
 

@@ -2630,7 +2630,20 @@ const Store = {
       if (this._undo.length > UNDO_LIMIT) this._undo.shift();
       this._lastPush = now;
     }
-    this.state.meta.savedAt = new Date().toISOString();   // arbitre les conflits de synchro
+    /* L'HORODATAGE DIT « QUELQU'UN A DECIDE QUELQUE CHOSE ICI », ET RIEN
+       D'AUTRE. Il arbitre les conflits de synchro : le poser, c'est affirmer
+       que cet appareil porte une intention que les autres n'ont pas.
+
+       Un cours rafraichi n'en est pas une. `Quotes.refresh()` passe par ici
+       toutes les cinq minutes sur un onglet ouvert, et a chaque ouverture de
+       l'application ; il datait donc l'etat d'un patrimoine que personne n'avait
+       touche. Un ordinateur qu'on rouvre apres plusieurs jours se retrouvait
+       avec l'estampille la plus fraiche et le contenu le plus vieux, et il
+       l'imposait au telephone qui, lui, avait vraiment saisi quelque chose.
+
+       `derive` marque ces ecritures-la : la donnee est enregistree et envoyee
+       comme les autres, mais elle ne pretend pas dater l'etat. */
+    if (!opts.derive) this.state.meta.savedAt = new Date().toISOString();
     this._prev = structuredClone(this.state);
     /* UN ECHEC D'ECRITURE NE PEUT PAS RESTER SILENCIEUX.
 

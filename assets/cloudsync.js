@@ -176,6 +176,41 @@ const CloudSync = (() => {
     timer = setTimeout(push, WRITE_DELAY);
   }
 
+  /* QUI GAGNE AU DEMARRAGE, ET POURQUOI. Fonction pure, sans reseau ni
+     stockage : c'est la seule forme sous laquelle cette regle se teste pour de
+     bon. Tant qu'elle vivait dissoute dans `init()`, la suite ne pouvait
+     qu'affirmer que telle ligne etait bien ecrite — elle n'a jamais joue une
+     seule rencontre entre deux appareils, et le defaut ci-dessous a vecu des
+     semaines sous un vert complet.
+
+     TROIS DATES, ET LA TROISIEME EST CELLE QUI COMPTE. `localAt` et `remoteAt`
+     disent quand chaque cote a ete ecrit ; `syncedAt` dit ou cet appareil avait
+     laisse le cloud la derniere fois qu'il l'a lu ou ecrit. Comparer les deux
+     premieres ne repond qu'a « qui porte l'estampille la plus fraiche », ce qui
+     n'est pas la question posee.
+
+     Car une estampille fraiche ne prouve aucun contenu frais. `Store.save()`
+     date l'etat a chaque ecriture, et le rafraichissement des cours en est une :
+     ouvrir l'application sur un ordinateur, sans rien toucher, suffisait a le
+     faire passer pour porteur de modifications. Il l'emportait alors sur un
+     telephone qui, lui, avait vraiment saisi quelque chose.
+
+     `syncedAt` tranche parce qu'il parle de filiation et non d'heure : si le
+     cloud n'est plus la ou nous l'avions laisse, quelqu'un d'autre a ecrit
+     depuis, et cet ecart-la est un conflit quel que soit le sens des horloges.
+     La regle du detenteur s'y applique alors comme partout ailleurs — la
+     version en ligne, avec une sauvegarde et un message. */
+  function arbitrer({ localAt, remoteAt, syncedAt }) {
+    if (!localAt && !remoteAt) return 'rien';
+    if (!localAt) return 'adopter';          // rien a perdre ici
+    if (!remoteAt) return 'envoyer';         // rien de lisible en ligne
+    if (localAt === remoteAt) return 'aligne';
+    if (remoteAt > localAt) {
+      return localAt === syncedAt ? 'adopter' : 'conflit';
+    }
+    return remoteAt === syncedAt ? 'envoyer' : 'conflit';
+  }
+
   async function init() {
     if (!probed && !(await probe())) return { available: false };
     if (!available) return { available: false };
@@ -183,49 +218,44 @@ const CloudSync = (() => {
     try { remote = await pull(); }
     catch (e) { status.error = e.message; return { available: true, error: e.message }; }
 
-    if (!remote) return { available: true, empty: true, user };
+    /* Rien en ligne. Le repere de synchronisation est efface avant l'envoi :
+       il designe une version que le cloud n'a plus, donc le declarer ferait
+       refuser l'ecriture qu'on veut justement faire. Sans lui, l'envoi part
+       sans base, et c'est le serveur qui arbitre — il n'insere que s'il n'y a
+       toujours rien. Un `force` faisait la meme chose en supprimant l'arbitrage
+       au lieu de le laisser se tenir : si ce 204 etait une fausse lecture, il
+       ecrasait un patrimoine entier sans un mot. */
+    if (!remote) { markSynced(''); return { available: true, empty: true, user }; }
+
+    lastPayload = JSON.stringify(remote);
 
     const remoteAt = remote?.meta?.savedAt;
     const localAt = Store.state?.meta?.savedAt;
+    const verdict = arbitrer({ localAt, remoteAt, syncedAt: lastSyncedAt() });
 
-    if (remoteAt && (!localAt || remoteAt > localAt)) {
-      const intact = localAt && localAt === lastSyncedAt();
-      if (intact) {
-        lastPayload = JSON.stringify(remote);
-        markSynced(remoteAt);
-        return { available: true, adopted: true, at: remoteAt, data: remote, user };
-      }
+    if (verdict === 'adopter') {
+      markSynced(remoteAt);
+      return { available: true, adopted: true, at: remoteAt, data: remote, user };
+    }
+
+    if (verdict === 'conflit') {
       return { available: true, newer: true, at: remoteAt, data: remote, user, localAt };
     }
 
-    /* Ici le local est au moins aussi récent que le cloud. Deux cas, et il ne
-       faut surtout pas les confondre.
+    /* Le repère ne se pose que sur une égalité vraie.
 
-       `markSynced(localAt)` était appelé pour les deux, sans qu'aucune écriture
-       n'ait eu lieu : le repère disait « cet état est aligné avec le cloud »
-       alors qu'il n'avait jamais été envoyé. La conséquence est une perte
-       silencieuse, et elle se rejoue :
+       `markSynced(localAt)` était appelé aussi quand le local était en avance,
+       sans qu'aucune écriture n'ait eu lieu : le repère disait « cet état est
+       aligné avec le cloud » alors qu'il n'avait jamais été envoyé, et la
+       modification suivante devenait invisible au conflit. */
+    if (verdict === 'aligne') markSynced(localAt);
 
-         1. le téléphone modifie quelque chose, l'envoi est armé à 8 secondes ;
-         2. l'app est mise en veille avant, `sendBeacon` ne passe pas ;
-         3. on rouvre l'app : le local est plus récent, ce repère ment ;
-         4. un autre appareil enregistre quoi que ce soit et pousse ;
-         5. on rouvre : le cloud est plus récent, le repère dit « intact »,
-            donc `adopted` — la version en ligne remplace la locale **sans
-            question**, et la modification de l'étape 1 n'a jamais existé.
-
-       « Ça fait plusieurs fois que je dois remettre le livret A en épargne de
-       précaution » : c'est la forme exacte de ce scénario, une modification
-       enregistrée qui revient à sa valeur d'avant, sans message.
-
-       Le repère ne se pose donc que sur une égalité vraie. Et quand le local est
-       en avance, on le dit à l'appelant : cet appareil porte des modifications
-       jamais envoyées, il faut les envoyer maintenant plutôt que d'attendre la
-       prochaine frappe. */
-    lastPayload = JSON.stringify(remote);
-    const aligne = !!localAt && localAt === remoteAt;
-    if (aligne) markSynced(localAt);
-    return { available: true, ready: true, user, aEnvoyer: !aligne && !!localAt };
+    /* `envoyer` : cet appareil porte une modification jamais partie ET le cloud
+       est reste exactement la ou il l'avait laisse. Il n'y a donc rien a perdre
+       en ligne, et l'envoi part au demarrage plutot que d'attendre la frappe
+       suivante — c'est cette attente qui perdait la saisie quand l'application
+       passait en veille avant l'envoi differe. */
+    return { available: true, ready: true, user, aEnvoyer: verdict === 'envoyer' };
   }
 
   /* Écrit ce qui reste en attente quand l'onglet s'en va.
@@ -261,7 +291,7 @@ const CloudSync = (() => {
 
   return {
     init, pull, push, schedulePush, probe, flushOnUnload, setOnChange,
-    setOnConflit, noterVersionLue,
+    setOnConflit, noterVersionLue, arbitrer,
     isAvailable: () => available,
     aJour,
     getUser: () => user,
