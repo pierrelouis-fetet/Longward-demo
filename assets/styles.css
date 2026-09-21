@@ -3550,6 +3550,24 @@ tr.flash-target td { animation: flash-row 1.6s ease; }
   content: ''; position: absolute; left: 0; top: .52em; width: 6px; height: 6px;
   border-radius: 50%; background: var(--accent);
 }
+/* L'ETIQUETTE QUI COIFFE UNE ENTREE. Elle dit de quoi l'on parle avant de dire
+   quoi : sur une carte qui porte trois remarques sans rapport entre elles, l'oeil
+   a besoin d'un mot pour savoir s'il lit une histoire de depenses ou de dette.
+
+   En majuscules espacees et dans l'encre secondaire, comme les intitules de
+   colonnes : c'est le seul registre de l'application qui annonce sans se lire
+   comme un titre. Aucune couleur d'accent, aucune pastille — elle classe, elle
+   n'alerte pas, et une etiquette coloree sur trois entrees rendrait la carte
+   bariolee pour ne rien ajouter.
+
+   Le contraste passe par `--text-secondary` et non `--muted` : a cette taille,
+   c'est la limite sous laquelle le texte cesse d'etre lisible sur une carte.
+   Et la taille vient de l'echelle, comme les autres intitules du meme registre :
+   une valeur ecrite en pixels ici aurait cree un onzieme palier pour elle seule. */
+.retenir-oeil {
+  display: block; font-size: var(--font-xs); font-weight: 650; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-secondary); margin-bottom: 2px;
+}
 .retenir-titre { display: block; font-size: var(--font-base); font-weight: 600; letter-spacing: -.01em; }
 /* LE CHIFFRE QU'ON VIENT CHERCHER SE LIT SEUL.
 

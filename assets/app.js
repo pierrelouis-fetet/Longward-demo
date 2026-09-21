@@ -869,6 +869,17 @@ const libellePoche = cle => trad(CLASSES_ACTIFS[POCHE_CLASSE[cle]] || cle);
 const moisEtAnnee = (annee, mois) => new Intl.DateTimeFormat(locale(),
   { month: 'long', year: 'numeric' }).format(new Date(Date.UTC(annee, mois - 1, 1)));
 
+const EYEBROW_INSIGHT = {
+  liquidity: 'Réserve',
+  allocation: 'Structure',
+  wealth_pace: 'Progression',
+  goal: 'Objectif',
+  debt: 'Dette',
+  budget: 'Dépenses',
+  concentration: 'Concentration',
+  data_quality: 'À compléter',
+};
+
 const PRESENTATION_INSIGHT = {
   liquidity_runway: {
     titre: 'Réserve de sécurité',
@@ -959,13 +970,46 @@ const PRESENTATION_INSIGHT = {
       .replace('{b}', fmtEUR0(p.previous) + trad('/mois')),
     cta: { vue: 'budget', libelle: 'Voir mes dépenses' },
   },
+  spending_category_shift: {
+    titre: p => trad(p.delta > 0 ? 'Tes dépenses {c} augmentent'
+                                 : 'Tes dépenses {c} reculent').replace('{c}', p.category),
+    valeur: p => fmtEUR0(p.current) + trad('/mois'),
+    phrase: p => trad('sur les {n} derniers mois clos').replace('{n}', p.months),
+    secondaire: p => p.deltaPct == null
+      ? trad('un poste qui n’apparaissait pas auparavant')
+      : trad('contre {b} auparavant, soit {p}')
+        .replace('{b}', fmtEUR0(p.previous) + trad('/mois'))
+        .replace('{p}', fmtSignedPct(p.deltaPct, 0)),
+    cta: { vue: 'budget', libelle: 'Voir mes dépenses' },
+  },
+  spending_target_pace: {
+    titre: 'À ce rythme, ton objectif est dépassé',
+    valeur: p => fmtEUR0(p.projected),
+    phrase: p => trad('projetés sur le mois, au rythme des {n} premiers jours')
+      .replace('{n}', p.daysIn),
+    secondaire: p => trad('soit {o} au-dessus de ton objectif de {t}')
+      .replace('{o}', fmtEUR0(p.over)).replace('{t}', fmtEUR0(p.target)),
+    cta: { vue: 'budget', libelle: 'Voir mes dépenses' },
+  },
+  budget_history_thin: {
+    titre: 'Pas encore de quoi comparer',
+    valeur: p => p.months + ' ' + trad(p.months > 1 ? 'mois saisis' : 'mois saisi'),
+    phrase: p => trad('il en faut {n} pour comparer un trimestre au précédent')
+      .replace('{n}', p.needed),
+    secondaire: () => trad('d’ici là, les écarts affichés seraient du bruit'),
+    cta: { vue: 'budget', libelle: 'Voir mes dépenses' },
+  },
   spending_month_anomaly: {
     titre: 'Un mois à part',
     valeur: p => fmtEUR0(p.total),
     phrase: p => trad('en {d}')
       .replace('{d}', esc(fmtMoisAn(p.month.slice(0, 7) + '-15'))),
-    secondaire: p => trad('contre {b} pour un mois ordinaire chez toi')
-      .replace('{b}', fmtEUR0(p.usual)),
+    secondaire: p => {
+      const base = trad('contre {b} pour un mois ordinaire chez toi')
+        .replace('{b}', fmtEUR0(p.usual));
+      if (!p.drivers || !p.drivers.length) return base;
+      return base + trad(', surtout') + ' ' + p.drivers.map(c => esc(c)).join(trad(' et '));
+    },
     cta: { vue: 'budget', libelle: 'Voir mes dépenses' },
   },
   concentration_top_line: {
@@ -1026,7 +1070,7 @@ const retenirMasquee = () => !!Store.state?.meta?.retenirMasquee;
 
 function carteARetenir() {
   if (retenirMasquee()) return '';
-  const lus = selectionARetenir(construireInsights()
+  const lus = selectionARetenir(insightsDeLOnglet('overview', {})
     .map(i => [i, PRESENTATION_INSIGHT[i.id]])
     .filter(([, p]) => !!p));
   const vide = !lus.length;
@@ -1074,9 +1118,39 @@ function carteARetenir() {
         <b class="retenir-titre">${esc(trad('Rien d’inhabituel à signaler'))}</b>
         <p class="retenir-texte">${esc(trad('Ton patrimoine, tes dépenses et ton allocation restent proches de leurs tendances récentes.'))}</p>
       </li>`}
-      ${lus.map(([i, p]) => `
+      ${lus.map(([i, p], k) => ligneInsight(i, p,
+        k ? EYEBROW_INSIGHT[lus[k - 1][0].categorie] : null)).join('')}
+    </ul>
+    </div>
+  </section>`;
+}
+
+function carteInsights(vue, titre) {
+  const lus = selectionARetenir(insightsDeLOnglet(vue, {})
+    .map(i => [i, PRESENTATION_INSIGHT[i.id]])
+    .filter(([, p]) => !!p));
+  if (!lus.length) return '';
+  dernierARetenir = lus.map(([i]) => i);
+  return `
+  <section class="card retenir" aria-labelledby="insightsTitre-${esc(vue)}">
+    <div class="card-head">
+      <h2 id="insightsTitre-${esc(vue)}">${trad(titre)}</h2>
+    </div>
+    <ul class="retenir-liste">
+      ${lus.map(([i, p], k) => ligneInsight(i, p,
+        k ? EYEBROW_INSIGHT[lus[k - 1][0].categorie] : null)).join('')}
+    </ul>
+  </section>`;
+}
+
+function ligneInsight(i, p, precedent) {
+  const oeil = EYEBROW_INSIGHT[i.categorie] === precedent
+    ? null : EYEBROW_INSIGHT[i.categorie];
+  return `
       <li class="retenir-item">
-        <b class="retenir-titre">${esc(trad(p.titre))}</b>
+        ${!oeil ? '' : `<span class="retenir-oeil">${trad(oeil)}</span>`}
+        <b class="retenir-titre">${esc(typeof p.titre === 'function'
+          ? p.titre(i.params) : trad(p.titre))}</b>
         ${p.valeur ? `<p class="retenir-valeur">${escMontant(p.valeur(i.params))}</p>` : ''}
         <p class="retenir-texte">${p.phrase(i.params)}</p>
         ${(() => {
@@ -1094,10 +1168,7 @@ function carteARetenir() {
                 >${esc(trad(p.cta.libelle))} <span aria-hidden="true">→</span></button>`
           : `<a class="lien-vue retenir-lien" href="#/${p.cta.vue}"
              >${esc(trad(p.cta.libelle))} <span aria-hidden="true">→</span></a>`}
-      </li>`).join('')}
-    </ul>
-    </div>
-  </section>`;
+      </li>`;
 }
 
 function viewOverview() {
@@ -3986,6 +4057,8 @@ function viewAllocation() {
       <dd><b>${fmtEUR(netFinancier())}</b></dd>
   </dl>` : ''}
 
+  ${carteInsights('allocation', 'À retenir')}
+
   <div class="card repart">
     ${disponibilite.map(x => `
       <div class="repart-ligne repart-inerte">
@@ -5064,6 +5137,8 @@ function viewAccounts() {
       <dd class="dette">−${fmtEUR(pat.dettes)}</dd>
     <dt><b>${trad('Patrimoine net')}</b></dt><dd><b>${fmtEUR(pat.net)}</b></dd>` : ''}
   </dl>`}
+
+  ${sansCompte && !filtre ? '' : carteInsights('accounts', 'À retenir')}
 
   ${sansCompte && !filtre ? '' : `<div class="card" style="padding:12px 16px">
     <div class="row" style="gap:10px">
@@ -6882,6 +6957,8 @@ function viewBudget(section = 'depenses') {
       </div>
     </div>
   </div>`}
+
+  ${cadre ? '' : carteInsights('budget', 'À retenir')}
 
   ${cadre ? '' : `
   ${aDesDepensesSaisies() ? `

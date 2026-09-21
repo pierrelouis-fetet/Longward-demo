@@ -290,6 +290,34 @@ const I18N = {
     'Impossible de copier': 'Couldn’t copy',
     'Copier le numéro de compte': 'Copy account number',
     'Copier l’ISIN': 'Copy ISIN',
+    'Réserve': 'Reserve',
+    'Structure': 'Structure',
+    'Progression': 'Progress',
+    'Dette': 'Debt',
+    'Concentration': 'Concentration',
+
+    'Tes dépenses {c} augmentent': 'Your {c} spending is rising',
+    'Tes dépenses {c} reculent': 'Your {c} spending is falling',
+    'contre {b} auparavant, soit {p}': 'against {b} before, that’s {p}',
+    'un poste qui n’apparaissait pas auparavant': 'a line that did not appear before',
+
+    'À ce rythme, ton objectif est dépassé': 'At this pace, your target is passed',
+    'projetés sur le mois, au rythme des {n} premiers jours':
+      'projected over the month, at the pace of the first {n} days',
+    'soit {o} au-dessus de ton objectif de {t}': 'that’s {o} above your {t} target',
+
+    'Pas encore de quoi comparer': 'Not enough to compare yet',
+    'mois saisi': 'month recorded',
+    'mois saisis': 'months recorded',
+    'il en faut {n} pour comparer un trimestre au précédent':
+      'it takes {n} to compare one quarter with the previous one',
+    'd’ici là, les écarts affichés seraient du bruit':
+      'until then, any gap shown would be noise',
+    'Compléter mes dépenses': 'Fill in my spending',
+
+    ', surtout': ', mostly',
+    ' et ': ' and ',
+
     'Parts et valeur': 'Units and value',
 
     'Céder': 'Sell out',

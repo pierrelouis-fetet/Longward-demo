@@ -15529,6 +15529,230 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
 });
 
 /* ------------------------------------------------------------------
+   Budget : le moteur dit quel poste a bougé, ou il se tait
+   ------------------------------------------------------------------ */
+suite('Budget : le moteur dit quel poste a bougé, ou il se tait', () => {
+
+  /* CES CONTROLES JOUENT LES REGLES, ils ne lisent pas leur source. Chacun pose
+     un budget choisi et demande au moteur ce qu'il en tire : c'est la seule
+     forme sous laquelle « ne montrer un insight que s'il est reellement utile »
+     se verifie, puisque la moitie de la promesse est un SILENCE.
+
+     Le fil qui les relie : un insight de depenses ne sort que si le mouvement
+     est a la fois RELATIF — il bouge d'au moins un sixieme — et MATERIEL — il
+     pese au moins un vingtieme du budget du mois. Une seule des deux conditions
+     laisse passer du bruit, et le bruit est ce que cette carte ne doit pas
+     porter. */
+
+  /* Un budget de N mois, chaque mois portant les postes qu'on lui donne. Les
+     mois sont poses en arriere a partir d'aujourd'hui, et tous CLOS : le moteur
+     ecarte le mois en cours, et un fixture qui l'inclurait testerait autre chose
+     que ce qu'il annonce. */
+  const moisAvant = n => {
+    const d = new Date(todayISO() + 'T12:00:00');
+    d.setMonth(d.getMonth() - n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  };
+  const poserBudget = (mois, options = {}) => Fixture.poser(s => {
+    s.budget.monthlyTarget = options.objectif === undefined ? 1000 : options.objectif;
+    s.budget.categories = [...new Set(mois.flatMap(v => Object.keys(v)))];
+    /* Le plus ancien en premier, et le plus recent au mois dernier. */
+    s.budget.expenses = mois.map((v, i) => ({ month: moisAvant(mois.length - i), v, note: '' }));
+    if (options.enCours) {
+      s.budget.expenses.push({ month: moisAvant(0), v: options.enCours, note: '' });
+    }
+  });
+  const budgetSortis = () => insightsDeLOnglet('budget', {});
+  const trouve = id => budgetSortis().find(x => x.id === id);
+
+  /* Six mois : trois de reference, trois recents ou un poste double. */
+  const SIX_MOIS_AVEC_DERIVE = [
+    { Courses: 400, Sorties: 100 }, { Courses: 400, Sorties: 100 }, { Courses: 400, Sorties: 100 },
+    { Courses: 400, Sorties: 300 }, { Courses: 400, Sorties: 300 }, { Courses: 400, Sorties: 300 },
+  ];
+
+  test('un mois vide ne fait parler personne', () => {
+    poserBudget([]);
+    eq(budgetSortis().length, 0,
+      'sans une seule dépense saisie, il n’y a rien à dire : c’est l’écran des '
+      + 'premiers pas qui parle, pas un insight');
+  });
+
+  test('un seul mois dit la limite, et ne compare rien', () => {
+    poserBudget([{ Courses: 400 }]);
+    const t = trouve('budget_history_thin');
+    vrai(t, 'la carte dit pourquoi elle ne compare pas');
+    eq(t.params.months, 1, 'et combien de mois elle a');
+    eq(t.params.needed, 6, 'et combien il en faut');
+    vrai(!trouve('spending_category_shift'), 'aucune dérive n’est calculée sur un mois');
+    vrai(!trouve('spending_shift'), 'ni sur le total');
+  });
+
+  test('l’aveu d’historique s’éteint dès qu’il y a de quoi comparer', () => {
+    /* LA SEULE REGLE DU CATALOGUE DONT LE BUT EST DE DISPARAITRE. Un insight qui
+       reviendrait tous les mois pour annoncer qu'il manque des donnees serait
+       exactement le bruit qu'on voulait eviter. */
+    poserBudget(SIX_MOIS_AVEC_DERIVE);
+    vrai(!trouve('budget_history_thin'),
+      'six mois suffisent : elle n’a plus rien à dire et ne revient jamais');
+  });
+
+  test('le poste qui a doublé est nommé, avec ses deux montants', () => {
+    poserBudget(SIX_MOIS_AVEC_DERIVE);
+    const d = trouve('spending_category_shift');
+    vrai(d, 'la dérive d’un poste doit sortir');
+    eq(d.params.category, 'Sorties', 'et c’est le poste qui a bougé, pas le plus gros');
+    pres(d.params.previous, 100, 'son niveau d’avant');
+    pres(d.params.current, 300, 'son niveau de maintenant');
+    pres(d.params.deltaPct, 200, 'et l’écart relatif');
+  });
+
+  test('un petit poste qui double ne passe pas devant un gros qui bouge', () => {
+    /* LE PIEGE DU POURCENTAGE SEUL. Un abonnement de huit euros qui passe a
+       seize fait +100 %, et ce +100 % couronnerait le bruit. La condition de
+       poids l'écarte : huit euros ne pèsent rien dans un budget de cinq cents. */
+    poserBudget([
+      { Courses: 400, Abo: 8 }, { Courses: 400, Abo: 8 }, { Courses: 400, Abo: 8 },
+      { Courses: 400, Abo: 16 }, { Courses: 400, Abo: 16 }, { Courses: 400, Abo: 16 },
+    ]);
+    vrai(!trouve('spending_category_shift'),
+      'huit euros de plus ne sont pas une dérive, quel que soit leur pourcentage');
+  });
+
+  test('un gros poste qui bouge à peine ne sort pas non plus', () => {
+    /* LE PIEGE SYMETRIQUE. L'alimentation bouge de quelques euros tous les mois
+       sans que cela veuille rien dire, et elle sortirait a chaque fois puisqu'elle
+       est la plus grosse ligne. */
+    poserBudget([
+      { Courses: 400 }, { Courses: 400 }, { Courses: 400 },
+      { Courses: 420 }, { Courses: 420 }, { Courses: 420 },
+    ]);
+    vrai(!trouve('spending_category_shift'),
+      'cinq pour cent sur la plus grosse ligne restent de la vie courante');
+  });
+
+  test('un poste qui s’éteint ne se dit pas : il n’appelle aucune décision', () => {
+    /* Une reparation imprevue parait un mois puis disparait. La fenetre suivante
+       la voit tomber a zero, donc « −100 % », et ce moins-cent-pour-cent
+       sortirait en tete tous les trimestres sans que personne ait rien a en
+       faire. Le mois exceptionnel, lui, est deja dit par sa propre règle. */
+    poserBudget([
+      { Courses: 400, Imprevu: 300 }, { Courses: 400, Imprevu: 300 }, { Courses: 400, Imprevu: 300 },
+      { Courses: 400 }, { Courses: 400 }, { Courses: 400 },
+    ]);
+    const d = trouve('spending_category_shift');
+    vrai(!d || d.params.category !== 'Imprevu',
+      'une dépense qui s’arrête n’est pas une dérive à signaler');
+  });
+
+  test('un poste qui apparaît se dit sans inventer de pourcentage', () => {
+    poserBudget([
+      { Courses: 400 }, { Courses: 400 }, { Courses: 400 },
+      { Courses: 400, Garde: 250 }, { Courses: 400, Garde: 250 }, { Courses: 400, Garde: 250 },
+    ]);
+    const d = trouve('spending_category_shift');
+    vrai(d, 'un poste nouveau qui pèse doit se dire');
+    eq(d.params.category, 'Garde', 'et c’est bien lui');
+    eq(d.params.isNew, true, 'la présentation saura qu’il n’avait pas de base');
+    eq(d.params.deltaPct, null,
+      'un pourcentage n’existe que sur une base positive : sans niveau d’avant, '
+      + 'il n’y en a pas, et « +100 % » serait une mesure inventée');
+  });
+
+  test('le rythme du mois en cours prévient d’un dépassement, pas avant le tiers', () => {
+    /* La regle regarde le seul mois non clos du catalogue, et elle le dit. */
+    poserBudget(SIX_MOIS_AVEC_DERIVE, { objectif: 1000, enCours: { Courses: 900 } });
+    const m = mesuresInsights(contexteInsights({}));
+    const p = trouve('spending_target_pace');
+    if (m.encours.avancement < 1 / 3) {
+      vrai(!p, 'avant le tiers du mois, une projection ne mesure que le hasard des premiers jours');
+    } else {
+      vrai(p, 'passé le tiers du mois, le rythme se dit');
+      pres(p.params.spent, 900, 'ce qui est déjà sorti');
+      vrai(p.params.projected > p.params.target, 'et la projection dépasse l’objectif');
+    }
+  });
+
+  test('sans objectif déclaré, il n’y a pas de dépassement à annoncer', () => {
+    poserBudget(SIX_MOIS_AVEC_DERIVE, { objectif: 0, enCours: { Courses: 5000 } });
+    vrai(!trouve('spending_target_pace'),
+      'un dépassement suppose une cible : sans elle, il n’y a qu’une dépense');
+  });
+
+  test('un mois à part nomme ce qui le porte, ou se tait là-dessus', () => {
+    /* La hausse tenue par un seul poste : il doit etre nomme.
+
+       LES MOIS DE REFERENCE VARIENT, ET C'EST LA REGLE QUI L'EXIGE : elle
+       compare l'écart à la dispersion habituelle de cette personne, et une série
+       parfaitement plate ferait de trois euros une anomalie. Sans dispersion
+       mesurable, elle se tait — ce qui est juste, et ce qu'un fixture trop
+       régulier prenait pour un défaut. */
+    poserBudget([
+      { Courses: 380 }, { Courses: 420 }, { Courses: 400 }, { Courses: 410 },
+      { Courses: 390 }, { Courses: 400 }, { Courses: 400, Travaux: 1400 },
+    ]);
+    const a = trouve('spending_month_anomaly');
+    vrai(a, 'un mois qui sort de l’ordinaire doit se dire');
+    eq(a.params.drivers.join(','), 'Travaux', 'et le poste qui le porte est nommé');
+
+    /* La hausse repartie sur cinq postes : aucun ne l'explique, on n'en cite
+       aucun plutot que de laisser croire que les deux premiers suffisent. */
+    /* La dispersion se mesure sur le TOTAL du mois, pas sur ses postes : des
+       mois qui varient au-dedans mais tombent tous sur le même total sont
+       parfaitement plats pour cette règle. Ce sont donc les totaux qui bougent. */
+    poserBudget([
+      { A: 80, B: 100, C: 100, D: 100, E: 100 }, { A: 120, B: 100, C: 100, D: 100, E: 100 },
+      { A: 100, B: 100, C: 100, D: 100, E: 100 }, { A: 110, B: 100, C: 100, D: 100, E: 100 },
+      { A: 90, B: 100, C: 100, D: 100, E: 100 }, { A: 100, B: 100, C: 100, D: 100, E: 100 },
+      { A: 260, B: 260, C: 260, D: 260, E: 260 },
+    ]);
+    const b = trouve('spending_month_anomaly');
+    vrai(b, 'le mois sort toujours de l’ordinaire');
+    eq(b.params.drivers.length, 0, 'mais aucun poste ne l’explique à lui seul');
+    eq(b.params.driversDelta, null,
+      'et les chiffres ne survivent pas au refus de nommer : ils se liraient '
+      + 'comme la cause');
+  });
+
+  test('deux règles ne racontent jamais la même chose sur la même carte', () => {
+    /* `spending_shift` dit que le total a change de niveau, `spending_category_shift`
+       dit quel poste l'a fait. Elles partagent un groupe de déduplication, donc
+       la plus forte sort seule — et c'est celle qui nomme le poste, parce qu'elle
+       contient l'autre information en plus de la sienne. */
+    poserBudget(SIX_MOIS_AVEC_DERIVE);
+    const ids = budgetSortis().map(x => x.id);
+    vrai(!(ids.includes('spending_shift') && ids.includes('spending_category_shift')),
+      'le total et le poste ne se disent pas ensemble');
+    eq(ids.length, new Set(ids).size, 'et aucune règle ne sort deux fois');
+  });
+
+  test('un insight de dépenses ne s’affiche plus sur l’Aperçu', () => {
+    /* L'ADRESSAGE PAR ONGLET, ET CE QU'IL CORRIGE. Une remarque sur les
+       restaurants s'affichait sur la page du patrimoine, ou personne ne vient la
+       chercher, et elle occupait une des trois places au détriment d'une lecture
+       patrimoniale. */
+    poserBudget(SIX_MOIS_AVEC_DERIVE);
+    const surApercu = insightsDeLOnglet('overview', {}).map(x => x.id);
+    vrai(!surApercu.includes('spending_category_shift'),
+      'une règle se lit sur l’onglet où l’on est déjà en train d’y penser');
+    for (const r of REGLES_INSIGHT) {
+      vrai(['overview', 'budget', 'allocation', 'accounts', 'positions'].includes(r.onglet),
+        `${r.id} déclare un onglet qui existe`);
+    }
+  });
+
+  test('le moteur filtre par onglet, il ne coupe pas', () => {
+    poserBudget(SIX_MOIS_AVEC_DERIVE);
+    const tous = construireInsights({});
+    for (const vue of ['overview', 'budget', 'allocation', 'accounts', 'positions']) {
+      eq(insightsDeLOnglet(vue, {}).join(','),
+         tous.filter(i => i.onglet === vue).join(','),
+         `« ${vue} » reçoit exactement ce que le moteur y range, sans plafond`);
+    }
+  });
+});
+
+/* ------------------------------------------------------------------
    Un non coté se cède, et la cession s'inscrit quelque part
    ------------------------------------------------------------------ */
 suite('Un non coté se cède, et la cession s’inscrit quelque part', () => {
@@ -42635,9 +42859,17 @@ suite('À retenir : chaque insight se lit dans le même ordre', () => {
     const a = app();
     return a.slice(a.indexOf('const PRESENTATION_INSIGHT'), a.indexOf('function carteARetenir()'));
   };
+  /* LA BORNE BASSE EST LA FONCTION SUIVANTE, QUELLE QU'ELLE SOIT. Elle nommait
+     `viewOverview()`, qui se trouvait être la voisine : la carte commune des
+     insights et le rendu d'une entrée se sont posés entre les deux, et la
+     tranche a gonflé de deux fonctions que ces contrôles ne visent pas — d'où
+     « deux listes » là où la carte de l'Aperçu n'en porte qu'une. Une borne se
+     dérive de la structure, jamais d'un voisinage que rien ne garantit. */
   const rendu = () => {
     const a = app();
-    return a.slice(a.indexOf('function carteARetenir()'), a.indexOf('function viewOverview()'));
+    const d = a.indexOf('function carteARetenir()');
+    const f = a.indexOf('\nfunction ', d + 1);
+    return a.slice(d, f > 0 ? f : undefined);
   };
   const entree = (id, suivant) => {
     const p = presentation();
@@ -42654,11 +42886,15 @@ suite('À retenir : chaque insight se lit dans le même ordre', () => {
   });
 
   test('le gabarit pose les cinq blocs dans cet ordre', () => {
-    const r = rendu();
-    /* La fenetre commence a la boucle : l'etat calme, plus haut, porte lui
-       aussi un titre et un texte, et brouillerait l'ordre recherche. */
-    const item = r.slice(r.indexOf('${lus.map('));
-    vrai(item.length > 200, 'la boucle des insights est bien la fenêtre lue');
+    /* LE GABARIT D'UNE ENTREE A DEMENAGE dans `ligneInsight()`, qui le rend pour
+       tous les onglets. C'est la le bon endroit pour ce contrôle : l'ordre des
+       cinq blocs est une propriété de l'entrée, pas de la carte qui la porte, et
+       le vérifier dans une seule carte laisserait les autres libres d'en
+       inventer un second. */
+    const a = app();
+    const d = a.indexOf('function ligneInsight(');
+    const item = a.slice(d, a.indexOf('\nfunction ', d + 1));
+    vrai(item.length > 200, 'le rendu d’une entrée est bien la fenêtre lue');
     const rang = c => item.indexOf('retenir-' + c);
     const ordre = ['titre', 'valeur', 'texte', 'second', 'lien'];
     for (let k = 1; k < ordre.length; k++) {
@@ -42934,8 +43170,28 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
   test('chaque règle est unique, nommée, et rangée dans une famille', () => {
     const ids = REGLES_INSIGHT.map(r => r.id);
     eq(new Set(ids).size, ids.length, 'aucun identifiant en double');
-    const groupes = REGLES_INSIGHT.map(r => r.dedupeGroup);
-    eq(new Set(groupes).size, groupes.length, 'aucun groupe de déduplication en double');
+    /* UN GROUPE PEUT SE PARTAGER, ET C'EST TOUT SON OBJET. Ce contrôle exigeait
+       un groupe par règle, ce qui revenait à interdire le mécanisme qu'il
+       croyait protéger : le groupe existe pour que deux règles qui diraient la
+       même chose ne sortent pas ensemble. « Tes dépenses ont monté de 12 % » et
+       « tes restaurants passent de 185 à 312 € » racontent le même fait, la
+       seconde en disant où ; elles partagent donc un groupe, et la plus forte
+       gagne.
+
+       Ce qui reste interdit, et c'est la vraie règle : partager un groupe entre
+       deux familles. La famille sert à ordonner, le groupe à retirer — deux
+       règles de familles différentes qui s'excluent feraient disparaître une
+       question entière de l'écran sans que rien ne le dise. */
+    const parGroupe = new Map();
+    for (const r of REGLES_INSIGHT) {
+      const l = parGroupe.get(r.dedupeGroup) || [];
+      l.push(r); parGroupe.set(r.dedupeGroup, l);
+    }
+    for (const [groupe, regles] of parGroupe) {
+      eq(new Set(regles.map(r => r.famille)).size, 1,
+        `le groupe « ${groupe} » s’étend sur plusieurs familles : il ferait taire `
+        + 'une question entière, pas une redite');
+    }
     const familles = new Set(REGLES_INSIGHT.map(r => r.famille));
     vrai(familles.size >= 6, `${familles.size} familles distinctes`);
     for (const r of REGLES_INSIGHT) {
@@ -42992,7 +43248,18 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
        ses propres mois s'écartent habituellement. Aucun montant, aucun
        pourcentage : trois cents euros de plus sont énormes chez l'un et
        invisibles chez l'autre. */
-    const mois = tranche("id: 'spending_month_anomaly'", "id: 'concentration_top_line'");
+    /* LA BORNE BASSE EST LA REGLE SUIVANTE, QUELLE QU'ELLE SOIT. Elle nommait
+       `concentration_top_line`, qui se trouvait être la voisine : trois règles
+       posées entre les deux ont fait entrer leurs seuils dans la tranche, et le
+       contrôle a crié sur du code qu'il ne visait pas. Une borne se dérive de
+       la structure — la prochaine déclaration de règle — jamais d'un voisinage
+       qui n'est garanti par rien. */
+    const regleSuivante = depuis => {
+      const i = c.indexOf(depuis);
+      const j = c.indexOf("    id: '", i + depuis.length);
+      return c.slice(i, j > 0 ? j : undefined);
+    };
+    const mois = regleSuivante("id: 'spending_month_anomaly'");
     vrai(/2 \* dispersion/.test(mois), 'le seuil est le double de sa propre dispersion');
     vrai(/mediane\(avant\.map/.test(mois), 'mesurée sur ses propres mois');
     vrai(!/SEUIL_/.test(mois), 'et aucun seuil posé n’entre dans la règle');
@@ -43715,9 +43982,17 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
     const a = app();
     return a.slice(a.indexOf('const PRESENTATION_INSIGHT'), a.indexOf('function carteARetenir()'));
   };
+  /* LA BORNE BASSE EST LA FONCTION SUIVANTE, QUELLE QU'ELLE SOIT. Elle nommait
+     `viewOverview()`, qui se trouvait être la voisine : la carte commune des
+     insights et le rendu d'une entrée se sont posés entre les deux, et la
+     tranche a gonflé de deux fonctions que ces contrôles ne visent pas — d'où
+     « deux listes » là où la carte de l'Aperçu n'en porte qu'une. Une borne se
+     dérive de la structure, jamais d'un voisinage que rien ne garantit. */
   const rendu = () => {
     const a = app();
-    return a.slice(a.indexOf('function carteARetenir()'), a.indexOf('function viewOverview()'));
+    const d = a.indexOf('function carteARetenir()');
+    const f = a.indexOf('\nfunction ', d + 1);
+    return a.slice(d, f > 0 ? f : undefined);
   };
 
   test('aucun insight : un état calme, et surtout pas un remplissage', () => {
@@ -43753,8 +44028,20 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
     vrai(/const MAX_A_RETENIR = 3;/.test(a), 'le plafond est déclaré dans la vue, et il vaut trois');
     vrai(!/MAX_INSIGHTS/.test(lireSource('assets/insights.js')),
       'et le moteur n’en porte plus');
-    vrai(/selectionARetenir\(construireInsights\(\)/.test(rendu()),
+    /* La carte prend désormais ce que le moteur range sur SON onglet, puis la
+       même sélection coupe. Le plafond n'a pas bougé de place : il vit toujours
+       avec la sélection, dans la vue. */
+    vrai(/selectionARetenir\(insightsDeLOnglet\('overview'/.test(rendu()),
       'la coupe passe par la sélection de la Home');
+    /* Et l'adressage par onglet n'a pas rapporté de plafond dans le moteur :
+       `insightsDeLOnglet()` filtre, il ne coupe pas. Le contrôle porte sur cette
+       fonction-là, et non sur le fichier entier — le catalogue se sert de
+       `slice` pour découper des fenêtres de mois, ce qui n'a rien à voir. */
+    const src = lireSource('assets/insights.js');
+    const dt = src.indexOf('function insightsDeLOnglet(');
+    vrai(dt > 0, 'la sélection par onglet doit être trouvable');
+    vrai(!/slice\(/.test(src.slice(dt, src.indexOf('\n}', dt))),
+      'et le moteur ne coupe toujours pas : il rendrait un choix déjà fait');
     vrai(/selectionParClef\(candidats, c => destinationInsight\(c\[1\]\), MAX_A_RETENIR\)/.test(a),
       'qui applique cette constante');
     /* Le catalogue en porte treize : c'est bien un plafond d'affichage, et la
@@ -43770,7 +44057,9 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
   test('l’ordre affiché est celui du moteur, sans second tri', () => {
     const r = rendu();
     vrai(!/\.sort\(/.test(r), 'la vue ne reclasse rien : deux classements finiraient par diverger');
-    vrai(/construireInsights\(\)/.test(r), 'elle lit la liste que le moteur a déjà ordonnée');
+    /* `insightsDeLOnglet()` est la liste du moteur, filtrée sur l'onglet et dans
+       son ordre : la vue ne fait qu'y prendre sa part. */
+    vrai(/insightsDeLOnglet\('overview'/.test(r), 'elle lit la liste que le moteur a déjà ordonnée');
     /* Et le moteur, lui, est stable : deux appels, deux fois le meme ordre. */
     Fixture.poser();
     eq(construireInsights().map(i => i.id).join(','),
@@ -43882,8 +44171,13 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
     /* Et ce qui se focalise porte l'anneau de l'application. */
     vrai(/\.lien-vue:focus-visible \{[\s\S]*?outline: 2px solid var\(--accent\)/.test(css),
       'le renvoi est atteignable au clavier, et ça se voit');
-    /* La fleche est decorative : elle ne doit pas etre lue a voix haute. */
-    vrai(/<span aria-hidden="true">→<\/span>/.test(r), 'la flèche est masquée aux lecteurs d’écran');
+    /* La fleche est decorative : elle ne doit pas etre lue a voix haute. Elle
+       vit avec l'entree, dans `ligneInsight()`, et non dans la carte. */
+    const a = app();
+    const dl = a.indexOf('function ligneInsight(');
+    const entreeRendue = a.slice(dl, a.indexOf('\nfunction ', dl + 1));
+    vrai(/<span aria-hidden="true">→<\/span>/.test(entreeRendue),
+      'la flèche est masquée aux lecteurs d’écran');
     vrai(/aria-labelledby="retenirTitre"/.test(r), 'et la section est nommée');
   });
 });
@@ -44111,8 +44405,14 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
   });
 
   test('aucun calcul n’a changé', () => {
-    /* Le moteur ignore les renvois : ils vivent dans la vue. */
-    const m = lireSource('assets/insights.js');
+    /* Le moteur ignore les renvois : ils vivent dans la vue.
+
+       SANS LES COMMENTAIRES, et la nuance compte : le contrôle porte sur le
+       CODE. Un commentaire qui explique pourquoi le moteur ne connaît pas les
+       destinations nomme forcément une destination pour le dire, et se faisait
+       prendre par sa propre justification. C'est le même piège que le contrôle
+       de l'horodatage envoyé, quelques suites plus haut. */
+    const m = lireSource('assets/insights.js').replace(/\/\*[\s\S]*?\*\//g, '');
     vrai(!/autonomie|Voir mon|goto/.test(m), 'le moteur ne connaît pas les destinations');
     Fixture.poser();
     const i = evaluerInsights().find(x => x.id === 'liquidity_runway');

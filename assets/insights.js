@@ -92,6 +92,13 @@ const SEUIL_AFFICHAGE_POCHE_PP = 5;
 
 const SEUIL_AFFICHAGE_DEPENSES_PCT = 10;
 
+const SEUIL_AFFICHAGE_POSTE_PCT = 15;
+const POIDS_MINIMAL_DU_POSTE_PCT = 5;
+
+const SEUIL_DEPASSEMENT_PROJETE_PCT = 10;
+
+const AVANCEMENT_MINIMAL_DU_MOIS = 1 / 3;
+
 const SEUIL_AFFICHAGE_OBJECTIF_MOIS = 2;
 
 const MOIS_CREDIT_BIENTOT_SOLDE = 12;
@@ -311,7 +318,27 @@ function mesuresInsights(ctx) {
     .filter(x => x.month < moisCourant && x.total > 0)
     .sort((a, b) => a.month.localeCompare(b.month));
 
+  /* LE MOIS EN COURS, A PART, ET NOMME COMME TEL. La serie ci-dessus l'ecarte
+     expres : un mois de huit jours compare a des mois entiers ferait croire a
+     un effondrement des depenses. Mais une regle a le droit de le regarder SI
+     elle dit qu'il est en cours — c'est le cas du rythme, dont c'est tout le
+     sujet. Deux objets distincts, donc, plutot qu'un drapeau sur un seul : une
+     regle qui lit `depenses` ne peut pas se tromper de mois par inadvertance. */
+  const ligneCourante = expenseSeries('all').find(x => x.month.startsWith(moisCourant));
+  const jour = new Date(String(ctx.aujourdhui) + 'T12:00:00');
+  const joursDuMois = new Date(jour.getFullYear(), jour.getMonth() + 1, 0).getDate();
+  const encours = {
+    month: moisCourant,
+    total: ligneCourante ? num(ligneCourante.total) : 0,
+    v: (ligneCourante && ligneCourante.v) || {},
+    joursEcoules: jour.getDate(),
+    joursDuMois,
+    avancement: jour.getDate() / joursDuMois,
+  };
+
   return {
+    encours,
+    budget: budgetFrame(),
     aujourdhui: ctx.aujourdhui,
     depensesObservees: dep,
     runway: r,
@@ -432,6 +459,7 @@ const REGLES_INSIGHT = [
      servent une jauge ailleurs ; ils ne sortent PAS d'ici. */
   {
     id: 'liquidity_runway',
+    onglet: 'overview',
     famille: 'liquidite',
     categorie: 'liquidity',
     priorite: INSIGHT_PRIORITE.HAUTE,
@@ -487,6 +515,7 @@ const REGLES_INSIGHT = [
 
   {
     id: 'liquidity_runway_shift',
+    onglet: 'overview',
     famille: 'liquidite',
     categorie: 'liquidity',
     priorite: INSIGHT_PRIORITE.HAUTE,
@@ -542,6 +571,7 @@ const REGLES_INSIGHT = [
      celle qui derive le plus, et le detail se lit dans Allocation. */
   {
     id: 'allocation_target_gap',
+    onglet: 'allocation',
     famille: 'allocation',
     categorie: 'allocation',
     priorite: INSIGHT_PRIORITE.HAUTE,
@@ -588,6 +618,7 @@ const REGLES_INSIGHT = [
 
   {
     id: 'pocket_share_shift',
+    onglet: 'allocation',
     famille: 'allocation',
     categorie: 'allocation',
     priorite: INSIGHT_PRIORITE.MOYENNE,
@@ -636,6 +667,7 @@ const REGLES_INSIGHT = [
      affiche, et l'ecart entre les deux se lit. */
   {
     id: 'wealth_pace_shift',
+    onglet: 'overview',
     famille: 'progression',
     categorie: 'wealth_pace',
     priorite: INSIGHT_PRIORITE.MOYENNE,
@@ -701,6 +733,7 @@ const REGLES_INSIGHT = [
      reste », et jamais « les marches ». */
   {
     id: 'wealth_growth_origin',
+    onglet: 'overview',
     famille: 'progression',
     categorie: 'wealth_pace',
     priorite: INSIGHT_PRIORITE.MOYENNE,
@@ -747,6 +780,7 @@ const REGLES_INSIGHT = [
      ce qui rend la date honnete. */
   {
     id: 'goal_projected_date',
+    onglet: 'overview',
     famille: 'objectif',
     categorie: 'goal',
     priorite: INSIGHT_PRIORITE.HAUTE,
@@ -785,6 +819,7 @@ const REGLES_INSIGHT = [
 
   {
     id: 'goal_date_shift',
+    onglet: 'overview',
     famille: 'objectif',
     categorie: 'goal',
     priorite: INSIGHT_PRIORITE.HAUTE,
@@ -829,6 +864,7 @@ const REGLES_INSIGHT = [
 
   {
     id: 'debt_principal_share',
+    onglet: 'overview',
     famille: 'dette',
     categorie: 'debt',
     priorite: INSIGHT_PRIORITE.MOYENNE,
@@ -860,6 +896,7 @@ const REGLES_INSIGHT = [
 
   {
     id: 'debt_soon_free',
+    onglet: 'overview',
     famille: 'dette',
     categorie: 'debt',
     priorite: INSIGHT_PRIORITE.MOYENNE,
@@ -888,6 +925,7 @@ const REGLES_INSIGHT = [
 
   {
     id: 'spending_shift',
+    onglet: 'budget',
     famille: 'budget',
     categorie: 'budget',
     priorite: INSIGHT_PRIORITE.MOYENNE,
@@ -925,6 +963,7 @@ const REGLES_INSIGHT = [
 
   {
     id: 'spending_month_anomaly',
+    onglet: 'budget',
     famille: 'budget',
     categorie: 'budget',
     priorite: INSIGHT_PRIORITE.MOYENNE,
@@ -944,15 +983,196 @@ const REGLES_INSIGHT = [
       if (!(dispersion > 0) || !(med > 0)) return null;
       const ecart = num(dernier.total) - med;
       if (Math.abs(ecart) < 2 * dispersion) return null;
+
+      const usuel = poste => mediane(serie.slice(0, -1).map(x => num((x.v || {})[poste])));
+      const postes = [...new Set(serie.flatMap(x => Object.keys(x.v || {})))]
+        .map(poste => ({ poste, delta: num((dernier.v || {})[poste]) - usuel(poste) }))
+        .filter(x => Math.sign(x.delta) === Math.sign(ecart) && x.delta !== 0)
+        .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+        .slice(0, 2);
+      const explique = postes.reduce((s, x) => s + x.delta, 0);
+      const nommables = Math.abs(explique) >= Math.abs(ecart) / 2 ? postes : [];
+
       return {
         valeur: ecart,
         poids: amplitude(ecart, 2 * dispersion),
         params: { month: dernier.month, total: num(dernier.total), usual: med,
-                  delta: ecart, deltaPct: ecart / med * 100 },
+                  delta: ecart, deltaPct: ecart / med * 100,
+                  /* Les chiffres ne survivent pas au refus de nommer : donner
+                     un montant et une part pour des postes qu'on a decide de
+                     taire les ferait lire comme la cause, alors qu'ils sont
+                     precisement ce dont on a juge qu'ils n'expliquaient pas
+                     assez. Rien a dire se dit `null`, pas par un nombre. */
+                  drivers: nommables.map(x => x.poste),
+                  driversDelta: nommables.length ? explique : null,
+                  driversShare: nommables.length && ecart ? explique / ecart * 100 : null },
         evidence: {
           source: 'expenseSeries', month: dernier.month, total: num(dernier.total),
           usualMedian: med, usualDeviation: dispersion, observedMonths: avant.length,
-          rule: 'ecart superieur au double de la dispersion habituelle',
+          drivers: nommables.map(x => ({ category: x.poste, delta: x.delta })),
+          driversExplain: nommables.length ? explique / ecart * 100 : null,
+          rule: 'ecart superieur au double de la dispersion habituelle ; postes cites '
+              + 'seulement s’ils expliquent la moitie de l’ecart',
+        },
+        action: { vue: 'budget' },
+      };
+    },
+  },
+
+  /* --- Le poste qui a bouge, et lui seul ----------------------------------
+
+     LA REGLE QUI MANQUAIT, et c'est la plus utile de l'onglet. `spending_shift`
+     dit que le total a change de niveau ; il ne dit pas ou. « Tes depenses ont
+     augmente de douze pour cent » laisse le lecteur ouvrir le tableau et
+     comparer douze colonnes a la main, ce qui est exactement le travail qu'une
+     application doit faire a sa place.
+
+     UN SEUL POSTE SORT, LE PLUS GROS MOUVEMENT EN EUROS. Les nommer tous
+     rendrait la carte illisible et ferait de l'insight un second tableau. Le
+     mouvement se mesure en euros et non en pourcentage parce que c'est l'euro
+     qui decide de ce qui compte dans un budget ; le pourcentage sert de filtre,
+     pas de classement.
+
+     Elle ne conseille rien. « Restaurants en hausse » est un constat ; « tu
+     devrais reduire » serait un jugement sur une vie que l'application ne
+     connait pas. */
+  {
+    id: 'spending_category_shift',
+    onglet: 'budget',
+    famille: 'budget',
+    categorie: 'budget',
+    /* HAUTE, ET C'EST CE QUI LA FAIT PASSER DEVANT `spending_shift`. Les deux
+       partagent un groupe : elles racontent le meme fait, l'une en disant ou.
+       A rang egal, les deux amplitudes saturent des qu'un mouvement est franc,
+       et c'est alors l'ordre de declaration qui tranchait — donc le total, qui
+       est declare avant. On lisait « tes depenses ont monte de 40 % » la ou
+       « tes sorties passent de 100 a 300 € » etait disponible.
+       Le rang dit la regle : quand un poste explique le mouvement, c'est lui
+       qu'on veut lire ; quand aucun ne l'explique, cette regle ne sort pas et le
+       total reprend sa place tout seul. */
+    priorite: INSIGHT_PRIORITE.HAUTE,
+    dedupeGroup: 'spending',
+    reposJours: 30,
+    materialite: SEUIL_AFFICHAGE_POSTE_PCT,
+    question: 'Quel poste a change, et de combien ?',
+    titleKey: 'insight.spending_category_shift.title',
+    descriptionKey: 'insight.spending_category_shift.description',
+    eligible: m => m.depenses.length >= MOIS_MINIMUM_FENETRE_DEPENSES * 2,
+    evaluer(m) {
+      const n = m.depenses.length, N = MOIS_MINIMUM_FENETRE_DEPENSES;
+      const recents = m.depenses.slice(n - N);
+      const avants = m.depenses.slice(n - 2 * N, n - N);
+      const postes = [...new Set([...recents, ...avants]
+        .flatMap(x => Object.keys(x.v || {})))];
+      const moyenne = (tranche, poste) =>
+        tranche.reduce((s, x) => s + num((x.v || {})[poste]), 0) / tranche.length;
+      const budgetMensuel = recents.reduce((s, x) => s + num(x.total), 0) / N;
+      if (!(budgetMensuel > 0)) return null;
+
+      let meilleur = null;
+      for (const poste of postes) {
+        const recent = moyenne(recents, poste);
+        const avant = moyenne(avants, poste);
+        const delta = recent - avant;
+        const pct = avant > 0 ? (recent / avant - 1) * 100 : null;
+        const poidsPct = Math.abs(delta) / budgetMensuel * 100;
+        if (!(recent > 0)) continue;
+        if (poidsPct + 1e-9 < POIDS_MINIMAL_DU_POSTE_PCT) continue;
+        if (pct !== null && Math.abs(pct) + 1e-9 < SEUIL_AFFICHAGE_POSTE_PCT) continue;
+        if (!meilleur || Math.abs(delta) > Math.abs(meilleur.delta)) {
+          meilleur = { poste, recent, avant, delta, pct, poidsPct, nouveau: !(avant > 0) };
+        }
+      }
+      if (!meilleur) return null;
+      return {
+        valeur: meilleur.pct === null ? meilleur.poidsPct : meilleur.pct,
+        poids: amplitude(meilleur.pct === null ? meilleur.poidsPct : meilleur.pct,
+                         SEUIL_AFFICHAGE_POSTE_PCT),
+        params: { category: meilleur.poste, current: meilleur.recent,
+                  previous: meilleur.avant, delta: meilleur.delta,
+                  deltaPct: meilleur.pct, months: N, isNew: meilleur.nouveau },
+        evidence: {
+          source: 'expenseSeries.v',
+          category: meilleur.poste,
+          currentFrom: recents[0].month, currentTo: recents[N - 1].month,
+          previousFrom: avants[0].month, previousTo: avants[N - 1].month,
+          current: meilleur.recent, previous: meilleur.avant,
+          deltaPct: meilleur.pct, shareOfBudgetPct: meilleur.poidsPct,
+          displayThresholdPct: SEUIL_AFFICHAGE_POSTE_PCT,
+          weightThresholdPct: POIDS_MINIMAL_DU_POSTE_PCT,
+          rule: 'le plus gros mouvement en euros parmi les postes qui passent les deux seuils',
+        },
+        action: { vue: 'budget' },
+      };
+    },
+  },
+
+  {
+    id: 'spending_target_pace',
+    onglet: 'budget',
+    famille: 'budget_objectif',
+    categorie: 'budget',
+    priorite: INSIGHT_PRIORITE.HAUTE,
+    dedupeGroup: 'spending_pace',
+    reposJours: 10,
+    materialite: SEUIL_DEPASSEMENT_PROJETE_PCT,
+    question: 'Le rythme du mois en cours mene-t-il au-dela de l’objectif ?',
+    titleKey: 'insight.spending_target_pace.title',
+    descriptionKey: 'insight.spending_target_pace.description',
+    eligible: (m, c) => num(m.budget.target) > 0
+      && m.encours.avancement >= AVANCEMENT_MINIMAL_DU_MOIS
+      && num(m.encours.total) > 0,
+    evaluer(m) {
+      const objectif = num(m.budget.target);
+      const projete = num(m.encours.total) / m.encours.avancement;
+      const ecartPct = (projete / objectif - 1) * 100;
+      if (ecartPct + 1e-9 < SEUIL_DEPASSEMENT_PROJETE_PCT) return null;
+      return {
+        valeur: ecartPct,
+        poids: amplitude(ecartPct, SEUIL_DEPASSEMENT_PROJETE_PCT),
+        params: { spent: num(m.encours.total), projected: projete, target: objectif,
+                  overPct: ecartPct, over: projete - objectif,
+                  daysIn: m.encours.joursEcoules, daysInMonth: m.encours.joursDuMois },
+        evidence: {
+          source: 'expenseSeries + budgetFrame',
+          month: m.encours.month, spent: num(m.encours.total),
+          daysIn: m.encours.joursEcoules, daysInMonth: m.encours.joursDuMois,
+          projected: projete, target: objectif, overPct: ecartPct,
+          minimumProgress: AVANCEMENT_MINIMAL_DU_MOIS,
+          displayThresholdPct: SEUIL_DEPASSEMENT_PROJETE_PCT,
+          rule: 'depense a ce jour ramenee au mois entier, comparee a l’objectif declare',
+        },
+        action: { vue: 'budget' },
+      };
+    },
+  },
+
+  {
+    id: 'budget_history_thin',
+    onglet: 'budget',
+    famille: 'budget_donnees',
+    categorie: 'data_quality',
+    priorite: INSIGHT_PRIORITE.BASSE,
+    dedupeGroup: 'budget_data',
+    reposJours: 45,
+    materialite: 1,
+    question: 'Y a-t-il de quoi comparer ce mois a une moyenne ?',
+    titleKey: 'insight.budget_history_thin.title',
+    descriptionKey: 'insight.budget_history_thin.description',
+    eligible: m => m.depenses.length > 0
+      && m.depenses.length < MOIS_MINIMUM_FENETRE_DEPENSES * 2,
+    evaluer(m) {
+      const manquants = MOIS_MINIMUM_FENETRE_DEPENSES * 2 - m.depenses.length;
+      return {
+        valeur: m.depenses.length,
+        poids: 0,
+        params: { months: m.depenses.length, missing: manquants,
+                  needed: MOIS_MINIMUM_FENETRE_DEPENSES * 2 },
+        evidence: {
+          source: 'expenseSeries',
+          observedMonths: m.depenses.length,
+          neededMonths: MOIS_MINIMUM_FENETRE_DEPENSES * 2,
+          rule: 'comparer trois mois clos aux trois precedents demande six mois',
         },
         action: { vue: 'budget' },
       };
@@ -961,6 +1181,7 @@ const REGLES_INSIGHT = [
 
   {
     id: 'concentration_top_line',
+    onglet: 'accounts',
     famille: 'concentration',
     categorie: 'concentration',
     priorite: INSIGHT_PRIORITE.BASSE,
@@ -1086,6 +1307,14 @@ function evaluerInsights(ctx) {
     sortis.push({
       repos,
       id: regle.id,
+      /* L'ONGLET OU L'INSIGHT EST CHEZ LUI, et ce n'est pas sa destination.
+         `action.vue` dit ou l'on va en cliquant ; `onglet` dit ou la carte se
+         pose. Les deux coincident souvent et divergent parfois : la reserve de
+         securite se lit sur l'Apercu et renvoie a la carte d'autonomie, qui y
+         vit aussi, tandis qu'un poste de depenses se lit dans Budget. Un seul
+         champ pour les deux aurait force a choisir entre poser la carte au bon
+         endroit et l'y faire renvoyer a elle-meme. */
+      onglet: regle.onglet,
       famille: regle.famille,
       categorie: regle.categorie,
       priorite: regle.priorite,
@@ -1128,4 +1357,9 @@ function construireInsights(ctx) {
     groupes.add(i.dedupeGroup); choisis.push(i);
   }
   return choisis.map(({ rang, ...i }) => i);
+}
+
+function insightsDeLOnglet(vue, ctx) {
+  if (!vue) return [];
+  return construireInsights(ctx).filter(i => i.onglet === vue);
 }
