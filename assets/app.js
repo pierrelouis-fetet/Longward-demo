@@ -4057,8 +4057,6 @@ function viewAllocation() {
       <dd><b>${fmtEUR(netFinancier())}</b></dd>
   </dl>` : ''}
 
-  ${carteInsights('allocation', 'À retenir')}
-
   <div class="card repart">
     ${disponibilite.map(x => `
       <div class="repart-ligne repart-inerte">
@@ -4078,6 +4076,8 @@ function viewAllocation() {
         <dd>${fmtEUR(valeurBaseAlloc())}</dd>
     </dl>
   </div>
+
+  ${carteInsights('allocation', 'À retenir')}
 
   <div class="card" data-anchor="actifs">
     <div class="card-head"><h2>${trad('Répartition.carte', 'Répartition')}</h2></div>

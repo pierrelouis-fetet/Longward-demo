@@ -25042,6 +25042,25 @@ suite('Une page s’ouvre sur son sujet, et se corrige à la fin', () => {
       "trad('Par disponibilité')");
     vrai(croissant(l),
       `l’ordre attendu est poches, répartition, emplacement, disponibilité : ${l.join(' < ')}`);
+
+    /* ET LES INSIGHTS SE GLISSENT ENTRE LES POCHES ET LES RÉPARTITIONS.
+
+       Ils avaient été posés tout en haut, donc avant le premier chiffre de la
+       page : « 9,2 % de ton patrimoine sur Liquidités » s'annonçait à quelqu'un
+       qui n'avait pas encore vu les poches, et la remarque suivante enchaînait
+       sur une AUTRE base, la part investie. Deux bases avant d'avoir vu l'une ou
+       l'autre — exactement ce que cette page s'interdit partout ailleurs.
+
+       Un insight se lit après ce qui le fonde et avant ce qu'il fait regarder.
+       Le contrôle l'exprime par un encadrement, et non par une position : la
+       carte des poches d'un côté, la première répartition de l'autre. */
+    const encadre = positions(vue,
+      'class="card repart"',
+      "carteInsights('allocation'",
+      "trad('Répartition.carte', 'Répartition')");
+    vrai(croissant(encadre),
+      'les insights viennent après la carte des poches, qui porte la base, et '
+      + `avant les répartitions, qui sont le détail : ${encadre.join(' < ')}`);
   });
 });
 
