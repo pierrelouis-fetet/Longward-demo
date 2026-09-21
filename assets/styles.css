@@ -3544,8 +3544,17 @@ tr.flash-target td { animation: flash-row 1.6s ease; }
     var(--accent), color-mix(in oklab, var(--accent) 35%, transparent));
 }
 
-.retenir-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.card.retenir .card-head h2 {
+  font-size: var(--font-base); font-weight: 600; color: var(--text-secondary);
+}
+.card.retenir .card-head { margin-bottom: 10px; }
+.card.retenir { padding-block: 13px; }
+
+.retenir-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
 .retenir-item { position: relative; padding-left: 16px; }
+.retenir-item + .retenir-item {
+  border-top: 1px solid var(--grid); margin-top: 9px; padding-top: 9px;
+}
 .retenir-item::before {
   content: ''; position: absolute; left: 0; top: .52em; width: 6px; height: 6px;
   border-radius: 50%; background: var(--accent);
@@ -3566,7 +3575,7 @@ tr.flash-target td { animation: flash-row 1.6s ease; }
    une valeur ecrite en pixels ici aurait cree un onzieme palier pour elle seule. */
 .retenir-oeil {
   display: block; font-size: var(--font-xs); font-weight: 650; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--text-secondary); margin-bottom: 2px;
+  text-transform: uppercase; color: var(--text-secondary); margin-bottom: 0;
 }
 .retenir-titre { display: block; font-size: var(--font-base); font-weight: 600; letter-spacing: -.01em; }
 /* LE CHIFFRE QU'ON VIENT CHERCHER SE LIT SEUL.
@@ -3585,7 +3594,7 @@ tr.flash-target td { animation: flash-row 1.6s ease; }
    signe monetaire si on le laisse faire, et une unite orpheline sur la ligne
    suivante se lit comme une faute. */
 .retenir-valeur {
-  margin: 2px 0 0; font-size: var(--font-xl); font-weight: 700;
+  margin: 1px 0 0; font-size: var(--font-xl); font-weight: 700; line-height: 1.15;
   letter-spacing: -.02em; color: var(--text-primary);
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
@@ -3595,11 +3604,18 @@ tr.flash-target td { animation: flash-row 1.6s ease; }
    Mois » ; `::first-letter` ne touche qu'au premier caractere, et les valeurs qui
    commencent par un chiffre ou un signe n'en ont pas. */
 .retenir-valeur::first-letter { text-transform: uppercase; }
-.retenir-texte { margin: 2px 0 0; color: var(--text-secondary); max-width: 62ch; }
-.retenir-second {
-  margin: 2px 0 0; color: var(--muted); font-size: var(--font-sm); max-width: 62ch;
+/* La rangee qui porte le chiffre et ce qu'il mesure. `baseline` et non `center` :
+   vingt pixels contre quatorze centres donneraient deux textes qui flottent,
+   alors qu'ils s'alignent naturellement sur le pied des lettres. */
+.retenir-mesure {
+  margin: 1px 0 0; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
 }
-.retenir-lien { display: inline-block; margin-top: 8px; font-size: var(--font-sm); font-weight: 550; }
+.retenir-texte { margin: 1px 0 0; color: var(--text-secondary); max-width: 62ch; }
+.retenir-mesure .retenir-texte { margin: 0; }
+.retenir-second {
+  margin: 1px 0 0; color: var(--muted); font-size: var(--font-sm); max-width: 62ch;
+}
+.retenir-lien { display: inline-block; margin-top: 6px; font-size: var(--font-sm); font-weight: 550; }
 
 /* Deux commandes dans un en-tete de carte. Sans ce groupe, le `space-between`
    de `.card-head` traite chaque bouton comme un element a part et les eloigne

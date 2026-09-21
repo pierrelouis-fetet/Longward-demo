@@ -837,7 +837,7 @@ function sortiesRappel(genre, label, avant = '') {
   </span>`;
 }
 
-const MAX_A_RETENIR = 3;
+const MAX_A_RETENIR = 2;
 
 /* --- OU MENE CET INSIGHT, ET POURQUOI CA SE DERIVE ------------------------
 
@@ -882,9 +882,9 @@ const EYEBROW_INSIGHT = {
 
 const PRESENTATION_INSIGHT = {
   liquidity_runway: {
-    titre: 'Réserve de sécurité',
+    titre: 'Ce que ta réserve couvre',
     valeur: p => fmtMois(p.months) + ' ' + trad('mois'),
-    phrase: () => trad('de dépenses immédiatement couvertes'),
+    phrase: () => trad('de dépenses immédiates'),
     secondaire: p => p.complementMonths >= 0.1
       ? trad('+{c} mobilisables, mais fléchés ou à vendre')
         .replace('{c}', fmtMois(p.complementMonths) + ' ' + trad('mois'))
@@ -892,10 +892,11 @@ const PRESENTATION_INSIGHT = {
     cta: { vue: 'overview', ancre: 'autonomie', libelle: 'Voir ma réserve' },
   },
   allocation_target_gap: {
-    titre: 'Allocation et cible',
+    titre: p => trad(p.deltaPct >= 0 ? 'Ta part en {c} dépasse ta cible'
+                                    : 'Ta part en {c} reste sous ta cible')
+      .replace('{c}', trad(p.label)),
     valeur: p => fmtPct(p.currentPct, 1),
-    phrase: p => trad('de tes investissements sont sur {c}')
-      .replace('{c}', esc(trad(p.label))),
+    phrase: () => trad('de tes investissements'),
     secondaire: p => trad(p.deltaPct >= 0
       ? 'soit {e} points au-dessus de ta cible de {b}'
       : 'soit {e} points en dessous de ta cible de {b}')
@@ -906,7 +907,9 @@ const PRESENTATION_INSIGHT = {
     cta: { vue: 'rebalance', libelle: 'Voir ma cible' },
   },
   wealth_pace_shift: {
-    titre: 'Progression du patrimoine',
+    titre: p => trad(p.currentMonthly >= p.previousMonthly
+      ? 'Ton patrimoine avance plus vite qu’avant'
+      : 'Ton patrimoine avance moins vite qu’avant'),
     valeur: p => montantSigne(p.currentMonthly, fmtEUR0) + trad('/mois'),
     phrase: p => trad('sur les {n} derniers mois').replace('{n}', p.currentMonths),
     secondaire: p => trad('contre {b} auparavant')
@@ -914,14 +917,16 @@ const PRESENTATION_INSIGHT = {
     cta: { vue: 'overview', ancre: 'evolution', libelle: 'Voir l’évolution' },
   },
   goal_projected_date: {
-    titre: 'Horizon de l’objectif',
+    titre: 'Quand tu atteindrais ta cible',
     valeur: p => moisEtAnnee(p.year, p.month),
     phrase: p => trad('pour atteindre ta cible de {t}').replace('{t}', fmtEUR0(p.target)),
     secondaire: () => trad('selon tes hypothèses actuelles'),
     cta: { vue: 'objective', ancre: 'trajectoire', libelle: 'Voir ma projection' },
   },
   liquidity_runway_shift: {
-    titre: 'Évolution de ta trésorerie',
+    titre: p => trad(p.deltaMonths >= 0
+      ? 'Ta trésorerie couvre plus de mois qu’avant'
+      : 'Ta trésorerie couvre moins de mois qu’avant'),
     valeur: p => fmtMois(p.months) + ' ' + trad('mois'),
     phrase: () => trad('de dépenses couvertes par ta trésorerie'),
     secondaire: p => trad('contre {b} il y a trois mois, à dépenses constantes')
@@ -929,16 +934,19 @@ const PRESENTATION_INSIGHT = {
     cta: { vue: 'overview', ancre: 'evolution', libelle: 'Voir l’évolution' },
   },
   pocket_share_shift: {
-    titre: 'Poids d’une poche',
+    titre: p => trad(p.deltaPct >= 0 ? 'Ta part en {c} a augmenté'
+                                    : 'Ta part en {c} a diminué')
+      .replace('{c}', libellePoche(p.poche)),
     valeur: p => fmtPct(p.currentPct, 1),
-    phrase: p => trad('de ton patrimoine sur {c}')
-      .replace('{c}', esc(libellePoche(p.poche))),
+    phrase: () => trad('de ton patrimoine aujourd’hui'),
     secondaire: p => trad('contre {b} il y a {m} mois')
       .replace('{b}', fmtPct(p.previousPct, 1)).replace('{m}', p.months),
     cta: { vue: 'overview', ancre: 'evolution', libelle: 'Voir l’évolution' },
   },
   wealth_growth_origin: {
-    titre: 'Origine de ta progression',
+    titre: p => trad(p.contributionsPct >= 50
+      ? 'Ta progression vient surtout de tes versements'
+      : 'Ta progression vient en partie de tes versements'),
     valeur: p => fmtPct(p.contributionsPct, 0),
     phrase: p => trad('de ta progression sur {m} mois vient de tes versements')
       .replace('{m}', p.months),
@@ -963,7 +971,8 @@ const PRESENTATION_INSIGHT = {
     cta: { vue: 'accounts', libelle: 'Voir mes crédits' },
   },
   spending_shift: {
-    titre: 'Niveau de tes dépenses',
+    titre: p => trad(p.delta > 0 ? 'Tes dépenses ont monté'
+                                : 'Tes dépenses ont baissé'),
     valeur: p => fmtEUR0(p.current) + trad('/mois'),
     phrase: p => trad('sur les {n} derniers mois clos').replace('{n}', p.months),
     secondaire: p => trad('contre {b} auparavant')
@@ -972,7 +981,8 @@ const PRESENTATION_INSIGHT = {
   },
   spending_category_shift: {
     titre: p => trad(p.delta > 0 ? 'Tes dépenses {c} augmentent'
-                                 : 'Tes dépenses {c} reculent').replace('{c}', p.category),
+                                 : 'Tes dépenses {c} reculent')
+      .replace('{c}', guill(p.category)),
     valeur: p => fmtEUR0(p.current) + trad('/mois'),
     phrase: p => trad('sur les {n} derniers mois clos').replace('{n}', p.months),
     secondaire: p => p.deltaPct == null
@@ -1013,18 +1023,18 @@ const PRESENTATION_INSIGHT = {
     cta: { vue: 'budget', libelle: 'Voir mes dépenses' },
   },
   concentration_top_line: {
-    titre: 'Ta première ligne',
+    titre: 'Une ligne concentre tes actifs',
     valeur: p => fmtPct(p.pct, 1),
-    phrase: p => trad('de tes actifs financiers tiennent sur {c}')
+    phrase: () => trad('de tes actifs financiers'),
+    secondaire: p => trad('{c}, autant que les deux lignes suivantes réunies')
       .replace('{c}', esc(trad(p.label))),
-    secondaire: () => trad('autant que les deux lignes suivantes réunies'),
     cta: { vue: 'positions', libelle: 'Voir mes positions' },
   },
   debt_principal_share: {
-    titre: 'Capital remboursé',
+    titre: 'Tes crédits nourrissent ta progression',
     valeur: p => fmtEUR0(p.monthlyPrincipalRepaid) + trad('/mois'),
-    phrase: () => trad('de ta progression patrimoniale'),
-    secondaire: () => trad('viennent de tes crédits, pas de ton épargne disponible'),
+    phrase: () => trad('de progression patrimoniale'),
+    secondaire: () => trad('et non de ton épargne disponible'),
     cta: { vue: 'overview', ancre: 'accumulation', libelle: 'Voir mon accumulation' },
   },
 };
@@ -1151,8 +1161,11 @@ function ligneInsight(i, p, precedent) {
         ${!oeil ? '' : `<span class="retenir-oeil">${trad(oeil)}</span>`}
         <b class="retenir-titre">${esc(typeof p.titre === 'function'
           ? p.titre(i.params) : trad(p.titre))}</b>
-        ${p.valeur ? `<p class="retenir-valeur">${escMontant(p.valeur(i.params))}</p>` : ''}
-        <p class="retenir-texte">${p.phrase(i.params)}</p>
+        ${p.valeur ? `
+        <p class="retenir-mesure"><b class="retenir-valeur"
+          >${escMontant(p.valeur(i.params))}</b> <span class="retenir-texte"
+          >${p.phrase(i.params)}</span></p>`
+        : `<p class="retenir-texte">${p.phrase(i.params)}</p>`}
         ${(() => {
           const s = p.secondaire && p.secondaire(i.params);
           return s ? `<p class="retenir-second">${s}</p>` : '';

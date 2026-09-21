@@ -41638,7 +41638,12 @@ suite('La réserve de sécurité passe devant le mobilisable', () => {
     /* Et la phrase le range derrière, avec sa raison. */
     const p = lireSource('assets/app.js');
     const bloc = p.slice(p.indexOf('liquidity_runway: {'), p.indexOf('allocation_target_gap: {'));
-    vrai(/de dépenses immédiatement couvertes/.test(bloc),
+    /* CE QUE LE CONTRÔLE VEUT, c'est que le chiffre soit qualifié : « 4,8 mois »
+       tout seul ne dit pas mois de quoi. Il épinglait la phrase au mot près, si
+       bien que la raccourcir la faisait échouer — alors que raccourcir est
+       précisément ce que cette carte doit faire. Il porte donc sur le sens :
+       des dépenses, et le fait qu'elles soient immédiatement mobilisables. */
+    vrai(/de dépenses immédiat/.test(bloc),
       'le chiffre de tête dit ce qu’il couvre');
     vrai(/mobilisables, mais fléchés ou à vendre/.test(bloc),
       'le complément dit pourquoi il ne compte pas');
@@ -41699,8 +41704,13 @@ suite('La réserve de sécurité passe devant le mobilisable', () => {
                        'recommand', 'idéal']) {
       vrai(!new RegExp(mot, 'i').test(sansCommentaires), `« ${mot} » serait un jugement`);
     }
-    /* Deux lignes, pas trois : le résultat doit rester court. */
-    eq((sansCommentaires.match(/trad\('[^']{30,}'\)/g) || []).length, 2,
+    /* Deux lignes, pas trois : le résultat doit rester court.
+
+       UN PLAFOND, ET NON UNE ÉGALITÉ. Le contrôle exigeait exactement deux
+       longues propositions, donc il tombait quand on en RACCOURCISSAIT une —
+       c'est-à-dire quand on allait dans le sens qu'il défend. Ce qu'il protège
+       est un maximum : au-delà de deux, la carte devient un paragraphe. */
+    vrai((sansCommentaires.match(/trad\('[^']{30,}'\)/g) || []).length <= 2,
       'la phrase tient en deux propositions');
   });
 
@@ -42930,7 +42940,12 @@ suite('À retenir : chaque insight se lit dans le même ordre', () => {
                                  ['goal_projected_date', 'liquidity_runway_shift']]) {
       const b = entree(id, suivant).replace(/\/\*[\s\S]*?\*\//g, '');
       vrai(b.length > 80, `« ${id} » a bien été trouvé`);
-      for (const [champ, motif] of [['un titre', /\n    titre: '/],
+      /* UN TITRE PEUT ÊTRE UNE FONCTION, et c'est même le cas quand il porte
+         une conclusion : « Ton patrimoine avance plus vite qu'avant » se décide
+         sur les chiffres de la règle, il ne peut pas être une constante. Le
+         motif n'exigeait qu'une chaîne, donc il interdisait par accident le
+         titre qui dit quelque chose. */
+      for (const [champ, motif] of [['un titre', /\n    titre: ('|p =>)/],
                                     ['une valeur forte', /\n    valeur: /],
                                     ['un contexte', /\n    phrase: /],
                                     ['une information secondaire', /\n    secondaire: /],
@@ -42942,7 +42957,12 @@ suite('À retenir : chaque insight se lit dans le même ordre', () => {
 
   test('le contexte prolonge le chiffre, il ne recommence pas une phrase', () => {
     const p = presentation();
-    for (const c of ['de dépenses immédiatement couvertes',
+    /* La réserve dit « de dépenses immédiates » depuis que son titre porte le
+       verbe : « Ce que ta réserve couvre » suivi de « immédiatement couvertes »
+       répétait le même mot à deux lignes d'écart. Ce que le contrôle défend est
+       la FORME du contexte — un complément qui prolonge le chiffre au lieu de
+       rouvrir une phrase — pas le choix des mots. */
+    for (const c of ['de dépenses immédiates',
                      'sur les {n} derniers mois',
                      'pour atteindre ta cible de {t}']) {
       vrai(p.includes(`trad('${c}')`), `« ${c} » est le contexte affiché`);
@@ -42999,7 +43019,7 @@ suite('La réserve de sécurité tient en deux lignes', () => {
 
   test('le wording est court, factuel, et sans palier', () => {
     const p = presentation().replace(/\/\*[\s\S]*?\*\//g, '');
-    vrai(/phrase: \(\) => trad\('de dépenses immédiatement couvertes'\)/.test(p),
+    vrai(/phrase: \(\) => trad\('de dépenses immédiates'\)/.test(p),
       'la première ligne dit ce que le chiffre couvre');
     vrai(/secondaire: p => p\.complementMonths[\s\S]*\+\{c\} mobilisables, mais fléchés ou à vendre/.test(p),
       'la seconde dit ce qui existe à côté, et pourquoi il ne compte pas');
@@ -44044,7 +44064,12 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
     /* LE PLAFOND VIT AVEC LA SELECTION QUI L'APPLIQUE, et celle-ci a demenage :
        c'est la carte qui a trois places, et c'est elle qui choisit lesquelles
        remplir. Un plafond pose dans le moteur coupait avant ce choix. */
-    vrai(/const MAX_A_RETENIR = 3;/.test(a), 'le plafond est déclaré dans la vue, et il vaut trois');
+    /* DEUX, ET LA MESURE TRANCHE : trois lectures occupaient 505 px sur un écran
+       de 844, soit soixante pour cent de la hauteur. La carte devenait l'écran
+       au lieu de le commenter, et il fallait la faire défiler pour atteindre la
+       donnée qu'elle analyse. La troisième est par construction la plus faible
+       des trois, puisque le classement l'a mise derrière. */
+    vrai(/const MAX_A_RETENIR = 2;/.test(a), 'le plafond est déclaré dans la vue, et il vaut deux');
     vrai(!/MAX_INSIGHTS/.test(lireSource('assets/insights.js')),
       'et le moteur n’en porte plus');
     /* La carte prend désormais ce que le moteur range sur SON onglet, puis la
@@ -44546,8 +44571,17 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
     };
     const dedans = ['valeur', 'texte', 'second', 'lien'].map(ecart);
     vrai(dedans.every(v => v !== null), 'chaque ligne déclare son écart');
-    const liste = css.slice(css.indexOf('.retenir-liste {'), css.indexOf('}', css.indexOf('.retenir-liste {')));
-    const entre = Number(liste.match(/gap: (\d+)px/)[1]);
+    /* LA SÉPARATION NE VIENT PLUS D'UN ÉCART SEUL, mais d'un filet encadré de
+       deux respirations : l'écart seul demandait à l'œil de mesurer pour savoir
+       où une lecture finit. Le rapport, lui, ne change pas de sens — ce qui
+       sépare deux entrées reste au moins le double du plus grand écart interne,
+       sinon les quatre lignes d'une entrée se liraient comme quatre fragments. */
+    const sep = css.slice(css.indexOf('.retenir-item + .retenir-item {'),
+                          css.indexOf('}', css.indexOf('.retenir-item + .retenir-item {')));
+    vrai(/border-top: 1px solid var\(--grid\)/.test(sep),
+      'un filet marque la frontière entre deux lectures');
+    const entre = (sep.match(/margin-top: (\d+)px/) || [])[1] * 1
+                + (sep.match(/padding-top: (\d+)px/) || [])[1] * 1;
     vrai(entre >= 2 * Math.max(...dedans),
       `${entre}px entre deux lectures pour ${Math.max(...dedans)}px au plus à l’intérieur`);
   });
@@ -44555,10 +44589,16 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
   test('le capital remboursé dit de quelle progression il parle', () => {
     const p = presentation();
     const bloc = p.slice(p.indexOf('debt_principal_share: {'), p.indexOf('};', p.indexOf('debt_principal_share: {')));
-    vrai(/ta progression patrimoniale/.test(bloc),
+    vrai(/progression patrimoniale/.test(bloc),
       '« ta progression » pouvait se lire comme celle du budget');
-    vrai(/de tes crédits/.test(bloc),
+    /* Le pluriel a remonté dans le titre, « Tes crédits nourrissent ta
+       progression » : c'est lui qui dit d'où vient le montant, et la ligne
+       secondaire n'a plus qu'à dire ce que ce n'est pas. Le contrôle suit le
+       pluriel où il vit, sans exiger la tournure. */
+    vrai(/[Tt]es crédits/.test(bloc),
       'le pluriel reste : le montant agrège tous les crédits');
+    vrai(/épargne disponible/.test(bloc),
+      'et la réserve tient : ce capital n’est pas de l’épargne mobilisable');
     /* Et c'est bien une agregation : le moteur somme les credits. */
     const s = lireSource('assets/store.js');
     vrai(/function capitalRembourseParMois\(\) \{\s*\n\s*return ETABS\(\)\.reduce/.test(s),
@@ -44760,9 +44800,18 @@ suite('Chaque entrée porte son chiffre devant', () => {
 
   test('le gabarit ne rend la valeur que si la règle en déclare une', () => {
     const a = app();
-    const rendu = a.slice(a.indexOf('function carteARetenir()'), a.indexOf('function viewOverview()'));
-    vrai(/\$\{p\.valeur \? `<p class="retenir-valeur">\$\{escMontant\(p\.valeur\(i\.params\)\)\}<\/p>` : ''\}/.test(rendu),
-      'la valeur est optionnelle');
+    /* Le gabarit d'une entrée vit dans `ligneInsight()`, et le chiffre partage
+       désormais sa ligne avec ce qu'il mesure : une règle sans chiffre rend donc
+       la phrase seule, au lieu d'ouvrir une rangée vide. Le contrôle porte sur
+       l'alternative — deux formes, jamais une valeur absente rendue quand même —
+       et non sur le balisage exact, qui a changé de forme pour gagner une ligne. */
+    const d = a.indexOf('function ligneInsight(');
+    const rendu = a.slice(d, a.indexOf('\nfunction ', d + 1));
+    vrai(/\$\{p\.valeur \? `/.test(rendu), 'la valeur est optionnelle');
+    vrai(/escMontant\(p\.valeur\(i\.params\)\)/.test(rendu),
+      'et elle passe par le formateur quand elle existe');
+    vrai(/: `<p class="retenir-texte">\$\{p\.phrase\(i\.params\)\}<\/p>`/.test(rendu),
+      'sans chiffre, la phrase se rend seule');
     /* `escMontant` et non `esc` : un montant masque est du balisage, un oeil
        barre en SVG, et `esc` l'afficherait en clair. */
     vrai(/escMontant\(p\.valeur/.test(rendu), 'et elle traverse l’échappement des montants');
