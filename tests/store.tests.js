@@ -44235,9 +44235,9 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
     const rendu = a.slice(a.indexOf('function carteARetenir()'), a.indexOf('function viewOverview()'));
     /* Une adresse s'arrete en haut de page : seule `goto` sait viser un endroit
        dans une vue, et c'est le mecanisme que le reste de l'application emploie. */
-    vrai(/data-action="goto"\s*\n\s*data-view="\$\{esc\(p\.cta\.vue\)\}" data-anchor="\$\{esc\(p\.cta\.ancre\)\}"/.test(rendu),
+    vrai(/data-action="goto"\s*\n\s*data-view="\$\{esc\(cta\.vue\)\}" data-anchor="\$\{esc\(cta\.ancre\)\}"/.test(rendu),
       'le renvoi ancré est un bouton goto');
-    vrai(/href="#\/\$\{p\.cta\.vue\}"/.test(rendu), 'et les renvois sans ancre restent des liens');
+    vrai(/href="#\/\$\{cta\.vue\}"/.test(rendu), 'et les renvois sans ancre restent des liens');
     vrai(/'goto'\(btn\) \{/.test(a), 'l’action existait déjà : rien de parallèle n’a été créé');
     /* Le bouton garde l'allure du lien. */
     vrai(/class="lien-vue retenir-lien" data-action="goto"/.test(rendu), 'même allure que ses voisins');
@@ -44299,6 +44299,32 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
     const a = app();
     const carte = a.slice(a.indexOf('data-anchor="autonomie"'), a.indexOf('data-anchor="autonomie"') + 1200);
     vrai(/const r = runway\(\);/.test(carte), 'la carte d’autonomie lit runway(), comme l’insight');
+  });
+
+  test('deux entrées d’une même carte ne répètent pas le même renvoi', () => {
+    /* La selection prefere des destinations distinctes, puis son second tour
+       remplit la carte sans les regarder : deux lectures d'un meme ecran y
+       arrivent donc avec le meme bouton, au mot pres. Repete, il ne propose pas
+       un second geste, il redit le seul qu'il y ait. */
+    const a = app();
+    const d = a.indexOf('function ligneInsight(');
+    const entree = a.slice(d, a.indexOf('\nfunction ', d + 1));
+    /* La suppression se decide sur la DESTINATION, pas sur le libelle : deux
+       renvois peuvent porter le meme mot vers deux ancres differentes, et
+       `destinationInsight()` est deja la clef que la selection emploie. */
+    vrai(/const cta = p\.cta && !\(destinationsVues \|\| \[\]\)\.includes\(destinationInsight\(p\)\)/.test(entree),
+      'l’entrée tait son renvoi quand une entrée précédente y mène déjà');
+    vrai(!/\bp\.cta\.(vue|ancre|libelle)/.test(entree),
+      'et le gabarit lit le renvoi retenu, jamais celui de la présentation');
+    /* LES DEUX CARTES LE PASSENT, et c'est la moitie qui se perd : une seule
+       des deux corrigee laisserait l'autre repeter. La liste se derive des
+       entrees deja rendues, elle ne se tient pas a la main. */
+    const appels = a.match(/ligneInsight\(i, p,[\s\S]{0,180}?\)\)\.join\(''\)/g) || [];
+    eq(appels.length, 2, 'les deux cartes rendent leurs entrées par le même gabarit');
+    for (const ap of appels) {
+      vrai(/lus\.slice\(0, k\)\.map\(\(\[, q\]\) => destinationInsight\(q\)\)/.test(ap),
+        'la carte passe les destinations déjà rendues');
+    }
   });
 });
 

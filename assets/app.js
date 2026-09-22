@@ -1112,7 +1112,8 @@ function carteARetenir() {
         <p class="retenir-texte">${esc(trad('Ton patrimoine reste proche de ses tendances récentes.'))}</p>
       </li>`}
       ${lus.map(([i, p], k) => ligneInsight(i, p,
-        k ? EYEBROW_INSIGHT[lus[k - 1][0].categorie] : null)).join('')}
+        k ? EYEBROW_INSIGHT[lus[k - 1][0].categorie] : null,
+        lus.slice(0, k).map(([, q]) => destinationInsight(q)))).join('')}
     </ul>
     </div>
   </section>`;
@@ -1131,14 +1132,17 @@ function carteInsights(vue, titre) {
     </div>
     <ul class="retenir-liste">
       ${lus.map(([i, p], k) => ligneInsight(i, p,
-        k ? EYEBROW_INSIGHT[lus[k - 1][0].categorie] : null)).join('')}
+        k ? EYEBROW_INSIGHT[lus[k - 1][0].categorie] : null,
+        lus.slice(0, k).map(([, q]) => destinationInsight(q)))).join('')}
     </ul>
   </section>`;
 }
 
-function ligneInsight(i, p, precedent) {
+function ligneInsight(i, p, precedent, destinationsVues) {
   const oeil = EYEBROW_INSIGHT[i.categorie] === precedent
     ? null : EYEBROW_INSIGHT[i.categorie];
+  const cta = p.cta && !(destinationsVues || []).includes(destinationInsight(p))
+    ? p.cta : null;
   return `
       <li class="retenir-item">
         ${!oeil ? '' : `<span class="retenir-oeil">${trad(oeil)}</span>`}
@@ -1153,17 +1157,17 @@ function ligneInsight(i, p, precedent) {
           const s = p.secondaire && p.secondaire(i.params);
           return s ? `<p class="retenir-second">${s}</p>` : '';
         })()}
-        ${!p.cta ? '' : p.cta.ancre
+        ${!cta ? '' : cta.ancre
           /* Une ancre vise un endroit DANS une vue : c'est `goto` qui sait
              faire les deux, changer d'ecran s'il le faut puis defiler jusqu'a
              la carte. Une adresse ne le pourrait pas, elle s'arrete en haut de
              page. Le bouton porte la meme allure que le lien : la difference
              est dans ce qu'il fait, pas dans ce qu'il montre. */
           ? `<button type="button" class="lien-vue retenir-lien" data-action="goto"
-                data-view="${esc(p.cta.vue)}" data-anchor="${esc(p.cta.ancre)}"
-                >${esc(trad(p.cta.libelle))} <span aria-hidden="true">→</span></button>`
-          : `<a class="lien-vue retenir-lien" href="#/${p.cta.vue}"
-             >${esc(trad(p.cta.libelle))} <span aria-hidden="true">→</span></a>`}
+                data-view="${esc(cta.vue)}" data-anchor="${esc(cta.ancre)}"
+                >${esc(trad(cta.libelle))} <span aria-hidden="true">→</span></button>`
+          : `<a class="lien-vue retenir-lien" href="#/${cta.vue}"
+             >${esc(trad(cta.libelle))} <span aria-hidden="true">→</span></a>`}
       </li>`;
 }
 
