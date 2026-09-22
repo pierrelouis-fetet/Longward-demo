@@ -309,6 +309,8 @@ const I18N = {
     'Tes dépenses ont monté': 'Your spending has gone up',
     'Tes dépenses ont baissé': 'Your spending has come down',
     'Une ligne concentre tes actifs': 'One line concentrates your assets',
+    'Ton patrimoine reste proche de ses tendances récentes.':
+      'Your net worth stays close to its recent trends.',
     'de dépenses couvertes': 'of spending covered',
     'Voir le détail mensuel': 'See the monthly detail',
     'Voir le mois en cours': 'See the current month',

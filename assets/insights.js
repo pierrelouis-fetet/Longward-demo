@@ -107,7 +107,7 @@ const MOIS_MINIMUM_FENETRE_RYTHME = 6;
 
 const MOIS_MINIMUM_FENETRE_DEPENSES = 3;
 
-const INSIGHT_PRIORITE = { HAUTE: 30, MOYENNE: 20, BASSE: 10 };
+const INSIGHT_PRIORITE = { HAUTE: 300, MOYENNE: 200, BASSE: 100 };
 const amplitude = (valeur, seuil) => {
   if (!(seuil > 0)) return 0;
   return Math.max(0, Math.min(20, Math.round((Math.abs(num(valeur)) / seuil - 1) * 10)));

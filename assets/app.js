@@ -1109,7 +1109,7 @@ function carteARetenir() {
       ${!vide ? '' : `
       <li class="retenir-item retenir-calme">
         <b class="retenir-titre">${esc(trad('Rien d’inhabituel à signaler'))}</b>
-        <p class="retenir-texte">${esc(trad('Ton patrimoine, tes dépenses et ton allocation restent proches de leurs tendances récentes.'))}</p>
+        <p class="retenir-texte">${esc(trad('Ton patrimoine reste proche de ses tendances récentes.'))}</p>
       </li>`}
       ${lus.map(([i, p], k) => ligneInsight(i, p,
         k ? EYEBROW_INSIGHT[lus[k - 1][0].categorie] : null)).join('')}
