@@ -423,6 +423,23 @@ function selectionParClef(liste, clefDe, combien) {
    conclure ; `evaluer` rend l'insight ou `null`. Les deux recoivent les mesures
    deja calculees et le contexte, jamais l'etat brut.
 
+   CE QUE VAUT UN RANG, ET IL NE S'ATTRIBUE PLUS AU jugé. `HAUTE` est reserve a
+   ce qui se compare a une intention DECLAREE par le detenteur — une cible
+   d'allocation, un objectif de depenses, une date visee. `MOYENNE` va a ce qui
+   se compare a son propre passe, `BASSE` a ce qui se constate sans reference.
+
+   L'ordre n'est pas esthetique : une cible est une phrase que quelqu'un a
+   ecrite, et un ecart a cette phrase vaut plus qu'une variation que personne
+   n'a demandee. Deux regles historiques portaient `HAUTE` et passaient donc
+   devant des ecarts a une cible ; elles sont redescendues.
+
+   ET `BASSE` PORTE AUSSI LA VERSION GENERALE D'UNE LECTURE PLUS PRECISE. « Tes
+   depenses ont monte de 40 % » et « tes sorties passent de 100 a 300 EUR »
+   partagent un groupe : elles disent le meme fait, la seconde en disant ou. La
+   generale ne doit donc gagner que lorsque l'autre n'a rien trouve — c'est-a-dire
+   quand la hausse est diffuse et qu'aucun poste ne l'explique. Son rang le dit,
+   et c'est ce qui la garde utile sans la laisser passer devant.
+
    LA FAMILLE N'EST PAS LA CATEGORIE. La categorie nomme le sujet ; la famille
    sert a la selection, et c'est elle qui empeche trois entrees de raconter la
    meme histoire sous trois angles.
@@ -445,80 +462,23 @@ function selectionParClef(liste, clefDe, combien) {
        compte, jamais par ligne. La concentration ne se compare donc qu'a la
        forme actuelle du portefeuille.
 
+     — « ta reserve couvre 0,8 mois » et « 645 EUR par mois viennent de tes
+       credits » ont ete RETIREES, et c'est le meme motif : la carte « Reserve de
+       securite » et la carte « Accumulation ce mois-ci » vivent sur l'ecran ou
+       ces lectures s'affichaient, et disent deja le chiffre, sa base et son
+       repere. Un insight qui redit une carte du meme ecran ne fait que la
+       repousser plus bas. Ce qui reste du sujet est le MOUVEMENT — la reserve
+       couvre plus ou moins de mois qu'il y a trois mois — qui, lui, ne se lit
+       nulle part ailleurs.
+
    Ces trois-la reviendront le jour ou la donnee existera, pas avant. */
 const REGLES_INSIGHT = [
-
-  /* --- Ce que la reserve couvre ------------------------------------------
-
-     Le tableau de bord montre deja le cash. Ce qu'il ne montre pas, c'est le
-     rapport entre ce cash et ce qui sort chaque mois, et c'est la seule forme
-     sous laquelle un montant de liquidites veut dire quelque chose.
-
-     Aucun seuil, aucun jugement : ni « trop », ni « pas assez ». `runway()`
-     porte bien un `targetLow` et un `targetHigh` a trois et six mois, qui
-     servent une jauge ailleurs ; ils ne sortent PAS d'ici. */
-  {
-    id: 'liquidity_runway',
-    onglet: 'overview',
-    famille: 'liquidite',
-    categorie: 'liquidity',
-    priorite: INSIGHT_PRIORITE.HAUTE,
-    dedupeGroup: 'liquidity',
-    reposJours: 30,
-    materialite: SEUIL_AFFICHAGE_RESERVE_MOIS,
-    question: 'Combien de temps ma réserve couvre-t-elle mes dépenses ?',
-    titleKey: 'insight.liquidity_runway.title',
-    descriptionKey: 'insight.liquidity_runway.description',
-    eligible: m => m.depensesObservees.observees && num(m.runway.burn) > 0,
-    evaluer(m) {
-      const r = m.runway;
-      /* CE QUI EST MIS EN AVANT EST LE CHIFFRE IMMEDIATEMENT ACTIONNABLE, jamais
-         le plus rassurant. La regle annoncait `liquidMonths`, qui ajoute a la
-         reserve le cash flechevers un projet et ce qui se vend chez un courtier :
-         26 mois quand la carte du meme ecran en affichait 5. Les deux etaient
-         justes et la lecture etait fausse.
-
-         Le complement n'est pas perdu, il passe DERRIERE, avec ce qui le
-         disqualifie : cet argent a deja un travail ou demande une vente. */
-      const mobilisable = num(r.burn) * num(r.liquidMonths);
-      const complement = (mobilisable - num(r.reserve)) / num(r.burn);
-      const sousCible = reserveSousCible(m);
-      const manque = moisManquants(m);
-      return {
-        valeur: num(r.reserveMois),
-        poids: sousCible ? amplitude(manque + 1, 1) : 0,
-        params: {
-          months: num(r.reserveMois),
-          reserve: num(r.reserve),
-          monthlyBurn: num(r.burn),
-          complementMonths: complement,
-          belowTargetMonths: manque,
-        },
-        evidence: {
-          source: 'runway',
-          scope: 'precaution+courant',
-          reserve: num(r.reserve),
-          reserveMonths: num(r.reserveMois),
-          monthlyBurn: num(r.burn),
-          immediate: num(r.immediate),
-          immediateMonths: num(r.immediateMonths),
-          mobilisableMonths: num(r.liquidMonths),
-          complementMonths: complement,
-          belowTarget: sousCible,
-          observedExpenseMonths: m.depensesObservees.mois,
-          observedMonthlyExpenses: m.depensesObservees.moyenne,
-        },
-        action: { vue: 'overview' },
-      };
-    },
-  },
-
   {
     id: 'liquidity_runway_shift',
     onglet: 'overview',
     famille: 'liquidite',
     categorie: 'liquidity',
-    priorite: INSIGHT_PRIORITE.HAUTE,
+    priorite: INSIGHT_PRIORITE.MOYENNE,
     dedupeGroup: 'liquidity_shift',
     reposJours: 30,
     materialite: SEUIL_AFFICHAGE_RESERVE_MOIS,
@@ -863,38 +823,6 @@ const REGLES_INSIGHT = [
   },
 
   {
-    id: 'debt_principal_share',
-    onglet: 'overview',
-    famille: 'dette',
-    categorie: 'debt',
-    priorite: INSIGHT_PRIORITE.MOYENNE,
-    dedupeGroup: 'debt',
-    reposJours: 45,
-    materialite: 50,
-    question: 'Quelle part de ma progression vient du remboursement de mes crédits ?',
-    titleKey: 'insight.debt_principal_share.title',
-    descriptionKey: 'insight.debt_principal_share.description',
-    eligible: m => num(m.epargne.capitalRembourse) > 0.005,
-    evaluer: m => ({
-      valeur: num(m.epargne.capitalRembourse),
-      params: {
-        monthlyPrincipalRepaid: num(m.epargne.capitalRembourse),
-        monthlyInvestable: num(m.epargne.investable),
-      },
-      evidence: {
-        source: 'savingsReconciliation',
-        monthlyPrincipalRepaid: num(m.epargne.capitalRembourse),
-        monthlyInvestable: num(m.epargne.investable),
-        monthlyTheoretical: num(m.epargne.theoretical),
-        /* Les depenses retenues sont-elles observees ou est-ce l'objectif qui a
-           servi ? La difference change ce que `investable` veut dire. */
-        expensesObserved: !!m.epargne.spendObserved,
-      },
-      action: { vue: 'overview' },
-    }),
-  },
-
-  {
     id: 'debt_soon_free',
     onglet: 'overview',
     famille: 'dette',
@@ -923,12 +851,100 @@ const REGLES_INSIGHT = [
     },
   },
 
+  /* --- Le poste qui a bouge, et lui seul ----------------------------------
+
+     LA REGLE QUI MANQUAIT, et c'est la plus utile de l'onglet. `spending_shift`
+     dit que le total a change de niveau ; il ne dit pas ou. « Tes depenses ont
+     augmente de douze pour cent » laisse le lecteur ouvrir le tableau et
+     comparer douze colonnes a la main, ce qui est exactement le travail qu'une
+     application doit faire a sa place.
+
+     UN SEUL POSTE SORT, LE PLUS GROS MOUVEMENT EN EUROS. Les nommer tous
+     rendrait la carte illisible et ferait de l'insight un second tableau. Le
+     mouvement se mesure en euros et non en pourcentage parce que c'est l'euro
+     qui decide de ce qui compte dans un budget ; le pourcentage sert de filtre,
+     pas de classement.
+
+     Elle ne conseille rien. « Restaurants en hausse » est un constat ; « tu
+     devrais reduire » serait un jugement sur une vie que l'application ne
+     connait pas. */
+  {
+    id: 'spending_category_shift',
+    onglet: 'budget',
+    famille: 'budget',
+    categorie: 'budget',
+    /* HAUTE, ET C'EST CE QUI LA FAIT PASSER DEVANT `spending_shift`. Les deux
+       partagent un groupe : elles racontent le meme fait, l'une en disant ou.
+       A rang egal, les deux amplitudes saturent des qu'un mouvement est franc,
+       et c'est alors l'ordre de declaration qui tranchait — donc le total, qui
+       est declare avant. On lisait « tes depenses ont monte de 40 % » la ou
+       « tes sorties passent de 100 a 300 € » etait disponible.
+       Le rang dit la regle : quand un poste explique le mouvement, c'est lui
+       qu'on veut lire ; quand aucun ne l'explique, cette regle ne sort pas et le
+       total reprend sa place tout seul. */
+    priorite: INSIGHT_PRIORITE.MOYENNE,
+    dedupeGroup: 'spending',
+    reposJours: 30,
+    materialite: SEUIL_AFFICHAGE_POSTE_PCT,
+    question: 'Quel poste a change, et de combien ?',
+    titleKey: 'insight.spending_category_shift.title',
+    descriptionKey: 'insight.spending_category_shift.description',
+    eligible: m => m.depenses.length >= MOIS_MINIMUM_FENETRE_DEPENSES * 2,
+    evaluer(m) {
+      const n = m.depenses.length, N = MOIS_MINIMUM_FENETRE_DEPENSES;
+      const recents = m.depenses.slice(n - N);
+      const avants = m.depenses.slice(n - 2 * N, n - N);
+      const postes = [...new Set([...recents, ...avants]
+        .flatMap(x => Object.keys(x.v || {})))];
+      const moyenne = (tranche, poste) =>
+        tranche.reduce((s, x) => s + num((x.v || {})[poste]), 0) / tranche.length;
+      const budgetMensuel = recents.reduce((s, x) => s + num(x.total), 0) / N;
+      if (!(budgetMensuel > 0)) return null;
+
+      let meilleur = null;
+      for (const poste of postes) {
+        const recent = moyenne(recents, poste);
+        const avant = moyenne(avants, poste);
+        const delta = recent - avant;
+        const pct = avant > 0 ? (recent / avant - 1) * 100 : null;
+        const poidsPct = Math.abs(delta) / budgetMensuel * 100;
+        if (!(recent > 0)) continue;
+        if (poidsPct + 1e-9 < POIDS_MINIMAL_DU_POSTE_PCT) continue;
+        if (pct !== null && Math.abs(pct) + 1e-9 < SEUIL_AFFICHAGE_POSTE_PCT) continue;
+        if (!meilleur || Math.abs(delta) > Math.abs(meilleur.delta)) {
+          meilleur = { poste, recent, avant, delta, pct, poidsPct, nouveau: !(avant > 0) };
+        }
+      }
+      if (!meilleur) return null;
+      return {
+        valeur: meilleur.pct === null ? meilleur.poidsPct : meilleur.pct,
+        poids: amplitude(meilleur.pct === null ? meilleur.poidsPct : meilleur.pct,
+                         SEUIL_AFFICHAGE_POSTE_PCT),
+        params: { category: meilleur.poste, current: meilleur.recent,
+                  previous: meilleur.avant, delta: meilleur.delta,
+                  deltaPct: meilleur.pct, months: N, isNew: meilleur.nouveau },
+        evidence: {
+          source: 'expenseSeries.v',
+          category: meilleur.poste,
+          currentFrom: recents[0].month, currentTo: recents[N - 1].month,
+          previousFrom: avants[0].month, previousTo: avants[N - 1].month,
+          current: meilleur.recent, previous: meilleur.avant,
+          deltaPct: meilleur.pct, shareOfBudgetPct: meilleur.poidsPct,
+          displayThresholdPct: SEUIL_AFFICHAGE_POSTE_PCT,
+          weightThresholdPct: POIDS_MINIMAL_DU_POSTE_PCT,
+          rule: 'le plus gros mouvement en euros parmi les postes qui passent les deux seuils',
+        },
+        action: { vue: 'budget' },
+      };
+    },
+  },
+
   {
     id: 'spending_shift',
     onglet: 'budget',
     famille: 'budget',
     categorie: 'budget',
-    priorite: INSIGHT_PRIORITE.MOYENNE,
+    priorite: INSIGHT_PRIORITE.BASSE,
     dedupeGroup: 'spending',
     reposJours: 30,
     materialite: SEUIL_AFFICHAGE_DEPENSES_PCT,
@@ -1013,94 +1029,6 @@ const REGLES_INSIGHT = [
           driversExplain: nommables.length ? explique / ecart * 100 : null,
           rule: 'ecart superieur au double de la dispersion habituelle ; postes cites '
               + 'seulement s’ils expliquent la moitie de l’ecart',
-        },
-        action: { vue: 'budget' },
-      };
-    },
-  },
-
-  /* --- Le poste qui a bouge, et lui seul ----------------------------------
-
-     LA REGLE QUI MANQUAIT, et c'est la plus utile de l'onglet. `spending_shift`
-     dit que le total a change de niveau ; il ne dit pas ou. « Tes depenses ont
-     augmente de douze pour cent » laisse le lecteur ouvrir le tableau et
-     comparer douze colonnes a la main, ce qui est exactement le travail qu'une
-     application doit faire a sa place.
-
-     UN SEUL POSTE SORT, LE PLUS GROS MOUVEMENT EN EUROS. Les nommer tous
-     rendrait la carte illisible et ferait de l'insight un second tableau. Le
-     mouvement se mesure en euros et non en pourcentage parce que c'est l'euro
-     qui decide de ce qui compte dans un budget ; le pourcentage sert de filtre,
-     pas de classement.
-
-     Elle ne conseille rien. « Restaurants en hausse » est un constat ; « tu
-     devrais reduire » serait un jugement sur une vie que l'application ne
-     connait pas. */
-  {
-    id: 'spending_category_shift',
-    onglet: 'budget',
-    famille: 'budget',
-    categorie: 'budget',
-    /* HAUTE, ET C'EST CE QUI LA FAIT PASSER DEVANT `spending_shift`. Les deux
-       partagent un groupe : elles racontent le meme fait, l'une en disant ou.
-       A rang egal, les deux amplitudes saturent des qu'un mouvement est franc,
-       et c'est alors l'ordre de declaration qui tranchait — donc le total, qui
-       est declare avant. On lisait « tes depenses ont monte de 40 % » la ou
-       « tes sorties passent de 100 a 300 € » etait disponible.
-       Le rang dit la regle : quand un poste explique le mouvement, c'est lui
-       qu'on veut lire ; quand aucun ne l'explique, cette regle ne sort pas et le
-       total reprend sa place tout seul. */
-    priorite: INSIGHT_PRIORITE.HAUTE,
-    dedupeGroup: 'spending',
-    reposJours: 30,
-    materialite: SEUIL_AFFICHAGE_POSTE_PCT,
-    question: 'Quel poste a change, et de combien ?',
-    titleKey: 'insight.spending_category_shift.title',
-    descriptionKey: 'insight.spending_category_shift.description',
-    eligible: m => m.depenses.length >= MOIS_MINIMUM_FENETRE_DEPENSES * 2,
-    evaluer(m) {
-      const n = m.depenses.length, N = MOIS_MINIMUM_FENETRE_DEPENSES;
-      const recents = m.depenses.slice(n - N);
-      const avants = m.depenses.slice(n - 2 * N, n - N);
-      const postes = [...new Set([...recents, ...avants]
-        .flatMap(x => Object.keys(x.v || {})))];
-      const moyenne = (tranche, poste) =>
-        tranche.reduce((s, x) => s + num((x.v || {})[poste]), 0) / tranche.length;
-      const budgetMensuel = recents.reduce((s, x) => s + num(x.total), 0) / N;
-      if (!(budgetMensuel > 0)) return null;
-
-      let meilleur = null;
-      for (const poste of postes) {
-        const recent = moyenne(recents, poste);
-        const avant = moyenne(avants, poste);
-        const delta = recent - avant;
-        const pct = avant > 0 ? (recent / avant - 1) * 100 : null;
-        const poidsPct = Math.abs(delta) / budgetMensuel * 100;
-        if (!(recent > 0)) continue;
-        if (poidsPct + 1e-9 < POIDS_MINIMAL_DU_POSTE_PCT) continue;
-        if (pct !== null && Math.abs(pct) + 1e-9 < SEUIL_AFFICHAGE_POSTE_PCT) continue;
-        if (!meilleur || Math.abs(delta) > Math.abs(meilleur.delta)) {
-          meilleur = { poste, recent, avant, delta, pct, poidsPct, nouveau: !(avant > 0) };
-        }
-      }
-      if (!meilleur) return null;
-      return {
-        valeur: meilleur.pct === null ? meilleur.poidsPct : meilleur.pct,
-        poids: amplitude(meilleur.pct === null ? meilleur.poidsPct : meilleur.pct,
-                         SEUIL_AFFICHAGE_POSTE_PCT),
-        params: { category: meilleur.poste, current: meilleur.recent,
-                  previous: meilleur.avant, delta: meilleur.delta,
-                  deltaPct: meilleur.pct, months: N, isNew: meilleur.nouveau },
-        evidence: {
-          source: 'expenseSeries.v',
-          category: meilleur.poste,
-          currentFrom: recents[0].month, currentTo: recents[N - 1].month,
-          previousFrom: avants[0].month, previousTo: avants[N - 1].month,
-          current: meilleur.recent, previous: meilleur.avant,
-          deltaPct: meilleur.pct, shareOfBudgetPct: meilleur.poidsPct,
-          displayThresholdPct: SEUIL_AFFICHAGE_POSTE_PCT,
-          weightThresholdPct: POIDS_MINIMAL_DU_POSTE_PCT,
-          rule: 'le plus gros mouvement en euros parmi les postes qui passent les deux seuils',
         },
         action: { vue: 'budget' },
       };

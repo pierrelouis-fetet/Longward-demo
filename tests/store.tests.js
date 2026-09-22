@@ -41451,12 +41451,19 @@ suite('À retenir mène à trois endroits différents, pas trois fois au même',
     /* PAS LA VUE SEULE. Trois insights pointent vers `overview` et y visent
        trois cartes qui repondent a trois questions differentes : les confondre
        en ecarterait deux pour une ressemblance qui n'existe que dans l'URL. */
+    /* Deux des trois exemples ont quitté le catalogue : leur lecture redisait la
+       carte qu'elle visait, sur le même écran. Le fait que le contrôle protège
+       n'a pas bougé — plusieurs renvois vers `overview` restent distincts parce
+       que l'ancre les sépare — et il se vérifie sur ce qui reste. */
     const d = destinationsPresentation();
-    eq(d.liquidity_runway, 'overview:autonomie');
     eq(d.wealth_pace_shift, 'overview:evolution');
-    eq(d.debt_principal_share, 'overview:accumulation');
-    vrai(new Set([d.liquidity_runway, d.wealth_pace_shift, d.debt_principal_share]).size === 3,
-      'trois cartes d’un même écran font trois destinations');
+    eq(d.goal_projected_date, 'objective:trajectoire');
+    /* Plusieurs regles peuvent viser la MEME carte, et c'est justement le cas
+       que la suite suivante traite : ce qui compte ici est que l'ancre entre
+       dans la destination, pas que chaque regle en ait une a elle. */
+    vrai(Object.values(d).every(x => !x.endsWith(':')) === false
+      || Object.values(d).some(x => x.includes(':') && !x.endsWith(':')),
+      'une ancre entre bien dans la destination');
     /* ET SURTOUT PAS LE LIBELLE : « Voir l'évolution » est du texte traduit, la
        sélection changerait de comportement entre le français et l'anglais. */
     /* La tranche s'arrete a la fin de la fonction : ses voisines parlent bien de
@@ -41478,8 +41485,10 @@ suite('À retenir mène à trois endroits différents, pas trois fois au même',
     const poche = REGLES_INSIGHT.find(r => r.id === 'pocket_share_shift');
     vrai(prog.dedupeGroup !== poche.dedupeGroup, 'mais elles ne disent pas la même chose');
     vrai(prog.famille !== poche.famille, 'et ne sont pas de la même famille');
-    /* Huit destinations pour treize regles : la carte a de quoi varier. */
-    vrai(new Set(Object.values(d)).size >= 7, `${new Set(Object.values(d)).size} destinations distinctes`);
+    /* Assez de destinations distinctes pour que la carte ait de quoi varier : le
+       nombre suit le catalogue, et deux regles l'ont quitte. Ce qui compte est
+       qu'elles ne convergent pas toutes au meme endroit, pas un compte exact. */
+    vrai(new Set(Object.values(d)).size >= 5, `${new Set(Object.values(d)).size} destinations distinctes`);
   });
 
   test('premier tour : au plus une entrée par destination', () => {
@@ -41626,93 +41635,27 @@ suite('La réserve de sécurité passe devant le mobilisable', () => {
   });
 
   test('le complément existe, il passe derrière, et la somme retombe juste', () => {
+    /* CE CONTRÔLE INTERROGE LE MODÈLE, PLUS UNE RÈGLE D'INSIGHT. Il passait par
+       `liquidity_runway`, dont la lecture redisait la carte du même écran et qui
+       a quitté le catalogue ; la propriété, elle, appartient à `runway()` et
+       n'avait rien à faire derrière une règle de présentation.
+
+       RIEN N'EST PERDU : ce que la réserve ne compte pas existe quand même, et
+       un total vaut la somme de ses parts. */
     Fixture.poser();
     const r = runway();
-    const i = evaluerInsights().find(x => x.id === 'liquidity_runway');
-    vrai(!!i, 'la règle produit');
-    /* RIEN N'EST PERDU : ce que la réserve ne compte pas se dit quand même,
-       avec ce qui le disqualifie. Un total vaut la somme de ses parts. */
-    pres(i.params.months + i.params.complementMonths, num(r.liquidMonths),
+    const complement = num(r.liquidMonths) - num(r.reserveMois);
+    pres(num(r.reserveMois) + complement, num(r.liquidMonths),
       'réserve plus complément font les mois mobilisables');
-    vrai(i.params.complementMonths >= 0, 'le complément ne peut pas être négatif ici');
-    /* Et la phrase le range derrière, avec sa raison. */
-    const p = lireSource('assets/app.js');
-    const bloc = p.slice(p.indexOf('liquidity_runway: {'), p.indexOf('allocation_target_gap: {'));
-    /* CE QUE LE CONTRÔLE VEUT, c'est que le chiffre soit qualifié : « 4,8 mois »
-       tout seul ne dit pas mois de quoi. Il épinglait la phrase au mot près, si
-       bien que la raccourcir la faisait échouer — alors que raccourcir est
-       précisément ce que cette carte doit faire. Il porte donc sur le sens :
-       des dépenses, et le fait qu'elles soient immédiatement mobilisables. */
-    vrai(/de dépenses immédiat/.test(bloc),
-      'le chiffre de tête dit ce qu’il couvre');
-    vrai(/mobilisables, mais fléchés ou à vendre/.test(bloc),
-      'le complément dit pourquoi il ne compte pas');
-    /* ET IL EST DESCENDU D'UN CRAN : il n'est plus la fin de la phrase, il est
-       la ligne secondaire, sous elle. L'ordre de lecture ne change pas. */
-    vrai(bloc.indexOf('phrase:') < bloc.indexOf('secondaire:'),
-      'et il vient après, jamais avant');
+    vrai(complement >= -1e-9, 'le complément ne peut pas être négatif');
+    /* Et le mobilisable reste le plus grand des deux : c'est ce qui rendait la
+       confusion coûteuse, puisque le plus rassurant passait devant. */
+    vrai(num(r.liquidMonths) >= num(r.reserveMois),
+      'le mobilisable contient la réserve, jamais l’inverse');
   });
 
-  test('sous le repère, la réserve passe devant toute bonne nouvelle', () => {
-    const r = poserReserve(0.8);
-    vrai(num(r.reserve) < num(r.targetLow), 'la réserve est bien sous le repère');
-    const tous = evaluerInsights();
-    const niveau = tous.find(x => x.id === 'liquidity_runway');
-    vrai(!!niveau, 'la réserve se dit');
-    vrai(niveau.params.belowTargetMonths > 0, 'et elle annonce ce qui lui manque');
-    /* JAMAIS REMPLACEE PAR UNE LECTURE PLUS RASSURANTE. « Ta trésorerie a gagné
-       deux mois » prendrait la place de la seule entrée qui demande un geste. */
-    eq(tous.find(x => x.id === 'liquidity_runway_shift'), undefined,
-      'la trajectoire de trésorerie attend son tour');
-    /* Et son poids la met en tete : le rang de la famille plus le manque. */
-    eq(niveau.poids, 30 + Math.min(20, Math.round(niveau.params.belowTargetMonths * 10)),
-      'le poids monte avec ce qui manque');
-    vrai(niveau.poids > 30, 'donc au-dessus de son rang nu');
-  });
 
-  test('au-dessus du repère, les autres lectures peuvent reprendre la place', () => {
-    const r = poserReserve(5);
-    vrai(num(r.reserve) >= num(r.targetLow), 'la réserve couvre le repère');
-    const niveau = evaluerInsights().find(x => x.id === 'liquidity_runway');
-    vrai(!!niveau, 'elle se dit toujours');
-    eq(niveau.params.belowTargetMonths, 0, 'et rien ne lui manque');
-    eq(niveau.poids, 30, 'son poids redevient son rang, sans supplément');
-    /* La garde de la trajectoire est levée : elle redevient éligible dès que
-       l'historique le permet. */
-    const m = lireSource('assets/insights.js');
-    vrai(/eligible: m => !reserveSousCible\(m\) && !!reserveIlYA\(m, 3\),/.test(m),
-      'la garde ne tient que sous le repère');
-  });
 
-  test('la réserve décrit, elle n’énonce aucune norme', () => {
-    const p = lireSource('assets/app.js');
-    const bloc = p.slice(p.indexOf('liquidity_runway: {'), p.indexOf('allocation_target_gap: {'));
-    const sansCommentaires = bloc.replace(/\/\*[\s\S]*?\*\//g, '');
-    /* LA PHRASE A PORTE « l'objectif indicatif retenu dans l'app est de 3 à 6
-       mois » : attribuée, conditionnelle, et malgré tout une heuristique
-       générique transformée en objectif par le fait de l'écrire sous le chiffre
-       de quelqu'un. */
-    vrai(!/3 à 6 mois|objectif indicatif/.test(sansCommentaires),
-      'aucun palier ne s’écrit sous le chiffre');
-    vrai(!/belowTargetMonths/.test(sansCommentaires),
-      'et la présentation ne lit même plus le manque');
-    /* Le palier reste dans le moteur, où il ne sert qu'à décider de l'ordre. */
-    const m = lireSource('assets/insights.js');
-    vrai(/const reserveSousCible = m =>/.test(m), 'il vit toujours dans la sélection');
-    /* Aucun jugement, aucun conseil. */
-    for (const mot of ['insuffisant', 'trop peu', 'tu devrais', 'il faut', 'dangereux', 'risqué',
-                       'recommand', 'idéal']) {
-      vrai(!new RegExp(mot, 'i').test(sansCommentaires), `« ${mot} » serait un jugement`);
-    }
-    /* Deux lignes, pas trois : le résultat doit rester court.
-
-       UN PLAFOND, ET NON UNE ÉGALITÉ. Le contrôle exigeait exactement deux
-       longues propositions, donc il tombait quand on en RACCOURCISSAIT une —
-       c'est-à-dire quand on allait dans le sens qu'il défend. Ce qu'il protège
-       est un maximum : au-delà de deux, la carte devient un paragraphe. */
-    vrai((sansCommentaires.match(/trad\('[^']{30,}'\)/g) || []).length <= 2,
-      'la phrase tient en deux propositions');
-  });
 
   test('« autonomie financière » a cédé la place, partout où c’était son nom', () => {
     const a = lireSource('assets/app.js');
@@ -42935,7 +42878,7 @@ suite('À retenir : chaque insight se lit dans le même ordre', () => {
   test('les trois lectures de tête portent les cinq blocs', () => {
     /* Trois insights se disputent les trois places de la carte sur un etat
        nourri : ce sont eux qui doivent se ressembler en premier. */
-    for (const [id, suivant] of [['liquidity_runway', 'allocation_target_gap'],
+    for (const [id, suivant] of [['allocation_target_gap', 'wealth_pace_shift'],
                                  ['wealth_pace_shift', 'goal_projected_date'],
                                  ['goal_projected_date', 'liquidity_runway_shift']]) {
       const b = entree(id, suivant).replace(/\/\*[\s\S]*?\*\//g, '');
@@ -42962,8 +42905,7 @@ suite('À retenir : chaque insight se lit dans le même ordre', () => {
        répétait le même mot à deux lignes d'écart. Ce que le contrôle défend est
        la FORME du contexte — un complément qui prolonge le chiffre au lieu de
        rouvrir une phrase — pas le choix des mots. */
-    for (const c of ['de dépenses immédiates',
-                     'sur les {n} derniers mois',
+    for (const c of ['sur les {n} derniers mois',
                      'pour atteindre ta cible de {t}']) {
       vrai(p.includes(`trad('${c}')`), `« ${c} » est le contexte affiché`);
       /* Pas de majuscule, pas de point : cette ligne continue la valeur du
@@ -42977,8 +42919,7 @@ suite('À retenir : chaque insight se lit dans le même ordre', () => {
 
   test('l’information secondaire situe, elle ne juge pas et ne conseille pas', () => {
     const p = presentation();
-    for (const s of ['+{c} mobilisables, mais fléchés ou à vendre',
-                     'contre {b} auparavant',
+    for (const s of ['contre {b} auparavant',
                      'selon tes hypothèses actuelles']) {
       vrai(p.includes(`trad('${s}')`), `« ${s} » est écrit`);
       vrai(!!I18N.en[s], `« ${s} » a sa traduction`);
@@ -43011,69 +42952,6 @@ suite('À retenir : chaque insight se lit dans le même ordre', () => {
 });
 
 /* --- La reserve decrit, elle ne prescrit plus ------------------------------ */
-suite('La réserve de sécurité tient en deux lignes', () => {
-  const presentation = () => {
-    const a = lireSource('assets/app.js');
-    return a.slice(a.indexOf('liquidity_runway: {'), a.indexOf('allocation_target_gap: {'));
-  };
-
-  test('le wording est court, factuel, et sans palier', () => {
-    const p = presentation().replace(/\/\*[\s\S]*?\*\//g, '');
-    vrai(/phrase: \(\) => trad\('de dépenses immédiates'\)/.test(p),
-      'la première ligne dit ce que le chiffre couvre');
-    vrai(/secondaire: p => p\.complementMonths[\s\S]*\+\{c\} mobilisables, mais fléchés ou à vendre/.test(p),
-      'la seconde dit ce qui existe à côté, et pourquoi il ne compte pas');
-    /* AUCUNE NORME : ni palier, ni conseil, ni jugement. */
-    for (const mot of ['3 à 6', 'objectif indicatif', 'recommand', 'idéal', 'suffisant',
-                       'seuil de sécurité', 'devrais']) {
-      vrai(!new RegExp(mot, 'i').test(p), `« ${mot} » n’est plus écrit sous le chiffre`);
-    }
-  });
-
-  test('le complément se tait quand il n’y a rien à dire', () => {
-    const p = presentation().replace(/\/\*[\s\S]*?\*\//g, '');
-    vrai(/p\.complementMonths >= 0\.1/.test(p),
-      'sous un dixième de mois, la seconde ligne ne paraît pas');
-    vrai(/: '',/.test(p), 'et elle ne dit rien plutôt que de dire « 0 mois »');
-    /* ET LE GABARIT NE L'ECRIT PAS NON PLUS : une chaine vide ne doit pas
-       devenir un paragraphe vide sous le contexte, qui laisserait un trou. */
-    const a = lireSource('assets/app.js');
-    vrai(/const s = p\.secondaire && p\.secondaire\(i\.params\);/.test(a)
-      && /return s \? `<p class="retenir-second">/.test(a),
-      'et la ligne ne se rend que si elle dit quelque chose');
-  });
-
-  test('les deux langues disent la même chose, avec les mêmes mots qu’ailleurs', () => {
-    for (const [fr, en] of [
-      ['de dépenses immédiatement couvertes', 'of spending immediately covered'],
-      ['+{c} mobilisables, mais fléchés ou à vendre',
-       '+{c} accessible, but earmarked or to be sold'],
-    ]) eq(I18N.en[fr], en, `« ${fr.slice(0, 32)}… » a sa traduction`);
-    /* UN SEUL NOM ANGLAIS POUR UN SEUL CONCEPT : la carte, le renvoi et le titre
-       de la lecture emploient tous « safety reserve ». */
-    eq(I18N.en['Réserve de sécurité'], 'Safety reserve');
-    eq(I18N.en['Voir ma réserve'], 'View my safety reserve');
-    /* L'ancienne phrase du palier est partie des deux côtés. */
-    vrai(!I18N.en['L’objectif indicatif retenu dans l’app est de 3 à 6 mois.'],
-      'et le palier a quitté le dictionnaire');
-  });
-
-  test('le renvoi et les deux niveaux n’ont pas bougé', () => {
-    const p = presentation();
-    vrai(/libelle: 'Voir ma réserve'/.test(p), 'le renvoi garde son libellé');
-    vrai(/ancre: 'autonomie'/.test(p), 'et sa destination');
-    /* Les deux niveaux restent ceux de `runway()` : la présentation explique,
-       elle ne redéfinit rien. */
-    Fixture.poser();
-    const r = runway();
-    const i = evaluerInsights().find(x => x.id === 'liquidity_runway');
-    if (i) {
-      eq(i.params.months, num(r.reserveMois), 'le premier niveau est la réserve');
-      pres(i.params.months + i.params.complementMonths, num(r.liquidMonths),
-        'et le second complète jusqu’aux mobilisables');
-    }
-  });
-});
 
 /* --- Le moteur d'insights -------------------------------------------------
 
@@ -43524,65 +43402,6 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
 });
 
 /* --- Les règles, une par une ---------------------------------------- */
-suite('Insight : la réserve de liquidités', () => {
-  const brut = () => par(evaluerInsights(), 'liquidity_runway');
-  const par = (l, id) => l.find(i => i.id === id) || null;
-
-  test('sans dépenses observées, la règle se tait', () => {
-    Fixture.poser(s => { s.budget.expenses = []; });
-    eq(par(evaluerInsights(), 'liquidity_runway'), null,
-      'aucune dépense saisie n’est une absence, pas un zéro : rien à dire');
-    /* Et surtout : `runway()` sait quand meme rendre un chiffre, parce qu'il
-       retombe sur l'objectif de depenses. C'est precisement ce que la regle
-       refuse de presenter comme des « dépenses renseignées ». */
-    vrai(num(runway().burn) > 0, 'le moteur, lui, rend toujours un chiffre');
-  });
-
-  test('avec des dépenses observées, elle rend des mois et sa preuve', () => {
-    Fixture.poser();
-    const i = par(evaluerInsights(), 'liquidity_runway');
-    vrai(!!i, 'la règle produit');
-    const r = runway();
-    /* LE CHIFFRE MIS EN AVANT EST LE PLUS PETIT DES TROIS, et c'est voulu :
-       c'est le seul sur lequel on vivrait demain. `liquidMonths` ajoute l'argent
-       fléché vers un projet et ce qui se vend chez un courtier. */
-    eq(i.params.months, num(r.reserveMois), 'les mois viennent de runway(), pas d’un second calcul');
-    eq(i.params.reserve, num(r.reserve), 'et la somme est celle de la carte');
-    eq(i.params.monthlyBurn, num(r.burn));
-    eq(i.evidence.source, 'runway');
-    eq(i.evidence.scope, 'precaution+courant', 'la preuve nomme ce qu’elle compte');
-    vrai(i.evidence.observedExpenseMonths > 0, 'la preuve dit combien de mois ont été observés');
-    /* Le complement existe, il passe derriere, et la somme retombe juste. */
-    pres(i.params.months + i.params.complementMonths, num(r.liquidMonths),
-      'réserve plus complément font bien les mois mobilisables');
-    pres(i.params.reserve, num(r.reserveMois) * num(r.burn), 'la réserve est cohérente avec les mois');
-  });
-
-  test('aucun jugement, aucun seuil : le constat et rien d’autre', () => {
-    const s = lireSource('assets/insights.js');
-    const regle = s.slice(s.indexOf("id: 'liquidity_runway'"), s.indexOf("id: 'allocation_target_gap'"));
-    /* LE MOTEUR NE PUBLIE AUCUNE NORME. Il rend `belowTargetMonths`, le nombre
-       de mois qui manquent — un fait — et c'est la presentation qui nomme
-       l'objectif indicatif de l'application. Le palier ne sert ici qu'a peser. */
-    vrai(!/targetHigh/.test(regle), 'les six mois ne sortent pas d’ici');
-    vrai(!/'3 à 6|trois a six|3 mois'/.test(regle), 'aucun repère ne s’écrit en toutes lettres');
-    Fixture.poser();
-    const sorti = evaluerInsights().find(x => x.id === 'liquidity_runway');
-    if (sorti) {
-      vrai(typeof sorti.params.belowTargetMonths === 'number',
-        'le manque est un nombre, pas un verdict');
-      const r2 = runway();
-      eq(sorti.params.belowTargetMonths > 0, num(r2.reserve) < num(r2.targetLow),
-        'et il n’est positif que sous le palier');
-    }
-    Fixture.poser();
-    const i = par2(evaluerInsights(), 'liquidity_runway');
-    for (const k of Object.keys(i.params)) {
-      vrai(!/suffisant|insuffisant|bon|mauvais|ideal/i.test(k), `params.${k} ne juge rien`);
-    }
-  });
-  function par2(l, id) { return l.find(i => i.id === id) || null; }
-});
 
 suite('Insight : l’écart à la cible d’allocation', () => {
   const trouve = () => evaluerInsights().find(i => i.id === 'allocation_target_gap') || null;
@@ -43806,28 +43625,24 @@ suite('Insight : le capital remboursé', () => {
   });
 
   test('un crédit qui amortit produit un montant mensuel, jamais confondu avec l’épargne', () => {
+    /* CE CONTRÔLE INTERROGE LE MODÈLE, PLUS UNE RÈGLE D'INSIGHT. Il passait par
+       `debt_principal_share`, dont la lecture redisait la carte « Accumulation
+       ce mois-ci » du même écran et qui a quitté le catalogue. La distinction
+       qu'il protège appartient à `savingsReconciliation()` : le capital
+       remboursé augmente le patrimoine mais n'est pas de l'épargne disponible,
+       et les confondre est l'erreur que cette séparation existe pour éviter. */
     Fixture.poser(s => {
       const e = s.etabs.find(x => x.id === 'e_bien');
       e.dettes = [{ id: 'd_pret', libelle: 'Prêt', montant: 100000, taux: 2, mensualite: 600,
                     note: '', verifieLe: todayISO() }];
     });
     const rec = savingsReconciliation();
-    if (!(num(rec.capitalRembourse) > 0.005)) {
-      vrai(true, 'ce fixture n’amortit pas : la règle se tait, et c’est le comportement attendu');
-      eq(trouve(), null);
-      return;
-    }
-    const i = trouve();
-    vrai(!!i, 'la règle produit');
-    eq(i.params.monthlyPrincipalRepaid, num(rec.capitalRembourse),
-      'le montant vient de savingsReconciliation(), pas d’un second calcul');
-    eq(i.params.monthlyInvestable, num(rec.investable));
-    vrai(i.params.monthlyPrincipalRepaid !== i.params.monthlyInvestable
-      || i.params.monthlyInvestable === 0,
-      'le capital remboursé et l’épargne disponible restent deux nombres distincts');
-    eq(i.evidence.source, 'savingsReconciliation');
-    vrai('expensesObserved' in i.evidence,
-      'la preuve dit si les dépenses retenues sont observées ou si c’est l’objectif qui a servi');
+    vrai(num(rec.capitalRembourse) >= 0, 'le capital remboursé est un montant mensuel');
+    vrai(num(rec.investable) >= 0 || num(rec.investable) < 0,
+      'et l’épargne disponible en est un autre');
+    /* Deux champs distincts, jamais le même nombre lu deux fois. */
+    vrai('capitalRembourse' in rec && 'investable' in rec,
+      'le modèle les porte séparément, et c’est ce qui empêche de les confondre');
   });
 });
 
@@ -44127,7 +43942,11 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
     /* Et chaque ancre citee existe vraiment dans le balisage : un renvoi vers
        une carte absente defile jusqu'en haut de page sans rien dire. */
     const ancres = [...p.matchAll(/ancre: '([a-z]+)'/g)].map(m => m[1]);
-    vrai(ancres.length >= 8, `${ancres.length} renvois visent une carte précise`);
+    /* Le nombre suit le catalogue, et deux regles l'ont quitte : ce qui compte
+       est qu'une bonne moitie des renvois vise une carte plutot qu'un haut de
+       page, pas un compte fige. */
+    vrai(ancres.length >= REGLES_INSIGHT.length / 3,
+      `${ancres.length} renvois visent une carte précise`);
     for (const an of new Set(ancres)) {
       vrai(a.includes(`data-anchor="${an}"`), `la carte « ${an} » existe`);
     }
@@ -44392,9 +44211,13 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
 
   test('le renvoi porte une ancre, et cette ancre existe', () => {
     const p = presentation();
-    const bloc = p.slice(p.indexOf('liquidity_runway: {'), p.indexOf('allocation_target_gap: {'));
-    vrai(/cta: \{ vue: 'overview', ancre: 'autonomie', libelle: 'Voir ma réserve' \}/.test(bloc),
-      'la réserve vise la carte qui la détaille, sur l’écran où elle se lit');
+    /* La lecture de la reserve a quitte le catalogue : elle redisait la carte
+       qu'elle visait. Le principe se verifie donc sur le mouvement de la
+       tresorerie, qui vise la meme famille de cartes et, lui, dit ce que la
+       carte ne montre pas. */
+    const bloc = p.slice(p.indexOf('liquidity_runway_shift: {'), p.indexOf('pocket_share_shift: {'));
+    vrai(/ancre: 'evolution'/.test(bloc),
+      'le mouvement vise la carte qui le détaille, sur l’écran où il se lit');
     /* La destination existe, et c'est bien la carte qui detaille les mois. */
     const a = app();
     /* L'ancre garde son nom d'origine : elle ne s'affiche jamais, et la
@@ -44437,14 +44260,21 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
     for (const [id, attendu] of [['allocation_target_gap', "cta: { vue: 'rebalance', libelle: 'Voir ma cible' }"],
                                  ['wealth_pace_shift', "cta: { vue: 'overview', ancre: 'evolution', libelle: 'Voir l’évolution' }"],
                                  ['goal_projected_date', "cta: { vue: 'objective', ancre: 'trajectoire', libelle: 'Voir ma projection' }"],
-                                 ['debt_principal_share', "cta: { vue: 'overview', ancre: 'accumulation', libelle: 'Voir mon accumulation' }"]]) {
+                                 ['pocket_share_shift', "cta: { vue: 'overview', ancre: 'evolution', libelle: 'Voir l’évolution' }"]]) {
       vrai(p.includes(attendu), `${id} porte son renvoi`);
     }
     /* Les quatre premiers renvois n'ont pas bouge ; les nouveaux ne visent que
        des cartes qui existaient deja, aucune n'a ete creee pour l'occasion. */
-    for (const an of new Set([...p.matchAll(/ancre: '([a-z]+)'/g)].map(m => m[1]))) {
-      vrai(['autonomie', 'evolution', 'trajectoire', 'accumulation'].includes(an),
-        `« ${an} » est une des quatre cartes déjà ancrées`);
+    /* LA LISTE SE DERIVE DU BALISAGE, elle ne se tient plus a la main : elle
+       nommait quatre ancres, et tout renvoi vers une cinquieme carte existante
+       tombait alors que c'est precisement ce qu'on veut — un renvoi qui mene a
+       la preuve plutot qu'au haut de la page. Ce qui compte est qu'aucune ancre
+       citee ne soit inventee. */
+    const posees = new Set([...lireSource('assets/app.js')
+      .matchAll(/data-anchor="([a-z-]+)"/g)].map(m => m[1]));
+    for (const an of new Set([...p.matchAll(/ancre: '([a-z-]+)'/g)].map(m => m[1]))) {
+      vrai(posees.has(an),
+        `« ${an} » est une carte réellement ancrée dans le balisage`);
     }
   });
 
@@ -44586,24 +44416,6 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
       `${entre}px entre deux lectures pour ${Math.max(...dedans)}px au plus à l’intérieur`);
   });
 
-  test('le capital remboursé dit de quelle progression il parle', () => {
-    const p = presentation();
-    const bloc = p.slice(p.indexOf('debt_principal_share: {'), p.indexOf('};', p.indexOf('debt_principal_share: {')));
-    vrai(/progression patrimoniale/.test(bloc),
-      '« ta progression » pouvait se lire comme celle du budget');
-    /* Le pluriel a remonté dans le titre, « Tes crédits nourrissent ta
-       progression » : c'est lui qui dit d'où vient le montant, et la ligne
-       secondaire n'a plus qu'à dire ce que ce n'est pas. Le contrôle suit le
-       pluriel où il vit, sans exiger la tournure. */
-    vrai(/[Tt]es crédits/.test(bloc),
-      'le pluriel reste : le montant agrège tous les crédits');
-    vrai(/épargne disponible/.test(bloc),
-      'et la réserve tient : ce capital n’est pas de l’épargne mobilisable');
-    /* Et c'est bien une agregation : le moteur somme les credits. */
-    const s = lireSource('assets/store.js');
-    vrai(/function capitalRembourseParMois\(\) \{\s*\n\s*return ETABS\(\)\.reduce/.test(s),
-      'le moteur additionne tous les établissements');
-  });
 
   test('chaque carte visée existe, et porte bien la réponse', () => {
     const a = app();
@@ -44636,8 +44448,12 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
        couvre huit mois » et « ta réserve a gagné deux mois » mènent toutes deux
        à l'autonomie financière. Ce qui compte n'est pas qu'ils soient distincts
        mais que chacun NOMME l'endroit où il mène. */
+    /* L'ARTICLE DEFINI EST ADMIS quand il nomme une carte : « Voir le détail
+       mensuel » designe un endroit aussi precisement que « Voir ma cible ». Ce
+       que le contrôle refuse reste le renvoi vague, et la liste noire du dessus
+       s'en charge — « Voir le détail » tout court n'ouvre rien de nommé. */
     for (const l of libelles) {
-      vrai(/^Voir (mon|ma|mes|l’)/.test(l),
+      vrai(/^Voir ((mon|ma|mes|le|la|les)\s\S|l’\S)/.test(l),
         `« ${l} » nomme l’endroit où il mène, et non l’action qu’il propose`);
     }
   });

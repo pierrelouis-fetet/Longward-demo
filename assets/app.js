@@ -881,16 +881,6 @@ const EYEBROW_INSIGHT = {
 };
 
 const PRESENTATION_INSIGHT = {
-  liquidity_runway: {
-    titre: 'Ce que ta réserve couvre',
-    valeur: p => fmtMois(p.months) + ' ' + trad('mois'),
-    phrase: () => trad('de dépenses immédiates'),
-    secondaire: p => p.complementMonths >= 0.1
-      ? trad('+{c} mobilisables, mais fléchés ou à vendre')
-        .replace('{c}', fmtMois(p.complementMonths) + ' ' + trad('mois'))
-      : '',
-    cta: { vue: 'overview', ancre: 'autonomie', libelle: 'Voir ma réserve' },
-  },
   allocation_target_gap: {
     titre: p => trad(p.deltaPct >= 0 ? 'Ta part en {c} dépasse ta cible'
                                     : 'Ta part en {c} reste sous ta cible')
@@ -928,7 +918,7 @@ const PRESENTATION_INSIGHT = {
       ? 'Ta trésorerie couvre plus de mois qu’avant'
       : 'Ta trésorerie couvre moins de mois qu’avant'),
     valeur: p => fmtMois(p.months) + ' ' + trad('mois'),
-    phrase: () => trad('de dépenses couvertes par ta trésorerie'),
+    phrase: () => trad('de dépenses couvertes'),
     secondaire: p => trad('contre {b} il y a trois mois, à dépenses constantes')
       .replace('{b}', fmtMois(p.previousMonths) + ' ' + trad('mois')),
     cta: { vue: 'overview', ancre: 'evolution', libelle: 'Voir l’évolution' },
@@ -977,7 +967,7 @@ const PRESENTATION_INSIGHT = {
     phrase: p => trad('sur les {n} derniers mois clos').replace('{n}', p.months),
     secondaire: p => trad('contre {b} auparavant')
       .replace('{b}', fmtEUR0(p.previous) + trad('/mois')),
-    cta: { vue: 'budget', libelle: 'Voir mes dépenses' },
+    cta: { vue: 'budget', ancre: 'detail-mensuel', libelle: 'Voir le détail mensuel' },
   },
   spending_category_shift: {
     titre: p => trad(p.delta > 0 ? 'Tes dépenses {c} augmentent'
@@ -990,7 +980,7 @@ const PRESENTATION_INSIGHT = {
       : trad('contre {b} auparavant, soit {p}')
         .replace('{b}', fmtEUR0(p.previous) + trad('/mois'))
         .replace('{p}', fmtSignedPct(p.deltaPct, 0)),
-    cta: { vue: 'budget', libelle: 'Voir mes dépenses' },
+    cta: { vue: 'budget', ancre: 'detail-mensuel', libelle: 'Voir le détail mensuel' },
   },
   spending_target_pace: {
     titre: 'À ce rythme, ton objectif est dépassé',
@@ -999,7 +989,7 @@ const PRESENTATION_INSIGHT = {
       .replace('{n}', p.daysIn),
     secondaire: p => trad('soit {o} au-dessus de ton objectif de {t}')
       .replace('{o}', fmtEUR0(p.over)).replace('{t}', fmtEUR0(p.target)),
-    cta: { vue: 'budget', libelle: 'Voir mes dépenses' },
+    cta: { vue: 'budget', ancre: 'mois-courant', libelle: 'Voir le mois en cours' },
   },
   budget_history_thin: {
     titre: 'Pas encore de quoi comparer',
@@ -1007,7 +997,7 @@ const PRESENTATION_INSIGHT = {
     phrase: p => trad('il en faut {n} pour comparer un trimestre au précédent')
       .replace('{n}', p.needed),
     secondaire: () => trad('d’ici là, les écarts affichés seraient du bruit'),
-    cta: { vue: 'budget', libelle: 'Voir mes dépenses' },
+    cta: { vue: 'budget', ancre: 'detail-mensuel', libelle: 'Voir le détail mensuel' },
   },
   spending_month_anomaly: {
     titre: 'Un mois à part',
@@ -1020,7 +1010,7 @@ const PRESENTATION_INSIGHT = {
       if (!p.drivers || !p.drivers.length) return base;
       return base + trad(', surtout') + ' ' + p.drivers.map(c => esc(c)).join(trad(' et '));
     },
-    cta: { vue: 'budget', libelle: 'Voir mes dépenses' },
+    cta: { vue: 'budget', ancre: 'detail-mensuel', libelle: 'Voir le détail mensuel' },
   },
   concentration_top_line: {
     titre: 'Une ligne concentre tes actifs',
@@ -1028,14 +1018,7 @@ const PRESENTATION_INSIGHT = {
     phrase: () => trad('de tes actifs financiers'),
     secondaire: p => trad('{c}, autant que les deux lignes suivantes réunies')
       .replace('{c}', esc(trad(p.label))),
-    cta: { vue: 'positions', libelle: 'Voir mes positions' },
-  },
-  debt_principal_share: {
-    titre: 'Tes crédits nourrissent ta progression',
-    valeur: p => fmtEUR0(p.monthlyPrincipalRepaid) + trad('/mois'),
-    phrase: () => trad('de progression patrimoniale'),
-    secondaire: () => trad('et non de ton épargne disponible'),
-    cta: { vue: 'overview', ancre: 'accumulation', libelle: 'Voir mon accumulation' },
+    cta: { vue: 'positions', ancre: 'titres', libelle: 'Voir mes lignes' },
   },
 };
 
