@@ -1770,6 +1770,27 @@ suite('La carte Portefeuille dit sa composition, pas seulement sa performance', 
     vrai(/!conc \? '' :/.test(c), 'et rien ne s’affiche quand le modèle ne rend rien');
   });
 
+  test('les deux valeurs sont des phrases, et elles le déclarent', () => {
+    /* `.kv dd` porte `white-space: nowrap` pour qu'un montant ne se coupe jamais
+       de sa devise, et la colonne des valeurs est en `auto` : une phrase y
+       reclamait 285 px sur les 230 disponibles a 375 px. La grille mesurait 366
+       px dans un conteneur de 311, donc TOUTES les valeurs de la carte
+       debordaient de 66 px, y compris les deux qui tenaient avant.
+       `dd.phrase` existe pour ca, et sous 640 px la valeur prend sa propre
+       ligne. Une valeur affame toute sa grille : la classe n'est pas un detail
+       de style, c'est ce qui garde la carte dans l'ecran. */
+    const c = carte();
+    const dds = c.match(/<dd[^>]*>/g) || [];
+    eq(dds.length, 4, 'la carte porte quatre valeurs');
+    for (const d of dds.slice(2)) {
+      vrai(/class="phrase"/.test(d), `« ${d} » se déclare comme une phrase`);
+    }
+    const css = lireSource('assets/styles.css');
+    vrai(/\.kv dd\.phrase \{ white-space: normal; \}/.test(css), 'et la permission existe');
+    vrai(css.indexOf('.kv dd.phrase { white-space: normal; }') > css.indexOf('.repart-pied dd,'),
+      'après le nowrap du pied, sinon elle ne le bat pas');
+  });
+
   test('les deux lectures partagent la base des barres du dessus', () => {
     /* Sinon les pourcentages de la carte ne se comparent plus entre eux : c'est
        la regle du total qui vaut la somme de ses parts, prise de cote. */

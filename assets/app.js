@@ -3163,11 +3163,11 @@ function viewPositions() {
               ${pnl.pct == null ? '' : `<span class="muted">·</span> ${fmtSignedPct(pnl.pct)}`}</button></dd>
       ${!roles.length ? '' : `
       <dt>${trad('Core et satellite')}</dt>
-        <dd>${roles.map(r => `${esc(trad(r.label))} ${fmtPct(r.pct, 1)}`)
+        <dd class="phrase">${roles.map(r => `${esc(trad(r.label))} ${fmtPct(r.pct, 1)}`)
               .join(' <span class="muted">·</span> ')}</dd>`}
       ${!conc ? '' : `
       <dt>${trad('Concentration')}</dt>
-        <dd>${esc(trad(conc.premiere.label))} ${fmtPct(conc.premiere.pct, 1)}${
+        <dd class="phrase">${esc(trad(conc.premiere.label))} ${fmtPct(conc.premiere.pct, 1)}${
           !conc.top3 ? '' : ` <span class="muted">·</span> ${
             trad('les trois premières')} ${fmtPct(conc.top3.pct, 1)}`}</dd>`}
     </dl>
