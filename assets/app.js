@@ -3360,14 +3360,15 @@ function viewPositions() {
     </div>
     <div class="liste-mobile">
       ${ps.map(p => {
-        const i = p.__i, v = posValue(p), pp = posPerfPct(p);
+        const i = p.__i, v = posValue(p), pp = posPerfPct(p), pe = posPerfEur(p);
         return ligneListe({
           action: 'open-position', index: i,
           titre: p.name || 'Sans nom',
           sous: `${ASSET_CLASSES[assetClassDe(p)]} · ${ROLES[roleDe(p)]} · ${ACC[p.account]?.label || ''}`,
           valeur: fmtEUR(v),
-          second: pp == null ? trad('prix de revient manquant') : fmtSignedPct(pp, 1),
-          classeSecond: pp == null ? 'muted' : cls(pp),
+          second: pe == null ? trad('prix de revient manquant')
+            : `${fmtSigned(pe)} <span class="muted">·</span> ${fmtSignedPct(pp, 1)}`,
+          classeSecond: pe == null ? 'muted' : cls(pe),
         });
       }).join('') || `<p class="empty">${trad('Aucune ligne.')}</p>`}
     </div>
