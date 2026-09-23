@@ -1795,12 +1795,30 @@ suite('La carte Portefeuille se lit de haut en bas', () => {
     const a = app();
     vrai(/role="button"[\s\S]{0,80}tabindex="0"/.test(a.slice(a.indexOf('function aide('))),
       'et cette aide est atteignable au clavier');
-    vrai(/Les espèces disponibles en sont exclues/.test(c),
-      'l’explication dit ce que la mesure exclut');
-    vrai(/trad\('Coût d’achat'\)/.test(c), 'et le coût d’achat vit dans ce détail');
-    /* Retirer un affichage sans retirer sa porte laisserait un panneau que plus
-       rien n'ouvre : le prix de revient garde la sienne, au plus petit rang. */
-    vrai(/data-apercu="investiTitres"/.test(c), 'son panneau reste ouvrable');
+    /* L'AIDE NE DIT QUE CE QUI EST VRAI DU MOTEUR. Les ventes passees ont leur
+       journal et n'entrent pas ici ; les dividendes ne sont suivis nulle part,
+       et le taire laisserait croire a un rendement total. Rien sur les frais ni
+       sur l'impot : le prix de revient est celui que le detenteur a saisi,
+       frais compris ou non, et l'application n'en sait rien. */
+    vrai(/Les plus-values déjà réalisées lors de ventes n’y sont pas/.test(c),
+      'l’explication écarte les ventes passées');
+    vrai(/Longward ne suit aucun dividende/.test(c), 'et nomme ce qu’il ne suit pas');
+    /* La portee se lit dans le texte de l'aide, pas dans la tranche entiere :
+       un commentaire de code qui explique pourquoi on ne parle pas des frais
+       contient le mot « frais ». */
+    const bulle = c.slice(c.indexOf('Écart entre la valeur actuelle'),
+                          c.indexOf('aucun dividende.') + 16);
+    vrai(!/frais|impôt|fiscal/.test(bulle), 'sans rien affirmer que le moteur ignore');
+    /* LA PORTEE SE DIT SOUS LE CHIFFRE. Sans elle, la plus-value se lit comme
+       la performance de tout le portefeuille depuis le debut, ventes comprises. */
+    vrai(/trad\('sur les positions détenues'\)/.test(c), 'la portée est écrite sous le chiffre');
+    /* ET LE COUT D'ACHAT N'EST PLUS UNE ACTION : il vivait en lien pointille au
+       rang d'un renvoi. Le montant reste atteignable, le panneau de la
+       plus-value l'ecrit sous son total. */
+    vrai(!/data-apercu="investiTitres"/.test(c), 'le coût d’achat n’est plus un bouton');
+    const a2 = app();
+    vrai(/trad\('sur.investis', 'sur'\)\} \$\{fmtEUR0\(pnl\.invested\)\}/.test(a2),
+      'et le panneau de la plus-value le porte toujours');
   });
 
   test('une base absente ne devient jamais zéro', () => {
@@ -1809,7 +1827,7 @@ suite('La carte Portefeuille se lit de haut en bas', () => {
     const c = carte();
     vrai(/const pvVal = pnl\.pct == null \? null/.test(c), 'la garde précède le calcul');
     vrai(/trad\('Indisponible'\)/.test(c), 'et l’écran le dit');
-    vrai(/Partielle : \{n\} placement/.test(c),
+    vrai(/hors \{n\} sans prix d’achat/.test(c),
       'une base partielle se déclare aussi');
     Fixture.poser();
     Store.state.positions.forEach(p => { p.buyPrice = 0; p.manual = false; });
@@ -16527,8 +16545,8 @@ suite('Une page ne liste pas trois fois les mêmes positions', () => {
        en tête avec sa propre ligne d'intitulé, le prix de revient recule d'un
        cran sous elle. « Prix de revient des titres » a perdu son suffixe, qui
        redisait le sujet de la carte. */
-    vrai(/trad\('Plus-value latente'\)/.test(carte) && /trad\('coût d’achat'\)/.test(carte),
-      'la plus-value et son coût d’achat sont toujours là');
+    vrai(/trad\('Plus-value latente'\)/.test(carte) && /label: 'Placements'/.test(carte),
+      'la plus-value et la composition sont toujours là');
     /* Et elle ne s'affiche pas vide : sans part, elle ne se rend pas. */
     vrai(/if \(!parts\.length\) return '';/.test(vue),
       'une carte sans part ne se rend pas');
@@ -33277,10 +33295,18 @@ suite('La carte du portefeuille raconte une phrase', () => {
         `${nom} doit s’ouvrir depuis la carte`);
     vrai(!/investiTitres/.test(corps),
       'et le prix de revient n’est plus une mesure de l’accueil');
-    /* Retirer un affichage sans retirer sa porte : le panneau garde la sienne
-       au pied de Positions, donc rien ne devient mort. */
-    vrai((src.match(/data-apercu="investiTitres"/g) || []).length >= 1,
-      'son panneau s’ouvre encore depuis ailleurs');
+    /* LE CHIFFRE RESTE ATTEIGNABLE, LE PANNEAU N'A PLUS DE PORTE, et c'est ce
+       qu'il faut garder en vue. Le prix de revient vivait en lien pointille au
+       pied de Positions, au rang d'un renvoi, pour une donnee de support : il en
+       est parti. Son montant n'est pas perdu pour autant, le panneau de la
+       plus-value l'ecrit sous son total, et c'est cette phrase-la qui porte
+       desormais la garantie.
+       `investiTitres` reste defini sans que rien ne l'ouvre : le retirer est une
+       decision qui ne se prend pas dans une passe de mise en forme. */
+    vrai(/trad\('sur.investis', 'sur'\)\} \$\{fmtEUR0\(pnl\.invested\)\}/.test(src),
+      'le montant investi se lit dans le panneau de la plus-value');
+    eq((src.match(/data-apercu="investiTitres"/g) || []).length, 0,
+      'et son propre panneau n’a plus de porte, ce qui reste à trancher');
     vrai(corps.indexOf('pnlLatent') < corps.indexOf('jourTitres'),
       'le gain vient avant l’écart du jour, qui est la nuance la plus fine');
     vrai(/class="pf-total"/.test(corps) && /trad\('Valeur actuelle'\)/.test(corps),

@@ -3210,23 +3210,16 @@ function viewPositions() {
       <dd>${fmtEUR(x.value)}</dd>`).join('')}
     </dl>
     <div class="ptf-pv">
-      <p class="ptf-pv-lab">${trad('Plus-value latente')}${aide(
-        `${trad('Différence entre la valeur actuelle de tes placements et leur coût d’achat. Les espèces disponibles en sont exclues.')}${
-          pnl.pct == null ? '' : ` ${trad('Coût d’achat')} : ${fmtEUR(pnl.invested)}.`}`)}</p>
+      <p class="ptf-pv-lab">${trad('Plus-value latente')}${aide(trad(
+        'Écart entre la valeur actuelle et le coût d’achat des positions que tu détiens encore. Les plus-values déjà réalisées lors de ventes n’y sont pas, et Longward ne suit aucun dividende.'))}</p>
       ${pvVal == null ? `
       <p class="ptf-pv-val muted">${trad('Indisponible')}</p>
       <p class="ptf-pv-sec">${trad('Aucun prix d’achat renseigné sur tes placements')}</p>`
       : `
       <p class="ptf-pv-val ${cls(pnl.pnl)}">${pvVal}</p>
-      <p class="ptf-pv-sec">${!pnl.sansBase
-        ? trad('Sur les placements actuellement détenus')
-        : (pnl.sansBase > 1 ? trad('Partielle : {n} placements sans prix d’achat en sont exclus')
-                            : trad('Partielle : {n} placement sans prix d’achat en est exclu'))
-            .replace('{n}', pnl.sansBase)}
-        <span class="muted">·</span>
-        <button type="button" class="mois-lien" data-action="apercu" data-apercu="investiTitres"
-                title="${trad('Voir le prix de revient ligne par ligne')}"
-          >${trad('coût d’achat')}</button></p>`}
+      <p class="ptf-pv-sec">${!pnl.sansBase ? trad('sur les positions détenues')
+        : trad('sur les positions détenues, hors {n} sans prix d’achat')
+            .replace('{n}', pnl.sansBase)}</p>`}
     </div>
   </div>`;
   })()}

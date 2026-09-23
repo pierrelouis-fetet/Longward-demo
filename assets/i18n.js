@@ -1315,6 +1315,11 @@ const I18N = {
     "Différence entre la valeur actuelle de tes placements et leur coût d’achat. Les espèces disponibles en sont exclues.":
       "The difference between what your holdings are worth today and what they cost. Cash available is excluded.",
     "Sur les placements actuellement détenus": "On the holdings you currently own",
+    "sur les positions détenues": "on the positions you still hold",
+    "sur les positions détenues, hors {n} sans prix d’achat":
+      "on the positions you still hold, excluding {n} with no purchase price",
+    "Écart entre la valeur actuelle et le coût d’achat des positions que tu détiens encore. Les plus-values déjà réalisées lors de ventes n’y sont pas, et Longward ne suit aucun dividende.":
+      "The gap between today's value and the purchase cost of the positions you still hold. Gains already realised on sales are not in it, and Longward tracks no dividends.",
     "Indisponible": "Unavailable",
     "Aucun prix d’achat renseigné sur tes placements":
       "No purchase price recorded on your holdings",
