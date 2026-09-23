@@ -1742,64 +1742,95 @@ suite('Créer une ligne débite le compte choisi, sans le redemander', () => {
   });
 });
 
-/* --- Une carte pleine a cote d'une carte vide ----------------------------- */
-suite('La carte Portefeuille dit sa composition, pas seulement sa performance', () => {
+/* --- Une carte qui se lit en cinq secondes -------------------------------- */
+suite('La carte Portefeuille se lit de haut en bas', () => {
   const app = () => lireSource('assets/app.js');
   const carte = () => {
     const a = app();
-    const d = a.indexOf("<h2>${trad('Portefeuille')}</h2>");
-    return a.slice(d, a.indexOf('</dl>', d));
+    /* La borne de fin se cherche DEPUIS le debut de la carte : la carte du jour
+       apparait plus haut dans le fichier, et un `indexOf` depuis zero rendait
+       une tranche vide, donc quatre controles verts pour rien. */
+    const d = a.indexOf('const st = stockTotals();');
+    return a.slice(d, a.indexOf('const j = dayPerformance();', d));
   };
 
-  test('le partage Core / Satellite vient du modèle, et le cash n’y est pas redit', () => {
-    const a = app();
-    vrai(/rebalanceRoles\(\)\?\.roles/.test(a), 'le partage se lit, il ne se recalcule pas');
-    /* Le cash a investir a deja sa barre en haut de la carte : `rebalanceRoles()`
-       le rend comme un role, et le garder ferait lire deux fois le meme fait. */
-    vrai(/r\.cle !== 'cashToInvest'/.test(a), 'le cash à investir ne se lit pas deux fois');
-    vrai(/trad\('Core et satellite'\)/.test(carte()), 'la ligne est nommée');
-  });
-
-  test('la concentration dit la première poche et les trois premières', () => {
-    const c = carte();
-    vrai(/concentration\(\{ financier: true \}\)/.test(app()), 'elle vient du modèle');
-    /* Le tableau plus bas porte un poids PAR LIGNE : ni une poche ni le cumul
-       des trois premieres ne s'y lisent, meme en balayant les onze lignes. */
-    vrai(/conc\.premiere\.pct/.test(c) && /conc\.top3\.pct/.test(c),
-      'la première poche et le cumul des trois');
-    vrai(/!conc \? '' :/.test(c), 'et rien ne s’affiche quand le modèle ne rend rien');
-  });
-
-  test('les deux valeurs sont des phrases, et elles le déclarent', () => {
-    /* `.kv dd` porte `white-space: nowrap` pour qu'un montant ne se coupe jamais
-       de sa devise, et la colonne des valeurs est en `auto` : une phrase y
-       reclamait 285 px sur les 230 disponibles a 375 px. La grille mesurait 366
-       px dans un conteneur de 311, donc TOUTES les valeurs de la carte
-       debordaient de 66 px, y compris les deux qui tenaient avant.
-       `dd.phrase` existe pour ca, et sous 640 px la valeur prend sa propre
-       ligne. Une valeur affame toute sa grille : la classe n'est pas un detail
-       de style, c'est ce qui garde la carte dans l'ecran. */
-    const c = carte();
-    const dds = c.match(/<dd[^>]*>/g) || [];
-    eq(dds.length, 4, 'la carte porte quatre valeurs');
-    for (const d of dds.slice(2)) {
-      vrai(/class="phrase"/.test(d), `« ${d} » se déclare comme une phrase`);
-    }
-    const css = lireSource('assets/styles.css');
-    vrai(/\.kv dd\.phrase \{ white-space: normal; \}/.test(css), 'et la permission existe');
-    vrai(css.indexOf('.kv dd.phrase { white-space: normal; }') > css.indexOf('.repart-pied dd,'),
-      'après le nowrap du pied, sinon elle ne le bat pas');
-  });
-
-  test('les deux lectures partagent la base des barres du dessus', () => {
-    /* Sinon les pourcentages de la carte ne se comparent plus entre eux : c'est
-       la regle du total qui vaut la somme de ses parts, prise de cote. */
+  test('le chiffre de tête est le total, pas les titres seuls', () => {
+    /* La carte ouvrait sur « Titres 21 617 € · 94,7 % » : une part, presentee
+       comme si elle etait le sujet. La question que la carte doit trancher est
+       d'abord « combien vaut mon portefeuille ». */
+    vrai(/<p class="ptf-total">\$\{fmtEUR\(st\.balance\)\}<\/p>/.test(carte()),
+      'elle ouvre sur la valeur du portefeuille');
+    /* `balance` vaut `invested + cashToInvest + autres`, et ce troisieme terme
+       porte les lignes saisies a la main sur un compte de bourse. Sans segment
+       pour lui, deux parts totalisant 96 % s'afficheraient sous un total qui
+       s'annonce entier. */
+    vrai(/label: 'Autres lignes'/.test(app()), 'et le troisième terme a son segment');
     Fixture.poser();
     const st = stockTotals();
-    const r = rebalanceRoles();
-    pres(r.base, st.balance, 'rebalanceRoles() compte sur la base de la carte');
-    const somme = r.roles.reduce((s, x) => s + x.value, 0);
-    pres(somme, st.balance, 'et ses rôles font le total, sans reste');
+    pres(st.invested + st.cashToInvest + (st.balance - st.invested - st.cashToInvest),
+      st.balance, 'le total vaut la somme de ses parts');
+  });
+
+  test('la performance passe devant son prix de revient', () => {
+    const c = carte();
+    const perf = c.indexOf('ptf-perf');
+    const revient = c.indexOf('ptf-revient');
+    vrai(perf > 0 && revient > perf, 'la plus-value se lit avant le prix de revient');
+    /* AUCUN POINTILLE SOUS UN GROS CHIFFRE. `.mois-lien` en pose un, et sous un
+       nombre de cette taille il se lit comme un lien web. Longward a deja
+       l'autre affordance, celle de la carte du jour : la rangee entiere est le
+       bouton. Le prix de revient, lui, garde `.mois-lien` en petit. */
+    vrai(/<button type="button" class="ptf-perf/.test(c), 'la performance est un bloc cliquable');
+    const css = lireSource('assets/styles.css');
+    const regle = css.slice(css.indexOf('.ptf-perf {'), css.indexOf('.ptf-perf > b'));
+    vrai(!/text-decoration/.test(regle), 'et elle ne porte aucun soulignement');
+    vrai(/data-apercu="pnlLatent"/.test(c) && /data-apercu="investiTitres"/.test(c),
+      'les deux aperçus sont intacts');
+  });
+
+  test('une seule barre segmentée, et ses segments font le total', () => {
+    const c = carte();
+    /* Deux jauges separees donnaient une barre presque pleine au-dessus d'une
+       barre presque vide, pour dire un seul partage : deux dessins, une
+       information, trente pixels chacun. */
+    vrai(/<div class="ptf-barre">/.test(c), 'une barre, pas deux jauges');
+    vrai(!/repart-barre/.test(c), 'les anciennes ont disparu de cette carte');
+    Fixture.poser();
+    const st = stockTotals();
+    const segments = [st.invested, st.cashToInvest, st.balance - st.invested - st.cashToInvest];
+    pres(segments.reduce((s, v) => s + v, 0), st.balance, 'les segments font le total');
+  });
+
+  test('Core et Satellite sont deux mesures, sur une base nommée', () => {
+    const c = carte();
+    vrai(/class="ptf-roles"/.test(c), 'deux colonnes, et non une phrase');
+    vrai(!/trad\('Core et satellite'\)/.test(c), 'la phrase a disparu');
+    vrai(/r\.cle !== 'cashToInvest'/.test(app()), 'le cash n’y est pas redit');
+    /* Les deux parts ne font pas cent, et c'est voulu : le cash a investir
+       compte dans le denominateur et porte deja son segment plus haut. La base
+       se dit, sinon le lecteur conclut a une erreur de calcul. */
+    vrai(/ptf-roles-base/.test(c), 'et la base est écrite sous les deux');
+    Fixture.poser();
+    const rb = rebalanceRoles();
+    const st = stockTotals();
+    pres(rb.base, st.balance, 'la base des rôles est celle de la carte');
+    pres(rb.roles.reduce((s, x) => s + x.value, 0), st.balance, 'et les rôles font le total');
+  });
+
+  test('la concentration a quitté cette carte, et c’est une question de base', () => {
+    /* `concentration()` compte sur les actifs financiers, le patrimoine net ou
+       le patrimoine brut selon ses options, JAMAIS sur le portefeuille de
+       marche. Mesure : 66 551 contre 52 177 pour tout le reste de la carte.
+       Deux pourcentages qui se touchent sans partager leur base valent moins
+       que pas de pourcentage du tout ; la lecture vit sur Actifs, ou elle
+       nomme la sienne. */
+    vrai(!/trad\('Concentration'\)/.test(carte()), 'elle ne s’affiche plus ici');
+    Fixture.poser();
+    const st = stockTotals();
+    const cc = concentration({ financier: true });
+    vrai(!!cc, 'la fonction rend toujours quelque chose');
+    vrai(Math.abs(cc.premiere.value / cc.premiere.pct * 100 - st.balance) > 1,
+      'et sa base diffère bien de celle de la carte');
   });
 });
 
@@ -16399,8 +16430,12 @@ suite('Une page ne liste pas trois fois les mêmes positions', () => {
        la plus-value latente, et pas un indicateur de plus. */
     vrai(/apercu: 'portefeuille'/.test(carte) && /apercu: 'cashInvestir'/.test(carte),
       'les deux barres et leurs aperçus sont intacts');
-    vrai(/Prix de revient des titres/.test(carte) && /Plus-value latente/.test(carte),
-      'le pied de carte aussi');
+    /* Les deux chiffres sont restés, leur rang a changé : la plus-value monte
+       en tête avec sa propre ligne d'intitulé, le prix de revient recule d'un
+       cran sous elle. « Prix de revient des titres » a perdu son suffixe, qui
+       redisait le sujet de la carte. */
+    vrai(/trad\('Prix de revient'\)/.test(carte) && /de plus-value latente/.test(carte),
+      'le prix de revient et la plus-value sont toujours là');
     /* Et elle ne s'affiche pas vide : sans part, elle ne se rend pas. */
     vrai(/if \(!parts\.length\) return '';/.test(vue),
       'une carte sans part ne se rend pas');

@@ -3129,48 +3129,67 @@ function viewPositions() {
          teinte de l'immobilier, et un studio et une poche d'especes se
          peignaient donc pareil d'un ecran a l'autre. */
       { label: BASES.cashPlacer.nom, value: st.cashToInvest, couleur: 'var(--series-1)', apercu: 'cashInvestir' },
+      /* LE TROISIEME TERME, sans quoi le total en tete ne serait pas la somme de
+         ses parts. `balance` vaut `invested + cashToInvest + autres`, et ce
+         dernier porte les lignes saisies a la main sur un compte de bourse. Il
+         vaut zero chez presque tout le monde, donc il ne paraissait pas ; le
+         jour ou il ne vaut pas zero, deux parts qui totalisent 96 % sous un
+         total qui s'annonce entier est exactement le defaut que cette carte
+         doit eviter. */
+      { label: 'Autres lignes', value: st.balance - st.invested - st.cashToInvest,
+        couleur: 'var(--series-6)', apercu: 'portefeuille' },
     ].filter(x => Math.abs(num(x.value)) > 0.005)
      .map(x => ({ ...x, pct: st.balance ? num(x.value) / st.balance * 100 : 0 }));
-    /* Les deux lectures de composition, prises au modele et jamais recalculees
-       ici. `cashToInvest` est un role comme les autres pour `rebalanceRoles()`,
-       mais il a deja sa barre au-dessus : le redire en pourcentage ferait lire
-       deux fois le meme fait dans la meme carte. */
+    /* Le partage des roles, pris au modele et jamais recalcule ici.
+       `cashToInvest` est un role comme les autres pour `rebalanceRoles()`, mais
+       il a deja son segment au-dessus : le redire en pourcentage ferait lire
+       deux fois le meme fait dans la meme carte.
+
+       LA CONCENTRATION A QUITTE CETTE CARTE, et c'est une question de base.
+       `concentration()` compte sur les actifs financiers, le patrimoine net ou
+       le patrimoine brut selon ses options, jamais sur le portefeuille de
+       marche : mesure, 66 551 euros contre 52 177 pour tout le reste de la
+       carte. Deux pourcentages qui se touchent sans se comparer valent moins
+       que pas de pourcentage du tout. La lecture vit sur Actifs, ou elle
+       nomme sa base. */
     const roles = (rebalanceRoles()?.roles || []).filter(r => r.cle !== 'cashToInvest');
-    const conc = concentration({ financier: true });
     if (!parts.length) return '';
     return `
-  <div class="card repart">
+  <div class="card repart ptf">
     <div class="card-head"><h2>${trad('Portefeuille')}</h2></div>
-    ${parts.map(x => `
-      <button type="button" class="repart-ligne" data-action="apercu"
+    <p class="ptf-total">${fmtEUR(st.balance)}</p>
+    <button type="button" class="ptf-perf ${cls(pnl.pnl)}" data-action="apercu" data-apercu="pnlLatent"
+            title="${trad('Voir le détail par ligne')}">
+      <b>${fmtSigned(pnl.pnl)}</b>${pnl.pct == null ? '' : `
+      <span class="ptf-perf-pct">${fmtSignedPct(pnl.pct)}</span>`}
+      <span class="ptf-perf-lab">${trad('de plus-value latente')}</span>
+    </button>
+    <p class="ptf-revient">${trad('Prix de revient')}
+      <button type="button" class="mois-lien" data-action="apercu" data-apercu="investiTitres"
+              title="${trad('Voir le prix de revient ligne par ligne')}">${fmtEUR(pnl.invested)}</button>${
+      !pnl.sansBase ? '' : ` <span class="muted">·</span> ${
+        (pnl.sansBase > 1 ? trad('{n} lignes sans prix de revient n’y sont pas comptées')
+                          : trad('{n} ligne sans prix de revient n’y est pas comptée'))
+          .replace('{n}', pnl.sansBase)}`}</p>
+    <div class="ptf-barre">${parts.map(x => `
+      <i style="width:${x.pct.toFixed(1)}%;background:${x.couleur}"></i>`).join('')}</div>
+    <div class="ptf-parts">${parts.map(x => `
+      <button type="button" class="ptf-part" data-action="apercu"
               data-apercu="${esc(x.apercu)}"
-              title="${esc(x.aide || `${trad('Voir le détail de')} ${trad(x.label)}`)}">
-        <span class="repart-haut">
-          <span class="dot" style="background:${x.couleur}"></span>
-          <span class="repart-nom">${esc(trad(x.label))}</span>
-          <b>${fmtEUR(x.value)}</b>
-          <span class="repart-pct">${fmtPct(x.pct, 1)}</span>
-        </span>
-        <span class="repart-barre"><i style="width:${x.pct.toFixed(1)}%;background:${x.couleur}"></i></span>
-      </button>`).join('')}
-    <dl class="kv repart-pied">
-      <dt>${trad('Prix de revient des titres')}</dt>
-        <dd><button type="button" class="mois-lien" data-action="apercu" data-apercu="investiTitres"
-                    title="${trad('Voir le prix de revient ligne par ligne')}">${fmtEUR(pnl.invested)}</button></dd>
-      <dt><b>${trad('Plus-value latente')}</b></dt>
-        <dd><button type="button" class="mois-lien ${cls(pnl.pnl)}" data-action="apercu" data-apercu="pnlLatent"
-                    title="${trad('Voir le détail par ligne')}"><b>${fmtSigned(pnl.pnl)}</b>
-              ${pnl.pct == null ? '' : `<span class="muted">·</span> ${fmtSignedPct(pnl.pct)}`}</button></dd>
-      ${!roles.length ? '' : `
-      <dt>${trad('Core et satellite')}</dt>
-        <dd class="phrase">${roles.map(r => `${esc(trad(r.label))} ${fmtPct(r.pct, 1)}`)
-              .join(' <span class="muted">·</span> ')}</dd>`}
-      ${!conc ? '' : `
-      <dt>${trad('Concentration')}</dt>
-        <dd class="phrase">${esc(trad(conc.premiere.label))} ${fmtPct(conc.premiere.pct, 1)}${
-          !conc.top3 ? '' : ` <span class="muted">·</span> ${
-            trad('les trois premières')} ${fmtPct(conc.top3.pct, 1)}`}</dd>`}
-    </dl>
+              title="${esc(`${trad('Voir le détail de')} ${trad(x.label)}`)}">
+        <span class="dot" style="background:${x.couleur}"></span>
+        <span class="ptf-part-nom">${esc(trad(x.label))}</span>
+        <b>${fmtEUR(x.value)}</b>
+        <span class="ptf-part-pct">${fmtPct(x.pct, 1)}</span>
+      </button>`).join('')}</div>
+    ${!roles.length ? '' : `
+    <div class="ptf-roles">${roles.map(r => `
+      <div class="ptf-role">
+        <span class="ptf-role-lab">${esc(trad(r.label))}</span>
+        <b class="ptf-role-val">${fmtPct(r.pct, 1)}</b>
+      </div>`).join('')}
+    </div>
+    <p class="ptf-roles-base">${trad('du portefeuille total ; le cash à investir fait le reste')}</p>`}
   </div>`;
   })()}
 

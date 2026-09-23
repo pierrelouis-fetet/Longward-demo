@@ -2590,6 +2590,86 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 .repart-ligne:last-child { border-bottom: none; }
 @media (hover: hover) { .repart-ligne:hover .repart-nom { color: var(--accent); } }
 .repart-inerte { cursor: default; }
+
+.ptf-total {
+  margin: 2px 0 0; font-size: var(--font-2xl); font-weight: 700;
+  letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+}
+/* LA PERFORMANCE EST UN BLOC, PAS UN MOT SOULIGNE. Elle ouvre le meme apercu
+   qu'avant, mais `.mois-lien` pose un pointille sous sa valeur : sous un
+   chiffre de cette taille, il se lit comme un lien web ou un champ. Longward a
+   deja l'autre affordance, celle de la carte du jour — la rangee entiere est le
+   bouton, et une cible large se vise au pouce. */
+.ptf-perf {
+  display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 8px;
+  width: 100%; margin: 6px 0 0; padding: 4px 0;
+  background: none; border: none; font: inherit; color: inherit;
+  text-align: left; cursor: pointer;
+}
+.ptf-perf > b { font-size: var(--font-xl); font-weight: 700; letter-spacing: -.01em; }
+.ptf-perf-pct { font-size: var(--font-lg); font-weight: 600; }
+.ptf-perf.up > b, .ptf-perf.up .ptf-perf-pct { color: var(--good-text); }
+.ptf-perf.down > b, .ptf-perf.down .ptf-perf-pct { color: var(--critical); }
+.ptf-perf.flat > b, .ptf-perf.flat .ptf-perf-pct { color: var(--text-secondary); }
+.ptf-perf-lab {
+  flex-basis: 100%; font-size: var(--font-sm); color: var(--text-secondary);
+}
+@media (hover: hover) { .ptf-perf:hover .ptf-perf-lab { color: var(--accent); } }
+.ptf-revient {
+  margin: 2px 0 0; font-size: var(--font-sm); color: var(--text-secondary);
+}
+.ptf-revient .mois-lien { font-size: inherit; font-weight: 600; color: inherit; }
+
+.ptf-barre {
+  display: flex; gap: 2px; height: 10px; margin: 16px 0 0;
+  border-radius: var(--radius-pill); overflow: hidden; background: var(--surface-2);
+}
+.ptf-barre > i { display: block; height: 100%; }
+.ptf-parts { display: flex; flex-direction: column; margin-top: 2px; }
+.ptf-part {
+  display: flex; align-items: baseline; gap: 8px; width: 100%;
+  padding: 9px 0; background: none; border: none;
+  border-bottom: 1px solid var(--grid);
+  font: inherit; color: var(--text-primary); text-align: left; cursor: pointer;
+}
+.ptf-part:last-child { border-bottom: none; }
+.ptf-part-nom { flex: 1 1 auto; min-width: 0; font-size: var(--font-md); }
+.ptf-part > b { font-variant-numeric: tabular-nums; font-weight: 650; }
+.ptf-part-pct {
+  min-width: 3.4em; text-align: right; font-size: var(--font-sm);
+  color: var(--text-secondary); font-variant-numeric: tabular-nums;
+}
+@media (hover: hover) { .ptf-part:hover .ptf-part-nom { color: var(--accent); } }
+
+.ptf-roles {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px; margin-top: 14px; padding-top: 14px;
+  border-top: 1px solid var(--grid);
+}
+.ptf-role { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ptf-role-lab {
+  font-size: var(--font-xs); font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-secondary);
+}
+.ptf-role-val {
+  font-size: var(--font-lg); font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.ptf-roles-base {
+  margin: 6px 0 0; font-size: var(--font-xs); color: var(--text-secondary);
+}
+
+@media (min-width: 1000px) {
+  .card.ptf {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    column-gap: 40px; align-items: start;
+  }
+  .card.ptf > .card-head { grid-column: 1 / -1; }
+  .card.ptf > .ptf-total, .card.ptf > .ptf-perf,
+  .card.ptf > .ptf-revient { grid-column: 1; }
+  .card.ptf > .ptf-barre, .card.ptf > .ptf-parts,
+  .card.ptf > .ptf-roles, .card.ptf > .ptf-roles-base { grid-column: 2; }
+  .card.ptf > .ptf-barre { margin-top: 6px; }
+}
 @media (hover: hover) { .repart-inerte:hover .repart-nom { color: inherit; } }
 .repart-haut { display: flex; align-items: baseline; gap: 9px; }
 .repart-haut .dot { margin: 0; flex: none; }

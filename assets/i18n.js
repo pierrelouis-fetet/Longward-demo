@@ -1305,6 +1305,14 @@ const I18N = {
     "Pire mois": "Worst month",
     "Prix d'acquisition": "Purchase price",
     "Prix de revient": "Cost price",
+    "de plus-value latente": "of unrealised gain",
+    "{n} ligne sans prix de revient n’y est pas comptée":
+      "{n} holding with no cost price is not counted",
+    "{n} lignes sans prix de revient n’y sont pas comptées":
+      "{n} holdings with no cost price are not counted",
+    "du portefeuille total ; le cash à investir fait le reste":
+      "of the whole portfolio; cash to invest makes up the rest",
+    "Autres lignes": "Other holdings",
     "Prix de revient des titres": "Cost price of holdings",
     "Une vente passée, pour mémoire": "A past sale, for the record",
     "Au journal seulement : ni cash, ni position, ni patrimoine ne bougent.": "Journal only: no cash, no holding, no net worth moves.",
