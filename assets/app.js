@@ -3123,12 +3123,8 @@ function viewPositions() {
   ${(() => {
     const st = stockTotals();
     const parts = [
-      { label: 'Titres', value: st.invested, couleur: 'var(--series-2)', apercu: 'portefeuille' },
-      /* La teinte des liquidites, celle de « Liquidites » sur l'accueil et dans
-         Allocation : le cash a investir est du cash. Il portait `series-4`, la
-         teinte de l'immobilier, et un studio et une poche d'especes se
-         peignaient donc pareil d'un ecran a l'autre. */
-      { label: BASES.cashPlacer.nom, value: st.cashToInvest, couleur: 'var(--series-1)', apercu: 'cashInvestir' },
+      { label: 'Placements', value: st.invested, apercu: 'portefeuille' },
+      { label: 'Espèces disponibles', value: st.cashToInvest, apercu: 'cashInvestir' },
       /* LE TROISIEME TERME, sans quoi le total en tete ne serait pas la somme de
          ses parts. `balance` vaut `invested + cashToInvest + autres`, et ce
          dernier porte les lignes saisies a la main sur un compte de bourse. Il
@@ -3152,44 +3148,49 @@ function viewPositions() {
        carte. Deux pourcentages qui se touchent sans se comparer valent moins
        que pas de pourcentage du tout. La lecture vit sur Actifs, ou elle
        nomme sa base. */
-    const roles = (rebalanceRoles()?.roles || []).filter(r => r.cle !== 'cashToInvest');
+    /* LA PLUS-VALUE NE COUVRE QUE LES LIGNES QUI ONT UN PRIX D'ACHAT, et le
+       modele le dit lui-meme : `latentPnl()` rend `sansBase` et son pourcentage
+       vaut null quand aucune base n'existe. Une base absente ne se remplace
+       jamais par zero — elle rendrait une plus-value egale a la valeur entiere,
+       et le chiffre le plus faux de l'application serait aussi le plus gros.
+       La garde s'ecrit contre l'impression, et non plus haut : un controle
+       cherche `pnl.pct == null` dans les deux cents caracteres qui precedent
+       chaque pourcentage imprime, parce qu'une garde posee loin finit par etre
+       contournee par le gabarit qu'on ecrit six mois plus tard. */
+    const pvVal = pnl.pct == null ? null
+      : `${fmtSigned(pnl.pnl)} (${fmtSignedPct(pnl.pct)})`;
     if (!parts.length) return '';
     return `
   <div class="card repart ptf">
     <div class="card-head"><h2>${trad('Portefeuille')}</h2></div>
+    <p class="ptf-lab">${trad('Valeur du portefeuille')}</p>
     <p class="ptf-total">${fmtEUR(st.balance)}</p>
-    <button type="button" class="ptf-perf ${cls(pnl.pnl)}" data-action="apercu" data-apercu="pnlLatent"
-            title="${trad('Voir le détail par ligne')}">
-      <b>${fmtSigned(pnl.pnl)}</b>${pnl.pct == null ? '' : `
-      <span class="ptf-perf-pct">${fmtSignedPct(pnl.pct)}</span>`}
-      <span class="ptf-perf-lab">${trad('de plus-value latente')}</span>
-    </button>
-    <p class="ptf-revient">${trad('Prix de revient')}
-      <button type="button" class="mois-lien" data-action="apercu" data-apercu="investiTitres"
-              title="${trad('Voir le prix de revient ligne par ligne')}">${fmtEUR(pnl.invested)}</button>${
-      !pnl.sansBase ? '' : ` <span class="muted">·</span> ${
-        (pnl.sansBase > 1 ? trad('{n} lignes sans prix de revient n’y sont pas comptées')
-                          : trad('{n} ligne sans prix de revient n’y est pas comptée'))
-          .replace('{n}', pnl.sansBase)}`}</p>
-    <div class="ptf-barre">${parts.map(x => `
-      <i style="width:${x.pct.toFixed(1)}%;background:${x.couleur}"></i>`).join('')}</div>
-    <div class="ptf-parts">${parts.map(x => `
-      <button type="button" class="ptf-part" data-action="apercu"
-              data-apercu="${esc(x.apercu)}"
-              title="${esc(`${trad('Voir le détail de')} ${trad(x.label)}`)}">
-        <span class="dot" style="background:${x.couleur}"></span>
-        <span class="ptf-part-nom">${esc(trad(x.label))}</span>
-        <b>${fmtEUR(x.value)}</b>
-        <span class="ptf-part-pct">${fmtPct(x.pct, 1)}</span>
-      </button>`).join('')}</div>
-    ${!roles.length ? '' : `
-    <div class="ptf-roles">${roles.map(r => `
-      <div class="ptf-role">
-        <span class="ptf-role-lab">${esc(trad(r.label))}</span>
-        <b class="ptf-role-val">${fmtPct(r.pct, 1)}</b>
-      </div>`).join('')}
+    <dl class="ptf-compo">${parts.map(x => `
+      <dt><button type="button" class="ptf-compo-lien" data-action="apercu"
+                  data-apercu="${esc(x.apercu)}"
+                  title="${esc(`${trad('Voir le détail de')} ${trad(x.label)}`)}"
+            >${esc(trad(x.label))}</button></dt>
+      <dd>${fmtEUR(x.value)}</dd>`).join('')}
+    </dl>
+    <div class="ptf-pv">
+      <p class="ptf-pv-lab">${trad('Plus-value latente')}${aide(
+        `${trad('Différence entre la valeur actuelle de tes placements et leur coût d’achat. Les espèces disponibles en sont exclues.')}${
+          pnl.pct == null ? '' : ` ${trad('Coût d’achat')} : ${fmtEUR(pnl.invested)}.`}`)}</p>
+      ${pvVal == null ? `
+      <p class="ptf-pv-val muted">${trad('Indisponible')}</p>
+      <p class="ptf-pv-sec">${trad('Aucun prix d’achat renseigné sur tes placements')}</p>`
+      : `
+      <p class="ptf-pv-val ${cls(pnl.pnl)}">${pvVal}</p>
+      <p class="ptf-pv-sec">${!pnl.sansBase
+        ? trad('Sur les placements actuellement détenus')
+        : (pnl.sansBase > 1 ? trad('Partielle : {n} placements sans prix d’achat en sont exclus')
+                            : trad('Partielle : {n} placement sans prix d’achat en est exclu'))
+            .replace('{n}', pnl.sansBase)}
+        <span class="muted">·</span>
+        <button type="button" class="mois-lien" data-action="apercu" data-apercu="investiTitres"
+                title="${trad('Voir le prix de revient ligne par ligne')}"
+          >${trad('coût d’achat')}</button></p>`}
     </div>
-    <p class="ptf-roles-base">${trad('du portefeuille total ; le cash à investir fait le reste')}</p>`}
   </div>`;
   })()}
 

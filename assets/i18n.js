@@ -1305,6 +1305,19 @@ const I18N = {
     "Pire mois": "Worst month",
     "Prix d'acquisition": "Purchase price",
     "Prix de revient": "Cost price",
+    "Espèces disponibles": "Cash available",
+    "Coût d’achat": "Cost of purchase",
+    "coût d’achat": "cost of purchase",
+    "Différence entre la valeur actuelle de tes placements et leur coût d’achat. Les espèces disponibles en sont exclues.":
+      "The difference between what your holdings are worth today and what they cost. Cash available is excluded.",
+    "Sur les placements actuellement détenus": "On the holdings you currently own",
+    "Indisponible": "Unavailable",
+    "Aucun prix d’achat renseigné sur tes placements":
+      "No purchase price recorded on your holdings",
+    "Partielle : {n} placement sans prix d’achat en est exclu":
+      "Partial: {n} holding with no purchase price is excluded",
+    "Partielle : {n} placements sans prix d’achat en sont exclus":
+      "Partial: {n} holdings with no purchase price are excluded",
     "de plus-value latente": "of unrealised gain",
     "{n} ligne sans prix de revient n’y est pas comptée":
       "{n} holding with no cost price is not counted",
