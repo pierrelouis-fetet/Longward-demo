@@ -773,7 +773,12 @@ const I18N = {
     "Où ranger cette ligne ?": "Where does this holding belong?",
     "Pas mobilisables à court terme": "Not available in the short term",
     "Patrimoine total": "Total wealth",
-    "Payé depuis": "Paid since",
+    "Payé depuis": "Paid from",
+    "Soustraire le cash du compte choisi": "Subtract the cash from the chosen account",
+    "décoche si tu déclares une ligne que tu détiens déjà":
+      "untick if you are declaring a holding you already own",
+    "Ce compte ne porte pas d’espèces, rien n’a été débité":
+      "This account holds no cash, nothing was debited",
     "Plafond de versement ({dev})": "Contribution cap ({dev})",
     "Plus ou moins-value réalisée ({dev})": "Realised gain or loss ({dev})",
     "Plus-value encaissée": "Realised gain",

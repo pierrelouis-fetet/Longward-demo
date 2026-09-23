@@ -1667,6 +1667,51 @@ suite('Classement d’une ligne de marché', () => {
   });
 });
 
+/* --- Acheter sort de l'argent du compte ou l'on achete -------------------- */
+suite('Créer une ligne débite le compte choisi, sans le redemander', () => {
+  const app = () => lireSource('assets/app.js');
+  const fenetre = () => {
+    const a = app();
+    const d = a.indexOf("sous: trad('Où ranger cette ligne ?')");
+    return a.slice(d, a.indexOf('catch (e)', d));
+  };
+
+  test('la question est une case cochée, plus une liste qui s’ouvre sur « ne rien faire »', () => {
+    /* La liste demandait de quel compte l'argent sort alors que le compte est
+       choisi deux champs plus haut, et son premier choix etait « aucun compte,
+       ne pas toucher aux especes » : acheter ne debitait donc rien tant qu'on
+       n'avait pas repondu, et le cash d'un compte-titres ne baissait jamais. */
+    const f = fenetre();
+    vrai(/cle: 'debiter', type: 'case', valeur: true/.test(f),
+      'la case existe, et elle est cochée');
+    vrai(!/cle: 'cash'/.test(f), 'la liste a quitté cette fenêtre');
+    vrai(!/Aucun compte, ne pas toucher aux espèces/.test(f),
+      'et son choix par défaut avec elle');
+  });
+
+  test('le débit vise le compte de la ligne, et n’invente pas d’espèces', () => {
+    const f = fenetre();
+    vrai(/if \(v\.debiter && achete\)/.test(f), 'la case commande le débit');
+    vrai(/cashTargets\(\)\.some\(c => c\.id === v\.account\)/.test(f),
+      'le compte débité est celui de la ligne, et il doit pouvoir porter des espèces');
+    /* `cashInvestirEntree(compte, true)` cree une poche d'especes sur n'importe
+       quel compte : sans le garde ci-dessus, un bien immobilier se mettrait a en
+       afficher une. C'est donc a l'appelant de trancher, et il le fait. */
+    vrai(/rien n’a été débité/.test(f), 'et le cas qui ne débite rien se dit');
+  });
+
+  test('les chaînes neuves existent en anglais', () => {
+    for (const k of ['Soustraire le cash du compte choisi',
+                     'décoche si tu déclares une ligne que tu détiens déjà',
+                     'Ce compte ne porte pas d’espèces, rien n’a été débité']) {
+      vrai(!!I18N.en[k], `« ${k} » est traduite`);
+    }
+    /* « Paid since » annonçait une date pour un champ qui demande une
+       provenance. La liste a quitté la création, pas la fenêtre d'achat. */
+    eq(I18N.en['Payé depuis'], 'Paid from', 'et le champ restant ne parle plus de date');
+  });
+});
+
 /* ------------------------------------------------------------------
    4 bis. Les espèces, qui n'ont pas d'établissement
    ------------------------------------------------------------------ */

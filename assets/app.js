@@ -3856,11 +3856,9 @@ function mountSymbolSearch() {
                       trad('ce que tu as payé peut être différent')}`
                   : trad('le prix payé par titre, dans la devise du titre') },
               ...(cashTargets().length ? [{
-                cle: 'cash', label: trad('Payé depuis'), type: 'liste',
-                options: [...cashTargets().map(c => [c.id, sousNom('', nomCompteV2(c), nomEtabDe(c))]),
-                          ['', trad('Aucun compte, ne pas toucher aux espèces')]],
-                valeur: '',
-                aide: trad('laisse vide si tu déclares une ligne que tu détiens déjà') }] : []),
+                cle: 'debiter', type: 'case', valeur: true,
+                label: trad('Soustraire le cash du compte choisi'),
+                aide: trad('décoche si tu déclares une ligne que tu détiens déjà') }] : []),
               deduite
                 ? { cle: 'assetClass', label: trad('Classe d’actif'), lecture: true,
                     valeur: ASSET_CLASSES[cat] || cat,
@@ -3909,14 +3907,22 @@ function mountSymbolSearch() {
              comme des euros. `lookupSymbol` pose la devise et le taux, donc le
              cout se convertit ici pour de vrai. */
           const achete = num(v.qty) * num(v.buyPrice);
-          if (v.cash && achete) {
-            const cc = compteById(v.cash);
+          if (v.debiter && achete) {
+            /* Le debit vise le compte de la ligne, et lui seul. Un compte qui ne
+               porte pas d'especes n'en recoit pas une pour l'occasion :
+               `cashInvestirEntree(…, true)` en creerait une sur n'importe quel
+               compte, et un bien immobilier se mettrait a afficher du cash. Le
+               cas est rare et il se dit, plutot que de laisser une case cochee
+               ne rien faire en silence. */
+            const cc = cashTargets().some(c => c.id === v.account) ? compteById(v.account) : null;
             if (cc) {
               const enEuros = achete * (num(Store.state.positions[i]?.fx) || 1);
               const e = cashInvestirEntree(cc, true);
               e.montant = round2(num(e.montant) - enEuros);
               Store.save(); render();
-              toast(`${fmtEUR0(enEuros)} ${trad('débité de')} ${ACC[v.cash]?.label || 'cash'}`);
+              toast(`${fmtEUR0(enEuros)} ${trad('débité de')} ${ACC[v.account]?.label || 'cash'}`);
+            } else {
+              toast(trad('Ce compte ne porte pas d’espèces, rien n’a été débité'));
             }
           }
         });
