@@ -1710,6 +1710,76 @@ suite('Créer une ligne débite le compte choisi, sans le redemander', () => {
        provenance. La liste a quitté la création, pas la fenêtre d'achat. */
     eq(I18N.en['Payé depuis'], 'Paid from', 'et le champ restant ne parle plus de date');
   });
+
+  test('le total se lit pendant la frappe, et il ne se saisit pas', () => {
+    const a = app();
+    /* `valeurs()` cherche `#f_<cle>` : un champ calcule porte un `c_`, il lui
+       est donc invisible et ne peut pas devenir une seconde surface d'edition
+       pour une valeur que deux champs portent deja. */
+    vrai(/<p class="champ-lecture" id="c_\$\{c\.cle\}"><\/p>/.test(a),
+      'le champ calculé porte un identifiant en c_, jamais en f_');
+    vrai(/const el = \$\(`#f_\$\{c\.cle\}`\);/.test(a), 'et valeurs() ne lit que les f_');
+    const f = fenetre();
+    vrai(/calcul: v => num\(v\.qty\) > 0 && num\(v\.buyPrice\) > 0/.test(f),
+      'le total est le produit des deux champs du dessus');
+    /* DANS LA DEVISE DU TITRE, ET RIEN D'AUTRE : le taux de change n'est connu
+       qu'apres la creation, donc un equivalent en euros serait invente. */
+    vrai(/fmtCur\(num\(v\.qty\) \* num\(v\.buyPrice\), \(cote && cote\.currency\) \|\| deviseBase\(\)\)/.test(f),
+      'et il s’affiche dans la devise du titre, sans conversion supposée');
+    vrai(!!I18N.en['le débit se convertit au taux du jour'],
+      'la bulle qui annonce la conversion est traduite');
+  });
+
+  test('une case et son libellé tiennent sur une ligne', () => {
+    /* Le gabarit posait `field-case` sans qu'aucune regle ne la ramasse : la
+       case tombait sur sa propre ligne, au-dessus du texte qu'elle commande. */
+    const css = lireSource('assets/styles.css');
+    const r = css.slice(css.indexOf('.field-case {'), css.indexOf('.field-case {') + 220);
+    vrai(/display: flex;/.test(r), 'la classe du gabarit a une règle en face');
+    vrai(/align-items: start;/.test(r),
+      'et la case s’aligne sur la première ligne d’un libellé qui en fait deux');
+    vrai(/class="field-case"/.test(app()), 'le gabarit la pose bien');
+  });
+});
+
+/* --- Une carte pleine a cote d'une carte vide ----------------------------- */
+suite('La carte Portefeuille dit sa composition, pas seulement sa performance', () => {
+  const app = () => lireSource('assets/app.js');
+  const carte = () => {
+    const a = app();
+    const d = a.indexOf("<h2>${trad('Portefeuille')}</h2>");
+    return a.slice(d, a.indexOf('</dl>', d));
+  };
+
+  test('le partage Core / Satellite vient du modèle, et le cash n’y est pas redit', () => {
+    const a = app();
+    vrai(/rebalanceRoles\(\)\?\.roles/.test(a), 'le partage se lit, il ne se recalcule pas');
+    /* Le cash a investir a deja sa barre en haut de la carte : `rebalanceRoles()`
+       le rend comme un role, et le garder ferait lire deux fois le meme fait. */
+    vrai(/r\.cle !== 'cashToInvest'/.test(a), 'le cash à investir ne se lit pas deux fois');
+    vrai(/trad\('Core et satellite'\)/.test(carte()), 'la ligne est nommée');
+  });
+
+  test('la concentration dit la première poche et les trois premières', () => {
+    const c = carte();
+    vrai(/concentration\(\{ financier: true \}\)/.test(app()), 'elle vient du modèle');
+    /* Le tableau plus bas porte un poids PAR LIGNE : ni une poche ni le cumul
+       des trois premieres ne s'y lisent, meme en balayant les onze lignes. */
+    vrai(/conc\.premiere\.pct/.test(c) && /conc\.top3\.pct/.test(c),
+      'la première poche et le cumul des trois');
+    vrai(/!conc \? '' :/.test(c), 'et rien ne s’affiche quand le modèle ne rend rien');
+  });
+
+  test('les deux lectures partagent la base des barres du dessus', () => {
+    /* Sinon les pourcentages de la carte ne se comparent plus entre eux : c'est
+       la regle du total qui vaut la somme de ses parts, prise de cote. */
+    Fixture.poser();
+    const st = stockTotals();
+    const r = rebalanceRoles();
+    pres(r.base, st.balance, 'rebalanceRoles() compte sur la base de la carte');
+    const somme = r.roles.reduce((s, x) => s + x.value, 0);
+    pres(somme, st.balance, 'et ses rôles font le total, sans reste');
+  });
 });
 
 /* ------------------------------------------------------------------
@@ -22238,8 +22308,29 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
                          src.indexOf('function triJourTh('));
     vrai(/data-action="open-position" data-i="\$\{l\.index\}"/.test(fn),
       'la ligne compacte ouvre la fiche de sa position');
-    vrai(/<button type="button" class="jour-mouv"/.test(fn),
+    vrai(/<button type="button" class="jour-mouv\$\{/.test(fn),
       'et c’est un bouton, donc utilisable au clavier');
+    /* TROIS SUR UN TELEPHONE, SIX SUR UN ECRAN LARGE. La carte rend les six et
+       le CSS cache les trois derniers : le compte se decide a la largeur, sans
+       redessiner la vue au redimensionnement. Sur 966 px, trois lignes
+       laissaient la carte aux trois quarts vide a cote d'un tableau plein. */
+    vrai(/mouvementsDuJour\(j, MOUVEMENTS_JOUR_LARGE\)/.test(fn),
+      'la carte demande les six mouvements');
+    vrai(/k < MOUVEMENTS_JOUR \? '' : ' large-seulement'/.test(fn),
+      'et marque les suivants pour les écrans larges');
+    const st = lireSource('assets/store.js');
+    vrai(/const MOUVEMENTS_JOUR_LARGE = 6;/.test(st), 'six, et la constante le dit');
+    const css = lireSource('assets/styles.css');
+    vrai(/\.large-seulement \{ display: none; \}/.test(css),
+      'et la classe qui les cache existe déjà, elle n’est pas réinventée');
+    /* ELLE NE SUFFIT PAS SEULE. `.jour-mouv` pose `display: grid` plus bas dans
+       la feuille et ne porte qu'une classe, comme `.large-seulement` : a
+       specificite egale c'est l'ordre qui tranche, la grille gagnait, et les
+       six mouvements restaient affiches sur un telephone. Mesure a l'appui. */
+    vrai(/\.jour-mouv\.large-seulement \{ display: none; \}/.test(css),
+      'le masquage porte deux classes, sinon le display de la ligne le bat');
+    vrai(css.indexOf('.jour-mouv.large-seulement') > css.indexOf('.jour-mouv {'),
+      'et il vient après la règle qu’il doit battre');
     /* Le même couple action/index que la rangée détaillée, inchangée. */
     const vue = src.slice(src.indexOf('function viewPositions('),
                           src.indexOf('function mountPositions('));
@@ -36757,8 +36848,13 @@ suite('Créer un bien se ramifie, et ne laisse pas naître un appartement à zé
     vrai(/if \(!el \|\| el\.closest\('\.field'\)\?\.hidden\) continue;/.test(src),
       'la lecture des valeurs saute un champ masqué');
     vrai(/hote\.hidden = !c\.montreSi\(out\)/.test(src), 'et la visibilité se recalcule');
-    vrai(/\$\('#modalBody'\)\.addEventListener\('input', majVisibles\)/.test(src),
+    /* `majDerives` et non `majVisibles` : les champs masques et les champs
+       calcules se refont a la meme occasion, sur une seule lecture de la
+       fenetre. Deux cablages auraient fini par diverger. */
+    vrai(/\$\('#modalBody'\)\.addEventListener\('input', majDerives\)/.test(src),
       'à chaque frappe');
+    vrai(/const majDerives = \(\) => \{ majVisibles\(\); majCalculs\(\); \};/.test(src),
+      'et la même frappe rafraîchit les champs dérivés');
     /* Et la creation ne pose un credit que si le capital restant est un nombre. */
     vrai(/if \(num\(e3\.credit\)\) \{/.test(parcours()),
       'sans capital restant, aucun crédit n’est créé');
@@ -36776,11 +36872,11 @@ suite('Créer un bien se ramifie, et ne laisse pas naître un appartement à zé
     const i = src.indexOf('function askForm');
     const bloc = src.slice(i, src.indexOf('\nfunction ', i + 1));
     const defValeurs = bloc.indexOf('const valeurs = ');
-    const appel = bloc.indexOf('majVisibles();');
-    const cablage = bloc.indexOf("addEventListener('input', majVisibles)");
+    const appel = bloc.indexOf('majDerives();');
+    const cablage = bloc.indexOf("addEventListener('input', majDerives)");
     vrai(defValeurs > 0 && appel > 0, 'les deux doivent être trouvables');
     vrai(appel > defValeurs,
-      'majVisibles() ne s’appelle qu’une fois valeurs() définie');
+      'majDerives() ne s’appelle qu’une fois valeurs() définie');
     vrai(cablage > defValeurs, 'et son câblage aussi');
     /* Et avant `depart` : un champ masque ne se lit pas, donc l'etat initial
        doit deja tenir compte de ce qui est cache. */

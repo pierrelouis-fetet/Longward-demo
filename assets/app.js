@@ -2897,9 +2897,18 @@ let jourSort = null;
    que `jourSort` et `evoNet` juste a cote. */
 let jourDeplie = false;
 
+/* TROIS MOUVEMENTS SUR UN TELEPHONE, SIX SUR UN ECRAN LARGE, et le partage se
+   fait en CSS. Trois lignes occupent la moitie d'un ecran de 375 px et la
+   totalite de l'attention ; sur 966 px elles laissent la carte aux trois quarts
+   vide, a cote d'un tableau de onze lignes qui remplit la sienne.
+   Le compte se decide donc a la largeur, pas au rendu : `large-seulement` est
+   deja la classe de cette maison pour ca, et elle evite d'avoir a redessiner la
+   carte quand on redimensionne la fenetre. Le renvoi qui suit parle du total,
+   il reste juste dans les deux cas. */
 function jourCompact(j) {
-  return mouvementsDuJour(j).map(l => `
-        <button type="button" class="jour-mouv" data-action="open-position" data-i="${l.index}"
+  return mouvementsDuJour(j, MOUVEMENTS_JOUR_LARGE).map((l, k) => `
+        <button type="button" class="jour-mouv${k < MOUVEMENTS_JOUR ? '' : ' large-seulement'}"
+          data-action="open-position" data-i="${l.index}"
           title="${esc(l.name)} · ${trad('voir la fiche complète')}">
           <span class="jm-nom">${esc(l.name)}</span>
           <span class="jm-eur ${cls(l.eur)}">${fmtSigned(l.eur)}</span>
@@ -3122,6 +3131,12 @@ function viewPositions() {
       { label: BASES.cashPlacer.nom, value: st.cashToInvest, couleur: 'var(--series-1)', apercu: 'cashInvestir' },
     ].filter(x => Math.abs(num(x.value)) > 0.005)
      .map(x => ({ ...x, pct: st.balance ? num(x.value) / st.balance * 100 : 0 }));
+    /* Les deux lectures de composition, prises au modele et jamais recalculees
+       ici. `cashToInvest` est un role comme les autres pour `rebalanceRoles()`,
+       mais il a deja sa barre au-dessus : le redire en pourcentage ferait lire
+       deux fois le meme fait dans la meme carte. */
+    const roles = (rebalanceRoles()?.roles || []).filter(r => r.cle !== 'cashToInvest');
+    const conc = concentration({ financier: true });
     if (!parts.length) return '';
     return `
   <div class="card repart">
@@ -3146,6 +3161,15 @@ function viewPositions() {
         <dd><button type="button" class="mois-lien ${cls(pnl.pnl)}" data-action="apercu" data-apercu="pnlLatent"
                     title="${trad('Voir le détail par ligne')}"><b>${fmtSigned(pnl.pnl)}</b>
               ${pnl.pct == null ? '' : `<span class="muted">·</span> ${fmtSignedPct(pnl.pct)}`}</button></dd>
+      ${!roles.length ? '' : `
+      <dt>${trad('Core et satellite')}</dt>
+        <dd>${roles.map(r => `${esc(trad(r.label))} ${fmtPct(r.pct, 1)}`)
+              .join(' <span class="muted">·</span> ')}</dd>`}
+      ${!conc ? '' : `
+      <dt>${trad('Concentration')}</dt>
+        <dd>${esc(trad(conc.premiere.label))} ${fmtPct(conc.premiere.pct, 1)}${
+          !conc.top3 ? '' : ` <span class="muted">·</span> ${
+            trad('les trois premières')} ${fmtPct(conc.top3.pct, 1)}`}</dd>`}
     </dl>
   </div>`;
   })()}
@@ -3855,6 +3879,12 @@ function mountSymbolSearch() {
                   ? `${trad('pré-rempli au cours du jour')} · ${
                       trad('ce que tu as payé peut être différent')}`
                   : trad('le prix payé par titre, dans la devise du titre') },
+              { cle: 'coutTotal', label: trad('Total'),
+                aide: cote && cote.currency && cote.currency !== deviseBase()
+                  ? trad('le débit se convertit au taux du jour') : '',
+                calcul: v => num(v.qty) > 0 && num(v.buyPrice) > 0
+                  ? fmtCur(num(v.qty) * num(v.buyPrice), (cote && cote.currency) || deviseBase())
+                  : '…' },
               ...(cashTargets().length ? [{
                 cle: 'debiter', type: 'case', valeur: true,
                 label: trad('Soustraire le cash du compte choisi'),
@@ -11091,6 +11121,17 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
         <label>${esc(trad(c.label))}${c.aide ? `<span class="sub">${esc(trad(c.aide))}</span>` : ''}</label>
         <p class="champ-lecture">${esc(String(c.valeur ?? ''))}</p>
       </div>`;
+      /* UN RESULTAT SE LIT, IL NE SE SAISIT PAS. Un champ `calcul` derive des
+         autres et se rafraichit a la frappe : il n'a donc pas d'identifiant en
+         `f_`, et `valeurs()` ne le voit pas. C'est voulu et c'est la regle de la
+         maison — deux surfaces d'edition pour une meme valeur, et personne ne
+         peut prouver qu'elles s'accordent. Ici le total est le produit de deux
+         champs qui sont juste au-dessus : il les redit, il ne s'ajoute pas a
+         eux. */
+      if (typeof c.calcul === 'function') return `<div class="field">
+        <label>${esc(trad(c.label))}${c.aide ? `<span class="sub">${esc(trad(c.aide))}</span>` : ''}</label>
+        <p class="champ-lecture" id="c_${c.cle}"></p>
+      </div>`;
       if (c.type === 'case') return `
         <label class="field-case">
           <input type="checkbox" id="${id}" ${c.valeur ? 'checked' : ''}>
@@ -11404,9 +11445,19 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
        Et avant `depart` : un champ masque ne se lit pas, donc l'etat initial
        doit deja tenir compte de ce qui est cache, sans quoi la fenetre se
        croirait sale des son ouverture. */
-    majVisibles();
-    $('#modalBody').addEventListener('input', majVisibles);
-    $('#modalBody').addEventListener('change', majVisibles);
+    const calcules = champs.filter(c => typeof c.calcul === 'function');
+    const majCalculs = () => {
+      if (!calcules.length) return;
+      const out = valeurs();
+      for (const c of calcules) {
+        const el = $(`#c_${c.cle}`);
+        if (el) el.textContent = c.calcul(out);
+      }
+    };
+    const majDerives = () => { majVisibles(); majCalculs(); };
+    majDerives();
+    $('#modalBody').addEventListener('input', majDerives);
+    $('#modalBody').addEventListener('change', majDerives);
 
     /* L'etat de depart, releve apres le cablage des champs lies : `majCible()`
        reconstruit la liste dependante et peut changer sa valeur, le relever

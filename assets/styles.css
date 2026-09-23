@@ -1219,6 +1219,21 @@ table .field :is(input, select) { max-width: none; }
   color: var(--text-secondary);
 }
 
+/* UNE CASE ET SON LIBELLE FONT UNE LIGNE, et il fallait l'ecrire. La classe
+   existait dans le gabarit sans aucune regle en face : la case tombait donc
+   sur sa propre ligne, au-dessus du texte qu'elle commande, et le centrage du
+   pied de fenetre la posait au milieu. On lisait un intitule sans savoir a quoi
+   la case se rapportait.
+   `align-items: start` et non `center` : le libelle porte une bulle d'aide en
+   dessous, donc il fait deux lignes, et une case centree sur ces deux lignes
+   flotte a cote de rien. Elle s'aligne sur la premiere. */
+.field-case {
+  display: flex; align-items: start; gap: 9px;
+  padding: 7px 2px; cursor: pointer; text-align: left;
+}
+.field-case > input { flex: none; margin: 3px 0 0; }
+.field-case > span { display: block; }
+
 /* L'etablissement sous le nom d'un champ de releve. `min-height` plutot que
    rien : la ligne garde sa place quand elle est vide — le cas d'un nom qui
    porte deja sa banque — et les douze champs de la grille restent alignes.
@@ -3126,6 +3141,15 @@ select.annee {
 }
 .jour-mouv:last-child { border-bottom: none; }
 .jour-mouv:active { background: var(--surface-2); }
+/* LE MASQUAGE DOIT PORTER DEUX CLASSES ICI, et ce n'est pas une precaution.
+   `.large-seulement` vit bien plus haut dans cette feuille et ne porte qu'une
+   classe, exactement comme le `display: grid` juste au-dessus : a specificite
+   egale c'est l'ordre qui tranche, donc la grille gagnait et les trois
+   mouvements de trop restaient visibles sur un telephone. Mesure a l'appui,
+   six lignes rendues et six affichees a 375 px. */
+@media (max-width: 767px) {
+  .jour-mouv.large-seulement { display: none; }
+}
 .jm-nom {
   grid-row: 1 / 3; align-self: center;
   font-size: var(--font-md); font-weight: 600;

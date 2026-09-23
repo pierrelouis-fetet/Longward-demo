@@ -2992,6 +2992,7 @@ function dayPerformance() {
    Le tri se fait sur une COPIE : `filter` en rend une, et `dayPerformance()`
    garde son propre ordre pour le tableau complet. */
 const MOUVEMENTS_JOUR = 3;
+const MOUVEMENTS_JOUR_LARGE = 6;
 function mouvementsDuJour(j = dayPerformance(), n = MOUVEMENTS_JOUR) {
   return j.lignes
     .filter(l => !l.horsSeance)

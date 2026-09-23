@@ -774,6 +774,9 @@ const I18N = {
     "Pas mobilisables à court terme": "Not available in the short term",
     "Patrimoine total": "Total wealth",
     "Payé depuis": "Paid from",
+    "Core et satellite": "Core and satellite",
+    "les trois premières": "top three",
+    "le débit se convertit au taux du jour": "the debit converts at today's rate",
     "Soustraire le cash du compte choisi": "Subtract the cash from the chosen account",
     "décoche si tu déclares une ligne que tu détiens déjà":
       "untick if you are declaring a holding you already own",
