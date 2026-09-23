@@ -1835,6 +1835,98 @@ suite('La carte Portefeuille se lit de haut en bas', () => {
   });
 });
 
+/* --- Trier ses lignes sans quitter le telephone --------------------------- */
+suite('Le tri des lignes de titres', () => {
+  const app = () => lireSource('assets/app.js');
+  const comparateur = () => {
+    const a = app();
+    const d = a.indexOf('function sortPositions(');
+    return a.slice(d, a.indexOf('\nfunction ', d + 1));
+  };
+
+  test('le défaut est la valeur décroissante, et il se mémorise', () => {
+    /* L'ordre de saisie ne repond a aucune question ; « qu'est-ce qui pese le
+       plus » est la premiere qu'on se pose devant une liste de positions. */
+    const a = app();
+    vrai(/const TRI_POSITIONS_DEFAUT = \{ key: 'value', dir: 'desc' \};/.test(a),
+      'la valeur décroissante ouvre la carte');
+    /* Une PREFERENCE, pas un drapeau de session : rangee dans `meta`, elle suit
+       l'etat partout ou il va, synchronisation comprise. C'est le mecanisme
+       deja en place, aucun second systeme. */
+    vrai(/Store\.state\?\.meta\?\.triPositions/.test(a), 'elle se lit dans meta');
+    vrai(/Store\.state\.meta\.triPositions = \{ key, dir \};\s*\n\s*Store\.save\(\);/.test(a),
+      'et s’y écrit avec le reste de l’état');
+    /* Une clef inconnue ne doit pas figer la carte sur un tri qui n'existe
+       plus : la lecture retombe sur le defaut. */
+    vrai(/POS_SORT_KEYS\[t\.key\] && \(t\.dir === 'asc' \|\| t\.dir === 'desc'\)/.test(a),
+      'une préférence abîmée retombe sur le défaut');
+  });
+
+  test('une donnée absente passe dernière, dans les deux sens', () => {
+    /* `posPerfEur()` et `posPerfPct()` rendent null sans prix de revient, et
+       c'est voulu. Mais `null - 5` vaut -5 : le tri les rangeait comme des
+       zeros, au milieu des pertes en decroissant et en tete en croissant. */
+    const c = comparateur();
+    vrai(/const aVide = va == null, bVide = vb == null;/.test(c), 'le vide se reconnaît');
+    vrai(/\(aVide \? 1 : -1\)/.test(c), 'et il part au bout, quel que soit le sens');
+    Fixture.poser();
+    const p = Store.state.positions[0];
+    p.buyPrice = 0; p.manual = false;
+    eq(posPerfEur(p), null, 'le modèle ne fabrique pas d’euro');
+    eq(posPerfPct(p), null, 'ni de pourcentage');
+  });
+
+  test('à égalité, le nom tranche, et toujours dans le même sens', () => {
+    /* Sans ce depart, deux lignes de meme valeur changeaient de place d'un
+       rendu a l'autre : l'ordre d'arrivee suit l'ordre de saisie, que le filtre
+       par compte modifie sans prevenir. */
+    const c = comparateur();
+    vrai(/\(va - vb\) \* dir \|\| nom\(a\.p\)\.localeCompare\(nom\(b\.p\), 'fr'\)/.test(c),
+      'le nom départage les nombres');
+    vrai(/return c \|\| nom\(a\.p\)\.localeCompare\(nom\(b\.p\), 'fr'\);/.test(c),
+      'et les chaînes aussi');
+  });
+
+  test('les quatre critères sont nommés comme on en parle', () => {
+    const a = app();
+    const bloc = a.slice(a.indexOf('const TRI_POSITIONS_CHOIX'), a.indexOf('function triPositions'));
+    for (const [cle, mot] of [['value', 'Valeur'], ['perfEur', 'Plus-value €'],
+                              ['perfPct', 'Plus-value %'], ['name', 'Nom']]) {
+      vrai(bloc.includes(`'${cle}'`) && bloc.includes(`'${mot}'`), `${mot} est proposé`);
+      vrai(!!POS_SORT_KEYS_PRESENT(cle, a), `${cle} existe dans le moteur de tri`);
+    }
+    /* Pas le vocabulaire d'un tableur : « montant total » et « performance
+       relative » disent la meme chose et ne se retiennent pas. */
+    vrai(!/Montant total|Performance absolue|Performance relative/.test(bloc),
+      'et aucun mot de tableur');
+    for (const k of ['Trier les lignes', 'Plus-value €', 'Plus-value %'])
+      vrai(!!I18N.en[k], `« ${k} » est traduite`);
+  });
+
+  function POS_SORT_KEYS_PRESENT(cle, a) {
+    const t = a.slice(a.indexOf('const POS_SORT_KEYS'), a.indexOf('function sortPositions'));
+    return new RegExp(`\\b${cle}:\\s*p =>`).test(t);
+  }
+
+  test('le tri s’atteint au doigt, là où le tableau disparaît', () => {
+    /* Sous 768 px, le tableau devient une liste et ses en-tetes triables
+       partent avec lui : le classement n'etait plus ni lisible ni modifiable.
+       Un declencheur, pas quatre boutons : une rangee de criteres prendrait
+       toute la largeur et disputerait l'attention a « Positions | Cible ». */
+    const a = app();
+    vrai(/data-action="trier-positions"/.test(a), 'un déclencheur existe');
+    vrai(/class="btn sm ghost tri-lignes"/.test(a), 'discret, comme ses voisins');
+    /* Il porte l'etat courant, ce qui vaut mieux qu'un intitule generique. */
+    vrai(/tri\.dir === 'desc' \? '↓' : '↑'/.test(a), 'et il dit le sens en cours');
+    /* La feuille est le composant maison, celui des preferences : aucun menu
+       neuf pour un besoin que l'application sait deja servir. */
+    const h = a.slice(a.indexOf("async 'trier-positions'()"), a.indexOf("async 'trier-positions'()") + 700);
+    vrai(/await askOptions\(\{/.test(h), 'la feuille est askOptions, pas un menu neuf');
+    vrai(/v === tri\.key && tri\.dir === 'desc' \? 'asc' : 'desc'/.test(h),
+      'rechoisir le critère actif inverse le sens');
+  });
+});
+
 /* ------------------------------------------------------------------
    4 bis. Les espèces, qui n'ont pas d'établissement
    ------------------------------------------------------------------ */

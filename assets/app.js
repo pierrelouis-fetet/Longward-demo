@@ -2752,7 +2752,30 @@ let triVentes = 'date';
    sous les yeux de qui venait de l'ouvrir. Ouvert par defaut — la carte n'a plus
    de tuiles au-dessus, donc replie elle ne montrerait qu'un titre. */
 let journalDeroule = true;
-let posSort = null;
+/* LE TRI DES LIGNES EST UNE PREFERENCE, PAS UN DRAPEAU DE SESSION. Il vivait
+   dans une variable de module : changer d'onglet le gardait, recharger la page
+   le perdait, et on retrouvait l'ordre de saisie sans avoir rien demande. Range
+   dans `meta`, il suit l'etat partout ou il va, synchronisation comprise.
+
+   ET SON DEFAUT EST LA VALEUR DECROISSANTE. L'ordre de saisie ne repond a
+   aucune question ; « qu'est-ce qui pese le plus » est la premiere qu'on se
+   pose devant une liste de positions. */
+const TRI_POSITIONS_DEFAUT = { key: 'value', dir: 'desc' };
+const TRI_POSITIONS_CHOIX = [
+  ['value',   'Valeur'],
+  ['perfEur', 'Plus-value €'],
+  ['perfPct', 'Plus-value %'],
+  ['name',    'Nom'],
+];
+function triPositions() {
+  const t = Store.state?.meta?.triPositions;
+  return t && POS_SORT_KEYS[t.key] && (t.dir === 'asc' || t.dir === 'desc')
+    ? t : TRI_POSITIONS_DEFAUT;
+}
+function poserTriPositions(key, dir) {
+  Store.state.meta.triPositions = { key, dir };
+  Store.save();
+}
 let posRole = 'tous';
 let posCompte = 'tous';
 const POS_SORT_KEYS = {
@@ -2771,14 +2794,27 @@ const POS_SORT_KEYS = {
 };
 
 function sortPositions(entries) {
-  if (!posSort) return entries;
-  const get = POS_SORT_KEYS[posSort.key];
+  const tri = triPositions();
+  const get = POS_SORT_KEYS[tri.key];
   if (!get) return entries;
-  const dir = posSort.dir === 'asc' ? 1 : -1;
+  const dir = tri.dir === 'asc' ? 1 : -1;
+  const nom = p => p.name?.toLowerCase() || '';
   return [...entries].sort((a, b) => {
     const va = get(a.p), vb = get(b.p);
-    if (typeof va === 'string') return va.localeCompare(vb, 'fr') * dir;
-    return (va - vb) * dir;
+    /* UNE DONNEE ABSENTE PASSE DERNIERE, DANS LES DEUX SENS. `posPerfEur()` et
+       `posPerfPct()` rendent null quand la ligne n'a pas de prix de revient, et
+       c'est voulu : une plus-value sans base n'existe pas. Mais `null - 5` vaut
+       -5, donc le tri les rangeait comme des zeros — au milieu des pertes en
+       decroissant, en tete en croissant. Une ligne sans mesure n'est ni la
+       meilleure ni la pire, elle est hors classement. */
+    const aVide = va == null, bVide = vb == null;
+    if (aVide || bVide) return aVide && bVide ? nom(a.p).localeCompare(nom(b.p), 'fr')
+                                              : (aVide ? 1 : -1);
+    if (typeof va === 'string') {
+      const c = va.localeCompare(vb, 'fr') * dir;
+      return c || nom(a.p).localeCompare(nom(b.p), 'fr');
+    }
+    return (va - vb) * dir || nom(a.p).localeCompare(nom(b.p), 'fr');
   });
 }
 
@@ -3008,9 +3044,10 @@ function trierJour(lignes) {
 }
 
 function sortableTh(key, label, extraClass = '', explication = '', suffixe = '') {
-  const on = posSort && posSort.key === key;
-  const sens = !on ? trad('décroissant') : posSort.dir === 'desc' ? trad('croissant') : trad('aucun tri');
-  return `<th class="sortable ${on ? posSort.dir : ''} ${extraClass}">`
+  const tri = triPositions();
+  const on = tri.key === key;
+  const sens = !on || tri.dir === 'asc' ? trad('décroissant') : trad('croissant');
+  return `<th class="sortable ${on ? tri.dir : ''} ${extraClass}">`
        + `<button type="button" class="th-tri" data-action="sort-positions" data-key="${key}"`
        + ` title="${trad('Trier par')} ${esc(trad(label))}, ${trad('ordre')} ${sens}">${esc(trad(label))}${suffixe}</button>`
        + (explication ? aide(trad(explication)) : '')
@@ -3316,6 +3353,13 @@ function viewPositions() {
         })()}
         <span class="hint">${ps.length} ${ps.length > 1 ? trad('lignes') : trad('ligne')}${
           masquees ? ` · ${masquees} ${masquees > 1 ? trad('masquées') : trad('masquée')}` : ''}</span>
+        ${(() => {
+          const tri = triPositions();
+          const nom = (TRI_POSITIONS_CHOIX.find(([k]) => k === tri.key) || [])[1] || '';
+          return `<button type="button" class="btn sm ghost tri-lignes" data-action="trier-positions"
+                  title="${trad('Changer le tri des lignes')}"
+            >${trad(nom)} ${tri.dir === 'desc' ? '↓' : '↑'}</button>`;
+        })()}
       </div>
     </div>
     <div class="row" style="margin:-4px 0 12px">
@@ -8541,9 +8585,22 @@ const ACTIONS = {
   },
   'sort-positions'(th) {
     const key = th.dataset.key;
-    if (!posSort || posSort.key !== key) posSort = { key, dir: 'desc' };
-    else if (posSort.dir === 'desc') posSort = { key, dir: 'asc' };
-    else posSort = null;                       // 3e clic : retour à l'ordre de saisie
+    const tri = triPositions();
+    poserTriPositions(key, tri.key === key && tri.dir === 'desc' ? 'asc' : 'desc');
+    render();
+  },
+  async 'trier-positions'() {
+    const tri = triPositions();
+    const v = await askOptions({
+      titre: trad('Trier les lignes'),
+      valeur: tri.key,
+      options: TRI_POSITIONS_CHOIX.map(([k, l]) => ({
+        v: k, l: trad(l),
+        sous: k !== tri.key ? '' : tri.dir === 'desc' ? trad('décroissant') : trad('croissant'),
+      })),
+    });
+    if (v == null) return;
+    poserTriPositions(v, v === tri.key && tri.dir === 'desc' ? 'asc' : 'desc');
     render();
   },
   async 'charger-demo'() {
