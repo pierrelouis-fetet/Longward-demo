@@ -290,11 +290,17 @@ const Charts = (() => {
       const iw = W - m.l - m.r, ih = H - m.t - m.b;
       if (!points.length) { el.innerHTML = `<p class="empty">${trad('Pas de données')}</p>`; return; }
 
-      const totals = points.map(p => series.reduce((s, sr) => s + (p[sr.key] || 0), 0));
-      const maxV = Math.max(...totals, guide ? guide.value : 0,
-        bande ? Math.max(...points.map(p => p[bande.max] || 0)) : 0, 1);
+      /* Un point non fini n'entre pas dans l'echelle. `Math.max(..., Infinity)`
+         rend Infinity, `niceTicksSignes` boucle ou rend NaN, et toutes les
+         autres valeurs s'ecrasent sur l'axe. Une seule donnee corrompue rendait
+         le graphique entier illisible ; elle se marque a l'entree du modele,
+         ici on refuse simplement de la dessiner. */
+      const fini = v => Number.isFinite(v) ? v : 0;
+      const totals = points.map(p => series.reduce((s, sr) => s + fini(p[sr.key] || 0), 0));
+      const maxV = Math.max(...totals.filter(Number.isFinite), guide ? fini(guide.value) : 0,
+        bande ? Math.max(...points.map(p => fini(p[bande.max] || 0))) : 0, 1);
       const minV = Math.min(0, ...totals,
-        bande ? Math.min(...points.map(p => Number(p[bande.min]) || 0)) : 0);
+        bande ? Math.min(...points.map(p => fini(Number(p[bande.min]) || 0))) : 0);
       const ticks = niceTicksSignes(minV, maxV);
       const top = ticks[ticks.length - 1];
       const bas = ticks[0];

@@ -1777,10 +1777,19 @@ button.lien-vue {
   display: block; margin-top: 2px; font-size: var(--font-sm); font-weight: 400;
   color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* LA COLONNE DES CHIFFRES NE PEUT PAS ECRASER LE NOM. En `flex: none`, elle
+   prenait toute la largeur que son contenu demandait, et le nom, en
+   `min-width: 0`, absorbait le choc : « MSCI World » s'ecrivait sur trois
+   lignes derriere un montant a vingt-sept chiffres. Un tel montant n'entre
+   plus dans le modele ; mais un patrimoine reel a dix chiffres existe, et la
+   ligne doit tenir sans lui non plus. Plafond a soixante pour cent, retour a
+   la ligne autorise dans le nombre, et le nom garde au moins ses quarante. */
 .ml-chiffres {
-  flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+  flex: none; min-width: 0; max-width: 60%;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
+.ml-chiffres b { overflow-wrap: anywhere; white-space: normal; text-align: right; }
 .ml-chiffres b { font-size: var(--font-base); }
 .ml-chiffres span { font-size: var(--font-sm); font-weight: 600; }
 /* La jauge de variation du journal des releves : elle occupe l'espace laisse

@@ -1305,6 +1305,17 @@ const I18N = {
     "Pire mois": "Worst month",
     "Prix d'acquisition": "Purchase price",
     "Prix de revient": "Cost price",
+    "nombre invraisemblable, vérifie la saisie": "implausible number, check what you typed",
+    "cette valeur semble anormalement élevée, vérifie le montant saisi":
+      "this value looks unusually high, check the amount you typed",
+    "Une valeur semble incorrecte": "A value looks wrong",
+    "Des valeurs semblent incorrectes": "Some values look wrong",
+    "Tant qu’elle n’est pas corrigée, les totaux qui la comptent sont à vérifier.":
+      "Until it is corrected, the totals that include it need checking.",
+    "Tant qu’elles ne sont pas corrigées, les totaux qui les comptent sont à vérifier.":
+      "Until they are corrected, the totals that include them need checking.",
+    "à vérifier": "to check",
+    "Voir les actifs": "See the assets",
     "Trier les lignes": "Sort the holdings",
     "Changer le tri des lignes": "Change how the holdings are sorted",
     "Plus-value €": "Gain €",

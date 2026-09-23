@@ -657,6 +657,113 @@ const estDeclare = v => v !== undefined && v !== null && v !== ''
 
 const partEstValide = v => !estDeclare(v) || (num(v) >= 0 && num(v) <= 100);
 
+/* --- Robustesse numerique : ce qui peut entrer, et ce qu'on en dit ----------
+
+   UN NOMBRE SAISI A UN PLAFOND, ET C'EST UNE BORNE DE VRAISEMBLANCE, pas une
+   limite technique. Un champ `type="number"` refuse les lettres mais accepte la
+   notation savante : « 5e26 » passe, `Number()` le lit sans broncher, et une
+   quantite de titres a 4,99 × 10^26 a fait naitre une ligne a 499 280 000 000
+   000 570 000 000 000 euros. Le montant a traverse neuf couches sans rencontrer
+   une question : total, allocation, plus-value, insights, graphiques, jusqu'a
+   repousser le nom de la ligne sur trois lignes de telephone.
+
+   `Number.MAX_SAFE_INTEGER` n'est pas une reponse : neuf millions de milliards
+   sont representables et absurdes. Les bornes ci-dessous sont METIER, et
+   genereuses par construction : la plus basse, un milliard l'unite pour un prix,
+   reste mille fois au-dessus du titre le plus cher du monde. Elles attrapent les
+   vingt-cinq chiffres, la puissance de dix parasite et le separateur qui a saute,
+   jamais un patrimoine reel.
+
+   Le zero et le negatif se decident par genre, parce que « une dette negative »
+   et « une rentree negative » ne sont pas la meme faute : la seconde est une
+   depense, la premiere un doigt qui a glisse. */
+const BORNES_NOMBRE = {
+  montant:  { min: 0,     max: 1e12, decimales: 2 },   // solde, valeur, dette, estimation
+  signe:    { min: -1e12, max: 1e12, decimales: 2 },   // flux du budget, plus-value realisee
+  quantite: { min: 0,     max: 1e12, decimales: 8 },   // parts, titres, crypto
+  prix:     { min: 0,     max: 1e9,  decimales: 8 },   // prix unitaire, prix de revient, cours
+  taux:     { min: 0,     max: 50,   decimales: 4 },   // taux annuel, assurance : 50 % l'an est une faute
+  pct:      { min: 0,     max: 100,  decimales: 2 },   // part, cible, plafond, reserve
+  flux:     { min: 0,     max: 1e9,  decimales: 2 },   // mensualite, revenu, versement mensuel
+};
+const MONTANT_MAX = BORNES_NOMBRE.montant.max;
+
+/* LIRE UN NOMBRE COMME UN HUMAIN L'A TAPE, pas comme JavaScript le devine.
+   `Number('1e30')` vaut dix puissance trente, `Number(' 12 ')` vaut douze et
+   `Number('12,5')` vaut NaN : trois surprises pour qui saisit en francais.
+   Ici : espaces ordinaires et insecables retirees, virgule acceptee comme point,
+   et la notation savante REFUSEE — personne ne tape « e » dans un montant, un
+   collage l'apporte. Rend null pour tout ce qui n'est pas un nombre fini, et
+   c'est null qu'il faut rendre : zero est une reponse, pas une absence. */
+function lireNombre(s) {
+  if (s === null || s === undefined) return null;
+  const t = String(s).replace(/[\s  ]/g, '').replace(',', '.');
+  if (t === '' || /[eE]/.test(t) || !/^[-+]?(\d+\.?\d*|\.\d+)$/.test(t)) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+
+/* Vrai si la valeur est un nombre VRAISEMBLABLE pour son genre. Le vide passe :
+   il dit l'ignorance, et c'est `requis` qui decide s'il est admis. Rend un
+   booleen et jamais une valeur corrigee — ramener 10^26 au plafond en silence
+   serait inventer un patrimoine, exactement ce que la borne veut empecher. */
+function nombreValide(v, genre = 'montant') {
+  if (v === '' || v === null || v === undefined) return true;
+  const b = BORNES_NOMBRE[genre] || BORNES_NOMBRE.montant;
+  const n = typeof v === 'number' ? v : lireNombre(v);
+  return n !== null && Number.isFinite(n) && n >= b.min && n <= b.max;
+}
+const nombreEstVraisemblable = v => nombreValide(v, 'montant');
+
+function genreDeCle(cle) {
+  const c = String(cle || '');
+  if (/^(qty|parts)$/.test(c)) return 'quantite';
+  if (/^(buyPrice|basePrice|price|prixAchat|prixDeRevient|revient)$/.test(c)) return 'prix';
+  if (/^(taux|tauxAssurance)$/.test(c)) return 'taux';
+  if (/^(part|plafond|cible|reservePct)$/.test(c)) return 'pct';
+  if (/^(mensualite|reserveMonthly)$/.test(c)) return 'flux';
+  if (/^(amount|realised)$/.test(c)) return 'signe';
+  return 'montant';
+}
+function genreDuChemin(path) {
+  const fin = String(path || '').split('.').pop();
+  if (/^budget\.income\./.test(path)) return 'signe';
+  return genreDeCle(fin);
+}
+
+function signalerInvalides(s) {
+  const out = [];
+  const voir = (chemin, v, genre, nom) => {
+    if (v === '' || v === null || v === undefined) return;
+    if (!nombreValide(v, genre)) out.push({ chemin, valeur: v, genre, nom: nom || chemin });
+  };
+  (s.positions || []).forEach((p, i) => {
+    voir(`positions.${i}.qty`, p.qty, 'quantite', p.name);
+    voir(`positions.${i}.price`, p.price, 'prix', p.name);
+    voir(`positions.${i}.buyPrice`, p.buyPrice, 'prix', p.name);
+    voir(`positions.${i}.value`, p.value, 'montant', p.name);
+    voir(`positions.${i}.invested`, p.invested, 'montant', p.name);
+  });
+  (s.comptes || []).forEach((c, i) => {
+    (c.cash || []).forEach((e, j) => voir(`comptes.${i}.cash.${j}.montant`, e.montant, 'montant', c.nom || c.id));
+    (c.lignes || []).forEach((l, j) => voir(`comptes.${i}.lignes.${j}.valeur`, l.valeur, 'montant', l.nom || c.nom));
+  });
+  (s.etabs || []).forEach((e, i) => (e.dettes || []).forEach((d, j) =>
+    voir(`etabs.${i}.dettes.${j}.montant`, d.montant, 'montant', d.nom || e.nom)));
+  Object.entries(s.now || {}).forEach(([k, v]) => voir(`now.${k}`, v, 'montant', k));
+  return out;
+}
+const aVerifier = () => (Store.state?.meta?.aVerifier) || [];
+
+function fmtEURCompact(v) {
+  const n = num(v);
+  if (Math.abs(n) < 1e6) return fmtEUR(n);
+  return moinsTypographique(new Intl.NumberFormat(locale(), {
+    style: 'currency', currency: deviseBase(), currencyDisplay: 'narrowSymbol',
+    notation: 'compact', maximumFractionDigits: 2,
+  }).format(n));
+}
+
 const partDetention = l => {
   if (!estDeclare(l?.part)) return 1;
   const p = num(l.part);
@@ -2454,6 +2561,8 @@ const Store = {
       if (miens.length !== 1) continue;
       for (const d of (e.dettes || [])) if (!d.bienId) d.bienId = miens[0].id;
     }
+    s.meta = s.meta || {};
+    s.meta.aVerifier = signalerInvalides(s);
     refreshAccounts();
   },
 

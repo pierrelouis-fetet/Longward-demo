@@ -1209,6 +1209,7 @@ function partsDesPoches(m, moisEnArriere) {
 
    Ni DOM, ni ecriture, ni reseau, ni traduction, ni formatage. */
 function evaluerInsights(ctx) {
+  if (typeof aVerifier === 'function' && aVerifier().length) return [];
   const c = contexteInsights(ctx);
   const m = mesuresInsights(c);
   const sortis = [];

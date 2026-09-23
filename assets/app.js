@@ -1138,6 +1138,33 @@ function carteInsights(vue, titre) {
   </section>`;
 }
 
+function carteAVerifier() {
+  const liste = aVerifier();
+  if (!liste.length) return '';
+  const plusieurs = liste.length > 1;
+  const ou = e => {
+    const m = /^positions\.(\d+)\./.exec(e.chemin);
+    if (m) return { action: 'open-position', attrs: `data-i="${m[1]}"`, libelle: trad('Voir la ligne') };
+    return { action: 'goto', attrs: 'data-view="accounts"', libelle: trad('Voir les actifs') };
+  };
+  return `
+  <section class="card averifier" aria-labelledby="averifierTitre">
+    <div class="card-head">
+      <h2 id="averifierTitre">${trad(plusieurs ? 'Des valeurs semblent incorrectes' : 'Une valeur semble incorrecte')}</h2>
+    </div>
+    <p class="hint" style="margin:0 0 10px">${trad(plusieurs
+      ? 'Tant qu’elles ne sont pas corrigées, les totaux qui les comptent sont à vérifier.'
+      : 'Tant qu’elle n’est pas corrigée, les totaux qui la comptent sont à vérifier.')}</p>
+    <ul class="retenir-liste">${liste.slice(0, 5).map(e => { const o = ou(e); return `
+      <li class="retenir-item">
+        <b class="retenir-titre">${esc(String(e.nom))}</b>
+        <p class="retenir-texte">${esc(String(e.valeur))}</p>
+        <button type="button" class="lien-vue retenir-lien" data-action="${o.action}" ${o.attrs}
+          >${o.libelle} <span aria-hidden="true">→</span></button>
+      </li>`; }).join('')}
+    </ul>
+  </section>`;
+}
 function ligneInsight(i, p, precedent, destinationsVues) {
   const oeil = EYEBROW_INSIGHT[i.categorie] === precedent
     ? null : EYEBROW_INSIGHT[i.categorie];
@@ -1257,12 +1284,14 @@ function viewOverview() {
 
   return `
   ${guideDevant ? guide : ''}
+  ${carteAVerifier()}
 
   ${!aUnComptePropre() ? '' : `
   <div class="hero">
     ${!aUnComptePropre() ? '' : `
     <div class="hero-label">
-      <span>${trad(evoNet ? 'Patrimoine net' : 'Patrimoine brut')}</span>
+      <span>${trad(evoNet ? 'Patrimoine net' : 'Patrimoine brut')}</span>${
+        aVerifier().length ? `<span class="muted">· ${trad('à vérifier')}</span>` : ''}
       ${basculesAffichees().netBrut ? `<span class="segmented seg-mini">
         <button data-action="hero-base" data-net="1" class="${evoNet ? 'on' : ''}"
                 title="${trad('Tes avoirs moins tes crédits')}">${trad('Net')}</button>
@@ -3365,7 +3394,7 @@ function viewPositions() {
           action: 'open-position', index: i,
           titre: p.name || 'Sans nom',
           sous: `${ASSET_CLASSES[assetClassDe(p)]} · ${ROLES[roleDe(p)]} · ${ACC[p.account]?.label || ''}`,
-          valeur: fmtEUR(v),
+          valeur: fmtEURCompact(v),
           second: pe == null ? trad('prix de revient manquant')
             : `${fmtSigned(pe)} <span class="muted">·</span> ${fmtSignedPct(pp, 1)}`,
           classeSecond: pe == null ? 'muted' : cls(pe),
@@ -11230,7 +11259,8 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
             ? `<optgroup label="${esc(trad(v))}">${l.map(option).join('')}</optgroup>`
             : option([v, l])).join('')}</select>`
         : `<input id="${id}" type="${c.type === 'nombre' ? 'number' : c.type === 'date' ? 'date' : 'text'}"
-              ${c.type === 'nombre' ? 'step="any" inputmode="decimal"' : 'autocomplete="off"'}
+              ${c.type === 'nombre' ? (b => `step="any" inputmode="decimal" min="${b.min}" max="${b.max}"`)(
+                BORNES_NOMBRE[c.genre || genreDeCle(c.cle)] || BORNES_NOMBRE.montant) : 'autocomplete="off"'}
               ${dl ? `list="${dl}"` : ''}
               ${c.max ? `maxlength="${+c.max}"` : ''}
               value="${esc(String(c.valeur ?? ''))}" placeholder="${esc(trad(c.exemple || ''))}">
@@ -11495,6 +11525,21 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
       const estRequis = c => typeof c.requis === 'function' ? c.requis(out) : c.requis;
       const manquant = efface ? null : champs.find(c => estRequis(c) && vide(c));
       if (manquant) { $(`#f_${manquant.cle}`).focus(); toast(`${manquant.label}${deuxPoints()} ${trad('à remplir')}`); return; }
+      /* UN NOMBRE INVRAISEMBLABLE NE PASSE PAS LA PORTE. `type="number"` refuse
+         les lettres mais laisse entrer « 5e26 », et `num()` le lit sans
+         broncher : une quantite a dix puissance vingt-six a fait naitre une
+         ligne de quatre cent quatre-vingt-dix-neuf quintillions d'euros. On
+         lit la VALEUR BRUTE du champ, pas `out` : `valeurs()` a deja fait
+         passer la chaine par `num()`, qui rend zero pour tout ce qu'il ne
+         comprend pas, et zero est vraisemblable. */
+      const absurde = efface ? null : champs.find(c => c.type === 'nombre'
+        && !nombreValide($(`#f_${c.cle}`)?.value, c.genre || genreDeCle(c.cle)));
+      if (absurde) {
+        const el = $(`#f_${absurde.cle}`);
+        el.focus(); el.setAttribute('aria-invalid', 'true');
+        toast(`${trad(absurde.label)}${deuxPoints()} ${trad('cette valeur semble anormalement élevée, vérifie le montant saisi')}`);
+        return;
+      }
       /* Une regle qui porte sur DEUX champs ne peut pas vivre dans l'un des
          deux : « le capital emprunte doit etre superieur a zero quand un capital
          restant est renseigne » regarde les deux a la fois. `valide` rend le
@@ -15512,6 +15557,11 @@ function applyField(f) {
   delete f.dataset.invalide;
   f.removeAttribute('aria-invalid');
   if (f.type === 'checkbox') { setPath(path, f.checked); return; }
+  if (f.type === 'number' && !nombreValide(f.value, genreDuChemin(path))) {
+    f.dataset.invalide = '1';
+    f.setAttribute('aria-invalid', 'true');
+    return;
+  }
   if (f.type === 'number') { setPath(path, f.value === '' ? '' : Number(f.value)); return; }
   if (f.dataset.type === 'num') { setPath(path, Number(f.value)); return; }
   if (f.dataset.type === 'bool') { setPath(path, f.value === 'true'); return; }

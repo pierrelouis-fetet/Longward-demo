@@ -1945,6 +1945,125 @@ suite('Le tri des lignes de titres', () => {
   });
 });
 
+/* --- Une faute de frappe sur une ligne ne renverse pas Longward ----------- */
+suite('Robustesse numérique : ce qui entre, et ce qu’on en dit', () => {
+  const app = () => lireSource('assets/app.js');
+
+  test('lireNombre lit comme un humain tape, et refuse le reste', () => {
+    /* `Number('1e30')` vaut dix puissance trente, `Number('12,5')` vaut NaN :
+       deux surprises pour qui saisit en francais. Ici la virgule passe, les
+       espaces aussi, la notation savante non — personne ne la tape, un collage
+       l'apporte. */
+    eq(lireNombre('12,5'), 12.5, 'la virgule française est un point');
+    eq(lireNombre('1 250 000'), 1250000, 'les espaces de milliers s’ignorent');
+    eq(lireNombre('1 250'), 1250, 'l’insécable aussi');
+    eq(lireNombre('0'), 0, 'zéro est un nombre');
+    eq(lireNombre('-1'), -1, 'négatif aussi, c’est le genre qui tranche');
+    eq(lireNombre('0,01'), 0.01, 'le centime passe');
+    for (const s of ['1e30', '1,2e50', 'Infinity', '-Infinity', 'NaN', 'abc', '12abc', '', '1e3'])
+      eq(lireNombre(s), null, `« ${s} » n’est pas un nombre saisi`);
+  });
+
+  test('nombreValide borne par genre, et le vide passe', () => {
+    /* La borne est METIER, pas technique : MAX_SAFE_INTEGER laisse passer neuf
+       millions de milliards. Chaque genre a la sienne, toutes genereuses. */
+    for (const v of [0, 1, 999, 100000, 1000000, 1000000000, '12,5', '1 250 000'])
+      vrai(nombreValide(v, 'montant'), `${v} est un montant plausible`);
+    eq(nombreValide(-1, 'montant'), false, 'un montant négatif se refuse');
+    eq(nombreValide(-1, 'signe'), true, 'une rentrée négative est une dépense');
+    eq(nombreValide(1e12, 'montant'), true, 'mille milliards, la borne inclusive');
+    eq(nombreValide(1e12 + 1, 'montant'), false, 'un euro de plus, non');
+    eq(nombreValide(Number.MAX_SAFE_INTEGER, 'montant'), false, 'MAX_SAFE_INTEGER n’est pas un patrimoine');
+    for (const v of [1e20, 1e100, Infinity, -Infinity, NaN, '1e30', 'abc'])
+      eq(nombreValide(v, 'montant'), false, `${String(v)} ne passe pas`);
+    eq(nombreValide('', 'montant'), true, 'le vide dit l’ignorance, c’est requis qui tranche');
+    eq(nombreValide(0.00000001, 'quantite'), true, 'un satoshi de quantité passe');
+    eq(nombreValide(1e9, 'prix'), true, 'un milliard l’unité, la borne des prix');
+    eq(nombreValide(1e9 + 1, 'prix'), false, 'et pas plus');
+    eq(nombreValide(50, 'taux'), true, 'cinquante pour cent l’an, dernier taux admis');
+    eq(nombreValide(60, 'taux'), false, 'soixante est une faute de frappe');
+    eq(nombreValide(100, 'pct'), true, 'cent pour cent');
+    eq(nombreValide(101, 'pct'), false, 'cent un, non');
+  });
+
+  test('le genre se déduit de la clef ou du chemin, sans liste à tenir', () => {
+    eq(genreDeCle('qty'), 'quantite'); eq(genreDeCle('buyPrice'), 'prix');
+    eq(genreDeCle('taux'), 'taux'); eq(genreDeCle('part'), 'pct');
+    eq(genreDeCle('mensualite'), 'flux'); eq(genreDeCle('amount'), 'signe');
+    eq(genreDeCle('montant'), 'montant'); eq(genreDeCle('inconnu'), 'montant');
+    eq(genreDuChemin('positions.3.qty'), 'quantite');
+    eq(genreDuChemin('budget.income.2.amount'), 'signe');
+    eq(genreDuChemin('etabs.0.dettes.1.montant'), 'montant');
+  });
+
+  test('une valeur aberrante déjà dans le modèle se marque, ne se corrige pas', () => {
+    /* Le cas observe : une quantite a dix puissance vingt-six arrivee par la
+       porte que rien ne bornait. Elle ne devient ni zero ni le plafond — l'un
+       et l'autre seraient une donnee inventee — elle se nomme. */
+    Fixture.poser();
+    const s = structuredClone(Store.state);
+    s.positions[0].qty = 4.9928e26;
+    const marques = signalerInvalides(s);
+    eq(marques.length, 1, 'une seule ligne est marquée');
+    eq(marques[0].chemin, 'positions.0.qty', 'et c’est la bonne');
+    eq(marques[0].valeur, 4.9928e26, 'avec sa valeur telle qu’elle est');
+    eq(s.positions[0].qty, 4.9928e26, 'la donnée n’a pas bougé');
+    eq(signalerInvalides(Fixture.etat()).length, 0, 'et la graine saine ne marque rien');
+    /* La porte d'entree du modele l'appelle : chargement, import et cloud
+       passent tous par migrate(). */
+    const st = lireSource('assets/store.js');
+    vrai(/s\.meta\.aVerifier = signalerInvalides\(s\);/.test(st), 'migrate() pose la liste');
+  });
+
+  test('les deux portes de saisie refusent avec calme, champ nommé', () => {
+    const a = app();
+    vrai(/!nombreValide\(\$\(`#f_\$\{c\.cle\}`\)\?\.value, c\.genre \|\| genreDeCle\(c\.cle\)\)/.test(a),
+      'la fenêtre lit la valeur BRUTE, pas celle que num() a déjà mise à zéro');
+    vrai(/cette valeur semble anormalement élevée, vérifie le montant saisi/.test(a),
+      'et le message reste calme');
+    vrai(/f\.type === 'number' && !nombreValide\(f\.value, genreDuChemin\(path\)\)/.test(a),
+      'la page refuse de la même façon');
+    vrai(/min="\$\{b\.min\}" max="\$\{b\.max\}"/.test(a), 'et le champ annonce ses bornes au navigateur');
+    for (const k of ['cette valeur semble anormalement élevée, vérifie le montant saisi',
+                     'Une valeur semble incorrecte', 'à vérifier'])
+      vrai(!!I18N.en[k], `« ${k} » est traduite`);
+  });
+
+  test('graphiques et insights ne lisent pas une valeur à vérifier', () => {
+    const ch = lireSource('assets/charts.js');
+    vrai(/totals\.filter\(Number\.isFinite\)/.test(ch), 'l’échelle ignore ce qui n’est pas fini');
+    const ins = lireSource('assets/insights.js');
+    vrai(/if \(typeof aVerifier === 'function' && aVerifier\(\)\.length\) return \[\];/.test(ins),
+      'zéro insight tant qu’une valeur est à vérifier');
+    /* Un point non fini rend l'echelle infinie et ecrase toutes les autres
+       valeurs sur l'axe : on refuse de le dessiner plutot que de le laisser
+       dessiner les autres a zero. */
+    vrai(/const fini = v => Number\.isFinite\(v\) \? v : 0;/.test(ch), 'et le point lui-même vaut zéro au dessin');
+  });
+
+  test('la carte de signalement mène là où l’on corrige', () => {
+    const a = app();
+    const d = a.indexOf('function carteAVerifier()');
+    const c = a.slice(d, a.indexOf('\nfunction ', d + 1));
+    vrai(/if \(!liste\.length\) return '';/.test(c), 'invisible quand tout est sain');
+    vrai(/data-action="\$\{o\.action\}"/.test(c) && /open-position/.test(c),
+      'une ligne de titres ouvre sa fiche');
+    vrai(/\$\{carteAVerifier\(\)\}/.test(a), 'et la carte est posée sur l’Aperçu');
+    vrai(/aVerifier\(\)\.length \? `<span class="muted">· \$\{trad\('à vérifier'\)\}<\/span>` : ''/.test(a),
+      'le grand chiffre dit qu’il est à vérifier');
+  });
+
+  test('un grand montant tient dans une colonne étroite sans écraser le nom', () => {
+    eq(fmtEURCompact(999999).length > 5, true, 'sous le million, la forme pleine');
+    vrai(/M/.test(fmtEURCompact(1250000)), 'au-dessus, la forme compacte');
+    const css = lireSource('assets/styles.css');
+    vrai(/\.ml-chiffres \{\s*\n\s*flex: none; min-width: 0; max-width: 60%;/.test(css),
+      'la colonne des chiffres ne prend jamais plus de soixante pour cent');
+    vrai(/\.ml-chiffres b \{ overflow-wrap: anywhere;/.test(css), 'et un nombre long se replie');
+    vrai(/valeur: fmtEURCompact\(v\),/.test(app()), 'la ligne de titres s’en sert');
+  });
+});
+
 /* ------------------------------------------------------------------
    4 bis. Les espèces, qui n'ont pas d'établissement
    ------------------------------------------------------------------ */
