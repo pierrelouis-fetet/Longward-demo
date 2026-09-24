@@ -2626,6 +2626,10 @@ suite('Les apports sur les comptes de marché', () => {
     const ids = ['market_contributions_year', 'market_growth_origin',
                  'market_contributions_pace', 'market_contributions_regularity'];
     for (const id of ids) eq(REGLES_INSIGHT.find(x => x.id === id).onglet, 'positions', `${id} est chez Marchés`);
+    /* L'ecart a la cible y vit aussi : la cible est un sous-onglet de Marches,
+       et c'est la seule lecture de l'onglet qui ne demande aucun apport. */
+    eq(REGLES_INSIGHT.find(x => x.id === 'allocation_target_gap').onglet, 'positions',
+      'l’écart à la cible vit là où la cible se règle');
     const src = app();
     const pres = src.slice(src.indexOf('  market_contributions_year: {'), src.indexOf('  spending_shift: {'));
     const textes = [...pres.matchAll(/trad\('([^']*)'/g)].map(m => m[1]);

@@ -540,10 +540,15 @@ const REGLES_INSIGHT = [
 
      Une seule sortie par regle, la deviation la plus grande en valeur absolue.
      Cinq classes qui derivent ne font pas cinq cartes : elles font une carte,
-     celle qui derive le plus, et le detail se lit dans Allocation. */
+     celle qui derive le plus, et le detail se lit dans la cible.
+
+     ELLE VIT DANS MARCHES, parce que la cible y vit : le sous-onglet Cible
+     est le sien, son renvoi y mene, et sa base est le portefeuille de marche.
+     Rangee dans Allocation, elle renvoyait vers un autre onglet que le sien,
+     et laissait Marches sans lecture tant qu'aucun apport n'etait declare. */
   {
     id: 'allocation_target_gap',
-    onglet: 'allocation',
+    onglet: 'positions',
     famille: 'allocation',
     categorie: 'allocation',
     priorite: INSIGHT_PRIORITE.HAUTE,
