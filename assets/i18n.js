@@ -1351,6 +1351,10 @@ const I18N = {
     "de relevé à relevé, en {m} mois": "statement to statement, over {m} months",
     "{a} restant dû, contre {b}": "{a} outstanding, against {b}",
     "Ajouter une ligne de titres": "Add a holding",
+    "Trier les mouvements": "Sort today’s moves",
+    "Changer le tri des mouvements": "Change how today’s moves are sorted",
+    "Mouvement": "Move",
+    "Variation": "Change",
     "Tes apports sur les marchés en {a}": "Your market contributions in {a}",
     "Tes apports sur les marchés depuis {m}": "Your market contributions since {m}",
     "versés sur tes comptes de marché entre tes relevés de {a} et de {b}":

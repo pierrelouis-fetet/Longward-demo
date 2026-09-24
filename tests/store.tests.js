@@ -2236,9 +2236,27 @@ suite('Une seule grammaire d’en-tête de carte', () => {
     const iF = carte.indexOf('<div class="carte-filtres">'), iM = carte.indexOf('<div class="carte-meta">');
     vrai(iF > 0 && iM > iF, 'les filtres, puis le compte et le tri');
     const filtres = carte.slice(iF, iM);
-    vrai(/filtrer-role/.test(filtres) && /filtrer-compte-titres/.test(filtres), 'rôle et compte au deuxième niveau');
+    vrai(/\$\{filtresLignes\(\)\}/.test(filtres), 'rôle et compte au deuxième niveau');
+    const ctl = entre(app(), 'function filtresLignes()', 'const compteLignes');
+    vrai(/filtrer-role/.test(ctl) && /filtrer-compte-titres/.test(ctl), 'et ce sont bien ces deux filtres');
     vrai(/trier-positions/.test(carte.slice(iM)), 'le tri au troisième, avec le compte des lignes');
     vrai(!/Une ligne s’ouvre au doigt/.test(carte), 'plus de phrase pour dire qu’une ligne s’ouvre');
+  });
+
+  test('la carte du jour porte les mêmes contrôles que les lignes de titres', () => {
+    const src = app();
+    const jour = entre(src, '<div class="card jour" data-anchor="jour">', 'data-action="jour-detail"');
+    vrai(jour.length > 500, 'la carte du jour est trouvable');
+    const iF = jour.indexOf('<div class="carte-filtres">${filtresLignes()}</div>');
+    const iM = jour.indexOf('<div class="carte-meta">');
+    vrai(iF > 0 && iM > iF && iM < jour.indexOf('<div class="jour-lignes">'),
+      'les filtres, puis le compte et le tri, juste au-dessus des lignes');
+    vrai(/\$\{triJourBouton\(\)\}/.test(jour.slice(iM)), 'un déclencheur de tri, comme sur les lignes de titres');
+    eq((src.match(/\$\{filtresLignes\(\)\}/g) || []).length, 2, 'les mêmes contrôles, écrits une fois, posés deux fois');
+    vrai(/const lj = j\.lignes\.filter\(l => passeFiltresLignes\(Store\.state\.positions\[l\.index\]\)\);/.test(src),
+      'la liste du jour passe par la même règle de filtre');
+    vrai(/\.filter\(\(\{ p \}\) => passeFiltresLignes\(p\)\)/.test(src), 'et celle des lignes de titres aussi');
+    vrai(!/jourCompact\(j\)/.test(src), 'le résumé du jour se nourrit de la liste filtrée');
   });
 
   test('le journal des ventes suit la même grammaire', () => {
@@ -19781,9 +19799,11 @@ suite('Marchés : le filtre de compte suit les règles du filtre de rôle', () =
        filtre d affichage serait un piege. */
     const src = lireSource('assets/app.js');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
-    vrai(/\.filter\(\(\{ p \}\) => posCompte === 'tous' \|\| p\.account === posCompte\)/.test(src),
+    /* Le filtre est ecrit une fois, et les deux listes de la page le lisent. */
+    vrai(/\(posCompte === 'tous' \|\| p\.account === posCompte\)/.test(src)
+      && /\.filter\(\(\{ p \}\) => passeFiltresLignes\(p\)\)/.test(src),
       'la liste des lignes passe par le filtre de compte');
-    vrai(/ids\.length < 2\) return '';/.test(src),
+    vrai(/\$\{ids\.length < 2 \? '' : `<select data-action-change="filtrer-compte-titres"/.test(src),
       'le sélecteur ne se rend qu’à partir de deux comptes : un contrôle sans '
       + 'effet se lit comme une panne');
     vrai(/new Set\(Store\.state\.positions\.map\(p => p\.account\)\)/.test(src),
@@ -22957,9 +22977,9 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
     const src = lireSource('assets/app.js');
     const vue = src.slice(src.indexOf('function viewPositions('),
                           src.indexOf('function mountPositions('));
-    vrai(/\$\{jourDeplie \? '' : jourCompact\(j\)\}/.test(vue),
+    vrai(/\$\{jourDeplie \? '' : jourCompact\(lj\)\}/.test(vue),
       'la version compacte prend la place du tableau');
-    vrai(/\$\{\(jourDeplie \? trierJour\(j\.lignes\) : \[\]\)\.map/.test(vue),
+    vrai(/\$\{\(jourDeplie \? trierJour\(lj\) : \[\]\)\.map/.test(vue),
       'et les rangées détaillées ne sortent que dépliées');
     vrai(/\$\{!jourDeplie \? '' : `/.test(vue), 'l’en-tête des colonnes suit');
   });
@@ -23000,8 +23020,9 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
        le CSS cache les trois derniers : le compte se decide a la largeur, sans
        redessiner la vue au redimensionnement. Sur 966 px, trois lignes
        laissaient la carte aux trois quarts vide a cote d'un tableau plein. */
-    vrai(/mouvementsDuJour\(j, MOUVEMENTS_JOUR_LARGE\)/.test(fn),
-      'la carte demande les six mouvements');
+    vrai(/mouvementsDuJour\(\{ lignes \}, MOUVEMENTS_JOUR_LARGE\)/.test(fn)
+      && /\.slice\(0, MOUVEMENTS_JOUR_LARGE\)/.test(fn),
+      'la carte demande les six mouvements, triés ou non');
     vrai(/k < MOUVEMENTS_JOUR \? '' : ' large-seulement'/.test(fn),
       'et marque les suivants pour les écrans larges');
     const st = lireSource('assets/store.js');

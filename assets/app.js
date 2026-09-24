@@ -2930,6 +2930,28 @@ function poserTriPositions(key, dir) {
 }
 let posRole = 'tous';
 let posCompte = 'tous';
+
+const passeFiltresLignes = p => !!p && (posRole === 'tous' || roleDe(p) === posRole)
+  && (posCompte === 'tous' || p.account === posCompte);
+
+function filtresLignes() {
+  const ids = [...new Set(Store.state.positions.map(p => p.account))];
+  return `
+        <div class="segmented seg-mini" role="group" aria-label="${trad('Filtrer par rôle')}">
+          ${[['tous', trad('Tous')], ['core', 'Core'], ['satellite', 'Satellite']].map(([v, l]) =>
+            `<button type="button" data-action="filtrer-role" data-role="${v}"
+                     class="${posRole === v ? 'on' : ''}" aria-pressed="${posRole === v}">${l}</button>`).join('')}
+        </div>
+        ${ids.length < 2 ? '' : `<select data-action-change="filtrer-compte-titres" class="annee"
+                          title="${trad('Ne montrer que les lignes d’un compte')}">
+            <option value="tous" ${posCompte === 'tous' ? 'selected' : ''}>${trad('Tous les comptes')}</option>
+            ${ids.map(id => `<option value="${esc(id)}" ${posCompte === id ? 'selected' : ''}>${
+              esc(ACC[id]?.label || id)}</option>`).join('')}
+          </select>`}`;
+}
+
+const compteLignes = (montrees, total) => `${montrees} ${montrees > 1 ? trad('lignes') : trad('ligne')}${
+  total > montrees ? ` · ${total - montrees} ${total - montrees > 1 ? trad('masquées') : trad('masquée')}` : ''}`;
 const POS_SORT_KEYS = {
   name:     p => p.name?.toLowerCase() || '',
   value:    p => posValue(p),
@@ -3093,8 +3115,12 @@ let jourDeplie = false;
    deja la classe de cette maison pour ca, et elle evite d'avoir a redessiner la
    carte quand on redimensionne la fenetre. Le renvoi qui suit parle du total,
    il reste juste dans les deux cas. */
-function jourCompact(j) {
-  return mouvementsDuJour(j, MOUVEMENTS_JOUR_LARGE).map((l, k) => `
+function jourCompact(lignes) {
+  const vus = jourSort
+    ? trierJour(lignes.filter(l => !l.horsSeance)).slice(0, MOUVEMENTS_JOUR_LARGE)
+    : mouvementsDuJour({ lignes }, MOUVEMENTS_JOUR_LARGE);
+  if (!vus.length) return `<p class="empty" style="margin:0">${trad('Aucune ligne.')}</p>`;
+  return vus.map((l, k) => `
         <button type="button" class="jour-mouv${k < MOUVEMENTS_JOUR ? '' : ' large-seulement'}"
           data-action="open-position" data-i="${l.index}"
           title="${esc(l.name)} · ${trad('voir la fiche complète')}">
@@ -3173,6 +3199,21 @@ function triJourTh(key, label, explication = '') {
        + `</span>`;
 }
 
+/* Le tri de la carte du jour se choisit comme celui des lignes de titres : un
+   declencheur qui porte l'etat courant, et une feuille de choix. Le meme etat
+   que les intitules du detail -- `jourSort` -- donc les deux ne peuvent pas se
+   contredire. « Mouvement » est l'ordre naturel, celui de l'ampleur de
+   l'effet ; le nom commence par l'ordre alphabetique. */
+const TRI_JOUR_CHOIX = [['ampleur', 'Mouvement'], ['eur', 'Effet'], ['pct', 'Variation'],
+                        ['poids', 'Poids'], ['nom', 'Nom']];
+function triJourBouton() {
+  const cle = jourSort ? jourSort.key : 'ampleur';
+  const nom = (TRI_JOUR_CHOIX.find(([k]) => k === cle) || [])[1] || '';
+  const fleche = jourSort && jourSort.dir === 'asc' ? '↑' : '↓';
+  return `<button type="button" class="btn sm ghost tri-lignes" data-action="trier-jour"
+          title="${trad('Changer le tri des mouvements')}">${trad(nom)} ${fleche}</button>`;
+}
+
 /* Les lignes du jour dans l'ordre demande. Sans tri, l'ordre naturel de
    `dayPerformance()`, qui est deja celui de l'ampleur du mouvement. */
 function trierJour(lignes) {
@@ -3236,11 +3277,9 @@ function viewPositions() {
 
   const retenues = Store.state.positions
     .map((p, i) => ({ p, i }))
-    .filter(({ p }) => posRole === 'tous' || roleDe(p) === posRole)
-    .filter(({ p }) => posCompte === 'tous' || p.account === posCompte);
+    .filter(({ p }) => passeFiltresLignes(p));
   const ps = sortPositions(retenues)
     .map(({ p, i }) => Object.assign(Object.create(Object.getPrototypeOf(p)), p, { __i: i }));
-  const masquees = Store.state.positions.length - retenues.length;
 
   const dev = q => q.currency || 'EUR';
   const rows = ps.map((p) => {
@@ -3390,6 +3429,7 @@ function viewPositions() {
        reparcourt les positions, et l'appeler par ligne puis par comparaison de
        tri le ferait des dizaines de fois pour un chiffre qui ne bouge pas. */
     const poidsBase = basePortefeuilleMarches();
+    const lj = j.lignes.filter(l => passeFiltresLignes(Store.state.positions[l.index]));
     return `
     <div class="card jour" data-anchor="jour">
       <div class="card-head">
@@ -3416,8 +3456,13 @@ function viewPositions() {
               .replace('{n}', j.sansDonnee)}` : ''}</span>
       </div>`}
 
+      <div class="carte-filtres">${filtresLignes()}</div>
+      <div class="carte-meta">
+        <span class="hint">${compteLignes(lj.length, j.lignes.length)}</span>
+        ${triJourBouton()}
+      </div>
       <div class="jour-lignes">
-        ${jourDeplie ? '' : jourCompact(j)}
+        ${jourDeplie ? '' : jourCompact(lj)}
         ${!jourDeplie ? '' : `
         <div class="jour-ligne entete">
           ${triJourTh('nom', 'Ligne')}
@@ -3425,7 +3470,7 @@ function viewPositions() {
           ${triJourTh('pct', 'Var.', 'La variation du titre depuis la clôture de la veille, dans sa propre devise : le mouvement affiché est celui du titre, pas celui du change. Les deux cours qui la produisent sont écrits sous le nom de la ligne, clôture de la veille puis cours du jour. Une ligne achetée aujourd’hui se compare à ton prix d’achat, et le dit sous son nom : tu ne la détenais pas hier soir.')}
           ${triJourTh('eur', 'Effet', 'Ce que cette variation pèse sur ton patrimoine, convertie au taux du jour. C’est la colonne qui dit combien tu as gagné ou perdu, là où la variation ne dit qu’un pourcentage.')}
         </div>`}
-        ${(jourDeplie ? trierJour(j.lignes) : []).map(l => `
+        ${(jourDeplie ? trierJour(lj) : []).map(l => `
           <div class="jour-ligne">
             <span class="jl-nom"><button type="button" class="mois-lien"
               data-action="open-position" data-i="${l.index}"
@@ -3479,26 +3524,9 @@ function viewPositions() {
       <button class="btn sm" data-action="ajouter-ligne"
               title="${trad('Ajouter une ligne de titres')}">${trad('+ Ajouter')}</button>
     </div>
-    <div class="carte-filtres">
-        <div class="segmented seg-mini" role="group" aria-label="${trad('Filtrer par rôle')}">
-          ${[['tous', trad('Tous')], ['core', 'Core'], ['satellite', 'Satellite']].map(([v, l]) =>
-            `<button type="button" data-action="filtrer-role" data-role="${v}"
-                     class="${posRole === v ? 'on' : ''}" aria-pressed="${posRole === v}">${l}</button>`).join('')}
-        </div>
-        ${(() => {
-          const ids = [...new Set(Store.state.positions.map(p => p.account))];
-          if (ids.length < 2) return '';
-          return `<select data-action-change="filtrer-compte-titres" class="annee"
-                          title="${trad('Ne montrer que les lignes d’un compte')}">
-            <option value="tous" ${posCompte === 'tous' ? 'selected' : ''}>${trad('Tous les comptes')}</option>
-            ${ids.map(id => `<option value="${esc(id)}" ${posCompte === id ? 'selected' : ''}>${
-              esc(ACC[id]?.label || id)}</option>`).join('')}
-          </select>`;
-        })()}
-    </div>
+    <div class="carte-filtres">${filtresLignes()}</div>
     <div class="carte-meta">
-        <span class="hint">${ps.length} ${ps.length > 1 ? trad('lignes') : trad('ligne')}${
-          masquees ? ` · ${masquees} ${masquees > 1 ? trad('masquées') : trad('masquée')}` : ''}</span>
+        <span class="hint">${compteLignes(ps.length, Store.state.positions.length)}</span>
         ${(() => {
           const tri = triPositions();
           const nom = (TRI_POSITIONS_CHOIX.find(([k]) => k === tri.key) || [])[1] || '';
@@ -8722,6 +8750,22 @@ const ACTIONS = {
     jourDeplie = !jourDeplie;
     render();
     deroulerJour(avant);
+  },
+  async 'trier-jour'() {
+    const cle = jourSort ? jourSort.key : 'ampleur';
+    const v = await askOptions({
+      titre: trad('Trier les mouvements'),
+      valeur: cle,
+      options: TRI_JOUR_CHOIX.map(([k, l]) => ({
+        v: k, l: trad(l),
+        sous: k !== cle || !jourSort ? '' : jourSort.dir === 'desc' ? trad('décroissant') : trad('croissant'),
+      })),
+    });
+    if (v == null) return;
+    if (v === 'ampleur') jourSort = null;
+    else if (jourSort && jourSort.key === v) jourSort = { key: v, dir: jourSort.dir === 'desc' ? 'asc' : 'desc' };
+    else jourSort = { key: v, dir: v === 'nom' ? 'asc' : 'desc' };
+    render();
   },
   'sort-jour'(btn) {
     const key = btn.dataset.key;
