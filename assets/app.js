@@ -2888,8 +2888,7 @@ function poserTriPositions(key, dir) {
 let posRole = 'tous';
 let posCompte = 'tous';
 
-const passeFiltresLignes = p => !!p && (posRole === 'tous' || roleDe(p) === posRole)
-  && (posCompte === 'tous' || p.account === posCompte);
+const passeFiltresLignes = p => passeFiltresTitres(p, posRole, posCompte);
 
 function filtresLignes() {
   const ids = [...new Set(Store.state.positions.map(p => p.account))];
@@ -2909,6 +2908,17 @@ function filtresLignes() {
 
 const compteLignes = (montrees, total) => `${montrees} ${montrees > 1 ? trad('lignes') : trad('ligne')}${
   total > montrees ? ` · ${total - montrees} ${total - montrees > 1 ? trad('masquées') : trad('masquée')}` : ''}`;
+
+function notePiedTitres(t) {
+  if (!t.sansBase) return '';
+  const phrase = !t.avecBase
+    ? trad(t.count > 1 ? 'Aucune de ces lignes n’a de prix de revient : pas de perf à calculer.'
+                       : 'Cette ligne n’a pas de prix de revient : pas de perf à calculer.')
+    : trad(t.sansBase > 1 ? 'La perf ne compte pas {n} lignes sans prix de revient, qui valent {v}.'
+                          : 'La perf ne compte pas {n} ligne sans prix de revient, qui vaut {v}.')
+        .replace('{n}', t.sansBase).replace('{v}', fmtEUR(t.valeurSansBase));
+  return `<tr class="pied-note"><td colspan="9">${phrase}</td></tr>`;
+}
 const POS_SORT_KEYS = {
   name:     p => p.name?.toLowerCase() || '',
   value:    p => posValue(p),
@@ -3242,6 +3252,17 @@ function viewPositions() {
     .filter(({ p }) => passeFiltresLignes(p));
   const ps = sortPositions(retenues)
     .map(({ p, i }) => Object.assign(Object.create(Object.getPrototypeOf(p)), p, { __i: i }));
+  /* LE TOTAL DE LA CARTE EST CELUI DE SES LIGNES. Le sous-total du telephone et
+     le pied du tableau lisent les lignes que les filtres retiennent, par le
+     calcul de la plus-value du portefeuille : filtrer sur un compte donne la
+     somme de ce compte-la, pas celle de tout le portefeuille sous ses lignes.
+     `pnl`, lui, reste celui de tout le portefeuille, pour la carte du haut.
+
+     « Positions » et non « compte » : le cash d'un compte n'est pas une ligne,
+     et ce total ne se compare pas a la valeur du compte, qui l'inclut. */
+  const vus = latentPnl(ps);
+  const libelleVus = `${trad('Total des positions affichées')}${aide(trad(
+    'La somme des lignes affichées, filtres compris. Le cash de tes comptes n’y est pas : ce n’est pas la valeur d’un compte.'))}`;
 
   const dev = q => q.currency || 'EUR';
   const rows = ps.map((p) => {
@@ -3493,6 +3514,9 @@ function viewPositions() {
             >${trad(nom)} ${tri.dir === 'desc' ? '↓' : '↑'}</button>`;
         })()}
     </div>
+    ${!ps.length ? '' : `<p class="total-vus">
+      <span>${libelleVus}</span><b>${fmtEUR(vus.value)}</b>
+    </p>`}
     <div class="liste-mobile">
       ${ps.map(p => {
         const i = p.__i, v = posValue(p), pp = posPerfPct(p), pe = posPerfEur(p);
@@ -3524,13 +3548,13 @@ function viewPositions() {
             + 'et que la fiche de la ligne.')}
         </tr></thead>
         <tbody>${rows || `<tr><td colspan="9" class="empty">${trad('Aucune position')}</td></tr>`}</tbody>
-        <tfoot><tr>
-          <td class="sticky-col">${trad('Total')}</td><td colspan="3"></td>
-          <td>${fmtEUR(pnl.value)}</td><td>${fmtEUR(pnl.invested)}</td>
-          <td class="${cls(pnl.pnl)}">${fmtSigned(pnl.pnl)}</td>
-          <td class="${cls(pnl.pnl)}">${pnl.pct == null ? '' : fmtSignedPct(pnl.pct)}</td>
+        ${!ps.length ? '' : `<tfoot><tr>
+          <td class="sticky-col">${libelleVus}</td><td colspan="3"></td>
+          <td>${fmtEUR(vus.value)}</td><td>${fmtEUR(vus.invested)}</td>
+          <td class="${vus.avecBase ? cls(vus.pnl) : ''}">${vus.avecBase ? fmtSigned(vus.pnl) : ''}</td>
+          <td class="${cls(vus.pnl)}">${vus.pct == null ? '' : fmtSignedPct(vus.pct)}</td>
           <td></td>
-        </tr></tfoot>
+        </tr>${notePiedTitres(vus)}</tfoot>`}
       </table>
     </div>
   </div>

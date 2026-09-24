@@ -3009,6 +3009,17 @@ const I18N = {
     "prix de revient manquant": "cost basis missing",
     "{n} ligne sans prix de revient": "{n} holding without a cost basis",
     "{n} lignes sans prix de revient": "{n} holdings without a cost basis",
+    "Total des positions affichées": "Total of holdings shown",
+    "La somme des lignes affichées, filtres compris. Le cash de tes comptes n’y est pas : ce n’est pas la valeur d’un compte.":
+      "The sum of the holdings shown, filters included. The cash in your accounts is not in it: this is not an account’s value.",
+    "Aucune de ces lignes n’a de prix de revient : pas de perf à calculer.":
+      "None of these holdings has a cost basis: no perf to compute.",
+    "Cette ligne n’a pas de prix de revient : pas de perf à calculer.":
+      "This holding has no cost basis: no perf to compute.",
+    "La perf ne compte pas {n} lignes sans prix de revient, qui valent {v}.":
+      "Perf leaves out {n} holdings without a cost basis, worth {v}.",
+    "La perf ne compte pas {n} ligne sans prix de revient, qui vaut {v}.":
+      "Perf leaves out {n} holding without a cost basis, worth {v}.",
     "prix de revient non renseigné": "cost basis not entered",
     "jamais estimé": "never estimated",
     "à revoir": "to review",

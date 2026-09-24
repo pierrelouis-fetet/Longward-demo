@@ -616,6 +616,11 @@ const assetClassDe = p => {
 };
 const roleDe       = p => ROLES[p.role] ? p.role : ROLE_DEFAUT;
 
+function passeFiltresTitres(p, role = 'tous', compte = 'tous') {
+  return !!p && (role === 'tous' || roleDe(p) === role)
+    && (compte === 'tous' || p.account === compte);
+}
+
 const POCHE_DE_CLASSE = {
   actions:        'actions',
   obligations:    'obligations',
@@ -7153,8 +7158,7 @@ function repartitionPortefeuille(max = 8) {
   };
 }
 
-function latentPnl() {
-  const ps = Store.state.positions;
+function latentPnl(ps = Store.state.positions) {
   /* La valeur est connue de toutes les lignes ; le resultat, non.
 
      Le total soustrayait un prix de revient partiel d'une valeur complete : une

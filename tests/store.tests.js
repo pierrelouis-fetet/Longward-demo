@@ -2459,6 +2459,121 @@ suite('Une seule grammaire d’en-tête de carte', () => {
   });
 });
 
+/* --- Le total des lignes de titres suit leurs filtres ------------------- */
+suite('Le total des lignes de titres suit leurs filtres', () => {
+  /* Deux comptes, deux roles, deux lignes sans prix de revient dont une
+     manuelle. Les chiffres sont choisis pour se verifier de tete. */
+  const LIGNES = () => [
+    { name: 'A1', account: 'cA', role: 'core',      qty: 10, price: 100, buyPrice: 80 },
+    { name: 'A2', account: 'cA', role: 'satellite', qty: 5,  price: 40,  buyPrice: 50 },
+    { name: 'A3', account: 'cA', role: 'satellite', qty: 4,  price: 25,  buyPrice: 0 },
+    { name: 'B1', account: 'cB', role: 'core',      qty: 2,  price: 300, buyPrice: 250 },
+    { name: 'B2', account: 'cB', role: 'core',      manual: true, value: 400, invested: 0 },
+  ].map(p => ({ currency: deviseBase(), fx: 1, ...p }));
+  /* role, compte, noms retenus, valeur, investi, perf, pourcentage, lignes
+     sans base, valeur de ces lignes */
+  const ATTENDU = [
+    ['tous', 'tous', 'A1 A2 A3 B1 B2', 2300, 1550, 250, 250 / 1550 * 100, 2, 500],
+    ['tous', 'cA',   'A1 A2 A3',       1300, 1050, 150, 150 / 1050 * 100, 1, 100],
+    ['tous', 'cB',   'B1 B2',          1000,  500, 100, 20,               1, 400],
+    ['core', 'tous', 'A1 B1 B2',       2000, 1300, 300, 300 / 1300 * 100, 1, 400],
+    ['satellite', 'tous', 'A2 A3',      300,  250, -50, -20,              1, 100],
+    ['core', 'cA',   'A1',             1000,  800, 200, 25,               0, 0],
+    ['satellite', 'cA', 'A2 A3',        300,  250, -50, -20,              1, 100],
+    ['core', 'cB',   'B1 B2',          1000,  500, 100, 20,               1, 400],
+    ['satellite', 'cB', '',               0,    0,   0, null,             0, 0],
+  ];
+
+  test('chaque combinaison de filtres totalise exactement ses lignes', () => {
+    Fixture.poser();
+    const lignes = LIGNES();
+    for (const [role, compte, noms, valeur, investi, perf, pct, sansBase, valSans] of ATTENDU) {
+      const quoi = `${role} / ${compte}`;
+      const vues = lignes.filter(p => passeFiltresTitres(p, role, compte));
+      eq(vues.map(p => p.name).join(' '), noms, `${quoi} : les lignes retenues`);
+      const t = latentPnl(vues);
+      eq(t.count, vues.length, `${quoi} : le compte des lignes`);
+      pres(t.value, valeur, `${quoi} : la valeur`);
+      pres(t.invested, investi, `${quoi} : l’investi`);
+      pres(t.pnl, perf, `${quoi} : la perf`);
+      if (pct == null) eq(t.pct, null, `${quoi} : pas de base, pas de pourcentage`);
+      else pres(t.pct, pct, `${quoi} : le pourcentage`);
+      eq(t.sansBase, sansBase, `${quoi} : les lignes sans prix de revient`);
+      pres(t.valeurSansBase, valSans, `${quoi} : leur valeur`);
+      /* Un total vaut la somme de ses parts, colonne par colonne. */
+      pres(t.value, vues.reduce((s, p) => s + posValue(p), 0), `${quoi} : somme des valeurs`);
+      pres(t.invested, vues.reduce((s, p) => s + posInvested(p), 0), `${quoi} : somme des investis`);
+      pres(t.pnl, vues.reduce((s, p) => s + (posPerfEur(p) ?? 0), 0), `${quoi} : somme des perfs affichées`);
+      /* Et l'ecart entre valeur moins investi et perf est ce que la note chiffre. */
+      pres(t.value - t.invested - t.pnl, t.valeurSansBase, `${quoi} : l’écart se retrouve`);
+    }
+  });
+
+  test('une ligne seule sans prix de revient ne donne ni perf ni pourcentage', () => {
+    Fixture.poser();
+    const a3 = LIGNES().find(p => p.name === 'A3');
+    const t = latentPnl([a3]);
+    pres(t.value, 100, 'sa valeur compte');
+    pres(t.invested, 0, 'aucun investi connu');
+    eq(t.avecBase, 0, 'aucune base');
+    eq(t.pct, null, 'aucun pourcentage');
+    pres(t.pnl, 0, 'le calcul rend zéro, et c’est à l’écran de se taire');
+    const src = lireSource('assets/app.js');
+    const pied = src.slice(src.indexOf("${!ps.length ? '' : `<tfoot>"), src.indexOf('</tfoot>`}'));
+    vrai(pied.length > 100, 'le pied des lignes de titres est trouvable');
+    vrai(/\$\{vus\.avecBase \? fmtSigned\(vus\.pnl\) : ''\}/.test(pied), 'la perf se tait sans base');
+    vrai(/\$\{vus\.pct == null \? '' : fmtSignedPct\(vus\.pct\)\}/.test(pied), 'le pourcentage aussi');
+    vrai(/\$\{notePiedTitres\(vus\)\}/.test(pied), 'et une note dit pourquoi');
+    const note = src.slice(src.indexOf('function notePiedTitres('), src.indexOf('const POS_SORT_KEYS'));
+    vrai(/if \(!t\.sansBase\) return '';/.test(note), 'sans ligne manquante, aucune note');
+    vrai(/fmtEUR\(t\.valeurSansBase\)/.test(note), 'la note chiffre ce que la perf laisse de côté');
+  });
+
+  test('sans argument, le calcul reste celui de tout le portefeuille', () => {
+    Fixture.poser();
+    const a = latentPnl(), b = latentPnl(Store.state.positions), c = portfolioPnl();
+    for (const cle of ['value', 'invested', 'pnl', 'count', 'sansBase'])
+      eq(a[cle], b[cle], `${cle} : la liste par défaut est tout le portefeuille`);
+    eq(c.value, a.value, 'et le nom historique lit la même chose');
+    vrai(!passeFiltresTitres(null), 'une ligne absente ne passe aucun filtre');
+    vrai(passeFiltresTitres({ account: 'x', role: 'core' }), 'sans filtre, tout passe');
+  });
+
+  test('la carte lit ses lignes, la carte du haut garde tout le portefeuille', () => {
+    const src = lireSource('assets/app.js');
+    vrai(/const passeFiltresLignes = p => passeFiltresTitres\(p, posRole, posCompte\);/.test(src),
+      'la vue filtre par la règle du modèle, celle que ces tests font tourner');
+    const vue = src.slice(src.indexOf('function viewPositions('), src.indexOf('function mountPositions('));
+    vrai(/const pnl = portfolioPnl\(\);/.test(vue) && /<p class="ptf-total">\$\{fmtEUR\(st\.balance\)\}<\/p>/.test(vue),
+      'la carte Portefeuille garde sa valeur, cash compris');
+    vrai(/const vus = latentPnl\(ps\);/.test(vue), 'le total des lignes part de la liste filtrée');
+    const carte = vue.slice(vue.indexOf('<div class="card" data-anchor="titres">'), vue.indexOf('id="reperesFamilles"'));
+    vrai(carte.length > 1000, 'la carte des lignes de titres est trouvable');
+    vrai(!/\bpnl\./.test(carte), 'aucun chiffre du portefeuille entier dans la carte des lignes');
+    const iM = carte.indexOf('<div class="carte-meta">');
+    const iT = carte.indexOf('<p class="total-vus">');
+    vrai(iM > 0 && iT > iM && iT < carte.indexOf('<div class="liste-mobile">'),
+      'le sous-total vient juste sous le compte des lignes');
+    vrai(/\$\{!ps\.length \? '' : `<p class="total-vus">/.test(carte), 'et ne se pose pas sans ligne');
+    vrai(/<b>\$\{fmtEUR\(vus\.value\)\}<\/b>/.test(carte), 'le montant est celui des lignes affichées');
+    vrai(/<td>\$\{fmtEUR\(vus\.value\)\}<\/td><td>\$\{fmtEUR\(vus\.invested\)\}<\/td>/.test(carte),
+      'le pied du tableau aussi');
+    eq((carte.match(/\$\{libelleVus\}/g) || []).length, 2, 'un seul intitulé, posé sur les deux surfaces');
+    vrai(/trad\('Total des positions affichées'\)/.test(vue), 'l’intitulé dit des positions, pas un compte');
+    for (const k of ['Total des positions affichées',
+      'La somme des lignes affichées, filtres compris. Le cash de tes comptes n’y est pas : ce n’est pas la valeur d’un compte.',
+      'Aucune de ces lignes n’a de prix de revient : pas de perf à calculer.',
+      'Cette ligne n’a pas de prix de revient : pas de perf à calculer.',
+      'La perf ne compte pas {n} lignes sans prix de revient, qui valent {v}.',
+      'La perf ne compte pas {n} ligne sans prix de revient, qui vaut {v}.'])
+      vrai(I18N.en[k], `traduit : ${k}`);
+    const css = lireSource('assets/styles.css');
+    vrai(/\n\.total-vus \{ display: none; \}/.test(css), 'le sous-total ne vit pas sur grand écran, le pied le porte');
+    const mob = css.slice(css.indexOf('.total-vus { display: none; }'));
+    vrai(/@media \(max-width: 767px\) \{\s*\.total-vus \{\s*display: flex;/.test(mob), 'il vit sur téléphone');
+  });
+});
+
 /* --- Marches parle de la cible, et de rien qu'il ne sache ---------------- */
 suite('Les insights de Marchés', () => {
   test('l’écart à la cible vit là où la cible se règle, et aucun apport n’est lu', () => {
@@ -19831,8 +19946,10 @@ suite('Marchés : le filtre de compte suit les règles du filtre de rôle', () =
        filtre d affichage serait un piege. */
     const src = lireSource('assets/app.js');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
-    /* Le filtre est ecrit une fois, et les deux listes de la page le lisent. */
-    vrai(/\(posCompte === 'tous' \|\| p\.account === posCompte\)/.test(src)
+    /* Le filtre est ecrit une fois, dans le modele, et les deux listes de la
+       page le lisent a travers la vue. */
+    vrai(/\(compte === 'tous' \|\| p\.account === compte\)/.test(lireSource('assets/store.js'))
+      && /passeFiltresTitres\(p, posRole, posCompte\)/.test(src)
       && /\.filter\(\(\{ p \}\) => passeFiltresLignes\(p\)\)/.test(src),
       'la liste des lignes passe par le filtre de compte');
     vrai(/\$\{ids\.length < 2 \? '' : `<select data-action-change="filtrer-compte-titres"/.test(src),
@@ -25243,7 +25360,7 @@ suite('La plus-value ne dit que ce qu’elle peut prouver', () => {
     /* La garde peut tenir sur la meme ligne ou deux lignes plus haut, dans un
        ternaire etale : on la cherche dans ce qui precede immediatement, et sur
        la meme variable — une garde sur `lat` ne protege pas `tout`. */
-    const restants = [...src.matchAll(/fmtSignedPct\((lat|tout|pnl|st)\.pct/g)]
+    const restants = [...src.matchAll(/fmtSignedPct\((lat|tout|pnl|st|vus)\.pct/g)]
       .filter(m => !src.slice(Math.max(0, m.index - 220), m.index)
         .includes(`${m[1]}.pct == null`));
     eq(restants.length, 0,

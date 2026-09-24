@@ -1203,6 +1203,17 @@ table .field :is(input, select) { max-width: none; }
   margin: 0 0 8px;
 }
 .carte-meta > :last-child:not(:first-child) { margin-left: auto; }
+.total-vus { display: none; }
+@media (max-width: 767px) {
+  .total-vus {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    margin: 0 0 8px; font-size: var(--font-sm); color: var(--text-secondary);
+  }
+  .total-vus b {
+    color: var(--text-primary); font-weight: 650;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+}
 .card-head > .btn.sm { margin-block: -4px; }
 @media (max-width: 480px) {
   .carte-filtres:has(> :nth-child(2)) > .seg-mini,
@@ -2015,6 +2026,10 @@ tr.jalon-retenu td:first-child .muted { color: var(--accent); }
 tr.jalon-retenu td:first-child { font-weight: 650; }
 tbody tr:last-child td { border-bottom: none; }
 tfoot td { font-weight: 650; border-top: 1px solid var(--border-strong); border-bottom: none; padding-top: 11px; }
+tfoot tr.pied-note td {
+  font-weight: 400; border-top: none; padding-top: 2px; text-align: left;
+  font-size: var(--font-xs); color: var(--muted); white-space: normal;
+}
 /* Une cellule qui porte un nom porte du texte, pas un nombre : elle s'aligne a
    gauche. `td` est a droite par defaut, ce qui est juste pour des montants, et
    seule la premiere colonne repassait a gauche. Toutes les cellules `.name`
