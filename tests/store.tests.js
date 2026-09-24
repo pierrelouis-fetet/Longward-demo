@@ -2220,6 +2220,193 @@ suite('Ce qui a changé entre deux relevés', () => {
   });
 });
 
+/* --- Les apports sur les comptes de marche : declares, jamais devines ----- */
+suite('Les apports sur les comptes de marché', () => {
+  const app = () => lireSource('assets/app.js');
+  /* Un releve du fixture : les comptes du perimetre sont c_pea et c_cto. Un
+     apport absent n'est pas un zero, d'ou la clef posee seulement si donnee. */
+  const rel = (date, v, apports) => ({ date, comment: '', dettes: 0, v,
+    ...(apports === undefined ? {} : { apportsMarche: apports }) });
+  const deux = (v1, v2, apports) => Fixture.poser(s => {
+    s.monthly = [rel('2026-07-01', v1), rel('2026-08-01', v2, apports)];
+  });
+  const seul = () => intervallesMarche()[0];
+
+  test('cas 1 : un apport puis un achat font un apport, pas deux', () => {
+    /* Le cash verse puis investi reste dans le compte : sa valeur monte de
+       l'apport, l'achat ne la change pas. */
+    deux({ c_pea: 10000 }, { c_pea: 11000 }, 1000);
+    const x = seul();
+    eq(x.apports, 1000, 'l’apport réel');
+    eq(x.variation, 1000); eq(x.horsApports, 0, 'rien d’autre n’a bougé');
+    const b = bilanMarche(intervallesMarche());
+    eq(b.apports, 1000, 'pas deux mille');
+    vrai(!Object.keys(b).some(k => /achat/i.test(k)), 'aucun montant d’achat n’est fabriqué');
+  });
+
+  test('cas 2 : une vente réinvestie n’est pas un apport', () => {
+    Fixture.poser(s => {
+      s.monthly = [rel('2026-07-01', { c_cto: 20000 }), rel('2026-08-01', { c_cto: 20000 }, 0)];
+      s.sales = [{ id: 's1', date: '2026-07-15', name: 'Titre vendu', qty: 1, price: 2000,
+                   gross: 2000, invested: 1500, realised: 500, account: 'c_cto', cashAccount: 'c_cto' }];
+    });
+    const x = seul();
+    eq(x.apports, 0, 'aucun capital externe');
+    eq(x.horsApports, 0, 'et la vente ne se lit pas comme un gain de la période');
+  });
+
+  test('cas 3 : un virement du compte courant vers le PEA est un apport au portefeuille, pas au patrimoine', () => {
+    Fixture.poser(s => {
+      s.monthly = [rel('2026-07-01', { c_courant: 8000, c_pea: 10000 }),
+                   rel('2026-08-01', { c_courant: 3000, c_pea: 15000 }, 5000)];
+    });
+    eq(seul().apports, 5000, 'le portefeuille reçoit cinq mille');
+    eq(seul().horsApports, 0);
+    eq(derniereVariation().totalChange, 0, 'le patrimoine, lui, n’a pas bougé');
+    eq(derniereVariation().explicitEvents.length, 0, 'et le journal des apports n’en dit rien');
+  });
+
+  test('cas 4 et 5 : ce qui ne vient pas de l’apport se lit hors apports', () => {
+    deux({ c_pea: 20000 }, { c_pea: 22000 }, 0);
+    eq(seul().horsApports, 2000, 'sans apport, toute la hausse');
+    deux({ c_pea: 20000 }, { c_pea: 24000 }, 3000);
+    eq(seul().apports, 3000); eq(seul().horsApports, 1000, 'le reste de la hausse');
+  });
+
+  test('cas 6 : un relevé muet laisse la période non attribuée', () => {
+    deux({ c_pea: 20000 }, { c_pea: 23000 });
+    eq(seul().apports, null, 'vide n’est pas zéro');
+    eq(seul().horsApports, null);
+    const b = bilanMarche(intervallesMarche());
+    eq(b.nonAttribue, 3000, 'toute la variation reste non attribuée');
+    eq(b.variation, b.apports + b.horsApports + b.nonAttribue, 'la somme tient');
+  });
+
+  test('un virement entre deux comptes de marché s’annule dans la somme', () => {
+    deux({ c_pea: 10000, c_cto: 5000 }, { c_pea: 9000, c_cto: 6000 }, 0);
+    eq(seul().variation, 0); eq(seul().horsApports, 0);
+  });
+
+  test('la clôture du 31/12 s’écarte, et ce qu’elle déclare se retrouve', () => {
+    Fixture.poser(s => {
+      s.monthly = [rel('2025-12-01', { c_pea: 10000 }), rel('2025-12-31', { c_pea: 10500 }, 300),
+                   rel('2026-01-01', { c_pea: 10500 }, 0)];
+    });
+    const iv = intervallesMarche();
+    eq(iv.length, 1, 'un seul intervalle, comme dans le rythme');
+    eq(iv[0].apports, 300, 'l’apport de la clôture n’est pas perdu');
+    Fixture.poser(s => {
+      s.monthly = [rel('2025-12-01', { c_pea: 10000 }), rel('2025-12-31', { c_pea: 10500 }),
+                   rel('2026-01-01', { c_pea: 10500 }, 0)];
+    });
+    eq(intervallesMarche()[0].apports, null, 'un seul relevé muet rend l’intervalle non déclaré');
+  });
+
+  test('une valeur absurde ne compte pas comme un apport', () => {
+    eq(apportMarcheDeclare({ apportsMarche: 1e20 }), null);
+    eq(apportMarcheDeclare({ apportsMarche: 'abc' }), null);
+    eq(apportMarcheDeclare({ apportsMarche: '' }), null);
+    eq(apportMarcheDeclare({ apportsMarche: -500 }), -500, 'un retrait est un apport négatif');
+    eq(apportMarcheDeclare({ apportsMarche: 0 }), 0, 'zéro se déclare');
+  });
+
+  /* Deux annees de releves mensuels sur le PEA : chaque intervalle gagne son
+     apport declare plus un reste fixe, donc la reponse se calcule a la main. */
+  const annees = ({ trou = null } = {}) => Fixture.poser(s => {
+    const dates = [];
+    for (const an of [2025, 2026]) for (let m = 1; m <= 12; m++) {
+      const d = `${an}-${String(m).padStart(2, '0')}-01`;
+      if (d <= '2026-08-01') dates.push(d);
+    }
+    let v = 20000;
+    s.monthly = dates.map((d, i) => {
+      if (!i) return rel(d, { c_pea: v });
+      const a = d >= '2026-06-01' ? 800 : d >= '2026-02-01' ? 500 : 400;
+      v += a + 200;
+      return rel(d, { c_pea: v }, d === trou ? undefined : a);
+    });
+  });
+  const lire = (id, aujourdhui = '2026-09-10') => {
+    const r = REGLES_INSIGHT.find(x => x.id === id);
+    const m = { marche: intervallesMarche(), aujourdhui };
+    return r.eligible(m) ? r.evaluer(m) : null;
+  };
+
+  test('les apports de l’année : les relevés qui la bornent, et la même période un an plus tôt', () => {
+    annees();
+    const r = lire('market_contributions_year');
+    vrai(r, 'la règle parle');
+    eq(r.params.total, 4400, 'quatre mois à cinq cents, trois à huit cents');
+    eq(r.params.months, 7); eq(r.params.from, '2026-01-01'); eq(r.params.to, '2026-08-01');
+    eq(r.params.sinceJanuary, true);
+    eq(r.params.previous, 2800, 'les mêmes sept mois de 2025');
+    eq(lire('market_contributions_year', '2027-02-01'), null, 'un dernier relevé vieux de six mois ne parle plus');
+    annees({ trou: '2026-04-01' });
+    const t = lire('market_contributions_year');
+    eq(t.params.from, '2026-04-01', 'un relevé muet arrête la suite, il ne compte pas pour zéro');
+    eq(t.params.sinceJanuary, false, 'et le titre ne dit plus « en 2026 »');
+  });
+
+  test('d’où vient la hausse : la part des apports, exacte', () => {
+    annees();
+    const r = lire('market_growth_origin');
+    vrai(r, 'la règle parle');
+    eq(r.params.contributions, 4400); eq(r.params.rest, 1400, 'sept fois deux cents');
+    eq(r.params.variation, 5800);
+    vrai(Math.abs(r.params.contributionsPct - 4400 / 5800 * 100) < 1e-9, 'une division, rien de plus');
+    eq(r.evidence.restIsNotOnlyMarkets, true, 'la preuve dit que le reste n’est pas que les marchés');
+  });
+
+  test('le rythme des apports, trois mois contre trois mois', () => {
+    annees();
+    const r = lire('market_contributions_pace');
+    vrai(r, 'la règle parle');
+    eq(Math.round(r.params.currentMonthly), 800); eq(Math.round(r.params.previousMonthly), 500);
+    eq(Math.round(r.params.deltaPct), 60);
+  });
+
+  test('la régularité se compte, elle ne se juge pas', () => {
+    annees();
+    const r = lire('market_contributions_regularity');
+    eq(r.params.withContribution, 7); eq(r.params.statements, 7);
+    eq(REGLES_INSIGHT.find(x => x.id === 'market_contributions_regularity').priorite, INSIGHT_PRIORITE.BASSE,
+      'elle ne passe jamais devant une lecture en euros');
+  });
+
+  test('sans apport déclaré, l’onglet Marchés se tait', () => {
+    Fixture.poser(s => {
+      s.monthly = [rel('2026-06-01', { c_pea: 20000 }), rel('2026-07-01', { c_pea: 21000 }),
+                   rel('2026-08-01', { c_pea: 22000 })];
+    });
+    for (const id of ['market_contributions_year', 'market_growth_origin',
+                      'market_contributions_pace', 'market_contributions_regularity'])
+      eq(lire(id), null, `${id} ne devine rien`);
+  });
+
+  test('les quatre règles vivent sur l’onglet Marchés, et parlent de versements', () => {
+    const ids = ['market_contributions_year', 'market_growth_origin',
+                 'market_contributions_pace', 'market_contributions_regularity'];
+    for (const id of ids) eq(REGLES_INSIGHT.find(x => x.id === id).onglet, 'positions', `${id} est chez Marchés`);
+    const src = app();
+    const pres = src.slice(src.indexOf('  market_contributions_year: {'), src.indexOf('  spending_shift: {'));
+    const textes = [...pres.matchAll(/trad\('([^']*)'/g)].map(m => m[1]);
+    vrai(textes.length >= 12, `${textes.length} textes lus`);
+    for (const t of textes)
+      vrai(!/investi|gagn|rapport|performance|Bravo|devrais/i.test(t), `« ${t} » dit un versement, pas un gain ni un conseil`);
+    vrai(/cta: \{ vue: 'history', libelle: 'Voir mes relevés' \}/.test(pres), 'le renvoi mène aux relevés, où l’apport se déclare');
+  });
+
+  test('le relevé porte un seul champ d’apport, facultatif', () => {
+    const src = app();
+    vrai(/id="relApports"/.test(src), 'le champ existe dans la fenêtre du relevé');
+    vrai(/\$\{avant && marcheOuverts\.length \? `/.test(src), 'jamais sur un premier relevé ni sans compte de marché');
+    vrai(/\.\.\.\(champApports \? \{ apportsMarche: brutApports === '' \? null : lireNombre\(brutApports\) \} : \{\}\)/.test(src),
+      'vide s’enregistre comme inconnu, et sans champ rien ne change');
+    vrai(/if \('apportsMarche' in saisi\) \{\s*if \(saisi\.apportsMarche === null\) delete row\.apportsMarche;/.test(src),
+      'effacer le champ efface la déclaration');
+  });
+});
+
 /* ------------------------------------------------------------------
    4 bis. Les espèces, qui n'ont pas d'établissement
    ------------------------------------------------------------------ */
@@ -16776,6 +16963,9 @@ suite('Une page ne liste pas trois fois les mêmes positions', () => {
       ['état des cours', 'barreEtatCours()'],
       ['Portefeuille', `trad('Portefeuille')`],
       ['Aujourd’hui', 'const j = dayPerformance();'],
+      /* Les insights de l'onglet viennent apres ce qu'on a et ce qui a bouge,
+         avant le detail des lignes : jamais un constat avant le portefeuille. */
+      ['À retenir', "${carteInsights('positions', 'À retenir')}"],
       ['Lignes de titres', 'data-anchor="titres"'],
       ['repères', 'id="reperesFamilles"'],
       ['recherche', '\n  ${symbolSearchCard()}\n'],

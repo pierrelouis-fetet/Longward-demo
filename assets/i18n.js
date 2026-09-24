@@ -1350,6 +1350,33 @@ const I18N = {
     "Ton encours de crédit a augmenté": "Your loan balance went up",
     "de relevé à relevé, en {m} mois": "statement to statement, over {m} months",
     "{a} restant dû, contre {b}": "{a} outstanding, against {b}",
+    "Tes apports sur les marchés en {a}": "Your market contributions in {a}",
+    "Tes apports sur les marchés depuis {m}": "Your market contributions since {m}",
+    "versés sur tes comptes de marché entre tes relevés de {a} et de {b}":
+      "paid into your market accounts between your {a} and {b} statements",
+    "contre {b} sur les mêmes mois un an plus tôt": "against {b} over the same months a year earlier",
+    "soit {v} en moyenne": "that’s {v} on average",
+    "Voir mes relevés": "See my statements",
+    "Ta hausse vient surtout de tes apports": "Your rise comes mostly from your contributions",
+    "Ta hausse vient surtout de la valorisation": "Your rise comes mostly from valuation",
+    "de la hausse de tes comptes de marché vient de tes apports, sur {m} mois":
+      "of the rise in your market accounts comes from your contributions, over {m} months",
+    "{a} versés, {h} hors apports : cours, change, dividendes et frais confondus":
+      "{a} paid in, {h} excluding contributions: prices, currency, dividends and fees combined",
+    "Ton rythme d’apport accélère": "Your contribution pace is picking up",
+    "Ton rythme d’apport ralentit": "Your contribution pace is slowing",
+    "versés sur les {n} derniers mois de relevés": "paid in over the last {n} months of statements",
+    "contre {b} sur les {m} mois d’avant": "against {b} over the {m} months before",
+    "Un apport à chaque relevé": "A contribution at every statement",
+    "Tes apports, relevé par relevé": "Your contributions, statement by statement",
+    "de tes relevés portent un versement sur tes comptes de marché":
+      "of your statements carry a payment into your market accounts",
+    "entre tes relevés de {a} et de {b}": "between your {a} and {b} statements",
+    "Versé sur tes comptes de marché depuis {m} ({dev})": "Paid into your market accounts since {m} ({dev})",
+    "Ce que tu as viré vers {c} depuis le relevé précédent, retraits déduits. Un virement entre deux de ces comptes n’en fait pas partie, ni une vente suivie d’un achat. Laisse vide si tu ne sais pas : Longward ne devine pas, et la période reste non attribuée.":
+      "What you transferred into {c} since the previous statement, minus withdrawals. A transfer between two of these accounts does not count, nor does a sale followed by a purchase. Leave it empty if you do not know: Longward does not guess, and the period stays unattributed.",
+    "Versé sur tes comptes de marché": "Paid into your market accounts",
+    "Versé sur tes comptes de marché depuis le relevé précédent": "Paid into your market accounts since the previous statement",
     "Espèces disponibles": "Cash available",
     "Coût d’achat": "Cost of purchase",
     "coût d’achat": "cost of purchase",

@@ -948,6 +948,8 @@ const EYEBROW_INSIGHT = {
   budget: 'Dépenses',
   concentration: 'Concentration',
   data_quality: 'À compléter',
+  contributions: 'Apports',
+  market_origin: 'Progression',
 };
 
 const PRESENTATION_INSIGHT = {
@@ -1038,6 +1040,47 @@ const PRESENTATION_INSIGHT = {
     secondaire: p => trad('{a} restant dû, contre {b}')
       .replace('{a}', fmtEUR0(p.current)).replace('{b}', fmtEUR0(p.previous)),
     cta: { vue: 'accounts', libelle: 'Voir mes crédits' },
+  },
+  market_contributions_year: {
+    titre: p => (p.sinceJanuary
+      ? trad('Tes apports sur les marchés en {a}').replace('{a}', p.year)
+      : trad('Tes apports sur les marchés depuis {m}').replace('{m}', fmtMonth(p.from))),
+    valeur: p => fmtEUR0(p.total),
+    phrase: p => trad('versés sur tes comptes de marché entre tes relevés de {a} et de {b}')
+      .replace('{a}', fmtMonth(p.from)).replace('{b}', fmtMonth(p.to)),
+    secondaire: p => (p.previous != null
+      ? trad('contre {b} sur les mêmes mois un an plus tôt').replace('{b}', fmtEUR0(p.previous))
+      : trad('soit {v} en moyenne').replace('{v}', fmtEUR0(p.perMonth) + trad('/mois'))),
+    cta: { vue: 'history', libelle: 'Voir mes relevés' },
+  },
+  market_growth_origin: {
+    titre: p => trad(p.contributionsPct >= 50
+      ? 'Ta hausse vient surtout de tes apports'
+      : 'Ta hausse vient surtout de la valorisation'),
+    valeur: p => fmtPct(p.contributionsPct, 0),
+    phrase: p => trad('de la hausse de tes comptes de marché vient de tes apports, sur {m} mois')
+      .replace('{m}', p.months),
+    secondaire: p => trad('{a} versés, {h} hors apports : cours, change, dividendes et frais confondus')
+      .replace('{a}', fmtEUR0(p.contributions)).replace('{h}', fmtEUR0(p.rest)),
+    cta: { vue: 'history', libelle: 'Voir mes relevés' },
+  },
+  market_contributions_pace: {
+    titre: p => trad(p.currentMonthly > p.previousMonthly
+      ? 'Ton rythme d’apport accélère' : 'Ton rythme d’apport ralentit'),
+    valeur: p => fmtEUR0(p.currentMonthly) + trad('/mois'),
+    phrase: p => trad('versés sur les {n} derniers mois de relevés').replace('{n}', p.currentMonths),
+    secondaire: p => trad('contre {b} sur les {m} mois d’avant')
+      .replace('{b}', fmtEUR0(p.previousMonthly) + trad('/mois')).replace('{m}', p.previousMonths),
+    cta: { vue: 'history', libelle: 'Voir mes relevés' },
+  },
+  market_contributions_regularity: {
+    titre: p => (p.withContribution === p.statements
+      ? trad('Un apport à chaque relevé') : trad('Tes apports, relevé par relevé')),
+    valeur: p => trad('{n} sur {t}').replace('{n}', p.withContribution).replace('{t}', p.statements),
+    phrase: () => trad('de tes relevés portent un versement sur tes comptes de marché'),
+    secondaire: p => trad('entre tes relevés de {a} et de {b}')
+      .replace('{a}', fmtMonth(p.from)).replace('{b}', fmtMonth(p.to)),
+    cta: { vue: 'history', libelle: 'Voir mes relevés' },
   },
   spending_shift: {
     titre: p => trad(p.delta > 0 ? 'Tes dépenses ont monté'
@@ -3427,6 +3470,8 @@ function viewPositions() {
             .replace('{n}', j.lignes.length)}</button>`}
     </div>`;
   })()}
+
+  ${carteInsights('positions', 'À retenir')}
 
   <div class="card" data-anchor="titres">
     <div class="card-head">
@@ -12776,6 +12821,10 @@ function appliquerReleve(index, saisi) {
   row.dettes = round2(num(saisi.dettes));
   row.parts = partsDuReleve(saisi.v);
   row.clotureLe = todayISO();
+  if ('apportsMarche' in saisi) {
+    if (saisi.apportsMarche === null) delete row.apportsMarche;
+    else row.apportsMarche = round2(num(saisi.apportsMarche));
+  }
   delete row.poches;
   historyYear = String(row.date).slice(0, 4);
   Store.save(); render();
@@ -12840,6 +12889,8 @@ function askMonthlySnapshot(index) {
     const masques = comptes.filter(masque).length;
     const avant = Store.state.monthly.slice(0, index).filter(x => !rowIsEmpty(x)).pop();
     const precedent = avant ? rowTotal(avant) : 0;
+    const marcheOuverts = comptesDeMarche()
+      .filter(a => a.compte && a.compte.statut !== 'archive').map(a => a.label);
     const photo = nowTotals().total;
     const revolu = moisRevolu(r.date);
     const anCourant = +todayISO().slice(0, 4);
@@ -12939,6 +12990,19 @@ function askMonthlySnapshot(index) {
         <input type="checkbox" id="relCloture" ${historyShowLegacy ? 'checked' : ''} style="width:auto">
         ${trad('Afficher les comptes clôturés')} (${masques})
       </label>` : ''}
+      ${/* Le seul flux que Longward demande, et il est facultatif : ce qui a
+            ete verse sur les comptes de marche depuis le releve d'avant. Vide,
+            il reste inconnu et l'intervalle non attribue ; zero declare
+            l'absence de versement. La photo ne le remplit pas, elle ne le sait
+            pas. Il ne se pose pas sur un premier releve : il n'y a pas d'avant. */''}
+      ${avant && marcheOuverts.length ? `
+      <div class="field" style="margin-top:12px">
+        <label>${trad('Versé sur tes comptes de marché depuis {m} ({dev})').replace('{m}', esc(fmtMonth(avant.date)))}${aide(
+          trad('Ce que tu as viré vers {c} depuis le relevé précédent, retraits déduits. Un virement entre deux de ces comptes n’en fait pas partie, ni une vente suivie d’un achat. Laisse vide si tu ne sais pas : Longward ne devine pas, et la période reste non attribuée.')
+            .replace('{c}', marcheOuverts.join(', ')))}</label>
+        <input type="number" step="any" inputmode="decimal" id="relApports"
+               class="champ-large" value="${apportMarcheDeclare(r) ?? ''}" placeholder="${trad('non renseigné')}">
+      </div>` : ''}
       <div class="field" style="margin-top:12px">
         <label>${trad('Crédits en cours ce mois-là ({dev})')}${aide(trad("Le total du capital restant dû à cette date. Il ne se soustrait pas des champs ci-dessus (ceux-ci portent la valeur brute de chaque compte), mais il fait monter la part nette de tes biens, mois après mois, à mesure que tu rembourses."))}</label>
         <input type="number" step="any" inputmode="decimal" id="relDettes"
@@ -12981,6 +13045,7 @@ function askMonthlySnapshot(index) {
     for (const c of champs) c.oninput = touche;
     $('#relDettes').oninput = touche;       // le net suit la frappe
     $('#relNote').oninput = () => { sale = true; };
+    if ($('#relApports')) $('#relApports').oninput = () => { sale = true; };
     majTotal();
     /* Le focus va au bouton quand il existe.
 
@@ -13043,6 +13108,13 @@ function askMonthlySnapshot(index) {
         toast(trad('Aucun montant saisi. Renseigne au moins une poche, ou préremplis avec les montants d’aujourd’hui.'));
         return false;
       }
+      const champApports = $('#relApports');
+      const brutApports = champApports ? String(champApports.value ?? '').trim() : '';
+      if (brutApports !== '' && !nombreValide(brutApports, 'signe')) {
+        champApports.focus(); champApports.setAttribute('aria-invalid', 'true');
+        toast(`${trad('Versé sur tes comptes de marché')}${deuxPoints()} ${trad('cette valeur semble anormalement élevée, vérifie le montant saisi')}`);
+        return false;
+      }
 
       if (!revolu && !await askConfirm(
           trad('Enregistrer un relevé pour {m} ?').replace('{m}', fmtMonth(r.date)) + '\n\n'
@@ -13058,7 +13130,8 @@ function askMonthlySnapshot(index) {
           { ok: 'Remplacer' })) return false;
 
       appliquerReleve(index, { v, comment: $('#relNote').value,
-                               dettes: $('#relDettes').value });
+                               dettes: $('#relDettes').value,
+                               ...(champApports ? { apportsMarche: brutApports === '' ? null : lireNombre(brutApports) } : {}) });
       sale = false;
       photoPrise = false;
       if (premier) {
@@ -13781,6 +13854,9 @@ const APERCUS = {
         <p class="hint" style="margin:14px 0 6px">${trad('Écarts depuis le relevé de {m}')
           .replace('{m}', esc(fmtMonth(variation.depuis)))}</p>
         ${listeVariation(variation, { avecTotal: false })}` : ''}
+        ${apportMarcheDeclare(r) !== null ? `
+        <p class="small" style="margin:8px 0 0">${trad('Versé sur tes comptes de marché depuis le relevé précédent')}${deuxPoints()}
+          <b>${fmtSigned(apportMarcheDeclare(r))}</b></p>` : ''}
         ${comptes.length ? `
         <p class="hint" style="margin:14px 0 2px">${trad('Compte par compte')}</p>
         <table><tbody>${comptes.map(c => `<tr>
