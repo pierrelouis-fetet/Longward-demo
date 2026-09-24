@@ -108,10 +108,6 @@ const SEUIL_AFFICHAGE_DETTE_PCT = 2;
 
 const MOIS_FRAICHEUR_RELEVE = 3;
 
-const INTERVALLES_MINIMUM_APPORTS = 2;
-const MOIS_FENETRE_APPORTS = 3;
-const INTERVALLES_MINIMUM_REGULARITE = 4;
-
 const MOIS_MINIMUM_FENETRE_RYTHME = 6;
 
 const MOIS_MINIMUM_FENETRE_DEPENSES = 3;
@@ -356,7 +352,6 @@ function mesuresInsights(ctx) {
     epargne: rec,
     pace,
     releves,
-    marche: intervallesMarche(),
     depenses,
     projection: proj,
     /* Le poids de la dette dans le patrimoine, quand la base est positive.
@@ -897,106 +892,6 @@ const REGLES_INSIGHT = [
     },
   },
 
-  {
-    id: 'market_contributions_year',
-    onglet: 'positions',
-    famille: 'apports',
-    categorie: 'contributions',
-    priorite: INSIGHT_PRIORITE.MOYENNE,
-    dedupeGroup: 'apports_annee',
-    reposJours: 30,
-    materialite: 100,
-    question: 'Combien ai-je versé sur mes comptes de marché cette année ?',
-    titleKey: 'insight.market_contributions_year.title',
-    descriptionKey: 'insight.market_contributions_year.description',
-    eligible: m => !!apportsDeLAnnee(m),
-    evaluer(m) {
-      const a = apportsDeLAnnee(m);
-      if (!a || !(a.bilan.apports > 0)) return null;
-      const b = a.bilan;
-      return {
-        valeur: b.apports,
-        poids: 20,
-        params: {
-          total: b.apports, perMonth: b.apports / b.mois, months: b.mois,
-          from: b.depuis, to: b.jusqua, year: a.an, sinceJanuary: a.depuisJanvier,
-          previous: a.precedent ? a.precedent.apports : null,
-        },
-        evidence: {
-          source: 'intervallesMarche', from: b.depuis, to: b.jusqua, months: b.mois,
-          intervals: b.intervalles, contributions: b.apports,
-          previousPeriod: a.precedent ? { from: a.precedent.depuis, to: a.precedent.jusqua,
-                                          contributions: a.precedent.apports } : null,
-        },
-        action: { vue: 'history' },
-      };
-    },
-  },
-
-  {
-    id: 'market_contributions_pace',
-    onglet: 'positions',
-    famille: 'apports',
-    categorie: 'contributions',
-    priorite: INSIGHT_PRIORITE.MOYENNE,
-    dedupeGroup: 'apports_rythme',
-    reposJours: 30,
-    materialite: SEUIL_AFFICHAGE_RYTHME_PCT,
-    question: 'Mon rythme d’apport change-t-il ?',
-    titleKey: 'insight.market_contributions_pace.title',
-    descriptionKey: 'insight.market_contributions_pace.description',
-    eligible: m => !!rythmesApports(m),
-    evaluer(m) {
-      const r = rythmesApports(m);
-      if (!r || !(r.precedent > 0)) return null;
-      if (Math.round(r.courant) === Math.round(r.precedent)) return null;
-      const ecartPct = (r.courant / r.precedent - 1) * 100;
-      if (Math.abs(ecartPct) + 1e-9 < SEUIL_AFFICHAGE_RYTHME_PCT) return null;
-      return {
-        valeur: ecartPct,
-        poids: amplitude(ecartPct, SEUIL_AFFICHAGE_RYTHME_PCT),
-        params: {
-          currentMonthly: r.courant, currentMonths: r.recente.mois,
-          previousMonthly: r.precedent, previousMonths: r.precedente.mois, deltaPct: ecartPct,
-        },
-        evidence: {
-          source: 'intervallesMarche',
-          currentFrom: r.recente.depuis, currentTo: r.recente.jusqua, currentContributions: r.recente.apports,
-          previousFrom: r.precedente.depuis, previousTo: r.precedente.jusqua,
-          previousContributions: r.precedente.apports, displayThresholdPct: SEUIL_AFFICHAGE_RYTHME_PCT,
-        },
-        action: { vue: 'history' },
-      };
-    },
-  },
-
-  {
-    id: 'market_contributions_regularity',
-    onglet: 'positions',
-    famille: 'apports',
-    categorie: 'contributions',
-    priorite: INSIGHT_PRIORITE.BASSE,
-    dedupeGroup: 'apports_regularite',
-    reposJours: 45,
-    materialite: 1,
-    question: 'Mes apports sont-ils réguliers ?',
-    titleKey: 'insight.market_contributions_regularity.title',
-    descriptionKey: 'insight.market_contributions_regularity.description',
-    eligible: m => !!apportsDeLAnnee(m),
-    evaluer(m) {
-      const a = apportsDeLAnnee(m);
-      if (!a || a.bilan.intervalles < INTERVALLES_MINIMUM_REGULARITE) return null;
-      const b = a.bilan;
-      return {
-        valeur: b.avecApport,
-        params: { withContribution: b.avecApport, statements: b.intervalles, from: b.depuis, to: b.jusqua },
-        evidence: { source: 'intervallesMarche', from: b.depuis, to: b.jusqua,
-                    intervals: b.intervalles, withContribution: b.avecApport },
-        action: { vue: 'history' },
-      };
-    },
-  },
-
   /* --- Le poste qui a bouge, et lui seul ----------------------------------
 
      LA REGLE QUI MANQUAIT, et c'est la plus utile de l'onglet. `spending_shift`
@@ -1356,55 +1251,6 @@ function ecartDetteReleves(m) {
     mois: moisEntre(String(avant.date), String(apres.date)),
     precedent, courant, ecart, pct: ecart / precedent * 100,
   };
-}
-
-/* --- Les apports sur les comptes de marche ---------------------------------
-
-   LA SUITE DECLAREE LA PLUS RECENTE. On part du dernier intervalle et on
-   remonte tant que chacun porte son apport : un trou arrete la suite, parce
-   qu'un total qui l'enjamberait additionnerait des mois connus et un mois
-   inconnu en les appelant pareil. Le dernier releve doit etre frais.
-   `depuisLe` borne la remontee, pour l'annee en cours. */
-function suiteDeclaree(m, depuisLe = '') {
-  const iv = m.marche || [];
-  if (!iv.length) return [];
-  if (moisEntre(String(iv[iv.length - 1].jusqua), String(m.aujourdhui)) > MOIS_FRAICHEUR_RELEVE) return [];
-  const suite = [];
-  for (let i = iv.length - 1; i >= 0; i--) {
-    const x = iv[i];
-    if (x.apports === null || String(x.depuis) < depuisLe) break;
-    suite.unshift(x);
-  }
-  return suite;
-}
-
-function apportsDeLAnnee(m) {
-  const an = String(m.aujourdhui).slice(0, 4);
-  const suite = suiteDeclaree(m, an + '-01-01');
-  if (suite.length < INTERVALLES_MINIMUM_APPORTS) return null;
-  const b = bilanMarche(suite);
-  const iv = m.marche || [];
-  const premier = iv.find(x => String(x.depuis) >= an + '-01-01');
-  const depuisJanvier = !!premier && premier.depuis === b.depuis && String(b.depuis).slice(5, 7) === '01';
-  const unAnPlusTot = d => String(Number(String(d).slice(0, 4)) - 1) + String(d).slice(4, 7);
-  const avant = iv.filter(x => String(x.depuis).slice(0, 7) >= unAnPlusTot(b.depuis)
-    && String(x.jusqua).slice(0, 7) <= unAnPlusTot(b.jusqua));
-  const comparable = avant.length > 0 && avant.every(x => x.apports !== null)
-    && String(avant[0].depuis).slice(0, 7) === unAnPlusTot(b.depuis)
-    && String(avant[avant.length - 1].jusqua).slice(0, 7) === unAnPlusTot(b.jusqua)
-    && avant.reduce((s, x) => s + x.mois, 0) === b.mois;
-  return { an, bilan: b, depuisJanvier, precedent: comparable ? bilanMarche(avant) : null };
-}
-
-/* Deux rythmes d'apport, le recent et celui d'avant, en euros par mois, sur la
-   suite declaree. Les fenetres se comptent en mois couverts, comme pour le
-   rythme du patrimoine : `fenetresRythme()` s'en charge, et ne sait rien des
-   apports. */
-function rythmesApports(m) {
-  const f = fenetresRythme(suiteDeclaree(m), MOIS_FENETRE_APPORTS);
-  if (!f) return null;
-  const a = bilanMarche(f.recente), b = bilanMarche(f.precedente);
-  return { recente: a, precedente: b, courant: a.apports / a.mois, precedent: b.apports / b.mois };
 }
 
 /* =============================================================
