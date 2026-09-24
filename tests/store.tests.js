@@ -2136,8 +2136,13 @@ suite('Ce qui a changé entre deux relevés', () => {
     const corps = src.slice(src.indexOf('function variationPatrimoine('), src.indexOf('function variationDuReleve('));
     vrai(corps.length > 200, 'le moteur est trouvable');
     const code = corps.replace(/\/\*[\s\S]*?\*\//g, '');
-    for (const interdit of ['posInvested', 'buyPrice', 'prixDeRevient', 'sales', 'positions', 'nowTotals', 'patrimoine('])
+    for (const interdit of ['posInvested', 'buyPrice', 'prixDeRevient', 'positions', 'nowTotals', 'patrimoine('])
       vrai(!code.includes(interdit), `${interdit} n’entre pas dans une différence de relevés`);
+    /* Le journal des ventes n'y entre que pour ses sorties du perimetre : une
+       vente creditee sur un compte suivi est un transfert de forme, pas un
+       evenement du net. */
+    vrai(/\.filter\(v => perimetreDeVente\(v\) === 'sortie'/.test(code),
+      'seules les cessions sorties de Longward deviennent des événements');
     vrai(!/monthly\[i\]\.investi|\.investi\s*=/.test(src), 'aucun prix de revient historique n’est stocké');
   });
 
@@ -2217,6 +2222,176 @@ suite('Ce qui a changé entre deux relevés', () => {
     eq(avec(100000, 95000, '2027-03-01'), null, 'un dernier relevé vieux de sept mois ne parle plus');
     eq(avec(0, 200000, '2026-09-24'), null, 'un crédit qui naît n’a pas de base');
     vrai(avec(90000, 110000, '2026-09-24').params.delta > 0, 'une hausse se dit aussi');
+  });
+});
+
+/* --- Une cession, quel que soit l'actif : forme, pas valeur -------------- */
+suite('Une seule logique de cession', () => {
+  const app = () => lireSource('assets/app.js');
+  const net = () => round2(patrimoine().net);
+  const cashDe = id => round2(cashCompte(compteById(id)));
+  /* Un fixture enrichi : une ligne cotee sur le CTO, un compte de parts de
+     societe, un portefeuille crypto qui garde des euros et un autre qui n'en
+     garde pas, et une assurance-vie sans poche de liquidites. */
+  const poser = (modifier) => Fixture.poser(s => {
+    s.positions.push({ id: 'p_a', name: 'Titre A', isin: '', symbol: 'TA', currency: 'EUR', qty: 10,
+                       buyPrice: 150, price: 200, fx: 1, fxBuy: 1, account: 'c_cto', manual: false,
+                       assetClass: 'actions', role: 'satellite' });
+    s.comptes.push(
+      { id: 'c_soc', etabId: 'e_pe', type: 'pe', statut: 'ouvert', ouvertLe: '2020-01-01', numero: '', notes: '',
+        libelle: 'Société fictive', court: 'Société', alloc: '', cash: [],
+        lignes: [{ id: 'l_soc', classe: 'nonCote', libelle: 'Société fictive', valeur: 15000,
+                   prixDeRevient: 5000, parts: 4788, quantite: 1, dateAcquisition: '', estimeLe: todayISO() }] },
+      { id: 'c_cry', etabId: 'e_courtier', type: 'crypto', statut: 'ouvert', ouvertLe: '2022-01-01', numero: '',
+        notes: '', libelle: 'Crypto', court: 'Crypto', alloc: '', cash: [{ montant: 0, affectation: 'investir' }], lignes: [] },
+      { id: 'c_cry2', etabId: 'e_courtier', type: 'crypto', statut: 'ouvert', ouvertLe: '2022-01-01', numero: '',
+        notes: '', libelle: 'Crypto sans euros', court: 'Crypto 2', alloc: '', cash: [], lignes: [] },
+      { id: 'c_av', etabId: 'e_banque', type: 'av', statut: 'ouvert', ouvertLe: '2019-01-01', numero: '',
+        notes: '', libelle: 'Contrat', court: 'Contrat', alloc: '', cash: [], lignes: [] });
+    s.positions.push({ id: 'p_btc', name: 'Jeton', isin: '', symbol: 'JT', currency: 'EUR', qty: 0.5,
+                       buyPrice: 40000, price: 60000, fx: 1, fxBuy: 1, account: 'c_cry', manual: false,
+                       assetClass: 'crypto', role: 'satellite' });
+    if (modifier) modifier(s);
+  });
+  const indexDe = id => Store.state.positions.findIndex(p => p.id === id);
+
+  test('les destinations éligibles sont de vrais soldes de liquidités', () => {
+    poser();
+    const ids = cashTargets().map(c => c.id);
+    for (const id of ['c_courant', 'c_livret', 'c_pea', 'c_cto', 'c_cry'])
+      vrai(ids.includes(id), `${id} peut recevoir un produit`);
+    for (const id of ['c_soc', 'c_immo', 'c_pe', 'c_av', 'c_cry2'])
+      vrai(!ids.includes(id), `${id} n’a pas de poche de liquidités`);
+    eq(destinationAuto('c_cto'), 'c_cto', 'un compte-titres garde le produit de ses ventes');
+    eq(destinationAuto('c_cry'), 'c_cry', 'un portefeuille crypto qui garde des euros aussi');
+    eq(destinationAuto('c_cry2'), null, 'sans euros, la destination se choisit');
+    eq(destinationAuto('c_soc'), null, 'des parts de société n’ont pas de cash à elles');
+    eq(defaultCashTarget('c_soc'), 'c_courant', 'le compte courant est proposé par défaut');
+  });
+
+  test('cas 1 : une action vendue sur un CTO, le patrimoine ne bouge pas', () => {
+    poser();
+    const avant = net(), cash = cashDe('c_cto');
+    const a = sellPosition({ index: indexDe('p_a'), qty: 10, price: 200, fxSell: 1,
+                             cashAccount: destinationAuto('c_cto'), date: '2026-09-01' });
+    vrai(a, 'la vente passe');
+    eq(cashDe('c_cto'), round2(cash + 2000), 'le cash du CTO reçoit le produit');
+    eq(indexDe('p_a'), -1, 'la ligne vendue en entier disparaît');
+    eq(net(), avant, 'transfert de forme : le net n’a pas bougé');
+    const v = Store.state.sales[0];
+    eq(v.destination, 'auto'); eq(v.perimetre, 'interne');
+    eq(v.realised, 500, 'la plus-value réalisée'); eq(v.sortie, 2000, 'la valeur retirée');
+    eq(v.actifId, 'p_a'); eq(v.typeActif, 'titre');
+  });
+
+  test('cas 2 : des parts de société cédées vers le compte courant', () => {
+    poser();
+    const avant = net(), cash = cashDe('c_courant');
+    const a = cederPlacement({ compteId: 'c_soc', index: 0, parts: 4788, produit: 15000,
+                               cashAccount: 'c_courant', date: '2026-09-01' });
+    vrai(a, 'la cession passe');
+    eq(cashDe('c_courant'), round2(cash + 15000), 'le compte courant est alimenté');
+    eq((compteById('c_soc').cash || []).length, 0, 'aucune poche de cash n’est fabriquée dans le compte de parts');
+    eq(net(), avant, 'transfert de forme : le net n’a pas bougé');
+    const v = Store.state.sales[0];
+    eq(v.destination, 'choisie'); eq(v.perimetre, 'interne'); eq(v.realised, 10000);
+  });
+
+  test('cas 3 : le produit sort de Longward, le patrimoine suivi baisse', () => {
+    poser();
+    const avant = net();
+    const cashes = cashTargets().map(c => cashDe(c.id));
+    cederPlacement({ compteId: 'c_soc', index: 0, parts: 4788, produit: 15000, cashAccount: '', date: '2026-09-01' });
+    eq(net(), round2(avant - 15000), 'une sortie du périmètre, pas une perte');
+    eq(JSON.stringify(cashTargets().map(c => cashDe(c.id))), JSON.stringify(cashes), 'aucun cash n’est créé');
+    const v = Store.state.sales[0];
+    eq(v.destination, 'hors'); eq(v.perimetre, 'sortie'); eq(v.realised, 10000, 'la plus-value reste dite');
+    const ann = annulerVente(0);
+    vrai(ann, 'l’annulation passe');
+    eq(net(), avant, 'et rend la ligne sans débiter un cash jamais crédité');
+  });
+
+  test('cas 4 : 1000 parts sur 4788, tout reste exact', () => {
+    poser();
+    const cash = cashDe('c_courant');
+    const a = cederPlacement({ compteId: 'c_soc', index: 0, parts: 1000, produit: 3500,
+                               cashAccount: 'c_courant', date: '2026-09-01' });
+    const l = compteById('c_soc').lignes[0];
+    eq(l.parts, 3788, 'les parts restantes');
+    eq(a.investi, round2(5000 * 1000 / 4788), 'le coût des parts cédées, au prorata');
+    eq(round2(a.investi + num(l.prixDeRevient)), 5000, 'et celui des parts restantes complète au centime');
+    eq(a.realised, round2(3500 - a.investi), 'la plus-value réalisée sur les seules parts cédées');
+    eq(l.valeur, round2(15000 * 3788 / 4788), 'la valeur restante, au prorata');
+    eq(cashDe('c_courant'), round2(cash + 3500), 'le cash exact');
+  });
+
+  test('cas 5 : une crypto vendue garde ses euros chez l’exchange, au satoshi près', () => {
+    poser();
+    const avant = net();
+    sellPosition({ index: indexDe('p_btc'), qty: 0.123, price: 60000, fxSell: 1,
+                   cashAccount: destinationAuto('c_cry'), date: '2026-09-01' });
+    eq(Store.state.positions[indexDe('p_btc')].qty, 0.377, 'la quantité restante garde ses décimales');
+    eq(cashDe('c_cry'), 7380, 'le cash de l’exchange');
+    eq(net(), avant, 'le net n’a pas bougé');
+  });
+
+  test('cas 6 : vendre puis réinvestir ne fait ni variation ni apport', () => {
+    poser();
+    const avant = net();
+    sellPosition({ index: indexDe('p_a'), qty: 10, price: 200, fxSell: 1, cashAccount: 'c_cto', date: '2026-09-01' });
+    /* Le rachat : une ligne qui entre, le meme cash qui sort. */
+    Store.state.positions.push({ id: 'p_b', name: 'Titre B', isin: '', symbol: 'TB', currency: 'EUR', qty: 20,
+                                 buyPrice: 100, price: 100, fx: 1, fxBuy: 1, account: 'c_cto', manual: false,
+                                 assetClass: 'actions', role: 'core' });
+    mouvementCash('c_cto', -2000);
+    eq(net(), avant, 'aucune variation');
+    eq((Store.state.budget.apports || []).length, 0, 'aucun apport externe');
+    eq(perimetreDeVente(Store.state.sales[0]), 'interne', 'la vente est un transfert interne');
+  });
+
+  test('une plus-value réalisée ne s’ajoute pas une seconde fois', () => {
+    /* Valeur 15 000, cout 5 000 : la latente est deja dans le net. */
+    poser();
+    const avant = net();
+    cederPlacement({ compteId: 'c_soc', index: 0, parts: 4788, produit: 15000, cashAccount: 'c_courant' });
+    eq(net(), avant, 'le net ne gagne pas les 10 000 € réalisés');
+    eq(Store.state.sales[0].realised, 10000, 'ils sont réalisés, et dits au journal');
+  });
+
+  test('les anciennes lignes du journal se lisent sans être réécrites', () => {
+    eq(perimetreDeVente({ cashAccount: 'c_cto', account: 'c_cto' }), 'interne');
+    eq(destinationDeVente({ cashAccount: 'c_cto', account: 'c_cto' }), 'auto');
+    eq(destinationDeVente({ cashAccount: 'c_courant', account: 'c_cto' }), 'choisie');
+    eq(perimetreDeVente({ cashAccount: '' }), 'sortie');
+    eq(perimetreDeVente({ declaree: true }), 'memoire', 'une vente pour mémoire n’a rien déplacé');
+  });
+
+  test('une sortie du périmètre devient un événement de « Ce qui a changé »', () => {
+    poser(s => {
+      s.monthly = [{ date: '2026-08-01', comment: '', dettes: 0, v: { c_courant: 3000 } },
+                   { date: '2026-09-01', comment: '', dettes: 0, v: { c_courant: 3000 } }];
+    });
+    cederPlacement({ compteId: 'c_soc', index: 0, parts: 4788, produit: 15000, cashAccount: '', date: '2026-08-20' });
+    sellPosition({ index: indexDe('p_a'), qty: 10, price: 200, fxSell: 1, cashAccount: 'c_cto', date: '2026-08-21' });
+    const ev = derniereVariation().explicitEvents;
+    eq(ev.length, 1, 'la vente créditée n’en est pas un');
+    eq(ev[0].genre, 'sortie'); eq(ev[0].montant, -15000, 'la valeur sortie du patrimoine');
+  });
+
+  test('une seule écriture de cash, et une seule destination dans les fenêtres', () => {
+    const st = lireSource('assets/store.js').replace(/\/\*[\s\S]*?\*\//g, '');
+    eq((st.match(/cashInvestirEntree\(c, true\)/g) || []).length, 2,
+      'la migration qui pose les entrées, et mouvementCash : plus aucune copie');
+    const src = app();
+    eq((src.match(/\$\{champDestination\('(ce|ve)'/g) || []).length + (src.match(/champDestination\('ve', p\.account\)/g) || []).length, 2,
+      'la cession et la vente montrent la même destination');
+    vrai(!/Ne rien créditer/.test(src), 'plus de « Ne rien créditer » : la case dit ce qu’elle fait');
+    vrai(/cashAccount: lireDestination\('ce'\)/.test(src) && /cashAccount: lireDestination\('ve'\)/.test(src),
+      'les deux fenêtres lisent la destination par la même porte');
+    /* La regle generique des champs met tout input a pleine largeur : sans ce
+       correctif, la case poussait son libelle hors de la fenetre. */
+    vrai(/\.field-case > input \{ flex: none; width: auto;/.test(lireSource('assets/styles.css')),
+      'la case à cocher garde sa taille de case');
   });
 });
 

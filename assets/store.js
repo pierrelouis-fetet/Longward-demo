@@ -1970,6 +1970,7 @@ function defaultHoldingAccount() {
 const num = v => (v === '' || v === null || v === undefined || isNaN(v)) ? 0 : Number(v);
 const round2 = v => Math.round(v * 100) / 100;
 const round4 = v => Math.round(v * 10000) / 10000;
+const roundQty = v => Math.round(v * 1e8) / 1e8;
 
 const MASK_KEY = 'wealth-dashboard:discret';
 const cleMasque = () => cleParUtilisateur(MASK_KEY);
@@ -6358,9 +6359,16 @@ function variationPatrimoine(avant, apres) {
                  delta: round2(num(apres[k]) - num(avant[k])) }))
     .filter(x => x.previousValue || x.currentValue);
   const debut = prochainJour(avant.date), fin = String(apres.date);
-  const explicitEvents = apportsTries()
-    .filter(a => a.montant && String(a.date || '') >= debut && String(a.date || '') <= fin)
-    .map(a => ({ libelle: a.libelle || '', date: a.date, montant: round2(a.montant) }));
+  const dansIntervalle = d => String(d || '') >= debut && String(d || '') <= fin;
+  const explicitEvents = [
+    ...apportsTries()
+      .filter(a => a.montant && dansIntervalle(a.date))
+      .map(a => ({ genre: 'apport', libelle: a.libelle || '', date: a.date, montant: round2(a.montant) })),
+    ...(Store.state.sales || [])
+      .filter(v => perimetreDeVente(v) === 'sortie' && num(v.gross) && dansIntervalle(v.date))
+      .map(v => ({ genre: 'sortie', libelle: v.name || '', date: v.date,
+                   montant: -round2(num(v.sortie) || num(v.gross)) })),
+  ];
   return {
     depuis: avant.date, jusqua: apres.date, mois: moisEntre(avant.date, apres.date),
     previousNet: round2(num(avant.net)), currentNet: round2(num(apres.net)),
@@ -6639,17 +6647,109 @@ function paceRecent() {
   return statsRythme(monthlyPace().points.slice(-PACE_WINDOW));
 }
 
-function defaultCashTarget(accountId) {
-  if (compteById(accountId)) return accountId;
-  return (comptesOuverts().find(c => typeCompte(c.type).titres) || {}).id || '';
+/* --- UNE CESSION, QUEL QUE SOIT L'ACTIF ------------------------------------
+
+   ACTIF CEDE -> PRODUIT -> DESTINATION -> EFFET SUR LE PATRIMOINE, et la meme
+   mecanique pour une action, un bitcoin, des parts de societe ou une montre.
+   Ce qui change d'un actif a l'autre est la facon de reduire SA ligne -- une
+   quantite pour une ligne cotee, un prorata pour un placement saisi -- et la
+   fenetre qui le demande. Ce qui ne change jamais vit ici : ou le produit peut
+   aller, comment il y entre, et ce que l'enregistrement en garde.
+
+   UNE VENTE NE CREE NI NE DETRUIT DE PATRIMOINE A ELLE SEULE. L'actif sort a
+   sa valeur, le produit entre en cash : si les deux se valent, le patrimoine
+   n'a pas bouge, seule sa forme a change. La plus-value latente etait deja
+   dans la valeur ; la realiser ne l'ajoute pas une seconde fois. L'effet d'une
+   cession sur le patrimoine suivi vaut donc ce qui est credite moins ce qui
+   sort, et rien d'autre.
+
+   TROIS DESTINATIONS, ET L'ENREGISTREMENT DIT LAQUELLE.
+     `auto`     le compte de courtage qui portait l'actif, quand il a une
+                vraie poche de cash : le produit d'une vente y reste.
+     `choisie`  un compte de liquidites que le detenteur designe : des parts de
+                societe n'ont pas de cash a elles.
+     `hors`     aucun compte suivi n'est alimente. L'actif sort, rien n'entre :
+                le patrimoine suivi baisse, ce qui n'est pas une perte mais une
+                sortie du perimetre, et l'historique le garde comme telle. */
+
+/* Un compte a-t-il une vraie poche de liquidites ? Son type le dit, sauf pour
+   un contrat qui n'en tient pas (`sansCash`) ; et un compte dont le modele
+   represente deja le cash -- un portefeuille crypto qui garde des euros -- en a
+   une, quel que soit son type. Jamais une ligne, jamais une participation. */
+function peutPorterCash(c) {
+  if (!c) return false;
+  const t = typeCompte(c.type) || {};
+  if (t.sansCash) return false;
+  return (t.classes || []).includes('liquidites') || (c.cash || []).length > 0;
 }
 
 function cashTargets() {
-  const ouverts = comptesOuverts();
+  const ouverts = comptesOuverts().filter(peutPorterCash);
   return [
     ...ouverts.filter(c => typeCompte(c.type).titres),
-    ...ouverts.filter(c => typeCompte(c.type).groupe === 'cash'),
+    ...ouverts.filter(c => !typeCompte(c.type).titres),
   ];
+}
+
+/* La destination qui ne se demande pas : le compte de courtage de l'actif,
+   s'il porte du cash. `null` quand il faut la choisir. */
+function destinationAuto(accountId) {
+  const c = compteById(accountId);
+  return c && (typeCompte(c.type) || {}).titres && peutPorterCash(c) ? c.id : null;
+}
+
+function defaultCashTarget(accountId) {
+  const auto = destinationAuto(accountId);
+  if (auto) return auto;
+  const cibles = cashTargets();
+  return (cibles.find(c => c.type === 'courant') || cibles.find(c => !typeCompte(c.type).titres)
+          || cibles[0] || {}).id || '';
+}
+
+/* LA SEULE ECRITURE DE CASH d'une cession, d'un achat et de leurs annulations.
+   Elle etait recopiee a quatre endroits. Rend vrai si le montant est entre
+   dans un compte suivi. Un compte de l'ancien modele sans titres garde son
+   solde dans `now`. */
+function mouvementCash(compteId, montant) {
+  const m = round2(num(montant));
+  if (!compteId || !m) return false;
+  const c = compteById(compteId);
+  if (c) {
+    const e = cashInvestirEntree(c, true);
+    e.montant = round2(num(e.montant) + m);
+    return true;
+  }
+  if (ACC[compteId] && !ACC[compteId].holdings) {
+    Store.state.now[compteId] = round2(num(Store.state.now[compteId]) + m);
+    return true;
+  }
+  return false;
+}
+
+function perimetreDeVente(v) {
+  if (!v) return null;
+  if (v.perimetre) return v.perimetre;
+  if (v.declaree) return 'memoire';
+  return v.cashAccount ? 'interne' : 'sortie';
+}
+function destinationDeVente(v) {
+  if (!v || v.declaree) return null;
+  if (v.destination) return v.destination;
+  if (!v.cashAccount) return 'hors';
+  return v.cashAccount === v.account ? 'auto' : 'choisie';
+}
+
+/* Les champs communs a toute cession, ecrits au meme endroit : identite de
+   l'actif, destination, et ce qui a quitte le patrimoine. `credite` dit si le
+   produit est bien entre dans un compte suivi ; un produit nul n'a rien fait
+   sortir. */
+function champsCession({ actifId, typeActif, source, destination, credite, produit, sortie }) {
+  return {
+    actifId: actifId || '', typeActif,
+    destination: !destination ? 'hors' : destination === destinationAuto(source) ? 'auto' : 'choisie',
+    perimetre: credite || !num(produit) ? 'interne' : 'sortie',
+    sortie: round2(num(sortie)),
+  };
 }
 
 function salePreview(p, qty, price, fxSell) {
@@ -6674,6 +6774,9 @@ function sellPosition({ index, qty, price, fxSell, cashAccount, date, note }) {
   const ap = salePreview(p, qty, price, fxSell);
   if (ap.qty <= 0 || ap.qty > num(p.qty)) return null;
 
+  const sortie = num(p.qty) > 0 ? posValue(p) * ap.qty / num(p.qty) : 0;
+  const credite = mouvementCash(cashAccount, ap.gross);
+
   Store.state.sales = Store.state.sales || [];
   Store.state.sales.unshift({
     id: 's' + Date.now(),
@@ -6684,20 +6787,12 @@ function sellPosition({ index, qty, price, fxSell, cashAccount, date, note }) {
     fxSell: num(fxSell) || 1, buyPrice: num(p.buyPrice), fxBuy: tauxAchat(p),
     gross: ap.gross, invested: ap.invested, realised: ap.realised,
     note: note || '',
+    ...champsCession({ actifId: p.id, typeActif: 'titre', source: p.account,
+                       destination: cashAccount, credite, produit: ap.gross, sortie }),
   });
 
-  if (cashAccount) {
-    const compteCash = compteById(cashAccount);
-    if (compteCash) {
-      const e = cashInvestirEntree(compteCash, true);
-      e.montant = round2(num(e.montant) + ap.gross);
-    } else if (!ACC[cashAccount]?.holdings) {
-      Store.state.now[cashAccount] = num(Store.state.now[cashAccount]) + ap.gross;
-    }
-  }
-
   if (ap.full) Store.state.positions.splice(index, 1);
-  else p.qty = round2(num(p.qty) - ap.qty);
+  else p.qty = roundQty(num(p.qty) - ap.qty);
 
   return ap;
 }
@@ -6759,7 +6854,7 @@ function apercuCession(l, t, { parts, produit, capital } = {}) {
   return {
     fraction, partOk,
     parts: aParts ? num(parts) : null,
-    partsRestantes: aParts ? round2(partsTotal - num(parts)) : null,
+    partsRestantes: aParts ? roundQty(partsTotal - num(parts)) : null,
     produit: g,
     investi,
     sortie,
@@ -6787,6 +6882,8 @@ function cederPlacement({ compteId, index, nature = 'vente', parts, produit,
   if (!a.partOk) return null;
   if (!(a.fraction > 0)) return null;
 
+  const credite = mouvementCash(cashAccount, a.produit);
+
   Store.state.sales = Store.state.sales || [];
   Store.state.sales.unshift({
     id: 's' + Date.now(),
@@ -6807,19 +6904,11 @@ function cederPlacement({ compteId, index, nature = 'vente', parts, produit,
     /* Ce qui distingue cette ligne d'une vente de titres, et ce qu'il faut pour
        la defaire. `sortie` n'est pas `gross` : c'est la valeur retiree du
        patrimoine, et l'annulation la rend telle quelle. */
-    cession: nature, ligneIndex: index, sortie: a.sortie,
+    cession: nature, ligneIndex: index,
+    ...champsCession({ actifId: l.id, typeActif: 'placement', source: c.id,
+                       destination: cashAccount, credite, produit: a.produit, sortie: a.sortie }),
     ...(a.totale ? { ligne: structuredClone(l) } : {}),
   });
-
-  if (cashAccount && a.produit) {
-    const compteCash = compteById(cashAccount);
-    if (compteCash) {
-      const e = cashInvestirEntree(compteCash, true);
-      e.montant = round2(num(e.montant) + a.produit);
-    } else if (!ACC[cashAccount]?.holdings) {
-      Store.state.now[cashAccount] = round2(num(Store.state.now[cashAccount]) + a.produit);
-    }
-  }
 
   if (a.totale) {
     c.lignes.splice(index, 1);
@@ -6837,7 +6926,7 @@ function cederPlacement({ compteId, index, nature = 'vente', parts, produit,
     for (const cle of ['prixAchat', 'fraisAcquisition', 'travauxInitiaux']) {
       if (estDeclare(l[cle])) l[cle] = round2(num(l[cle]) * reste);
     }
-    if (a.parts != null) l.parts = round2(num(l.parts) - a.parts);
+    if (a.parts != null) l.parts = roundQty(num(l.parts) - a.parts);
   }
 
   return a;
@@ -6887,15 +6976,7 @@ function annulerVente(i) {
      une ligne de titres cotee, avec un prix et un cours. */
   if (v.cession) return annulerCession(i, v);
 
-  if (v.cashAccount) {
-    const c = compteById(v.cashAccount);
-    if (c) {
-      const e = cashInvestirEntree(c, true);
-      e.montant = round2(num(e.montant) - num(v.gross));
-    } else if (!ACC[v.cashAccount]?.holdings) {
-      Store.state.now[v.cashAccount] = round2(num(Store.state.now[v.cashAccount]) - num(v.gross));
-    }
-  }
+  if (perimetreDeVente(v) === 'interne') mouvementCash(v.cashAccount, -num(v.gross));
 
   const memeLigne = q => q.account === v.account
     && ((v.isin && q.isin === v.isin)
@@ -6903,7 +6984,7 @@ function annulerVente(i) {
         || (!v.isin && !v.symbol && q.name === v.name));
   const p = Store.state.positions.find(memeLigne);
   if (p) {
-    p.qty = round2(num(p.qty) + num(v.qty));
+    p.qty = roundQty(num(p.qty) + num(v.qty));
   } else {
     Store.state.positions.push({
       id: 'p' + Date.now(), name: v.name, isin: v.isin || '', symbol: v.symbol || '',
@@ -6920,15 +7001,7 @@ function annulerVente(i) {
 }
 
 function annulerCession(i, v) {
-  if (v.cashAccount && num(v.gross)) {
-    const c = compteById(v.cashAccount);
-    if (c) {
-      const e = cashInvestirEntree(c, true);
-      e.montant = round2(num(e.montant) - num(v.gross));
-    } else if (!ACC[v.cashAccount]?.holdings) {
-      Store.state.now[v.cashAccount] = round2(num(Store.state.now[v.cashAccount]) - num(v.gross));
-    }
-  }
+  if (perimetreDeVente(v) === 'interne') mouvementCash(v.cashAccount, -num(v.gross));
 
   const c = compteById(v.account);
   if (c) {
@@ -6943,7 +7016,7 @@ function annulerCession(i, v) {
         if (estDeclare(l.prixDeRevient)) {
           l.prixDeRevient = round2(num(l.prixDeRevient) + num(v.invested) / q);
         }
-        if (num(v.qty)) l.parts = round2(num(l.parts) + num(v.qty));
+        if (num(v.qty)) l.parts = roundQty(num(l.parts) + num(v.qty));
       }
     }
     if (v.compteArchive) { c.statut = 'ouvert'; delete c.clotureLe; }

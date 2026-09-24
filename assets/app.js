@@ -747,7 +747,7 @@ function listeVariation(v, { avecTotal = true } = {}) {
         <dd>${fmtSigned(-v.debtChange)}</dd>` : '';
   const ev = v.explicitEvents;
   const evTexte = ev.slice(0, 3)
-    .map(e => `${esc(e.libelle || trad('Sans intitulé'))} ${fmtSigned(e.montant)} (${fmtDate(e.date)})`).join(', ')
+    .map(e => `${e.genre === 'sortie' ? `${trad('Sortie de Longward')}${deuxPoints()} ` : ''}${esc(e.libelle || trad('Sans intitulé'))} ${fmtSigned(e.montant)} (${fmtDate(e.date)})`).join(', ')
     + (ev.length > 3 ? ` ${trad('et {n} autres').replace('{n}', ev.length - 3)}` : '');
   return `
     ${avecTotal ? `
@@ -4181,12 +4181,12 @@ function mountSymbolSearch() {
                `cashInvestirEntree(…, true)` en creerait une sur n'importe quel
                compte, et un bien immobilier se mettrait a afficher du cash. Le
                cas est rare et il se dit, plutot que de laisser une case cochee
-               ne rien faire en silence. */
+               ne rien faire en silence. `cashTargets()` ne retient que les
+               comptes qui ont une vraie poche de liquidites. */
             const cc = cashTargets().some(c => c.id === v.account) ? compteById(v.account) : null;
             if (cc) {
               const enEuros = achete * (num(Store.state.positions[i]?.fx) || 1);
-              const e = cashInvestirEntree(cc, true);
-              e.montant = round2(num(e.montant) - enEuros);
+              mouvementCash(cc.id, -enEuros);
               Store.save(); render();
               toast(`${fmtEUR0(enEuros)} ${trad('débité de')} ${ACC[v.account]?.label || 'cash'}`);
             } else {
@@ -10468,14 +10468,7 @@ const ACTIONS = {
       const pruAvant = num(p.buyPrice) || num(a.base);
       p.buyPrice = round4((anciennes * pruAvant + cout) / (anciennes + a.qty));
       p.qty = anciennes + a.qty;
-      if (a.cashAccount) {
-        const enEuros = cout * (num(p.fx) || 1);
-        const cc = compteById(a.cashAccount);
-        if (cc) {
-          const e = cashInvestirEntree(cc, true);
-          e.montant = round2(num(e.montant) - enEuros);
-        }
-      }
+      if (a.cashAccount && compteById(a.cashAccount)) mouvementCash(a.cashAccount, -cout * (num(p.fx) || 1));
       Store.save(); render();
       toast(`${a.qty} × ${fmtCur(a.price, p.currency)} · ${trad('nouveau PRU')} ${fmtCur(p.buyPrice, p.currency)}`
         + (a.cashAccount ? ` · ${trad('débité de')} ${ACC[a.cashAccount]?.label || 'cash'}` : ''));
@@ -11856,6 +11849,67 @@ function askConfirm(texte, { danger = true, ok = 'Confirmer', refus = 'Annuler' 
   });
 }
 
+/* --- OU VA LE PRODUIT D'UNE CESSION ----------------------------------------
+
+   Un seul composant pour toutes les fenetres de vente et de cession ; la
+   logique vit dans le modele (`destinationAuto`, `cashTargets`), la fenetre ne
+   fait que la montrer.
+
+   Quand le compte qui portait l'actif a sa poche de cash, il n'y a rien a
+   demander : le produit d'une vente reste chez le courtier, et la fenetre le
+   dit. Sinon, une case cochee par defaut et le compte a alimenter ; decochee,
+   le produit ne va sur aucun compte suivi, et la fenetre le dit aussi. */
+function champDestination(prefixe, sourceId) {
+  const auto = destinationAuto(sourceId);
+  if (auto) {
+    const c = compteById(auto);
+    return `
+        <div class="field" data-dest-auto="${esc(auto)}"><label>${trad('Le produit va sur')}</label>
+          <p class="dest-auto">${esc(sousNom('', nomCompteV2(c), nomEtabDe(c)))}</p>
+          <span class="hint">${trad('le cash du compte qui portait la ligne')}</span></div>`;
+  }
+  const cibles = cashTargets();
+  if (!cibles.length) return `
+        <p class="hint" data-dest-aucune>${trad('Aucun compte de liquidités n’est suivi : le produit ne sera ajouté à aucun compte.')}</p>`;
+  const defaut = defaultCashTarget(sourceId);
+  return `
+        <label class="field-case">
+          <input type="checkbox" id="${prefixe}Alim" checked>
+          <span>${trad('Alimenter un compte suivi')}</span>
+        </label>
+        <div class="field" id="${prefixe}DestChamp"><label>${trad('Compte à alimenter')}</label>
+          <select id="${prefixe}Cash">${cibles.map(x =>
+            `<option value="${x.id}" ${x.id === defaut ? 'selected' : ''}>${
+              esc(sousNom('', nomCompteV2(x), nomEtabDe(x)))}</option>`).join('')}</select></div>
+        <p class="hint" id="${prefixe}Hors" hidden>${trad('Le produit ne sera pas ajouté à un compte suivi par Longward.')}</p>`;
+}
+
+function cablerDestination(prefixe, apres = () => {}) {
+  const cb = $(`#${prefixe}Alim`);
+  if (!cb) return;
+  cb.onchange = () => {
+    $(`#${prefixe}DestChamp`).hidden = !cb.checked;
+    $(`#${prefixe}Hors`).hidden = cb.checked;
+    apres();
+  };
+}
+
+function lireDestination(prefixe) {
+  const auto = $('#modalBody [data-dest-auto]');
+  if (auto) return auto.dataset.destAuto;
+  const cb = $(`#${prefixe}Alim`);
+  return cb && cb.checked ? ($(`#${prefixe}Cash`)?.value || '') : '';
+}
+
+function phraseEffetCession({ credite, produit, sortie }) {
+  const effet = round2((credite ? num(produit) : 0) - num(sortie));
+  if (!credite && num(produit)) return trad('Ton patrimoine suivi baisse de {v} : le produit sort de Longward.')
+    .replace('{v}', fmtEUR0(Math.abs(effet)));
+  if (Math.abs(effet) < 1) return trad('Ton patrimoine ne bouge pas : la valeur passe de la ligne au cash.');
+  return trad('Effet sur ton patrimoine : {v}, l’écart entre le montant reçu et la dernière valeur connue.')
+    .replace('{v}', fmtSigned(effet));
+}
+
 function askCession(compteId, index) {
   return new Promise(resolve => {
     const c = compteById(compteId);
@@ -11875,8 +11929,6 @@ function askCession(compteId, index) {
       ? 'Le résultat est calculé sur ce que tu avais prêté'
       : 'Le résultat est calculé sur ton prix de revient');
 
-    const cibles = cashTargets();
-    const defaut = defaultCashTarget(c.id);
     $('#modalBody').innerHTML = `
       <div class="modal-champs">
         ${!prete ? '' : `
@@ -11901,12 +11953,7 @@ function askCession(compteId, index) {
             : 'net de frais, tel qu’il est arrivé sur ton compte')}</span></div>
         <div class="field"><label>${trad('Date')}</label>
           <input type="date" id="ceDate" value="${todayISO()}"></div>
-        <div class="field"><label>${trad('Le produit va sur')}</label>
-          <select id="ceCash">${cibles.map(x =>
-            `<option value="${x.id}" ${x.id === defaut ? 'selected' : ''}>${
-              esc(sousNom('', nomCompteV2(x), nomEtabDe(x)))}</option>`).join('')}<option
-            value="">${trad('Ne rien créditer')}</option></select>
-          <span class="hint">${trad('Sans ça, ton patrimoine baisserait de la valeur cédée')}</span></div>
+        ${champDestination('ce', c.id)}
         <div class="field"><label>${trad('Note')}</label>
           <input id="ceNote" placeholder="${trad('Pourquoi cette cession ?')}" autocomplete="off"></div>
       </div>
@@ -11961,9 +12008,11 @@ function askCession(compteId, index) {
           ${bon ? '↗' : '↘'}
           <span><b>${mot} ${trad('de')} ${fmtSigned(gain)}${
             a.pct == null ? '' : ` · ${fmtSignedPct(a.pct)}`}</b><br>
-          ${trad('Sur {m} investis.').replace('{m}', fmtEUR(a.investi))} ${esc(reste)}</span>
+          ${trad('Sur {m} investis.').replace('{m}', fmtEUR(a.investi))} ${esc(reste)}<br>
+          ${esc(phraseEffetCession({ credite: !!lireDestination('ce'), produit: a.produit, sortie: a.sortie }))}</span>
         </div>`;
     };
+    cablerDestination('ce', () => majApercu());
 
     $('#modalBody').addEventListener('input', () => { majNature(); majApercu(); });
     $('#modalBody').addEventListener('change', () => { majNature(); majApercu(); });
@@ -11976,7 +12025,7 @@ function askCession(compteId, index) {
       const s = saisie();
       const a = apercuCession(l, t, s);
       if (!(a.fraction > 0)) return;
-      fermer({ ...s, nature: nature(), cashAccount: $('#ceCash').value,
+      fermer({ ...s, nature: nature(), cashAccount: lireDestination('ce'),
                date: $('#ceDate').value, note: $('#ceNote').value.trim() });
     };
   });
@@ -12018,9 +12067,7 @@ function askSale(indexInitial) {
         <div class="field"><label>${trad('Date')}</label>
           <input type="date" id="veDate" value="${todayISO()}">
           <span class="hint" data-vente="passee" hidden>${trad('même approximative : elle range la vente dans son année')}</span></div>
-        <div class="field" data-vente="reelle"><label>${trad('Le produit va sur')}</label>
-          <select id="veCash"></select>
-          <span class="hint">${trad('Sans ça, ton patrimoine baisserait du montant vendu')}</span></div>
+        <div id="veDest" data-vente="reelle"></div>
         <div class="field"><label>${trad('Note')}</label>
           <input id="veNote" placeholder="${trad('Pourquoi cette vente ?')}" autocomplete="off"></div>
       </div>
@@ -12061,11 +12108,8 @@ function askSale(indexInitial) {
       $('#veDev').textContent = devise === 'EUR' ? 'en euros' : `en ${devise}`;
       $('#veFxWrap').hidden = devise === 'EUR';
       fx.value = num(p.fx) || 1;
-      const cibles = cashTargets();
-      const defaut = defaultCashTarget(p.account);
-      $('#veCash').innerHTML = cibles.map(c =>
-        `<option value="${c.id}" ${c.id === defaut ? 'selected' : ''}>${esc(sousNom('', nomCompteV2(c), nomEtabDe(c)))}</option>`).join('')
-        + `<option value="">${trad('Ne rien créditer')}</option>`;
+      $('#veDest').innerHTML = champDestination('ve', p.account);
+      cablerDestination('ve', () => majApercuVente());
       majApercuVente();
       avisCoursDuJour();
     };
@@ -12106,7 +12150,9 @@ function askSale(indexInitial) {
           (${fmtSignedPct(a.pct)})<br>
           Encaissé ${fmtEUR(a.gross)} · prix de revient ${fmtEUR(a.invested)}<br>
           ${a.full ? 'La ligne sera retirée du tableau, la vente reste au journal.'
-                   : `Il te restera ${round2(a.remaining)} action${a.remaining > 1 ? 's' : ''}.`}</span>
+                   : `Il te restera ${roundQty(a.remaining)} action${a.remaining > 1 ? 's' : ''}.`}<br>
+          ${esc(phraseEffetCession({ credite: !!lireDestination('ve'), produit: a.gross,
+            sortie: num(p.qty) > 0 ? posValue(p) * a.qty / num(p.qty) : 0 }))}</span>
         </div>`;
     };
 
@@ -12154,7 +12200,7 @@ function askSale(indexInitial) {
       fermer({
         index: +sel.value, qty: a.qty, price: num(prix.value),
         fxSell: $('#veFxWrap').hidden ? 1 : num(fx.value),
-        cashAccount: $('#veCash').value, date: $('#veDate').value, note: $('#veNote').value.trim(),
+        cashAccount: lireDestination('ve'), date: $('#veDate').value, note: $('#veNote').value.trim(),
       });
     };
   });

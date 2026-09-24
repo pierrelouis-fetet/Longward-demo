@@ -1261,7 +1261,10 @@ table .field :is(input, select) { max-width: none; }
   display: flex; align-items: start; gap: 9px;
   padding: 7px 2px; cursor: pointer; text-align: left;
 }
-.field-case > input { flex: none; margin: 3px 0 0; }
+/* `width: auto` : la regle generique des champs met tout `input` a pleine
+   largeur, case a cocher comprise, et le libelle etait repousse hors de la
+   fenetre, replie sur quatre lignes. */
+.field-case > input { flex: none; width: auto; padding: 0; margin: 3px 0 0; }
 .field-case > span { display: block; }
 
 /* L'etablissement sous le nom d'un champ de releve. `min-height` plutot que
@@ -1283,6 +1286,7 @@ table .field :is(input, select) { max-width: none; }
 }
 .avert-liste { margin: 4px 0 6px; padding-left: 18px; }
 .avert-liste li { overflow-wrap: anywhere; }
+.dest-auto { margin: 0; font-weight: 550; color: var(--text-primary); }
 
 .grid { display: grid; gap: 16px; }
 /* Un enfant de grille refuse par defaut de descendre sous sa largeur
