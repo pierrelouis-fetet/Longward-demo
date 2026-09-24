@@ -2460,6 +2460,36 @@ suite('Une seule grammaire d’en-tête de carte', () => {
 });
 
 /* --- Les apports sur les comptes de marche : declares, jamais devines ----- */
+/* --- Une demonstration plus ancienne que sa graine se propose a jour -------- */
+suite('La démonstration propose sa nouvelle version', () => {
+  test('seule une copie plus ancienne de la graine se propose', () => {
+    /* Un etat sans numero de graine n'est pas ne d'elle : c'est un visiteur
+       qui a tout efface pour saisir ses chiffres, ou de vraies donnees. */
+    Fixture.poser();
+    eq(demoPerimee(), false, 'un état sans numéro de graine ne se remplace jamais');
+    if (typeof SEED_VERSION === 'undefined') return;   // bêta et instance privée : aucune graine versionnée
+    Fixture.poser(s => { s.seedVersion = SEED_VERSION - 1; });
+    eq(demoPerimee(), true, 'une copie plus ancienne se propose');
+    Fixture.poser(s => { s.seedVersion = SEED_VERSION; });
+    eq(demoPerimee(), false, 'une copie à jour se tait');
+  });
+
+  test('le bandeau suit l’état, et recharger se demande et se sauvegarde', () => {
+    const src = lireSource('assets/app.js');
+    vrai(/const graine = \$\('#bandeauGraine'\);\s*if \(graine\) graine\.hidden = !demoPerimee\(\);/.test(src),
+      'le bandeau se montre à chaque rendu, seulement quand la démo a vieilli');
+    const action = src.slice(src.indexOf("async 'recharger-demo'()"), src.indexOf("'quitter-demo'()"));
+    vrai(action.indexOf('askConfirm(') > 0 && action.indexOf('askConfirm(') < action.indexOf('rechargerDemo()'),
+      'la question vient avant le remplacement');
+    vrai(action.indexOf("Store.addBackup('avant rechargement de la démo')") > 0
+      && action.indexOf("Store.addBackup(") < action.indexOf('rechargerDemo()'),
+      'et une sauvegarde garde les essais du visiteur');
+    if (typeof SEED_VERSION === 'undefined') return;
+    vrai(/id="bandeauGraine" hidden>[\s\S]*data-action="recharger-demo"/.test(lireSource('index.html')),
+      'le bandeau existe, caché par défaut, avec son bouton');
+  });
+});
+
 suite('Les apports sur les comptes de marché', () => {
   const app = () => lireSource('assets/app.js');
   /* Un releve du fixture : les comptes du perimetre sont c_pea et c_cto. Un
@@ -2586,14 +2616,15 @@ suite('Les apports sur les comptes de marché', () => {
     eq(t.params.sinceJanuary, false, 'et le titre ne dit plus « en 2026 »');
   });
 
-  test('d’où vient la hausse : la part des apports, exacte', () => {
-    annees();
-    const r = lire('market_growth_origin');
-    vrai(r, 'la règle parle');
-    eq(r.params.contributions, 4400); eq(r.params.rest, 1400, 'sept fois deux cents');
-    eq(r.params.variation, 5800);
-    vrai(Math.abs(r.params.contributionsPct - 4400 / 5800 * 100) < 1e-9, 'une division, rien de plus');
-    eq(r.evidence.restIsNotOnlyMarkets, true, 'la preuve dit que le reste n’est pas que les marchés');
+  test('aucune règle ne dit d’où vient une hausse', () => {
+    /* Sans journal des achats, ventes et versements du mois, l'ecart entre la
+       valeur des comptes et les apports declares ne se partage pas entre ce
+       que le detenteur a mis et ce que les marches ont fait. */
+    vrai(!REGLES_INSIGHT.some(r => r.id === 'market_growth_origin'), 'la règle d’attribution n’existe plus');
+    const src = lireSource('assets/insights.js').replace(/\/\*[\s\S]*?\*\//g, '');
+    vrai(!/PART_ORIGINE|horsApports \/|apports \/ b\.variation/.test(src),
+      'aucune part des apports dans une hausse n’est calculée');
+    vrai(!/Ta hausse vient surtout/.test(app()), 'et aucune phrase ne l’annonce');
   });
 
   test('le rythme des apports, trois mois contre trois mois', () => {
@@ -2617,13 +2648,13 @@ suite('Les apports sur les comptes de marché', () => {
       s.monthly = [rel('2026-06-01', { c_pea: 20000 }), rel('2026-07-01', { c_pea: 21000 }),
                    rel('2026-08-01', { c_pea: 22000 })];
     });
-    for (const id of ['market_contributions_year', 'market_growth_origin',
+    for (const id of ['market_contributions_year',
                       'market_contributions_pace', 'market_contributions_regularity'])
       eq(lire(id), null, `${id} ne devine rien`);
   });
 
-  test('les quatre règles vivent sur l’onglet Marchés, et parlent de versements', () => {
-    const ids = ['market_contributions_year', 'market_growth_origin',
+  test('les règles d’apports vivent sur l’onglet Marchés, et disent « déclaré »', () => {
+    const ids = ['market_contributions_year',
                  'market_contributions_pace', 'market_contributions_regularity'];
     for (const id of ids) eq(REGLES_INSIGHT.find(x => x.id === id).onglet, 'positions', `${id} est chez Marchés`);
     /* L'ecart a la cible y vit aussi : la cible est un sous-onglet de Marches,
@@ -2635,7 +2666,14 @@ suite('Les apports sur les comptes de marché', () => {
     const textes = [...pres.matchAll(/trad\('([^']*)'/g)].map(m => m[1]);
     vrai(textes.length >= 12, `${textes.length} textes lus`);
     for (const t of textes)
-      vrai(!/investi|gagn|rapport|performance|Bravo|devrais/i.test(t), `« ${t} » dit un versement, pas un gain ni un conseil`);
+      vrai(!/investi|gagn|rapport|performance|Bravo|devrais/i.test(t), `« ${t} » dit un apport déclaré, pas un gain ni un conseil`);
+    /* Chaque titre dit que le chiffre est celui qui a ete declare : un DCA ou un
+       arrondi non saisi n'y entre pas, et le titre ne doit pas laisser croire
+       le contraire. */
+    for (const id of ids) {
+      const bloc = pres.slice(pres.indexOf(`  ${id}: {`), pres.indexOf('valeur:', pres.indexOf(`  ${id}: {`)));
+      vrai(/déclar/.test(bloc), `le titre de ${id} dit « déclaré »`);
+    }
     vrai(/cta: \{ vue: 'history', libelle: 'Voir mes relevés' \}/.test(pres), 'le renvoi mène aux relevés, où l’apport se déclare');
   });
 
@@ -22292,8 +22330,12 @@ suite('Une modification ne se perd pas quand l’écran se verrouille', () => {
     const src = lireSource('assets/app.js');
     vrai(!/lignes n’ont pas de date d’achat/.test(src),
       'la mention a quitté la carte de la plus-value latente');
-    vrai(/tu ne la détenais pas hier soir/.test(src),
-      'et la réserve reste dite dans l’aide de la colonne concernée');
+    /* L'intitule « Var. » n'a plus d'aide : la reserve se dit la ou elle joue,
+       sous le total du jour et sous le nom de la ligne achetee aujourd'hui. */
+    vrai(/trad\('ou depuis ton achat du jour'\)/.test(src),
+      'la réserve reste dite sous le total du jour');
+    vrai(/trad\('acheté aujourd’hui'\)/.test(src),
+      'et sous le nom de la ligne concernée');
   });
 });
 
@@ -23178,7 +23220,7 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
       'les trois sont traduites');
     /* Il déplie la carte, il ne navigue pas : renvoyer vers « Lignes de titres »
        aurait ouvert l'inventaire, qui ne dit rien du jour. */
-    const action = src.slice(src.indexOf("'jour-detail'()"), src.indexOf("'sort-jour'("));
+    const action = src.slice(src.indexOf("'jour-detail'()"), src.indexOf("async 'trier-jour'("));
     vrai(/jourDeplie = !jourDeplie;/.test(action), 'il bascule');
     vrai(/render\(\);/.test(action) && !/setView|location|scroll/.test(action),
       'et redessine la même carte');
@@ -23190,7 +23232,7 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
        change. */
     const src = lireSource('assets/app.js');
     const fn = src.slice(src.indexOf('function jourCompact('),
-                         src.indexOf('function triJourTh('));
+                         src.indexOf('function enteteJour('));
     vrai(/data-action="open-position" data-i="\$\{l\.index\}"/.test(fn),
       'la ligne compacte ouvre la fiche de sa position');
     vrai(/<button type="button" class="jour-mouv\$\{/.test(fn),
@@ -23230,7 +23272,7 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
        secondaire : il reste dans le détail, sous son intitulé. */
     const src = lireSource('assets/app.js');
     const fn = src.slice(src.indexOf('function jourCompact('),
-                         src.indexOf('function triJourTh('));
+                         src.indexOf('function enteteJour('));
     vrai(fn.indexOf('jm-eur') < fn.indexOf('jm-pct'), 'l’effet vient avant le pourcentage');
     vrai(!/poids|jm-poids/.test(fn), 'et le poids n’est pas dans la version compacte');
     const css = lireSource('assets/styles.css');
@@ -27507,7 +27549,10 @@ suite('Un poids de portefeuille, une seule définition', () => {
 
   test('les trois libellés disent la même base', () => {
     const src = lireSource('assets/app.js').replace(/'\s*\+\s*'/g, '');
-    for (const ou of ["triJourTh('poids', 'Poids'", "sortableTh('poids', '% portef.'"]) {
+    /* L'intitule « Poids » de la carte du jour n'a plus d'aide : c'est la
+       colonne du tableau des lignes et la fiche qui nomment la base. */
+    vrai(/\$\{enteteJour\('Poids'\)\}/.test(src), 'la carte du jour dit « Poids », sans aide');
+    for (const ou of ["sortableTh('poids', '% portef.'"]) {
       const i = src.indexOf(ou);
       vrai(i > 0, `${ou} doit être trouvable`);
       vrai(/cash à investir inclus/.test(src.slice(i, i + 500)),
@@ -32664,34 +32709,25 @@ suite('La page Allocation dit la base qu’elle emploie', () => {
 });
 
 suite('Une flèche de tri ne quitte pas son intitulé', () => {
-  test('l’en-tête triable ne se replie pas', () => {
-    /* « Ma fleche de poids se met en dessous, c'est pas pratique. » La fleche est
-       un `::after` dont le contenu commence par une espace, et cette espace est
-       secable. Dans la colonne « Poids », large de 50 px au telephone, le
-       navigateur coupait la : l'intitule sur une ligne, la fleche en dessous, et
-       la cellule passait de 15 a 28 px de haut. Mesure a 375 px.
-
-       Une fleche separee de son intitule ne dit plus de quoi elle parle : elle
-       flotte sous une colonne et pourrait aussi bien designer la voisine.
-
-       Deux regles se tiennent, et le test verifie les deux. `nowrap` empeche la
-       coupure ; la largeur de colonne empeche le debordement qui la provoquait.
-       Corriger la premiere sans la seconde aurait pousse l'intitule hors de sa
-       cellule au lieu de le replier. */
+  test('les intitulés du jour décrivent, ils ne trient pas', () => {
+    /* Le tri de la carte a un seul endroit, le declencheur de la rangee du
+       compte. Un intitule qui repondait au clic en faisait un second, et
+       laissait croire a deux reglages. */
+    const src = lireSource('assets/app.js');
+    const fn = src.slice(src.indexOf('function enteteJour('), src.indexOf('const TRI_JOUR_CHOIX'));
+    vrai(fn.length > 50, 'l’intitulé du jour est trouvable');
+    vrai(!/<button|data-action|th-tri/.test(fn), 'aucun bouton, aucune action, aucun habillage de tri');
+    const tete = src.slice(src.indexOf('<div class="jour-ligne entete">'),
+                           src.indexOf('</div>', src.indexOf('<div class="jour-ligne entete">')));
+    eq((tete.match(/enteteJour\('[^']*', '/g) || []).length, 1, 'une seule aide dans l’en-tête');
+    vrai(/enteteJour\('Effet', 'Contribution de cette ligne/.test(tete), 'et c’est celle de l’effet');
+    vrai(!/'sort-jour'\(/.test(src), 'l’action de tri par intitulé n’existe plus');
     const css = lireSource('assets/styles.css');
-    vrai(css, 'la feuille de style doit être lisible');
-    const bloc = css.slice(css.indexOf('.tri-jour .th-tri {'),
-                           css.indexOf('.tri-jour .th-tri {') + 320);
-    vrai(/white-space:\s*nowrap/.test(bloc),
-      'l’intitulé triable et sa flèche doivent rester sur une ligne');
+    vrai(!/\.tri-jour/.test(css), 'ni son habillage : curseur, survol, flèches');
     const mob = css.slice(css.indexOf('@media (max-width: 460px)'),
                           css.indexOf('@media (max-width: 460px)') + 900);
-    const cols = (mob.match(/\.jour-ligne \{ grid-template-columns: minmax\(0, 1fr\) (\d+)px/) || [])[1];
-    vrai(cols, 'la grille du jour doit déclarer ses colonnes au téléphone');
-    vrai(Number(cols) >= 58,
-      `la colonne « Poids » fait ${cols} px : son intitulé (34), sa flèche (9), `
-      + 'son aide (5) et l’écart (4) en demandent 52, et c’est le débordement qui '
-      + 'faisait chercher un endroit où couper');
+    vrai(/\.jour-ligne \{ grid-template-columns: minmax\(0, 1fr\) \d+px/.test(mob),
+      'la grille du jour déclare toujours ses colonnes au téléphone');
   });
 
   test('l’intitulé d’une colonne s’aligne sur ses chiffres', () => {
@@ -33378,13 +33414,15 @@ suite('Chercher un titre, c’est en ajouter un', () => {
     for (const cle of ['nom', 'poids', 'pct', 'eur']) {
       vrai(new RegExp(`\\b${cle}:`).test(fn), `la colonne « ${cle} » se trie`);
     }
-    /* Trois temps, comme le tableau des lignes : le troisieme clic rend
-       l'ordre naturel plutot que de bloquer sur un tri qu'on ne peut plus
-       defaire. */
-    const action = src.slice(src.indexOf("'sort-jour'("), src.indexOf("'sort-positions'("));
-    vrai(/jourSort = \{ key, dir: 'desc' \}/.test(action), 'premier clic : décroissant');
-    vrai(/dir: 'asc'/.test(action), 'deuxième : croissant');
-    vrai(/jourSort = null/.test(action), 'troisième : retour à l’ordre naturel');
+    /* Une seule porte vers ces quatre tris : la feuille du declencheur. Elle
+       rend aussi l'ordre naturel, l'ampleur du mouvement, et un meme critere
+       choisi deux fois inverse le sens. */
+    const action = src.slice(src.indexOf("async 'trier-jour'("), src.indexOf("'sort-positions'("));
+    vrai(/if \(v === 'ampleur'\) jourSort = null;/.test(action), 'l’ordre naturel se rechoisit');
+    vrai(/dir: jourSort\.dir === 'desc' \? 'asc' : 'desc'/.test(action), 'rechoisir un critère inverse le sens');
+    for (const cle of ['nom', 'poids', 'pct', 'eur'])
+      vrai(new RegExp(`\\['${cle}', '`).test(src.slice(src.indexOf('const TRI_JOUR_CHOIX'))),
+        `« ${cle} » se choisit dans la feuille`);
     /* Les lignes hors seance vont en queue dans les deux sens numeriques :
        elles n'ont pas varie, un zero les melangerait aux lignes stables. */
     vrai(/horsSeance \? -Infinity/.test(fn),
@@ -41053,7 +41091,10 @@ suite('Une page qui échoue le dit', () => {
     /* Sur un telephone, sans console, une vue qui leve une exception se lisait
        « le bouton ne marche plus » : l'adresse changeait, l'ecran restait. */
     const src = lireSource('assets/app.js');
-    const r = src.slice(src.indexOf('function render()'), src.indexOf('function render()') + 9000);
+    /* Bornee sur le code, pas sur un compte de caracteres : un commentaire ajoute
+       plus haut dans render() la faisait sortir de sa fenetre. */
+    const i = src.indexOf('function render()');
+    const r = src.slice(i, src.indexOf('host.innerHTML = html;', i) + 30);
     vrai(/try \{ html = collerAides\(v\.render\(\)\); \}\s*catch \(e\) \{[\s\S]*?toast\(`\$\{trad\('Cette page n’a pas pu s’afficher'\)\}/.test(r),
       'le rendu est gardé, et le défaut se dit là où l’on est');
     vrai(/catch \(e\) \{[\s\S]*?return;\s*\}\s*host\.innerHTML = html;/.test(r), 'l’écran précédent reste utilisable');

@@ -2148,25 +2148,6 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 .tt-head { font-weight: 650; margin-bottom: 6px; font-size: var(--font-sm); }
 .tt-sous { margin: -4px 0 6px; font-size: var(--font-xs); color: var(--text-secondary); }
 
-.tri-jour { display: inline-flex; align-items: baseline; gap: 4px; }
-/* `nowrap` : la fleche de tri est un `::after` dont le contenu commence par une
-   espace, et cette espace est secable. Dans la colonne « Poids », large de 50 px
-   au telephone, le navigateur coupait donc la : l'intitule sur une ligne, la
-   fleche en dessous, et la cellule passait de 15 a 28 px de haut — mesure a
-   375 px : la fleche tombait sous son intitule, ou elle ne designe plus rien.
-
-   Une fleche separee de son intitule ne dit plus de quoi elle parle : elle
-   flotte sous une colonne et pourrait aussi bien designer la voisine. Les deux
-   ne se separent plus. */
-.tri-jour .th-tri {
-  background: none; border: 0; padding: 0; cursor: pointer;
-  font: inherit; color: inherit; letter-spacing: inherit; text-transform: inherit;
-  white-space: nowrap;
-}
-@media (hover: hover) { .tri-jour .th-tri:hover { color: var(--text-primary); } }
-.tri-jour.desc .th-tri::after { content: ' ↓'; }
-.tri-jour.asc  .th-tri::after { content: ' ↑'; }
-.tri-jour .th-tri:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
 .tt-row { display: flex; align-items: center; gap: 7px; padding: 2px 0; color: var(--text-secondary); }
 .tt-row b { margin-left: auto; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .tt-total { border-top: 1px solid var(--grid); margin-top: 5px; padding-top: 5px; font-weight: 600; }
@@ -3307,20 +3288,10 @@ select.annee {
   font-size: var(--font-xs); font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
   color: var(--muted); padding-bottom: 4px;
 }
-/* `justify-content` et non `text-align` : l'en-tete triable EST un conteneur
-   flex — `.tri-jour` porte `display: inline-flex`, blockifie en `flex` par la
-   grille qui le contient. `text-align: right` ne deplace donc aucun de ses
-   enfants, et la regle etait inerte depuis qu'elle existait : les intitules
-   restaient colles a gauche pendant que les chiffres s'alignaient a droite.
-   « Les noms des colonnes sont pas centres. »
-
-   Mesure a 852 px : la colonne « Poids » finit a 183, son en-tete s'arretait a
-   168 — quinze pixels de decalage, et le bloc du nom, large, rendait l'ecart
-   visible sur toute la rangee.
-
-   `text-align: right` reste : il sert aux cellules qui ne sont pas des
-   conteneurs flex, et les deux ensemble couvrent les deux cas sans qu'on ait a
-   savoir lequel s'applique. */
+/* Les intitules s'alignent sur leurs chiffres, a droite. Deux regles, parce
+   qu'un intitule est un bloc -- la grille blockifie ses enfants -- et que
+   `text-align` place son texte, quand `justify-content` placerait les enfants
+   d'un conteneur flex : chacune ne couvre qu'un des deux cas. */
 .jour-ligne.entete span:not(:first-child) { text-align: right; justify-content: flex-end; }
 .jl-nom { font-weight: 600; overflow: hidden; }
 .jl-nom .sub {

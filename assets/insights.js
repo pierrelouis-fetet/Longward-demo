@@ -111,8 +111,6 @@ const MOIS_FRAICHEUR_RELEVE = 3;
 const INTERVALLES_MINIMUM_APPORTS = 2;
 const MOIS_FENETRE_APPORTS = 3;
 const INTERVALLES_MINIMUM_REGULARITE = 4;
-const PART_ORIGINE_MIN = 10;
-const PART_ORIGINE_MAX = 90;
 
 const MOIS_MINIMUM_FENETRE_RYTHME = 6;
 
@@ -929,44 +927,6 @@ const REGLES_INSIGHT = [
           intervals: b.intervalles, contributions: b.apports,
           previousPeriod: a.precedent ? { from: a.precedent.depuis, to: a.precedent.jusqua,
                                           contributions: a.precedent.apports } : null,
-        },
-        action: { vue: 'history' },
-      };
-    },
-  },
-
-  {
-    id: 'market_growth_origin',
-    onglet: 'positions',
-    famille: 'progression',
-    categorie: 'market_origin',
-    priorite: INSIGHT_PRIORITE.MOYENNE,
-    dedupeGroup: 'origine_marche',
-    reposJours: 30,
-    materialite: 5,
-    question: 'La hausse de mes comptes de marché vient-elle de mes apports ?',
-    titleKey: 'insight.market_growth_origin.title',
-    descriptionKey: 'insight.market_growth_origin.description',
-    eligible: m => !!apportsDeLAnnee(m),
-    evaluer(m) {
-      const a = apportsDeLAnnee(m);
-      if (!a) return null;
-      const b = a.bilan;
-      if (!(b.variation > 0) || !(b.apports > 0) || !(b.horsApports > 0)) return null;
-      const part = b.apports / b.variation * 100;
-      if (part < PART_ORIGINE_MIN || part > PART_ORIGINE_MAX) return null;
-      return {
-        valeur: part,
-        poids: amplitude(Math.abs(part - 50) + PART_ORIGINE_MIN, PART_ORIGINE_MIN),
-        params: {
-          contributionsPct: part, contributions: b.apports, rest: b.horsApports,
-          variation: b.variation, months: b.mois, from: b.depuis, to: b.jusqua,
-        },
-        evidence: {
-          source: 'intervallesMarche', from: b.depuis, to: b.jusqua,
-          valueBefore: b.avant, valueAfter: b.apres, variation: b.variation,
-          contributions: b.apports, rest: b.horsApports, unattributed: b.nonAttribue,
-          restIsNotOnlyMarkets: true,
         },
         action: { vue: 'history' },
       };

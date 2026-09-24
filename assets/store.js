@@ -57,7 +57,7 @@ const cleStockage = () => cleParUtilisateur(modeDemo() ? CLE_DEMO : CLE_REELLE);
 function demoPerimee() {
   if (typeof SEED_VERSION === 'undefined') return false;
   const etat = Store.state;
-  if (!etat) return false;
+  if (!etat || !estDeclare(etat.seedVersion)) return false;
   return num(etat.seedVersion) < SEED_VERSION;
 }
 

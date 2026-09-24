@@ -949,7 +949,6 @@ const EYEBROW_INSIGHT = {
   concentration: 'Concentration',
   data_quality: 'À compléter',
   contributions: 'Apports',
-  market_origin: 'Progression',
 };
 
 const PRESENTATION_INSIGHT = {
@@ -1043,41 +1042,30 @@ const PRESENTATION_INSIGHT = {
   },
   market_contributions_year: {
     titre: p => (p.sinceJanuary
-      ? trad('Tes apports sur les marchés en {a}').replace('{a}', p.year)
-      : trad('Tes apports sur les marchés depuis {m}').replace('{m}', fmtMonth(p.from))),
+      ? trad('Tes apports déclarés en {a}').replace('{a}', p.year)
+      : trad('Tes apports déclarés depuis {m}').replace('{m}', fmtMonth(p.from))),
     valeur: p => fmtEUR0(p.total),
-    phrase: p => trad('versés sur tes comptes de marché entre tes relevés de {a} et de {b}')
+    phrase: p => trad('saisis sur tes relevés de {a} à {b}')
       .replace('{a}', fmtMonth(p.from)).replace('{b}', fmtMonth(p.to)),
     secondaire: p => (p.previous != null
-      ? trad('contre {b} sur les mêmes mois un an plus tôt').replace('{b}', fmtEUR0(p.previous))
+      ? trad('contre {b} déclarés sur les mêmes mois un an plus tôt').replace('{b}', fmtEUR0(p.previous))
       : trad('soit {v} en moyenne').replace('{v}', fmtEUR0(p.perMonth) + trad('/mois'))),
-    cta: { vue: 'history', libelle: 'Voir mes relevés' },
-  },
-  market_growth_origin: {
-    titre: p => trad(p.contributionsPct >= 50
-      ? 'Ta hausse vient surtout de tes apports'
-      : 'Ta hausse vient surtout de la valorisation'),
-    valeur: p => fmtPct(p.contributionsPct, 0),
-    phrase: p => trad('de la hausse de tes comptes de marché vient de tes apports, sur {m} mois')
-      .replace('{m}', p.months),
-    secondaire: p => trad('{a} versés, {h} hors apports : cours, change, dividendes et frais confondus')
-      .replace('{a}', fmtEUR0(p.contributions)).replace('{h}', fmtEUR0(p.rest)),
     cta: { vue: 'history', libelle: 'Voir mes relevés' },
   },
   market_contributions_pace: {
     titre: p => trad(p.currentMonthly > p.previousMonthly
-      ? 'Ton rythme d’apport accélère' : 'Ton rythme d’apport ralentit'),
+      ? 'Tes apports déclarés accélèrent' : 'Tes apports déclarés ralentissent'),
     valeur: p => fmtEUR0(p.currentMonthly) + trad('/mois'),
-    phrase: p => trad('versés sur les {n} derniers mois de relevés').replace('{n}', p.currentMonths),
+    phrase: p => trad('déclarés en moyenne sur les {n} derniers mois de relevés').replace('{n}', p.currentMonths),
     secondaire: p => trad('contre {b} sur les {m} mois d’avant')
       .replace('{b}', fmtEUR0(p.previousMonthly) + trad('/mois')).replace('{m}', p.previousMonths),
     cta: { vue: 'history', libelle: 'Voir mes relevés' },
   },
   market_contributions_regularity: {
     titre: p => (p.withContribution === p.statements
-      ? trad('Un apport à chaque relevé') : trad('Tes apports, relevé par relevé')),
+      ? trad('Un apport déclaré à chaque relevé') : trad('Tes apports déclarés, relevé par relevé')),
     valeur: p => trad('{n} sur {t}').replace('{n}', p.withContribution).replace('{t}', p.statements),
-    phrase: () => trad('de tes relevés portent un versement sur tes comptes de marché'),
+    phrase: () => trad('de tes relevés portent un apport déclaré'),
     secondaire: p => trad('entre tes relevés de {a} et de {b}')
       .replace('{a}', fmtMonth(p.from)).replace('{b}', fmtMonth(p.to)),
     cta: { vue: 'history', libelle: 'Voir mes relevés' },
@@ -3188,15 +3176,9 @@ function deroulerJour(hAvant) {
   anim.finished.catch(() => {}).then(() => box.classList.remove('jl-deroule'));
 }
 
-function triJourTh(key, label, explication = '') {
-  const on = jourSort && jourSort.key === key;
-  const sens = !on ? trad('décroissant')
-             : jourSort.dir === 'desc' ? trad('croissant') : trad('aucun tri');
-  return `<span class="tri-jour ${on ? jourSort.dir : ''}">`
-       + `<button type="button" class="th-tri" data-action="sort-jour" data-key="${key}"`
-       + ` title="${trad('Trier par')} ${esc(trad(label))}, ${trad('ordre')} ${sens}">${esc(trad(label))}</button>`
-       + (explication ? `<i class="col-aide" data-aide="${esc(trad(explication))}" tabindex="0" role="button">?</i>` : '')
-       + `</span>`;
+function enteteJour(label, explication = '') {
+  return `<span class="jour-col">${esc(trad(label))}${explication
+    ? ` <i class="col-aide" data-aide="${esc(trad(explication))}" tabindex="0" role="button">?</i>` : ''}</span>`;
 }
 
 /* Le tri de la carte du jour se choisit comme celui des lignes de titres : un
@@ -3465,10 +3447,10 @@ function viewPositions() {
         ${jourDeplie ? '' : jourCompact(lj)}
         ${!jourDeplie ? '' : `
         <div class="jour-ligne entete">
-          ${triJourTh('nom', 'Ligne')}
-          ${triJourTh('poids', 'Poids', 'Part de cette ligne dans l’ensemble de ton portefeuille Marchés, cash à investir inclus. Elle dit laquelle compte vraiment quand elle bouge : 1 % sur une ligne qui pèse la moitié du portefeuille déplace plus d’argent que 10 % sur une ligne à 3 %.')}
-          ${triJourTh('pct', 'Var.', 'La variation du titre depuis la clôture de la veille, dans sa propre devise : le mouvement affiché est celui du titre, pas celui du change. Les deux cours qui la produisent sont écrits sous le nom de la ligne, clôture de la veille puis cours du jour. Une ligne achetée aujourd’hui se compare à ton prix d’achat, et le dit sous son nom : tu ne la détenais pas hier soir.')}
-          ${triJourTh('eur', 'Effet', 'Ce que cette variation pèse sur ton patrimoine, convertie au taux du jour. C’est la colonne qui dit combien tu as gagné ou perdu, là où la variation ne dit qu’un pourcentage.')}
+          ${enteteJour('Ligne')}
+          ${enteteJour('Poids')}
+          ${enteteJour('Var.')}
+          ${enteteJour('Effet', 'Contribution de cette ligne à la variation de ton portefeuille aujourd’hui.')}
         </div>`}
         ${(jourDeplie ? trierJour(lj) : []).map(l => `
           <div class="jour-ligne">
@@ -8767,13 +8749,6 @@ const ACTIONS = {
     else jourSort = { key: v, dir: v === 'nom' ? 'asc' : 'desc' };
     render();
   },
-  'sort-jour'(btn) {
-    const key = btn.dataset.key;
-    if (!jourSort || jourSort.key !== key) jourSort = { key, dir: 'desc' };
-    else if (jourSort.dir === 'desc') jourSort = { key, dir: 'asc' };
-    else jourSort = null;                      // 3e clic : retour à l'ordre naturel
-    render();
-  },
   'sort-positions'(th) {
     const key = th.dataset.key;
     const tri = triPositions();
@@ -8808,6 +8783,16 @@ const ACTIONS = {
     toast(trad('Démonstration chargée, tes données sont en sécurité'));
   },
 
+  async 'recharger-demo'() {
+    if (!demoPerimee()) return;
+    if (!await askConfirm(trad('Recharger la démonstration ?') + '\n\n'
+      + trad('Les données de démonstration reprennent leur dernière version. Ce que tu as modifié dans la démo est remplacé ; une sauvegarde est prise avant, et elle se restaure depuis Données.'),
+      { ok: 'Recharger la démo' })) return;
+    Store.addBackup('avant rechargement de la démo');
+    rechargerDemo();
+    render();
+    toast(trad('Démonstration à jour'));
+  },
   'quitter-demo'() {
     if (!modeDemo()) return;
     setModeDemo(false);
@@ -14449,6 +14434,12 @@ function render() {
   document.body.dataset.vue = key;
   const bandeau = $('#bandeauDemo');
   if (bandeau) bandeau.hidden = !modeDemo();
+  /* Une graine plus recente que la copie du visiteur se propose, elle ne
+     s'impose pas : la copie porte peut-etre ses essais, et rien ne permet de
+     savoir s'il en a fait. Le bandeau ne se montre que sur la demonstration,
+     la seule ou `SEED_VERSION` existe. */
+  const graine = $('#bandeauGraine');
+  if (graine) graine.hidden = !demoPerimee();
 
   /* Le retour de l'en-tête. Deux sortes d'écrans le portent, et leur retour n'est
      pas le même.
