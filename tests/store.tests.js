@@ -2064,6 +2064,162 @@ suite('Robustesse numérique : ce qui entre, et ce qu’on en dit', () => {
   });
 });
 
+/* --- Ce qui a change entre deux releves : observe, jamais reconstruit ----- */
+suite('Ce qui a changé entre deux relevés', () => {
+  const app = () => lireSource('assets/app.js');
+  const store = () => lireSource('assets/store.js');
+  /* Deux releves ventiles par compte : la forme que l'enregistrement ecrit
+     aujourd'hui. `v` ne sert qu'a dire que la ligne n'est pas vide. */
+  const releve = (date, parts, dettes = 0) => ({
+    date, comment: '', dettes, v: Object.fromEntries(Object.keys(parts).map(k => [k, 1])), parts,
+  });
+  const deuxReleves = s => {
+    s.monthly = [
+      releve('2026-07-01', { a: { cash: 5000, bourse: 20000 }, b: { pe: 3000 }, c: { immo: 150000 } }, 90000),
+      releve('2026-08-01', { a: { cash: 4150, bourse: 22100 }, b: { pe: 5000 }, c: { immo: 150000 } }, 89430),
+    ];
+  };
+
+  test('la somme des écarts de poches, moins l’écart de dette, fait l’écart de net', () => {
+    Fixture.poser(deuxReleves);
+    const v = derniereVariation();
+    vrai(v, 'deux relevés se comparent');
+    const somme = v.changesByPocket.reduce((s, x) => s + x.delta, 0) - v.debtChange;
+    vrai(Math.abs(somme - v.totalChange) < 0.005, `${somme} = ${v.totalChange}`);
+    eq(v.totalChange, rowNet(Store.state.monthly[1]) - rowNet(Store.state.monthly[0]),
+      'et cet écart est celui du journal, de net à net');
+    const par = Object.fromEntries(v.changesByPocket.map(x => [x.pocket, x]));
+    eq(par.cash.delta, -850); eq(par.bourse.delta, 2100); eq(par.pe.delta, 2000);
+    eq(par.bourse.previousValue, 20000); eq(par.bourse.currentValue, 22100);
+    eq(v.debtChange, -570, 'l’encours baisse : un écart négatif');
+  });
+
+  test('une poche inchangée reste dite, une poche vide aux deux dates non', () => {
+    Fixture.poser(deuxReleves);
+    const par = Object.fromEntries(derniereVariation().changesByPocket.map(x => [x.pocket, x]));
+    eq(par.immo.delta, 0, 'l’immobilier n’a pas bougé, et c’est une réponse');
+    eq(par.crypto, undefined, 'aucune crypto, ni avant ni après');
+  });
+
+  test('le dernier relevé se compare au précédent, jamais à aujourd’hui', () => {
+    /* La photo du jour range le cash d'un compte-titres autrement qu'un
+       releve : la comparer ferait croire a un arbitrage. */
+    Fixture.poser(deuxReleves);
+    const v = derniereVariation();
+    eq(v.jusqua, '2026-08-01', 'la borne haute est le dernier relevé');
+    eq(v.depuis, '2026-07-01', 'la basse, celui d’avant');
+    eq(v.index, 1, 'la carte ouvre la fiche de ce mois');
+    Fixture.poser(s => { s.monthly = [s.monthly[0]]; });
+    eq(derniereVariation(), null, 'un seul relevé : rien à comparer, la carte se tait');
+  });
+
+  test('le journal se montre à part, et n’entre dans aucun écart', () => {
+    Fixture.poser(s => {
+      deuxReleves(s);
+      s.budget.apports = [
+        { id: 'a1', libelle: 'Entrée dans l’intervalle', montant: 1000, date: '2026-07-20', note: '' },
+        /* Le jour du releve d'avant est deja dans son solde. */
+        { id: 'a2', libelle: 'Le jour du relevé d’avant', montant: 500, date: '2026-07-01', note: '' },
+        { id: 'a3', libelle: 'Après le relevé', montant: 700, date: '2026-08-15', note: '' },
+        { id: 'a4', libelle: 'Saisie en cours', montant: 0, date: '2026-07-25', note: '' },
+      ];
+    });
+    const v = derniereVariation();
+    eq(v.explicitEvents.length, 1, 'une seule ligne tombe dans l’intervalle');
+    eq(v.explicitEvents[0].montant, 1000);
+    const sans = (() => { Fixture.poser(deuxReleves); return derniereVariation(); })();
+    eq(v.totalChange, sans.totalChange, 'l’écart ne change pas d’un euro : l’apport est déjà dans les soldes');
+  });
+
+  test('le moteur ne lit aucun flux, aucun prix de revient', () => {
+    const src = store();
+    const corps = src.slice(src.indexOf('function variationPatrimoine('), src.indexOf('function variationDuReleve('));
+    vrai(corps.length > 200, 'le moteur est trouvable');
+    const code = corps.replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const interdit of ['posInvested', 'buyPrice', 'prixDeRevient', 'sales', 'positions', 'nowTotals', 'patrimoine('])
+      vrai(!code.includes(interdit), `${interdit} n’entre pas dans une différence de relevés`);
+    vrai(!/monthly\[i\]\.investi|\.investi\s*=/.test(src), 'aucun prix de revient historique n’est stocké');
+  });
+
+  test('la carte dit des écarts de valeur, jamais un gain', () => {
+    const src = app();
+    const vue = src.slice(src.indexOf('function listeVariation('), src.indexOf('function carteAccumulation()'));
+    vrai(vue.includes('function carteVariation()'), 'la carte et sa liste sont dans la tranche');
+    const textes = [...vue.matchAll(/trad\('([^']*)'/g)].map(m => m[1]);
+    vrai(textes.length > 8, `${textes.length} textes lus`);
+    for (const t of textes)
+      vrai(!/gagn|rapport|investi|performance|Marchés|plus-value/i.test(t), `« ${t} » ne parle pas de gain`);
+    /* Seul le total porte une couleur : une poche qui baisse n'est pas une
+       faute, et l'application ne sait pas pourquoi elle baisse. */
+    eq((vue.match(/class="\$\{cls\(/g) || []).length, 1, 'une seule valeur colorée, le total');
+  });
+
+  test('la courbe et la carte partagent une grille, sur l’accueil seulement', () => {
+    const src = app();
+    const vue = src.slice(src.indexOf('function viewOverview()'), src.indexOf('function mountOverview()'));
+    const iEvo = vue.indexOf('${carteEvolution()}'), iVar = vue.indexOf('${carteVariation()}');
+    vrai(iEvo > 0 && iVar > iEvo, 'la carte suit la courbe');
+    vrai(/<div class="grid\$\{derniereVariation\(\) \? ' g-2-1' : ''\}">/.test(vue),
+      'deux colonnes seulement quand la carte existe');
+    eq((src.match(/\$\{carteVariation\(\)\}/g) || []).length, 1, 'un seul appel');
+    vrai(/listeVariation\(variation, \{ avecTotal: false \}\)/.test(src),
+      'la fiche du mois reprend la même liste, sans répéter son total');
+  });
+
+  test('la photo note le jour où elle a été prise', () => {
+    const src = app();
+    const f = src.slice(src.indexOf('function appliquerReleve('), src.indexOf('function appliquerReleve(') + 1600);
+    vrai(/row\.clotureLe = todayISO\(\);/.test(f), 'clotureLe est écrit par le geste « Enregistrer »');
+  });
+
+  test('ce qui date se liste avant la photo, et le frais ne se liste pas', () => {
+    Fixture.poser();
+    const genres = aRafraichir().map(x => x.genre).sort();
+    vrai(genres.includes('estimation'), 'un bien sans date d’estimation');
+    vrai(genres.includes('credit'), 'un crédit jamais vérifié');
+    vrai(genres.includes('cours'), 'des cours jamais actualisés');
+    Fixture.poser(s => {
+      for (const c of s.comptes) for (const l of c.lignes) l.estimeLe = todayISO();
+      for (const e of s.etabs) for (const d of e.dettes) d.verifieLe = todayISO();
+      s.quotes = { lastRun: new Date().toISOString() };
+    });
+    eq(aRafraichir().length, 0, 'tout est frais : la liste est vide');
+    Fixture.poser(s => { s.positions = []; });
+    vrai(!aRafraichir().some(x => x.genre === 'cours'), 'sans titre coté, aucun cours à réclamer');
+  });
+
+  test('les seuils de fraîcheur n’ont qu’un propriétaire', () => {
+    const src = store();
+    eq((src.match(/const RAPPEL_CREDIT_MOIS = /g) || []).length, 1, 'un seul délai de rappel des crédits');
+    eq((src.match(/const COURS_VIEUX_JOURS = /g) || []).length, 1, 'un seul âge des cours');
+    vrai(/if \(days > COURS_VIEUX_JOURS\) add\('warn',/.test(src), 'la cloche lit le même seuil');
+    vrai(/\$\{photo && revolu \? blocFraicheur\(\) : ''\}/.test(app()),
+      'la liste se lit dans la fenêtre du relevé, avant le bouton de photo');
+  });
+
+  test('l’encours de crédit sur un an : observé de relevé à relevé', () => {
+    const regle = REGLES_INSIGHT.find(r => r.id === 'debt_balance_shift');
+    vrai(regle, 'la règle existe');
+    const avec = (avant, apres, aujourdhui) => {
+      Fixture.poser(s => {
+        s.monthly = [releve('2025-08-01', { a: { cash: 1000 } }, avant),
+                     releve('2026-08-01', { a: { cash: 1000 } }, apres)];
+      });
+      const m = { releves: historySeries({ includeNow: false }), aujourdhui };
+      return regle.eligible(m) ? regle.evaluer(m) : null;
+    };
+    const r = avec(100000, 95000, '2026-09-24');
+    vrai(r, 'cinq pour cent en un an se disent');
+    eq(r.params.delta, -5000); eq(r.params.months, 12);
+    eq(r.params.previous, 100000); eq(r.params.current, 95000);
+    eq(r.evidence.source, 'historySeries', 'la preuve nomme les relevés');
+    eq(avec(100000, 99500, '2026-09-24'), null, 'un demi-point est le bruit des dates');
+    eq(avec(100000, 95000, '2027-03-01'), null, 'un dernier relevé vieux de sept mois ne parle plus');
+    eq(avec(0, 200000, '2026-09-24'), null, 'un crédit qui naît n’a pas de base');
+    vrai(avec(90000, 110000, '2026-09-24').params.delta > 0, 'une hausse se dit aussi');
+  });
+});
+
 /* ------------------------------------------------------------------
    4 bis. Les espèces, qui n'ont pas d'établissement
    ------------------------------------------------------------------ */

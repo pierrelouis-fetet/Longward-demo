@@ -103,6 +103,10 @@ const SEUIL_AFFICHAGE_OBJECTIF_MOIS = 2;
 
 const MOIS_CREDIT_BIENTOT_SOLDE = 12;
 
+const MOIS_FENETRE_DETTE = 12;
+const SEUIL_AFFICHAGE_DETTE_PCT = 2;
+const MOIS_FRAICHEUR_RELEVE_DETTE = 3;
+
 const MOIS_MINIMUM_FENETRE_RYTHME = 6;
 
 const MOIS_MINIMUM_FENETRE_DEPENSES = 3;
@@ -851,6 +855,37 @@ const REGLES_INSIGHT = [
     },
   },
 
+  {
+    id: 'debt_balance_shift',
+    onglet: 'overview',
+    famille: 'dette',
+    categorie: 'debt',
+    priorite: INSIGHT_PRIORITE.MOYENNE,
+    dedupeGroup: 'debt_balance',
+    reposJours: 60,
+    materialite: SEUIL_AFFICHAGE_DETTE_PCT,
+    question: 'Mon encours de crédit a-t-il bougé sur un an ?',
+    titleKey: 'insight.debt_balance_shift.title',
+    descriptionKey: 'insight.debt_balance_shift.description',
+    eligible: m => !!ecartDetteReleves(m),
+    evaluer(m) {
+      const e = ecartDetteReleves(m);
+      if (!e) return null;
+      if (Math.abs(e.pct) + 1e-9 < SEUIL_AFFICHAGE_DETTE_PCT) return null;
+      return {
+        valeur: e.pct,
+        poids: amplitude(e.pct, SEUIL_AFFICHAGE_DETTE_PCT),
+        params: { delta: e.ecart, current: e.courant, previous: e.precedent, months: e.mois },
+        evidence: {
+          source: 'historySeries', from: e.depuis, to: e.jusqua, months: e.mois,
+          previousDebt: e.precedent, currentDebt: e.courant, delta: e.ecart,
+          deltaPct: e.pct, displayThresholdPct: SEUIL_AFFICHAGE_DETTE_PCT,
+        },
+        action: { vue: 'accounts' },
+      };
+    },
+  },
+
   /* --- Le poste qui a bouge, et lui seul ----------------------------------
 
      LA REGLE QUI MANQUAIT, et c'est la plus utile de l'onglet. `spending_shift`
@@ -1191,6 +1226,24 @@ function partsDesPoches(m, moisEnArriere) {
       const b = num(m.totaux[k]) / totalMaintenant * 100;
       return { cle: k, avant: a, maintenant: b, ecart: b - a };
     }),
+  };
+}
+
+function ecartDetteReleves(m) {
+  const pts = m.releves || [];
+  if (!pts.length) return null;
+  const apres = pts[pts.length - 1];
+  if (moisEntre(String(apres.date), String(m.aujourdhui)) > MOIS_FRAICHEUR_RELEVE_DETTE) return null;
+  const cible = decalerMois(String(apres.date), -MOIS_FENETRE_DETTE);
+  const avant = pts.filter(x => String(x.date) <= cible).pop();
+  if (!avant) return null;
+  const precedent = num(avant.dettes), courant = num(apres.dettes);
+  if (!(precedent > 0)) return null;
+  const ecart = courant - precedent;
+  return {
+    depuis: String(avant.date), jusqua: String(apres.date),
+    mois: moisEntre(String(avant.date), String(apres.date)),
+    precedent, courant, ecart, pct: ecart / precedent * 100,
   };
 }
 

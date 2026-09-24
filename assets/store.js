@@ -3414,19 +3414,21 @@ function limitRange(points, range, { ecarts = false } = {}) {
   return gardes.length >= 2 ? gardes : points.slice(-2);
 }
 
+/* `dettes` : le capital restant dû du mois, tel que la photo l'a noté.
+   Sans lui, la courbe nette ne pouvait déduire les crédits que du dernier
+   point — le patrimoine net semblait plat pendant des années puis
+   chutait d'un coup au bout. */
+/* `net` est rendu a cote du brut : les deux se lisent, et aucun appelant
+   n'a plus a refaire la soustraction -- c'est en la refaisant que le journal
+   avait fini par ne plus la faire du tout. */
+const pointDuReleve = r => ({ label: fmtMonth(r.date), date: r.date, ...rowGroups(r),
+                              total: rowTotal(r), dettes: num(r.dettes), net: rowNet(r),
+                              comment: r.comment });
+
 function historySeries({ includeNow = true } = {}) {
   const pts = Store.state.monthly
     .filter(r => !rowIsEmpty(r))
-    /* `dettes` : le capital restant dû du mois, tel que la photo l'a noté.
-       Sans lui, la courbe nette ne pouvait déduire les crédits que du dernier
-       point — le patrimoine net semblait plat pendant des années puis
-       chutait d'un coup au bout. */
-    /* `net` est rendu a cote du brut : les deux se lisent, et aucun appelant
-       n'a plus a refaire la soustraction -- c'est en la refaisant que le journal
-       avait fini par ne plus la faire du tout. */
-    .map(r => ({ label: fmtMonth(r.date), date: r.date, ...rowGroups(r),
-                 total: rowTotal(r), dettes: num(r.dettes), net: rowNet(r),
-                 comment: r.comment }));
+    .map(pointDuReleve);
   if (includeNow) {
     const t = nowTotals();
     /* `total` doit egaler la somme des trois poches, comme pour un releve
@@ -6329,6 +6331,73 @@ function apportsTotal(debut = null, fin = null) {
   return apportsDetail(debut, fin).net;
 }
 
+/* --- CE QUI A CHANGE ENTRE DEUX RELEVES -----------------------------------
+
+   UNE DIFFERENCE, ET RIEN D'AUTRE. Deux photos, poche par poche, et l'ecart
+   entre les deux. Ce n'est ni un rendement ni un apport : un versement
+   programme, une hausse des cours et un arbitrage entre deux comptes font
+   bouger une poche de la meme facon, et un releve ne dit pas lequel a eu lieu.
+   Aucun prix de revient historique n'est lu, aucun flux n'est reconstruit.
+
+   LA SOMME TIENT PAR CONSTRUCTION. Le net d'un releve vaut la somme de ses
+   poches moins sa dette, donc l'ecart de net vaut la somme des ecarts de poches
+   moins l'ecart de dette. Rien ne reste a attribuer, et un test l'exige.
+
+   LES EVENEMENTS VIENNENT DU JOURNAL, ET DE LUI SEUL. Une entree ou une sortie
+   exceptionnelle y est ecrite avec sa date : elle se montre parce qu'elle
+   existe. Elle n'est rangee dans aucune poche -- le journal ne dit pas quel
+   compte elle a touche -- et elle ne se deduit jamais d'un ecart de solde.
+   L'intervalle est celui du rythme : le jour du releve d'avant est exclu, ce
+   qui est entre ce jour-la etait deja dans son solde.
+
+   Les deux arguments sont des points de `pointDuReleve()`. */
+function variationPatrimoine(avant, apres) {
+  if (!avant || !apres) return null;
+  const changesByPocket = POCHES_EVOLUTION
+    .map(k => ({ pocket: k, previousValue: round2(num(avant[k])), currentValue: round2(num(apres[k])),
+                 delta: round2(num(apres[k]) - num(avant[k])) }))
+    .filter(x => x.previousValue || x.currentValue);
+  const debut = prochainJour(avant.date), fin = String(apres.date);
+  const explicitEvents = apportsTries()
+    .filter(a => a.montant && String(a.date || '') >= debut && String(a.date || '') <= fin)
+    .map(a => ({ libelle: a.libelle || '', date: a.date, montant: round2(a.montant) }));
+  return {
+    depuis: avant.date, jusqua: apres.date, mois: moisEntre(avant.date, apres.date),
+    previousNet: round2(num(avant.net)), currentNet: round2(num(apres.net)),
+    totalChange: round2(num(apres.net) - num(avant.net)),
+    changesByPocket,
+    previousDebt: round2(num(avant.dettes)), currentDebt: round2(num(apres.dettes)),
+    debtChange: round2(num(apres.dettes) - num(avant.dettes)),
+    explicitEvents,
+  };
+}
+
+/* Le releve d'un mois compare a celui d'avant, avec la definition du journal
+   et de la fiche du mois : le dernier mois RENSEIGNE, pas la ligne du dessus.
+   `null` pour le premier releve de la serie, qui n'a rien a quoi se comparer. */
+function variationDuReleve(index) {
+  const lignes = Store.state.monthly || [];
+  const r = lignes[index];
+  if (!r || rowIsEmpty(r)) return null;
+  const avant = lignes.slice(0, index).filter(x => !rowIsEmpty(x)).pop();
+  return avant ? variationPatrimoine(pointDuReleve(avant), pointDuReleve(r)) : null;
+}
+
+/* Les deux derniers releves, ou `null` s'il n'y en a pas deux. Jamais le
+   dernier releve face a « aujourd'hui » : un releve range le cash qui attend
+   dans un compte-titres avec ses titres quand la photo du jour le compte en
+   liquidites, et la comparaison inventerait un arbitrage qui n'a pas eu lieu. */
+function derniereVariation() {
+  const lignes = Store.state.monthly || [];
+  for (let i = lignes.length - 1; i >= 0; i--) {
+    if (rowIsEmpty(lignes[i])) continue;
+    const v = variationDuReleve(i);
+    /* `index` : la carte ouvre la fiche de ce mois-la. */
+    return v ? { ...v, index: i } : null;
+  }
+  return null;
+}
+
 /* --- autres depenses : retire -------------------------------------------
    AUTRES_PERIODES, autreMensuelle() et supplementsTotal() vivaient ici pour
    une carte « Autres depenses » qui ne comptait ni dans les charges fixes ni
@@ -7797,6 +7866,52 @@ function notifications() {
     .sort((a, b) => RANG_NOTIF[a.level] - RANG_NOTIF[b.level]);
 }
 
+const COURS_VIEUX_JOURS = 7;
+const RAPPEL_CREDIT_MOIS = 3;
+
+/* --- CE QUI MERITE D'ETRE RAFRAICHI AVANT UNE PHOTO -----------------------
+
+   Un releve fige les montants du jour, et un montant perime y reste fige :
+   une estimation d'il y a huit mois devient la valeur d'un mois qui n'a
+   jamais eu ce chiffre. La liste se lit AVANT d'enregistrer, et elle ne
+   bloque rien -- le detenteur sait peut-etre que sa montre n'a pas bouge.
+
+   Quatre sources, chacune deja tenue ailleurs, et aucune regle nouvelle :
+     `aVerifier()`      une valeur que la porte du modele a refusee ;
+     `valeurPerimee()`  une estimation ou une VL plus vieille que sa cadence ;
+     `verifieLe`        un capital restant du jamais vu, ou vu il y a trop
+                        longtemps ;
+     `quotes.lastRun`   des cours qui n'ont pas ete actualises.
+
+   Le cash n'y est pas, et ce n'est pas un oubli : un solde de compte ne porte
+   aucune date, donc rien ne permet de dire qu'il est vieux. */
+function aRafraichir() {
+  const out = [];
+  for (const x of aVerifier()) out.push({ genre: 'aVerifier', nom: x.nom || x.chemin, depuis: null });
+  for (const c of comptesOuverts()) {
+    const t = typeCompte(c.type);
+    if (!(estValeurEstimee(t) || (t && t.vl))) continue;
+    for (const l of (c.lignes || [])) {
+      if (!estDeclare(l.valeur)) continue;
+      /* `publiee` : une VL se date du jour de sa publication, une estimation du
+         jour ou on l'a etablie, et la phrase ne les nomme pas pareil. */
+      if (valeurPerimee(l, t)) out.push({ genre: 'estimation', nom: nomLignePlacement(l, c),
+                                          depuis: l.estimeLe || null, compteId: c.id,
+                                          publiee: !!(t && t.vl) });
+    }
+  }
+  for (const d of creditsEnCours().lignes) {
+    if (!d.verifieLe || num(d.moisDepuis) >= RAPPEL_CREDIT_MOIS)
+      out.push({ genre: 'credit', nom: d.libelle, depuis: d.verifieLe || null });
+  }
+  if (Store.state.positions.length) {
+    const last = Store.state.quotes?.lastRun || null;
+    if (!last || joursDepuis(last) > COURS_VIEUX_JOURS)
+      out.push({ genre: 'cours', nom: '', depuis: last ? String(last).slice(0, 10) : null });
+  }
+  return out;
+}
+
 function healthChecks() {
   const out = [];
   let sujet = 'coherence';
@@ -7854,7 +7969,7 @@ function healthChecks() {
       trad('Les prix viennent du sheet, pas du marché'), 'positions');
     else {
       const days = (Date.now() - new Date(last)) / 86400000;
-      if (days > 7) add('warn',
+      if (days > COURS_VIEUX_JOURS) add('warn',
         trad('Cours vieux de {n} jours').replace('{n}', Math.round(days)),
         trad('Valorisation et allocation sont décalées du marché'), 'positions');
     }
@@ -8020,7 +8135,6 @@ function healthChecks() {
   }
 
   sujet = 'credits';
-  const RAPPEL_CREDIT_MOIS = 3;
   for (const c of creditsEnCours().lignes) {
     if (!c.verifieLe) {
       add('action', trad('Crédit {l} jamais vérifié').replace('{l}', guill(c.libelle)),

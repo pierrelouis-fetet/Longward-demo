@@ -715,6 +715,76 @@ function monterEvolution() {
   if (cible) Charts.stackedArea(cible, { points, height: 300, series, anime, parts: true });
 }
 
+/* --- CE QUI A CHANGE ENTRE DEUX RELEVES ------------------------------------
+
+   La liste que la carte de l'accueil et la fiche du mois partagent : une seule
+   ecriture, donc les deux ecrans disent le meme ecart avec les memes mots.
+
+   UN ECART DE VALEUR, JAMAIS UN GAIN. Chaque ligne dit ce qu'une poche vaut de
+   plus ou de moins qu'au releve d'avant. Elle ne dit pas pourquoi : un DCA,
+   une hausse des cours et un virement entre deux comptes y font le meme
+   mouvement, et `variationPatrimoine()` ne lit aucun flux.
+
+   SEUL LE TOTAL EST COLORE. Une poche qui baisse n'est pas une erreur -- des
+   liquidites qu'on vient d'investir baissent, et c'est voulu. Le vert et le
+   rouge sur chaque ligne jugeraient des mouvements que l'application ne sait
+   pas expliquer ; le signe suffit a dire le sens.
+
+   LA DETTE SE LIT PAR SON EFFET SUR LE NET, et le dit. Un encours qui baisse
+   fait monter le net d'autant : la ligne porte un montant positif, et la
+   phrase dessous nomme l'encours pour que personne ne lise une dette qui monte.
+   C'est ce qui fait que les lignes s'additionnent en total.
+
+   Les lignes vont du plus gros ecart au plus petit : l'ordre dit deja ce qui a
+   le plus bouge, et une phrase qui le redirait serait de trop. */
+function listeVariation(v, { avecTotal = true } = {}) {
+  const bougent = v.changesByPocket.filter(x => x.delta)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+  const stables = v.changesByPocket.filter(x => !x.delta).map(x => libellePoche(x.pocket));
+  const ligneDette = v.debtChange ? `
+      <dt>${trad('Crédits')}<span class="sub">${trad(v.debtChange < 0 ? 'encours en baisse de {v}' : 'encours en hausse de {v}')
+        .replace('{v}', fmtEUR0(Math.abs(v.debtChange)))}</span></dt>
+        <dd>${fmtSigned(-v.debtChange)}</dd>` : '';
+  const ev = v.explicitEvents;
+  const evTexte = ev.slice(0, 3)
+    .map(e => `${esc(e.libelle || trad('Sans intitulé'))} ${fmtSigned(e.montant)} (${fmtDate(e.date)})`).join(', ')
+    + (ev.length > 3 ? ` ${trad('et {n} autres').replace('{n}', ev.length - 3)}` : '');
+  return `
+    ${avecTotal ? `
+    <dl class="kv kv-accumul">
+      <dt class="cle"><b>${trad('Patrimoine net')}</b></dt>
+        <dd class="cle"><b class="${cls(v.totalChange)}">${fmtSigned(v.totalChange)}</b></dd>
+    </dl>
+    <div class="kv-filet"></div>` : ''}
+    ${bougent.length || ligneDette ? `
+    <dl class="kv">
+      ${bougent.map(x => `
+      <dt>${esc(libellePoche(x.pocket))}<span class="sub">${fmtEUR0(x.previousValue)} → ${fmtEUR0(x.currentValue)}</span></dt>
+        <dd>${fmtSigned(x.delta)}</dd>`).join('')}
+      ${ligneDette}
+    </dl>` : `<p class="small muted" style="margin:0">${trad('Aucune poche n’a bougé entre ces deux relevés.')}</p>`}
+    ${stables.length && (bougent.length || ligneDette) ? `
+    <p class="small muted" style="margin:8px 0 0">${trad('Inchangé')}${deuxPoints()} ${stables.map(esc).join(', ')}</p>` : ''}
+    ${ev.length ? `
+    <p class="hint" style="margin:8px 0 0">${trad('Ton journal porte sur cette période')}${deuxPoints()} ${evTexte}.
+      ${trad('Ces montants sont déjà compris dans les écarts ci-dessus.')}</p>` : ''}`;
+}
+
+function carteVariation() {
+  const v = derniereVariation();
+  if (!v) return '';
+  return `
+    <div class="card" data-anchor="variation">
+      <div class="card-head"><h2>${trad('Ce qui a changé')}${aide(trad('Les écarts de valeur entre tes deux derniers relevés, poche par poche. Ce ne sont pas des rendements : un versement, une hausse des cours ou un virement entre deux comptes font bouger une poche de la même façon, et un relevé ne dit pas lequel a eu lieu.'))}</h2></div>
+      <p class="hint" style="margin:0 0 12px">${trad('Entre tes relevés de {a} et de {b}')
+        .replace('{a}', esc(fmtMonth(v.depuis))).replace('{b}', esc(fmtMonth(v.jusqua)))}${v.mois > 1
+        ? ` · ${trad('écart sur {n} mois').replace('{n}', v.mois)}` : ''}</p>
+      ${listeVariation(v)}
+      <button type="button" class="lien-nu" style="margin-top:12px" data-action="voir-releve" data-i="${v.index}"
+              >${trad('Voir le relevé de {m}').replace('{m}', esc(fmtMonth(v.jusqua)))}</button>
+    </div>`;
+}
+
 /* « Combien est-ce que j'accumule en ce moment ? »
 
    La reponse vivait dans Budget > Charges fixes, sous le titre « Epargne et
@@ -958,6 +1028,15 @@ const PRESENTATION_INSIGHT = {
     valeur: p => fmtEUR0(p.monthly) + trad('/mois'),
     phrase: p => trad('se libèrent dans {n} mois').replace('{n}', p.months),
     secondaire: () => trad('à la dernière échéance de ce crédit'),
+    cta: { vue: 'accounts', libelle: 'Voir mes crédits' },
+  },
+  debt_balance_shift: {
+    titre: p => trad(p.delta < 0 ? 'Ton encours de crédit a baissé'
+                                 : 'Ton encours de crédit a augmenté'),
+    valeur: p => fmtEUR0(Math.abs(p.delta)),
+    phrase: p => trad('de relevé à relevé, en {m} mois').replace('{m}', p.months),
+    secondaire: p => trad('{a} restant dû, contre {b}')
+      .replace('{a}', fmtEUR0(p.current)).replace('{b}', fmtEUR0(p.previous)),
     cta: { vue: 'accounts', libelle: 'Voir mes crédits' },
   },
   spending_shift: {
@@ -1466,8 +1545,9 @@ function viewOverview() {
     </div>
   </div>`}
 
-  <div class="grid">
+  <div class="grid${derniereVariation() ? ' g-2-1' : ''}">
     ${carteEvolution()}
+    ${carteVariation()}
   </div>
 
   ${carteAccumulation()}
@@ -12695,6 +12775,7 @@ function appliquerReleve(index, saisi) {
   row.comment = saisi.comment;
   row.dettes = round2(num(saisi.dettes));
   row.parts = partsDuReleve(saisi.v);
+  row.clotureLe = todayISO();
   delete row.poches;
   historyYear = String(row.date).slice(0, 4);
   Store.save(); render();
@@ -12719,6 +12800,34 @@ async function viderOuSupprimerMois(index) {
   toast(calendrier ? `${fmtMonth(r.date)} ${trad('vidé')}`
                    : trad('releve.ligneSupprimee', 'Ligne supprimée'));
   return true;
+}
+
+/* Ce qui date, dit juste au-dessus du bouton qui va le figer.
+
+   La liste vient de `aRafraichir()` et ne bloque rien : enregistrer reste
+   possible, parce que le detenteur sait peut-etre que la valeur n'a pas bouge.
+   Cinq lignes au plus, et le reste se compte : la fenetre doit laisser voir ses
+   champs. */
+function blocFraicheur() {
+  const f = aRafraichir();
+  if (!f.length) return '';
+  const phrase = x => {
+    const d = x.depuis ? esc(fmtDate(x.depuis)) : '';
+    if (x.genre === 'cours') return d ? trad('Cours actualisés le {d}').replace('{d}', d) : trad('Cours jamais actualisés');
+    const quoi = x.genre === 'aVerifier' ? trad('valeur à vérifier')
+      : x.genre === 'credit' ? (d ? trad('capital restant dû vérifié le {d}').replace('{d}', d)
+                                  : trad('capital restant dû jamais vérifié'))
+      : x.publiee ? (d ? trad('VL du {d}').replace('{d}', d) : trad('sans date de VL'))
+      : (d ? trad('estimée le {d}').replace('{d}', d) : trad('sans date d’estimation'));
+    return `${esc(guill(x.nom))}${deuxPoints()} ${quoi}`;
+  };
+  return `
+      <div class="avert">
+        <b>${trad('Certaines valeurs datent')}</b>
+        <ul class="avert-liste">${f.slice(0, 5).map(x => `<li>${phrase(x)}</li>`).join('')}${f.length > 5
+          ? `<li>${trad('et {n} autres').replace('{n}', f.length - 5)}</li>` : ''}</ul>
+        ${trad('Le relevé les figera telles quelles. Tu peux les mettre à jour avant, ou enregistrer quand même.')}
+      </div>`;
 }
 
 function askMonthlySnapshot(index) {
@@ -12797,6 +12906,9 @@ function askMonthlySnapshot(index) {
 
             Sans avoirs saisis, la photo vaut zero : proposer d'ecraser douze
             champs avec des zeros n'aiderait personne, le bloc disparait. */''}
+      ${/* Ce qui date se dit AVANT le bouton qui le reprend : lu apres, il
+            arriverait une fois les montants perimes deja dans les champs. */''}
+      ${photo && revolu ? blocFraicheur() : ''}
       ${photo && revolu ? `
       <button class="btn pleine" id="relPhoto" type="button"
               >⤒ ${trad('Préremplir avec les montants actuels')} · ${fmtEUR0(photo)}</button>
@@ -13639,6 +13751,7 @@ const APERCUS = {
     const dettes = num(r.dettes);
     const net = rowNet(r);
     const dlt = avant ? net - rowNet(avant) : 0;
+    const variation = variationDuReleve(i);
     const poches = seriesUtiles([g]).filter(p => Math.abs(num(g[p.key])) > 0.005);
     const comptes = Object.entries(r.v || {})
       .map(([id, v]) => ({ id, v: num(v), a: ACC[id] }))
@@ -13664,6 +13777,10 @@ const APERCUS = {
           <td class="muted"></td>
           <td><b>${fmtEUR0(-dettes)}</b></td>
         </tr>` : ''}</tbody></table>
+        ${variation ? `
+        <p class="hint" style="margin:14px 0 6px">${trad('Écarts depuis le relevé de {m}')
+          .replace('{m}', esc(fmtMonth(variation.depuis)))}</p>
+        ${listeVariation(variation, { avecTotal: false })}` : ''}
         ${comptes.length ? `
         <p class="hint" style="margin:14px 0 2px">${trad('Compte par compte')}</p>
         <table><tbody>${comptes.map(c => `<tr>
@@ -13672,6 +13789,9 @@ const APERCUS = {
           <td class="muted"></td>
           <td><b>${fmtEUR0(c.v)}</b></td>
         </tr>`).join('')}</tbody></table>` : ''}
+        ${r.clotureLe ? `
+        <p class="small muted" style="margin:12px 0 0">${trad('Photo enregistrée le {d}')
+          .replace('{d}', esc(fmtDate(r.clotureLe)))}</p>` : ''}
         <button class="btn pleine" style="margin-top:12px" type="button"
                 data-action="edit-month" data-i="${i}">${trad('Modifier le relevé')}</button>`,
     };

@@ -1251,6 +1251,8 @@ table .field :is(input, select) { max-width: none; }
   background: color-mix(in oklab, var(--warning) 9%, transparent);
   color: var(--text-primary); font-size: var(--font-sm); line-height: 1.45;
 }
+.avert-liste { margin: 4px 0 6px; padding-left: 18px; }
+.avert-liste li { overflow-wrap: anywhere; }
 
 .grid { display: grid; gap: 16px; }
 /* Un enfant de grille refuse par defaut de descendre sous sa largeur
