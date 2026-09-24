@@ -23013,11 +23013,11 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
     const src = lireSource('assets/app.js');
     const vue = src.slice(src.indexOf('function viewPositions('),
                           src.indexOf('function mountPositions('));
-    vrai(/\$\{jourDeplie \? '' : jourCompact\(lj\)\}/.test(vue),
+    vrai(/\$\{jourDeplie \? '' : jourCompact\(lj, poidsBase\)\}/.test(vue),
       'la version compacte prend la place du tableau');
     vrai(/\$\{\(jourDeplie \? trierJour\(lj\) : \[\]\)\.map/.test(vue),
       'et les rangées détaillées ne sortent que dépliées');
-    vrai(/\$\{!jourDeplie \? '' : `/.test(vue), 'l’en-tête des colonnes suit');
+    vrai(/\$\{!jourDeplie \? '' : enteteLignesJour\(\)\}/.test(vue), 'l’en-tête des colonnes suit');
   });
 
   test('le bouton porte le compte des lignes qu’il ouvre', () => {
@@ -23081,22 +23081,70 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
       'la rangée détaillée n’a pas changé de chemin');
   });
 
-  test('la version compacte montre l’effet avant la variation, sans le poids', () => {
-    /* « Meta +0,5 % » ne dit pas ce que la journée a changé ; « Meta +11 € » le
-       dit. Le poids explique pourquoi une ligne pèse, ce qui est une question
-       secondaire : il reste dans le détail, sous son intitulé. */
+  test('la version compacte montre l’effet avant la variation, le poids sur grand écran', () => {
+    /* Sur un telephone, l'effet en euros dit ce que la journee a change, la
+       variation en pourcentage non : il passe devant. Le poids explique pourquoi
+       une ligne pese, question secondaire sur un ecran etroit ; il n'apparait
+       qu'avec la place, et c'est le meme chiffre que dans le detail. */
     const src = lireSource('assets/app.js');
     const fn = src.slice(src.indexOf('function jourCompact('),
                          src.indexOf('function enteteJour('));
     vrai(fn.indexOf('jm-eur') < fn.indexOf('jm-pct'), 'l’effet vient avant le pourcentage');
-    vrai(!/poids|jm-poids/.test(fn), 'et le poids n’est pas dans la version compacte');
+    vrai(/<span class="jm-poids muted">\$\{fmtPct\(poidsPortefeuille\(l\.value, base\), 1\)\}<\/span>/.test(fn),
+      'le poids du résumé s’écrit par la même fonction que celui du détail');
     const css = lireSource('assets/styles.css');
+    vrai(/\n\.jm-poids \{ display: none;/.test(css), 'et il ne se montre pas sur un téléphone');
     const bloc = css.slice(css.indexOf('.jour-mouv {'), css.indexOf('.jour-plus {'));
     vrai(/grid-template-columns: minmax\(0, 1fr\) auto;/.test(bloc),
       'deux colonnes, pas quatre : quatre redonneraient le tableau replié');
     vrai(/text-overflow: ellipsis/.test(bloc), 'un nom long se coupe proprement');
     vrai(/font-size: var\(--font-lg\)/.test(bloc.slice(bloc.indexOf('.jm-eur'))),
       'et l’effet est le plus gros des deux chiffres');
+  });
+
+  test('à partir de 768 px, le résumé et le détail partagent une grille', () => {
+    /* Une carte large qui garde la liste du telephone met le nom au bord gauche
+       et ses chiffres au bord droit, du vide entre les deux. Des 768 px, les
+       lignes du resume se rangent sous les colonnes du detail : une seule
+       definition des colonnes, un seul en-tete, aucune donnee de plus. */
+    const css = lireSource('assets/styles.css');
+    const i = css.indexOf('--jour-cols:');
+    vrai(i > 0, 'les colonnes du jour sont déclarées une fois');
+    eq(css.split('--jour-cols:').length - 1, 1, 'et une seule fois');
+    const debut = css.lastIndexOf('@media (min-width: 768px) {', i);
+    const bloc = css.slice(debut, css.indexOf('\n}', i));
+    vrai(debut > 0 && bloc.length > 200, 'dans la requête des écrans larges');
+    vrai(/\.jour-lignes \{\s*--jour-cols: minmax\(0, \d+fr\)/.test(bloc),
+      'la colonne du nom se partage la largeur, elle ne prend pas tout le reste');
+    vrai(/\.jour-lignes \.jour-ligne \{ grid-template-columns: var\(--jour-cols\); \}/.test(bloc),
+      'le détail lit ces colonnes, avec deux classes pour battre sa règle de base');
+    vrai(css.indexOf('\n.jour-ligne {') > debut,
+      'et cette règle de base vient bien plus bas, c’est pour elle que la seconde classe existe');
+    vrai(/\.jour-mouv \{\s*grid-template-columns: var\(--jour-cols\);/.test(bloc),
+      'le résumé lit les mêmes');
+    vrai(/\.jour-mouv \.jm-poids \{ display: block; grid-column: 2; \}/.test(bloc)
+      && /\.jour-mouv \.jm-pct \{ grid-column: 3;/.test(bloc)
+      && /\.jour-mouv \.jm-eur \{ grid-column: 4;/.test(bloc),
+      'dans l’ordre du détail : poids, variation, effet');
+    vrai(/\.jour-lignes > \.jm-entete \{ display: block; \}/.test(bloc)
+      && /\n\.jour-lignes > \.jm-entete \{ display: none; \}/.test(css),
+      'l’en-tête du résumé n’existe que sur grand écran');
+    vrai(/\.jour-reglages \{\s*display: flex;[^}]*justify-content: space-between;/.test(bloc),
+      'filtres à gauche, compte et tri à droite, sur une seule ligne');
+
+    const src = lireSource('assets/app.js');
+    eq(src.split('<div class="jour-ligne entete">').length - 1, 1,
+      'l’en-tête des colonnes s’écrit une fois');
+    const fn = src.slice(src.indexOf('function jourCompact('), src.indexOf('function enteteJour('));
+    vrai(/<div class="jm-entete">\$\{enteteLignesJour\(\)\}<\/div>/.test(fn),
+      'le résumé le pose, enveloppé pour que le téléphone le cache');
+    const vue = src.slice(src.indexOf('function viewPositions('), src.indexOf('function mountPositions('));
+    vrai(/poidsPortefeuille\(l\.value, poidsBase\)/.test(vue) && /jourCompact\(lj, poidsBase\)/.test(vue),
+      'le résumé et le détail pèsent leurs lignes sur la même base');
+    const r = vue.indexOf('<div class="jour-reglages">');
+    vrai(r > 0 && vue.indexOf('<div class="carte-filtres">${filtresLignes()}</div>', r) > r
+      && vue.indexOf('<div class="carte-meta">', r) < vue.indexOf('<div class="jour-lignes">', r),
+      'les filtres et le tri vivent dans le même groupe, au-dessus des lignes');
   });
 
   test('« sans cours du jour » ne se dit qu’une fois', () => {
@@ -27357,8 +27405,8 @@ suite('Un poids de portefeuille, une seule définition', () => {
     /* Et les cinq surfaces l'appellent bien. */
     /* Un argument, donc un appel : la mention `poidsPortefeuille()` du
        commentaire qui raconte la fusion ne compte pas. */
-    eq((src.match(/poidsPortefeuille\([^)]/g) || []).length, 7,
-      'la carte du jour (cellule et tri), le tableau des lignes, la fiche, '
+    eq((src.match(/poidsPortefeuille\([^)]/g) || []).length, 8,
+      'la carte du jour (résumé, détail et tri), le tableau des lignes, la fiche, '
       + 'les deux cellules de l’export et l’aperçu du cash');
   });
 

@@ -3232,6 +3232,32 @@ select.annee {
 .jm-eur.up, .jm-pct.up { color: var(--good); }
 .jm-eur.down, .jm-pct.down { color: var(--critical); }
 .jm-eur.flat, .jm-pct.flat { color: var(--text-secondary); }
+.jm-poids { display: none; text-align: right; font-variant-numeric: tabular-nums; }
+.jour-lignes > .jm-entete { display: none; }
+
+@media (min-width: 768px) {
+  .jour-lignes {
+    --jour-cols: minmax(0, 5fr) minmax(64px, 1.4fr) minmax(76px, 1.6fr) minmax(88px, 1.6fr);
+  }
+  /* Deux classes : la regle de base de `.jour-ligne` vient plus bas dans la
+     feuille, et a specificite egale c'est l'ordre qui tranche. */
+  .jour-lignes .jour-ligne { grid-template-columns: var(--jour-cols); }
+  .jour-lignes > .jm-entete { display: block; }
+  .jour-mouv {
+    grid-template-columns: var(--jour-cols); column-gap: 10px; align-items: center;
+    padding: 7px 0;
+  }
+  .jour-mouv .jm-nom { grid-row: auto; grid-column: 1; }
+  .jour-mouv .jm-poids { display: block; grid-column: 2; }
+  .jour-mouv .jm-pct { grid-column: 3; grid-row: 1; font-size: var(--font-md); }
+  .jour-mouv .jm-eur { grid-column: 4; grid-row: 1; font-size: var(--font-md); font-weight: 650; }
+  .jour-reglages {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 8px 16px; margin: -4px 0 12px;
+  }
+  .jour-reglages > .carte-filtres, .jour-reglages > .carte-meta { margin: 0; }
+  .jour-reglages > .carte-meta { gap: 14px; margin-left: auto; }
+}
 
 /* LE DEROULEMENT DE LA CARTE DU JOUR.
 

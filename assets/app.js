@@ -3072,16 +3072,17 @@ let jourDeplie = false;
    deja la classe de cette maison pour ca, et elle evite d'avoir a redessiner la
    carte quand on redimensionne la fenetre. Le renvoi qui suit parle du total,
    il reste juste dans les deux cas. */
-function jourCompact(lignes) {
+function jourCompact(lignes, base = basePortefeuilleMarches()) {
   const vus = jourSort
     ? trierJour(lignes.filter(l => !l.horsSeance)).slice(0, MOUVEMENTS_JOUR_LARGE)
     : mouvementsDuJour({ lignes }, MOUVEMENTS_JOUR_LARGE);
   if (!vus.length) return `<p class="empty" style="margin:0">${trad('Aucune ligne.')}</p>`;
-  return vus.map((l, k) => `
+  return `<div class="jm-entete">${enteteLignesJour()}</div>` + vus.map((l, k) => `
         <button type="button" class="jour-mouv${k < MOUVEMENTS_JOUR ? '' : ' large-seulement'}"
           data-action="open-position" data-i="${l.index}"
           title="${esc(l.name)} · ${trad('voir la fiche complète')}">
           <span class="jm-nom">${esc(l.name)}</span>
+          <span class="jm-poids muted">${fmtPct(poidsPortefeuille(l.value, base), 1)}</span>
           <span class="jm-eur ${cls(l.eur)}">${fmtSigned(l.eur)}</span>
           <span class="jm-pct ${cls(l.pct)}">${fmtSignedPct(l.pct, 2)}</span>
         </button>`).join('');
@@ -3148,6 +3149,16 @@ function deroulerJour(hAvant) {
 function enteteJour(label, explication = '') {
   return `<span class="jour-col">${esc(trad(label))}${explication
     ? ` <i class="col-aide" data-aide="${esc(trad(explication))}" tabindex="0" role="button">?</i>` : ''}</span>`;
+}
+
+function enteteLignesJour() {
+  return `
+        <div class="jour-ligne entete">
+          ${enteteJour('Ligne')}
+          ${enteteJour('Poids')}
+          ${enteteJour('Var.')}
+          ${enteteJour('Effet', 'Contribution de cette ligne à la variation de ton portefeuille aujourd’hui.')}
+        </div>`;
 }
 
 /* Le tri de la carte du jour se choisit comme celui des lignes de titres : un
@@ -3407,20 +3418,16 @@ function viewPositions() {
               .replace('{n}', j.sansDonnee)}` : ''}</span>
       </div>`}
 
-      <div class="carte-filtres">${filtresLignes()}</div>
-      <div class="carte-meta">
-        <span class="hint">${compteLignes(lj.length, j.lignes.length)}</span>
-        ${triJourBouton()}
+      <div class="jour-reglages">
+        <div class="carte-filtres">${filtresLignes()}</div>
+        <div class="carte-meta">
+          <span class="hint">${compteLignes(lj.length, j.lignes.length)}</span>
+          ${triJourBouton()}
+        </div>
       </div>
       <div class="jour-lignes">
-        ${jourDeplie ? '' : jourCompact(lj)}
-        ${!jourDeplie ? '' : `
-        <div class="jour-ligne entete">
-          ${enteteJour('Ligne')}
-          ${enteteJour('Poids')}
-          ${enteteJour('Var.')}
-          ${enteteJour('Effet', 'Contribution de cette ligne à la variation de ton portefeuille aujourd’hui.')}
-        </div>`}
+        ${jourDeplie ? '' : jourCompact(lj, poidsBase)}
+        ${!jourDeplie ? '' : enteteLignesJour()}
         ${(jourDeplie ? trierJour(lj) : []).map(l => `
           <div class="jour-ligne">
             <span class="jl-nom"><button type="button" class="mois-lien"
