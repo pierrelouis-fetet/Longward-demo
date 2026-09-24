@@ -1181,6 +1181,36 @@ table .field :is(input, select) { max-width: none; }
   display: flex; flex-direction: column; gap: 2px; min-width: 0;
 }
 
+/* LA GRAMMAIRE D'UN EN-TETE DE CARTE, et ce qui descend dessous.
+
+   Sur la ligne du titre, a droite, UNE chose au plus : une information
+   discrete, ou l'action de la carte, ou une bascule. Deux boutons de meme
+   poids s'y disputaient l'attention, et une precision posee a cote d'un bouton
+   flottait entre les deux. Une precision qui accompagne une action se range
+   sous le titre (`.tete-titre`).
+
+   Ce qui regle la liste descend en dessous, en deux rangees partagees par
+   toutes les cartes qui en ont besoin : les filtres d'abord (`.carte-filtres`),
+   puis le compte et le tri (`.carte-meta`), juste au-dessus de ce qu'ils
+   rangent. Le compte a gauche, le tri au bord droit, comme la commande d'un
+   en-tete. */
+.carte-filtres {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
+  margin: -4px 0 12px;
+}
+.carte-meta {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin: 0 0 8px;
+}
+.carte-meta > :last-child:not(:first-child) { margin-left: auto; }
+.card-head > .btn.sm { margin-block: -4px; }
+@media (max-width: 480px) {
+  .carte-filtres:has(> :nth-child(2)) > .seg-mini,
+  .carte-filtres:has(> :nth-child(2)) > select { flex: 1 1 auto; }
+  .carte-filtres:has(> :nth-child(2)) > .seg-mini { display: flex; }
+  .carte-filtres:has(> :nth-child(2)) > .seg-mini > button { flex: 1 1 0; }
+}
+
 /* Deux boutons du meme geste passent a la ligne ensemble, ou pas du tout, et
    mesurent pareil.
 

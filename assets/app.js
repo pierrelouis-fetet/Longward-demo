@@ -3476,13 +3476,10 @@ function viewPositions() {
   <div class="card" data-anchor="titres">
     <div class="card-head">
       <h2>${trad('Lignes de titres')}</h2>
-      <div class="row">
-        <button class="btn sm ghost" data-action="sell-position"
-                ${ps.length ? '' : 'disabled'}
-                title="${trad('Enregistrer une vente et sa plus-value')}">− ${trad('Vendre')}</button>
-        <button class="btn sm" data-action="ajouter-ligne">${trad('+ Ajouter une ligne')}</button>
-      </div>
-      <div class="row" style="margin:8px 0 0">
+      <button class="btn sm" data-action="ajouter-ligne"
+              title="${trad('Ajouter une ligne de titres')}">${trad('+ Ajouter')}</button>
+    </div>
+    <div class="carte-filtres">
         <div class="segmented seg-mini" role="group" aria-label="${trad('Filtrer par rôle')}">
           ${[['tous', trad('Tous')], ['core', 'Core'], ['satellite', 'Satellite']].map(([v, l]) =>
             `<button type="button" data-action="filtrer-role" data-role="${v}"
@@ -3498,6 +3495,8 @@ function viewPositions() {
               esc(ACC[id]?.label || id)}</option>`).join('')}
           </select>`;
         })()}
+    </div>
+    <div class="carte-meta">
         <span class="hint">${ps.length} ${ps.length > 1 ? trad('lignes') : trad('ligne')}${
           masquees ? ` · ${masquees} ${masquees > 1 ? trad('masquées') : trad('masquée')}` : ''}</span>
         ${(() => {
@@ -3507,10 +3506,6 @@ function viewPositions() {
                   title="${trad('Changer le tri des lignes')}"
             >${trad(nom)} ${tri.dir === 'desc' ? '↓' : '↑'}</button>`;
         })()}
-      </div>
-    </div>
-    <div class="row" style="margin:-4px 0 12px">
-      <span class="hint">${trad('Une ligne s’ouvre au doigt ou au clic : sa fiche porte la quantité, le prix de revient et le reste.')}</span>
     </div>
     <div class="liste-mobile">
       ${ps.map(p => {
@@ -3609,12 +3604,15 @@ function salesCard() {
     <div class="card-head">
       <h2>${trad('Journal des ventes')}${aide(trad('Résultat brut, avant frais et fiscalité : '
         + 'le traitement fiscal dépend de l’enveloppe (PEA, CTO) et de ta situation.'))}</h2>
-      ${toutes.length ? `<span class="hint">${st.count} ${st.count > 1 ? trad('ventes') : trad('vente')}${
-        st.count === toutes.length ? '' : ` ${trad('sur.total', 'sur')} ${toutes.length}`}</span>
-      ${plages}` : ''}
       <button class="btn sm ghost" data-action="sell-position"
               title="${trad('Enregistrer une vente et sa plus-value, ou en déclarer une passée')}">− ${trad('Vendre')}</button>
     </div>
+    ${toutes.length ? `
+    <div class="carte-filtres">${plages}</div>
+    <div class="carte-meta">
+      <span class="hint">${st.count} ${st.count > 1 ? trad('ventes') : trad('vente')}${
+        st.count === toutes.length ? '' : ` ${trad('sur.total', 'sur')} ${toutes.length}`}</span>
+    </div>` : ''}
     ${!toutes.length ? `<p class="empty">${trad('Aucune vente enregistrée.')} ${aVendre
       ? trad('Le bouton « Vendre » enregistre la vente, sa plus-value, et crédite le compte de ton choix.')
       : trad('Il faut une ligne de titres avant de pouvoir en vendre une.')}</p>` : `
@@ -4832,7 +4830,7 @@ function viewHistory() {
     if (!aUnComptePropre() && !tout.length) return '';
     return `
   <div class="card">
-    <div class="card-head"><h2>${trad('Entrées et sorties exceptionnelles')}</h2>
+    <div class="card-head"><div class="tete-titre"><h2>${trad('Entrées et sorties exceptionnelles')}</h2>
       <span class="hint">${liste.length
         ? `${(liste.length > 1 ? trad('{n} lignes') : trad('{n} ligne'))
               .replace('{n}', liste.length)} · ${esc(String(annee))} · ${
@@ -4840,12 +4838,12 @@ function viewHistory() {
         : tout.length
           ? `${trad('aucune en')} ${esc(String(annee))} · ${
               trad('{n} au total').replace('{n}', tout.length)}`
-          : trad('héritage, prime, vente d’un bien, ou une grosse dépense')}</span>
-      ${tout.length && annees.length > 1 ? yearControl('history-year', annees, annee) : ''}
+          : trad('héritage, prime, vente d’un bien, ou une grosse dépense')}</span></div>
       <span class="paire-btn">
         <button class="btn sm ghost" data-action="ajouter-apport" data-sens="entree">${trad('+ Entrée')}</button>
         <button class="btn sm ghost" data-action="ajouter-apport" data-sens="sortie">${trad('+ Dépense')}</button>
       </span></div>
+    ${tout.length && annees.length > 1 ? `<div class="carte-filtres">${yearControl('history-year', annees, annee)}</div>` : ''}
     ${!liste.length && !tout.length ? `
     <p class="small muted" style="margin:0">${trad('Rien pour l’instant. Une somme reçue ou dépensée '
       + 'une seule fois se note ici, avec sa date : le rythme d’accumulation sait alors que '
@@ -7487,11 +7485,12 @@ function viewBudget(section = 'depenses') {
 
   <div class="grid">
     <div class="card" data-anchor="charges">
-      <div class="card-head"><h2>${trad('Charges fixes')}</h2>
-        <div class="row">
+      <div class="card-head">
+        <div class="tete-titre">
+          <h2>${trad('Charges fixes')}</h2>
           ${!b.fixedCharges.length ? '' : `<span class="hint">${fmtEUR(f.fixed)} ${trad('/ mois')}${f.fixedPct == null ? '' : ` · ${fmtPct(f.fixedPct, 1)} ${trad('des revenus')}`}</span>`}
-          <button class="btn sm ghost" data-action="add-charge">${trad('+ Ligne')}</button>
         </div>
+        <button class="btn sm ghost" data-action="add-charge">${trad('+ Ligne')}</button>
       </div>
       ${(() => {
         if (!b.fixedCharges.length) return `

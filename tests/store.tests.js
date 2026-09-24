@@ -2220,6 +2220,52 @@ suite('Ce qui a changé entre deux relevés', () => {
   });
 });
 
+/* --- Un en-tete de carte porte un titre et une chose au plus -------------- */
+suite('Une seule grammaire d’en-tête de carte', () => {
+  const app = () => lireSource('assets/app.js');
+  const entre = (s, a, b) => { const i = s.indexOf(a); return i < 0 ? '' : s.slice(i, s.indexOf(b, i)); };
+  const tete = bloc => entre(bloc, '<div class="card-head">', '<div class="carte-filtres">');
+
+  test('les lignes de titres : le titre et Ajouter, puis les filtres, puis le compte et le tri', () => {
+    const carte = entre(app(), '<div class="card" data-anchor="titres">', '<div class="liste-mobile">');
+    vrai(carte.length > 500, 'la carte est trouvable');
+    const t = tete(carte).replace(/<!--[\s\S]*?-->/g, '');
+    eq((t.match(/<button/g) || []).length, 1, 'un seul bouton dans l’en-tête');
+    vrai(/data-action="ajouter-ligne"/.test(t) && /trad\('\+ Ajouter'\)/.test(t), 'et c’est Ajouter');
+    vrai(!/sell-position/.test(carte), 'Vendre a quitté l’en-tête : il vit dans la fiche et dans le journal');
+    const iF = carte.indexOf('<div class="carte-filtres">'), iM = carte.indexOf('<div class="carte-meta">');
+    vrai(iF > 0 && iM > iF, 'les filtres, puis le compte et le tri');
+    const filtres = carte.slice(iF, iM);
+    vrai(/filtrer-role/.test(filtres) && /filtrer-compte-titres/.test(filtres), 'rôle et compte au deuxième niveau');
+    vrai(/trier-positions/.test(carte.slice(iM)), 'le tri au troisième, avec le compte des lignes');
+    vrai(!/Une ligne s’ouvre au doigt/.test(carte), 'plus de phrase pour dire qu’une ligne s’ouvre');
+  });
+
+  test('le journal des ventes suit la même grammaire', () => {
+    const carte = entre(app(), '<div class="card" data-anchor="ventes">', '<p class="empty">');
+    const t = entre(carte, '<div class="card-head">', '<div class="carte-filtres">').replace(/<!--[\s\S]*?-->/g, '');
+    eq((t.match(/<button/g) || []).length, 1, 'une seule action dans l’en-tête');
+    vrai(!/\$\{plages\}/.test(t) && !/class="hint"/.test(t), 'ni les périodes ni le compte sur la ligne du titre');
+    vrai(/<div class="carte-filtres">\$\{plages\}<\/div>/.test(carte), 'les périodes au deuxième niveau');
+  });
+
+  test('une précision qui accompagne une action se range sous le titre', () => {
+    const charges = entre(app(), '<div class="card" data-anchor="charges">', "${(() => {");
+    vrai(/<div class="tete-titre">\s*<h2>\$\{trad\('Charges fixes'\)\}<\/h2>/.test(charges), 'le total des charges sous leur titre');
+    vrai(/<\/div>\s*<button class="btn sm ghost" data-action="add-charge">/.test(charges), 'et le bouton seul à droite');
+    const entrees = entre(app(), "<h2>${trad('Entrées et sorties exceptionnelles')}</h2>", "${!liste.length && !tout.length");
+    vrai(/<div class="carte-filtres">\$\{yearControl\('history-year', annees, annee\)\}<\/div>/.test(entrees),
+      'le sélecteur d’année sous l’en-tête du journal des entrées');
+  });
+
+  test('le bouton d’une carte ne grandit pas son en-tête, et les rangées sont partagées', () => {
+    const css = lireSource('assets/styles.css');
+    vrai(/\.card-head > \.btn\.sm \{ margin-block: -4px; \}/.test(css), 'même hauteur avec ou sans bouton');
+    eq((css.match(/^\.carte-filtres \{/gm) || []).length, 1, 'une seule définition des filtres');
+    eq((css.match(/^\.carte-meta \{/gm) || []).length, 1, 'une seule définition du compte et du tri');
+  });
+});
+
 /* --- Les apports sur les comptes de marche : declares, jamais devines ----- */
 suite('Les apports sur les comptes de marché', () => {
   const app = () => lireSource('assets/app.js');
@@ -15953,10 +15999,18 @@ suite('Une vente s’ajoute depuis le journal des ventes', () => {
   test('les deux portes mènent à la même saisie', () => {
     /* Deux boutons sur une même action sont sains — c'est la règle du projet,
        celle du sélecteur d'année du journal. Ce qui serait fautif, ce serait
-       deux fenêtres de saisie de vente. */
+       deux fenêtres de saisie de vente.
+
+       Les deux portes sont le journal des ventes et la fiche de chaque ligne.
+       L'en-tête des lignes de titres n'en porte plus : à côté d'Ajouter, un
+       geste rare y pesait autant que le geste courant. */
     const src = lireSource('assets/app.js');
     const boutons = src.match(/data-action="sell-position"/g) || [];
-    eq(boutons.length, 2, `deux portes attendues, ${boutons.length} trouvée·s`);
+    eq(boutons.length, 1, `une porte dans les listes, ${boutons.length} trouvée·s`);
+    vrai(/id="posSell"/.test(src), 'et la seconde dans la fiche de la ligne, qui vend celle-ci');
+    const debut = src.indexOf('<div class="card" data-anchor="titres">');
+    const vue = src.slice(debut, src.indexOf('<div class="liste-mobile">', debut));
+    vrai(vue.length > 200 && !/sell-position/.test(vue), 'l’en-tête des lignes ne vend plus');
     const actions = src.match(/'sell-position'\(\) \{/g) || [];
     eq(actions.length, 1, 'et une seule action derrière elles');
     const fenetres = src.match(/function askSale\(/g) || [];
