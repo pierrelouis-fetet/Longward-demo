@@ -2448,6 +2448,8 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 
 .cpt-resume { margin: 8px 0 12px; padding: 0 4px; }
 .cpt-net { font-size: clamp(26px, 4vw, 34px); font-weight: 700; letter-spacing: -.03em; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+.cpt-entete .date-valeur { margin: 4px 0 0; }
+.cpt-entete > .cpt-retrait { flex-basis: 100%; margin: 0; }
 
 .cpt-liste { display: flex; flex-direction: column; gap: 14px; }
 .cpt-groupe { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); overflow: clip; }

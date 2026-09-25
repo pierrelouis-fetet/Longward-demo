@@ -2183,8 +2183,10 @@ suite('Ce qui a changé entre deux relevés', () => {
     vrai(genres.includes('estimation'), 'un bien sans date d’estimation');
     vrai(genres.includes('credit'), 'un crédit jamais vérifié');
     vrai(genres.includes('cours'), 'des cours jamais actualisés');
+    vrai(genres.includes('soldesSansDate'), 'des soldes jamais datés');
     Fixture.poser(s => {
       for (const c of s.comptes) for (const l of c.lignes) l.estimeLe = todayISO();
+      for (const c of s.comptes) for (const e of c.cash) e.saisiLe = todayISO();
       for (const e of s.etabs) for (const d of e.dettes) d.verifieLe = todayISO();
       s.quotes = { lastRun: new Date().toISOString() };
     });
@@ -2571,6 +2573,203 @@ suite('Le total des lignes de titres suit leurs filtres', () => {
     vrai(/\n\.total-vus \{ display: none; \}/.test(css), 'le sous-total ne vit pas sur grand écran, le pied le porte');
     const mob = css.slice(css.indexOf('.total-vus { display: none; }'));
     vrai(/@media \(max-width: 767px\) \{\s*\.total-vus \{\s*display: flex;/.test(mob), 'il vit sur téléphone');
+  });
+});
+
+/* --- Une fiche de compte dit ce qui vaut pour ce compte ------------------- */
+suite('Une fiche de compte ne dit que ce qui vaut pour ce compte', () => {
+  test('le délai de vente et les règles de retrait ne se confondent pas', () => {
+    eq(mobilisabilite('actions', 'pea'), mobilisabilite('actions', 'cto'),
+      'une action se vend au même rythme dans un PEA et dans un compte-titres');
+    eq(mobilisabilite('actions', 'per'), 'bloque', 'seul un PER bloque vraiment l’argent');
+    const avecRetrait = TYPES_COMPTE.filter(t => t.retrait).map(t => t.id).sort();
+    eq(JSON.stringify(avecRetrait), JSON.stringify(['av', 'pea', 'per']),
+      'les conditions de retrait se déclarent sur les enveloppes qui en ont');
+    for (const t of TYPES_COMPTE.filter(x => x.retrait)) vrai(!!I18N.en[t.retrait], `traduit : ${t.id}`);
+    const app = lireSource('assets/app.js');
+    const affiche = app.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
+    vrai(!/PEA de moins de cinq ans est bloqué/.test(affiche), 'plus aucune aide ne dit un PEA bloqué');
+    vrai(/\$\{t\.retrait \? `<p class="hint cpt-retrait">\$\{trad\('Retraits'\)\}/.test(app),
+      'la fiche écrit les retraits à part, en tête');
+    const store = lireSource('assets/store.js');
+    vrai(!/PEA de moins de cinq ans (est|compte)[^.]*bloqu/.test(store),
+      'et aucun commentaire publié ne le prétend encore');
+  });
+
+  test('le discours du prêt sur titres reste chez les courtiers qui prêtent', () => {
+    const marge = TYPES_COMPTE.filter(t => t.pretSurTitres).map(t => t.id).sort();
+    eq(JSON.stringify(marge), JSON.stringify(['crypto', 'cto']), 'un compte-titres et un portefeuille crypto');
+    const app = lireSource('assets/app.js');
+    const i = app.indexOf("<div class=\"card-head\"><h2>${trad('Financement')}${aide(t.pretSurTitres");
+    vrai(i > 0, 'la carte du financement choisit son aide');
+    const avant = app.slice(i - 900, i);
+    vrai(/if \(!dettes\.length && !t\.pretSurTitres\) return '';/.test(avant),
+      'sur un livret, un compte courant ou un non coté sans crédit, la carte ne s’affiche pas');
+    vrai(/\$\{!t\.pretSurTitres \? '' : `<dl class="kv" style="margin-top:12px">/.test(app),
+      'et ni la valeur nette du compte ni le levier ne se calculent hors prêt sur titres');
+  });
+
+  test('la fiche dit où l’on met à jour le solde, les placements et les informations', () => {
+    const app = lireSource('assets/app.js');
+    for (const k of ['C’est ici que tu mets à jour le solde : il se date à la saisie.',
+      'Touche une ligne pour la modifier ou la vendre.', 'Touche une ligne pour la modifier.',
+      'Le nom, le type, l’établissement et les dates du compte. Le solde et les placements se changent dans leurs cartes.']) {
+      vrai(app.includes(k), `la fiche le dit : ${k}`);
+      vrai(!!I18N.en[k], 'et en anglais');
+    }
+  });
+});
+
+/* --- Archiver dit ce que les totaux perdent, et pourquoi ------------------ */
+suite('Archiver un compte dit ce que les totaux perdent', () => {
+  test('l’impact se mesure par les totaux eux-mêmes', () => {
+    Fixture.poser();
+    const net = patrimoine().net;
+    const i = impactArchivage('c_livret');
+    pres(i.valeur, 2000, 'la valeur du livret');
+    pres(i.netAvant, net, 'le net d’avant est celui du jour');
+    pres(i.ecartNet, -2000, 'il perd exactement le livret');
+    pres(i.netApres, net - 2000, 'et le net d’après s’en déduit');
+    eq(compteById('c_livret').statut, 'ouvert', 'la mesure ne laisse pas le compte archivé');
+    pres(patrimoine().net, net, 'ni les totaux changés');
+  });
+
+  test('un bien financé perd sa valeur entière, son crédit reste compté', () => {
+    Fixture.poser();
+    const i = impactArchivage('c_immo');
+    pres(i.ecartNet, -120000, 'le net baisse de la valeur du bien, pas de sa part nette');
+    pres(i.creditRestant, Fixture.DETTE, 'et la fenêtre sait que le crédit reste');
+  });
+
+  test('des lignes de titres se comptent, un compte vide ne change rien', () => {
+    Fixture.poser();
+    const pea = impactArchivage('c_pea');
+    eq(pea.lignesTitres, 1, 'une ligne de titres sur le PEA');
+    pres(pea.valeurTitres, 9000, 'pour sa valeur de marché');
+    Fixture.poser(s => { s.comptes.find(c => c.id === 'c_courant').cash[0].montant = 0; });
+    const vide = impactArchivage('c_courant');
+    pres(vide.valeur, 0, 'un compte vide');
+    pres(vide.ecartNet, 0, 'ne change aucun total');
+    compteById('c_courant').statut = 'archive';
+    eq(impactArchivage('c_courant'), null, 'un compte déjà archivé n’a plus rien à retirer');
+  });
+
+  test('la fenêtre chiffre, demande pourquoi, et n’invente rien', () => {
+    const src = lireSource('assets/app.js');
+    const i = src.indexOf("async 'archiver-compte'(btn)");
+    const f = src.slice(i, src.indexOf('\n  },', i));
+    vrai(f.length > 500, 'l’action est trouvable');
+    vrai(/const imp = c && impactArchivage\(c\.id\);/.test(f), 'l’impact se calcule avant la question');
+    vrai(/if \(imp\.lignesTitres\) \{[\s\S]*?return;\s*\}/.test(f), 'des lignes de titres empêchent d’archiver');
+    vrai(/trad\('Ton patrimoine net passerait de \{a\} à \{b\} \(\{e\}\)\.'\)/.test(f), 'l’écart se dit en chiffres');
+    vrai(/imp\.creditRestant > 0\.005/.test(f), 'et le crédit qui reste compté aussi');
+    vrai(/valide: x => \(!vide && !x\.motif/.test(f), 'la raison est demandée dès qu’il y a de l’argent');
+    vrai(/c\.archiveMotif = v\.motif/.test(f), 'et notée sur le compte');
+    vrai(!/monthly|mouvementCash|sales\.push|declarerVente/.test(f),
+      'ni relevé touché, ni versement ni vente inventés');
+    eq(JSON.stringify(MOTIFS_ARCHIVE.map(([k]) => k)), JSON.stringify(['transfert', 'sortie', 'correction']),
+      'trois raisons, et elles seules');
+    const r = src.slice(src.indexOf("async 'restaurer-compte'(btn)"), src.indexOf("async 'annuler-fiche'(btn)"));
+    vrai(/delete c\.archiveMotif;/.test(r), 'restaurer efface la raison, comme la date de clôture');
+    vrai(/x\.compte\?\.archiveMotif/.test(src), 'la liste des archives relit la raison');
+    for (const [, l] of MOTIFS_ARCHIVE) vrai(!!I18N.en[l], `traduit : ${l}`);
+  });
+});
+
+/* --- Une valeur dit ce qu'elle est, et de quand elle date ---------------- */
+suite('Une valeur dit de quand elle date', () => {
+  const ilYA = jours => new Date(Date.now() - jours * 864e5).toISOString().slice(0, 10);
+
+  test('la date suit le montant, et rien d’autre', () => {
+    Fixture.poser();
+    eq(dateQuiSuit('comptes.1.cash.0.montant').chemin, 'comptes.1.cash.0.saisiLe', 'un solde se date à sa saisie');
+    eq(dateQuiSuit('comptes.1.cash.0.montant').genre, 'solde', 'et c’est une saisie, pas une vérification');
+    eq(dateQuiSuit('etabs.2.dettes.0.montant').chemin, 'etabs.2.dettes.0.verifieLe', 'un capital, à sa vérification');
+    const iImmo = Store.state.comptes.findIndex(c => c.id === 'c_immo');
+    eq(dateQuiSuit(`comptes.${iImmo}.lignes.0.valeur`).genre, 'estimation', 'un bien, à son estimation');
+    const iPe = Store.state.comptes.findIndex(c => c.id === 'c_pe');
+    eq(dateQuiSuit(`comptes.${iPe}.lignes.0.valeur`), null, 'un prêt au nominal ne vieillit pas');
+    eq(dateQuiSuit('comptes.1.libelle'), null, 'un nom ne date rien');
+    vrai(!montantChange(100, 100) && !montantChange('', undefined), 'un montant réécrit à l’identique ne change pas');
+    vrai(montantChange(100, 120) && montantChange(100, ''), 'un montant corrigé ou effacé change');
+  });
+
+  test('une fenêtre garde la date qu’on pose, et date du jour un montant changé', () => {
+    const jour = '2026-09-25';
+    eq(dateApresSaisie({ avant: 100, apres: 100, dateAvant: '2026-01-10', dateSaisie: '2026-01-10', genre: 'credit', jour }),
+      '2026-01-10', 'renommer un crédit ne le vérifie pas');
+    eq(dateApresSaisie({ avant: 100, apres: 90, dateAvant: '2026-01-10', dateSaisie: '2026-01-10', genre: 'credit', jour }),
+      jour, 'un capital corrigé est un capital relu');
+    eq(dateApresSaisie({ avant: 100, apres: 100, dateAvant: '2026-01-10', dateSaisie: '2026-09-20', genre: 'credit', jour }),
+      '2026-09-20', 'une date posée à la main gagne, montant inchangé compris');
+    eq(dateApresSaisie({ avant: 100, apres: 90, dateAvant: '', dateSaisie: '2026-09-01', genre: 'estimation', jour }),
+      '2026-09-01', 'y compris quand le montant change');
+    eq(dateApresSaisie({ avant: 100, apres: 100, dateAvant: '', dateSaisie: '', genre: 'credit', jour }),
+      null, 'jamais vérifié le reste tant que rien ne change');
+    eq(dateApresSaisie({ avant: 10, apres: 11, dateAvant: '2026-06-30', dateSaisie: '2026-06-30', genre: 'vl', jour }),
+      null, 'une VL changée sans sa date devient sans date, pas datée du jour');
+  });
+
+  test('un compte n’est pas plus frais que sa part la plus ancienne', () => {
+    Fixture.poser(s => {
+      const cc = s.comptes.find(c => c.id === 'c_courant');
+      cc.cash = [{ montant: 3000, affectation: 'courant', saisiLe: '2026-09-01' },
+                 { montant: 500, affectation: 'precaution', saisiLe: '2026-07-15' }];
+      s.comptes.find(c => c.id === 'c_immo').lignes[0].estimeLe = '2026-03-12';
+      s.quotes = { lastRun: '2026-09-24T18:00:00Z' };
+    });
+    const de = id => datesDuCompte(compteById(id));
+    eq(JSON.stringify(de('c_courant')), JSON.stringify([{ genre: 'solde', date: '2026-07-15' }]),
+      'deux parts, la plus ancienne date le compte');
+    eq(JSON.stringify(de('c_livret')), JSON.stringify([{ genre: 'solde', date: null }]),
+      'une part sans date rend le solde sans date');
+    eq(JSON.stringify(de('c_immo')), JSON.stringify([{ genre: 'estimation', date: '2026-03-12' }]),
+      'un bien dit sa date d’estimation');
+    eq(JSON.stringify(de('c_pea').map(x => x.genre)), JSON.stringify(['solde', 'cours']),
+      'un PEA porte ses espèces et ses cours');
+    eq(de('c_pea')[1].date, '2026-09-24', 'les cours du dernier rafraîchissement');
+    eq(de('c_pe').length, 0, 'un prêt au nominal n’a rien à dater');
+    compteById('c_cto').cash = [{ montant: 0, affectation: 'investir' }];
+    eq(JSON.stringify(de('c_cto').map(x => x.genre)), JSON.stringify(['cours']), 'zéro euro ne se date pas');
+  });
+
+  test('le relevé liste les soldes sans date en une ligne, et les vieux un par un', () => {
+    Fixture.poser(s => {
+      s.comptes.find(c => c.id === 'c_courant').cash[0].saisiLe = ilYA(40);
+      s.comptes.find(c => c.id === 'c_livret').cash[0].saisiLe = ilYA(3);
+    });
+    const f = aRafraichir();
+    const vieux = f.filter(x => x.genre === 'solde');
+    eq(vieux.length, 1, 'un solde saisi il y a quarante jours se relit');
+    eq(vieux[0].compteId, 'c_courant', 'c’est le compte courant');
+    vrai(!f.some(x => x.compteId === 'c_livret'), 'un solde saisi cette semaine ne se réclame pas');
+    const sans = f.filter(x => x.genre === 'soldesSansDate');
+    eq(sans.length, 1, 'les soldes jamais datés tiennent en une entrée');
+    vrai(sans[0].noms.includes('PEA') && !sans[0].noms.includes('Livret A'), 'qui les nomme, et eux seuls');
+  });
+
+  test('les écrans lisent ces dates, et Enregistrer n’en invente aucune', () => {
+    const src = lireSource('assets/app.js');
+    const champ = src.slice(src.indexOf('function applyField('), src.indexOf('function applyField(') + 3000);
+    vrai(/const suivi = dateQuiSuit\(path\);[\s\S]{0,200}if \(suivi && montantChange\(avant, getPath\(path\)\)\) setPath\(suivi\.chemin, dateApresChangement\(suivi\.genre\)\);/.test(champ),
+      'une frappe ne date que le montant qui change');
+    const apercu = src.slice(src.indexOf("'apercu-enregistrer'()"), src.indexOf("'apercu-enregistrer'()") + 700);
+    vrai(!/verifieLe = todayISO\(\)/.test(apercu), 'enregistrer le panneau des crédits ne date plus ceux qu’on n’a pas touchés');
+    const iCredit = src.indexOf("async 'editer-credit'(btn)");
+    const credit = src.slice(iCredit, src.indexOf('\n  },', iCredit));
+    vrai(/\{ cle: 'verifieLe', label: trad\('Vérifié le'\), type: 'date'/.test(credit), 'la fenêtre du crédit porte sa date');
+    vrai(/d\.verifieLe = dateApresSaisie\(\{/.test(credit) && !/d\.verifieLe = todayISO\(\)/.test(credit),
+      'et ne la pose plus à chaque enregistrement');
+    vrai(/estimeLe: dateApresSaisie\(\{/.test(src.slice(src.indexOf('function litPlacement('), src.indexOf('function litPlacement(') + 1200)),
+      'la fenêtre d’une ligne suit la même règle');
+    vrai(!/Valeur estimée aujourd\\'hui/.test(src), 'la fiche d’un bien ne dit plus « aujourd’hui » pour une estimation');
+    vrai(/data-path="comptes\.\$\{idx\}\.lignes\.\$\{i\}\.estimeLe"/.test(src), 'et sa date d’estimation se lit et se corrige à côté');
+    vrai(/const dates = datesDuCompte\(c\)\.map\(phraseDateValeur\)/.test(src), 'l’en-tête d’une fiche dit de quand date son montant');
+    vrai(/saisiLe: todayISO\(\)/.test(src.slice(src.indexOf('const saisi = m =>'), src.indexOf('const saisi = m =>') + 200)),
+      'un solde tapé à la création se date');
+    for (const k of ['solde saisi le {d}', 'solde sans date de saisie', 'Soldes sans date de saisie',
+      'estimation sans date', 'cours du {d}', 'cours jamais actualisés', 'Vérifié le'])
+      vrai(!!I18N.en[k], `traduit : ${k}`);
   });
 });
 
@@ -5860,13 +6059,17 @@ suite('Une valeur estimée ne se compare pas au relevé du mois dernier', () => 
       'la ligne sait si son montant est une estimation');
     vrai(/const v = estimee \? null : variationCompte\(c\.id\);/.test(ligne),
       'et l’écart ne se calcule alors pas');
-    vrai(/estimee \? `<span class="sub">\$\{trad\('estimation actuelle'\)\}<\/span>`/.test(ligne),
-      'la place sous le montant dit « estimation actuelle »');
+    vrai(/estimee \? `<span class="sub">\$\{dateEstimee \|\| '&nbsp;'\}<\/span>`/.test(ligne),
+      'la place sous le montant dit de quand date l’estimation');
+    vrai(/datesDuCompte\(c\)\.find\(x => x\.genre === 'estimation'\)/.test(ligne),
+      'et cette date vient du modèle, pas de la ligne');
     /* La phrase remplace l'ecart, elle ne s'y ajoute pas : deux sous-titres sous
        un meme montant se disputeraient la meme ligne. */
     eq((ligne.match(/class="sub/g) || []).length, 4,
       'un seul sous-titre à la fois sous le montant');
-    vrai(!!I18N.en['estimation actuelle'], 'et la phrase existe en anglais');
+    vrai(!!I18N.en['estimée le {d}'] && !!I18N.en['estimation sans date'],
+      'et les deux phrases existent en anglais');
+    vrai(!/'estimation actuelle'/.test(src), 'plus aucune estimation ne se dit « actuelle » sans date');
   });
 
   test('un actif terminal porte UN nom, et les deux portes l’écrivent', () => {
@@ -21569,7 +21772,7 @@ suite('Un patrimoine net négatif a deux causes', () => {
     /* Deux champs voisins, l'un frais compris et l'autre pas : saisir ici le prix
        paye frais compris surevalue le bien de ses frais de notaire. */
     const src = lireSource('assets/app.js');
-    const i = src.indexOf("trad('Valeur estimée aujourd\\'hui ({dev})')");
+    const i = src.indexOf("trad('Valeur estimée ({dev})')");
     vrai(i > 0, 'le champ doit être trouvable');
     vrai(/frais de notaire exclus/.test(src.slice(i, i + 400)),
       'son aide dit ce qu’elle exclut, comme celle du prix d’acquisition dit ce qu’elle inclut');
@@ -40559,7 +40762,12 @@ suite('Le bruit informatif', () => {
     const ligne = app.slice(dl, app.indexOf('\nfunction ', dl + 10));
     vrai(/const bouge = v && Math\.abs\(v\.eur\) >= 0\.5;/.test(ligne),
       'la ligne décide sur l’euro affiché : le format arrondit à l’euro, et −0,30 € s’écrivait « −0 € »');
-    vrai(/: bouge \? `<span class="sub \$\{cls\(v\.eur\)\}">/.test(ligne), 'et n’écrit la variation que si elle bouge');
+    vrai(/: bouge \? `<span class="sub" title=/.test(ligne), 'et n’écrit la variation que si elle bouge');
+    /* Un ecart entre deux valeurs du compte comprend les versements : il ne se
+       peint ni en vert ni en rouge, il ne se lit pas comme une plus-value. */
+    vrai(!/cls\(v\.eur\)/.test(ligne), 'à l’encre neutre');
+    vrai(/trad\('par rapport à'\)/.test(ligne) && /Versements et retraits compris : ce n’est pas une plus-value/.test(ligne),
+      'en écart, et l’infobulle dit ce qu’il contient');
     vrai(/: `<span class="sub">&nbsp;<\/span>`/.test(ligne), 'sinon la place reste, vide');
     vrai(/const ytdBouge = d\.ytd && Math\.abs\(d\.ytd\.eur\) >= 0\.5;/.test(app),
       'le pied du menu suit la même règle pour « depuis janvier »');

@@ -4992,8 +4992,23 @@ function sousTitreCompte(c, avecEtab = true) {
     .filter(x => x && x !== nom).join(' · ');
 }
 
+/* La date d'une valeur, dite avec les mots de sa nature, ou son absence. Une
+   seule table pour la liste d'Actifs et l'en-tete des fiches : deux redactions
+   diraient deux choses du meme montant. Les natures et leurs dates viennent de
+   `datesDuCompte()`. */
+function phraseDateValeur(x) {
+  const d = x.date ? fmtDate(x.date) : '';
+  if (x.genre === 'solde') return d ? trad('solde saisi le {d}').replace('{d}', d) : trad('solde sans date de saisie');
+  if (x.genre === 'estimation') return d ? trad('estimée le {d}').replace('{d}', d) : trad('estimation sans date');
+  if (x.genre === 'vl') return d ? trad('VL du {d}').replace('{d}', d) : trad('sans date de VL');
+  if (x.genre === 'cours') return d ? trad('cours du {d}').replace('{d}', d) : trad('cours jamais actualisés');
+  return '';
+}
+
 function ligneCompte(c, avecEtab = true) {
   const estimee = estValeurEstimee(typeCompte(c.type));
+  const dateEstimee = estimee
+    ? phraseDateValeur(datesDuCompte(c).find(x => x.genre === 'estimation') || { genre: '' }) : '';
   const v = estimee ? null : variationCompte(c.id);
   /* « +0 € depuis aout » : un changement nul n'apprend rien, et il prenait la
      place d'une information sur chaque ligne d'un compte qui n'a pas bouge —
@@ -5013,8 +5028,9 @@ function ligneCompte(c, avecEtab = true) {
       <span class="cpt-nom">${esc(nomCompteV2(c))}
         <span class="sub">${esc(sousTitreCompte(c, avecEtab))}</span></span>
       <span class="cpt-val">${fmtEUR(valeurCompte(c))}
-        ${estimee ? `<span class="sub">${trad('estimation actuelle')}</span>`
-          : bouge ? `<span class="sub ${cls(v.eur)}">${fmtSigned(v.eur)} ${trad('depuis')} ${esc(v.depuis)}</span>`
+        ${estimee ? `<span class="sub">${dateEstimee || '&nbsp;'}</span>`
+          : bouge ? `<span class="sub" title="${esc(trad('Écart entre la valeur de ce compte aujourd’hui et celle de ton dernier relevé, {m}. Versements et retraits compris : ce n’est pas une plus-value.').replace('{m}', v.depuis))}">${
+              fmtSigned(v.eur)} ${trad('par rapport à')} ${esc(v.depuis)}</span>`
             : `<span class="sub">&nbsp;</span>`}</span>
       <span class="cpt-chev">›</span>
     </button>
@@ -5474,10 +5490,15 @@ function viewComptesArchives() {
 
      La poubelle porte un nom lisible a la voix : « Supprimer » seul, repete
      douze fois, ne dit pas lequel des douze. */
+  const motif = x => {
+    const m = MOTIFS_ARCHIVE.find(([k]) => k === x.compte?.archiveMotif);
+    return [m ? trad(m[1]) : '', x.compte?.clotureLe ? `${trad('au')} ${fmtDate(x.compte.clotureLe)}` : '']
+      .filter(Boolean).join(' ');
+  };
   const ligne = x => `
       <div class="arch-ligne">
         <span class="arch-nom"><b>${esc(x.label)}</b>${
-          x.etab ? `<span class="sub">${esc(x.etab)}</span>` : ''}</span>
+          x.etab || motif(x) ? `<span class="sub">${esc([x.etab, motif(x)].filter(Boolean).join(' · '))}</span>` : ''}</span>
         <span class="arch-actes">
           ${x.restaurable ? `<button class="btn sm ghost arch-agir" data-action="restaurer-compte"
                 data-id="${esc(x.id)}">${trad('Restaurer')}</button>`
@@ -6340,7 +6361,10 @@ function carteCredit(c, d, i, idxEtab) {
                    placeholder="${trad('facultatif')}"></div>
           <div class="field"><label>${trad('Capital restant dû ({dev})')}</label>
             <input type="number" step="any" class="champ-large"
-                   data-path="etabs.${idxEtab}.dettes.${i}.montant" value="${num(d.montant)}"></div>
+                   data-path="etabs.${idxEtab}.dettes.${i}.montant" value="${num(d.montant)}">
+            <p class="hint" style="margin:4px 0 0">${d.verifieLe
+              ? trad('capital restant dû vérifié le {d}').replace('{d}', esc(fmtDate(d.verifieLe)))
+              : trad('capital restant dû jamais vérifié')}</p></div>
           ${chargeDuCredit(d.id) ? `
           <div class="field"><label>${trad('Mensualité ({dev})')}${aide(trad("Elle se règle dans la charge fixe qui rembourse ce crédit, pour n'exister qu'à un seul endroit. Un second champ ici laisserait les deux diverger, et c'est celui-ci que rien ne relirait."))}</label>
             <p class="hint" style="margin:0">${fmtEUR(mens)} ${trad('par mois, depuis la charge')}
@@ -6418,12 +6442,24 @@ function espaceBien(c, idx, t) {
           <input data-action-change="renommer-bien" data-compte="${esc(c.id)}"
                  value="${esc(l.libelle || '')}" placeholder="${trad('ex. Studio Lyon 3e')}"></div>
         <div class="grid g-2 g-paire">
-          <div class="field"><label>${trad('Valeur estimée aujourd\'hui ({dev})')}${aide(trad("Ce qu'un acheteur te paierait aujourd'hui, frais de notaire exclus : ceux-là sont partis en taxes le jour de l'achat et ne se revendent pas. C'est pour ça qu'un achat récent financé à crédit peut afficher un patrimoine net négatif, sans que rien ne soit faux."))}</label>
+          <div class="field"><label>${trad('Valeur estimée ({dev})')}${aide(trad("Ce qu'un acheteur te paierait aujourd'hui, frais de notaire exclus : ceux-là sont partis en taxes le jour de l'achat et ne se revendent pas. C'est pour ça qu'un achat récent financé à crédit peut afficher un patrimoine net négatif, sans que rien ne soit faux."))}</label>
             <input type="number" step="any" class="champ-large"
                    data-path="comptes.${idx}.lignes.${i}.valeur" value="${num(l.valeur)}"></div>
+          <div class="field"><label>${trad('Estimée le')}${aide(trad('le jour où tu as établi ce chiffre'))}</label>
+            <input type="date" data-path="comptes.${idx}.lignes.${i}.estimeLe"
+                   value="${esc(l.estimeLe || '')}">
+            ${l.estimeLe ? '' : `<p class="hint" style="margin:4px 0 0">${trad('estimation sans date')}</p>`}</div>
+        </div>
+        <div class="grid g-2 g-paire">
           <div class="field"><label>${trad('Date d\'acquisition')}</label>
             <input type="date" data-path="comptes.${idx}.lignes.${i}.dateAcquisition"
                    value="${esc(l.dateAcquisition || '')}"></div>
+          <div class="field"><label>${trad('Ta part (%)')}${aide(trad("À remplir seulement si tu détiens ce bien à plusieurs : indivision, SCI, achat en couple sur deux tableaux de bord. Ton patrimoine ne compte alors que ta part. La valeur ci-dessus reste celle du bien entier, c'est elle que tu compares aux annonces. Elle ne répartit rien d'autre : le crédit, les loyers et les charges se saisissent tels que tu les dois, les reçois et les paies. Une charge partagée avec quelqu'un se règle par sa part, dans le budget."))}</label>
+            <input type="number" step="any" min="0" max="100" class="champ-large"
+                   data-path="comptes.${idx}.lignes.${i}.part" value="${estDeclare(l.part) ? num(l.part) : ''}"
+                   placeholder="100">
+            ${partEstValide(l.part) ? '' : `<p class="hint" style="margin:4px 0 0">${
+              trad('La quote-part doit être comprise entre 0 et 100 %.')}</p>`}</div>
         </div>
         <div class="grid g-2 g-paire">
           ${!estBienEnDirect(c) ? '' : `<div class="field"><label>${trad('Usage')}${aide(trad("Il décide de ce que la fiche te montre : un logement mis en location a un rendement, celui que tu habites a un coût. Ta résidence principale sort aussi des avoirs mobilisables en quelques mois, parce que la vendre veut dire te reloger."))}</label>
@@ -6435,14 +6471,6 @@ function espaceBien(c, idx, t) {
           ${!estBienEnDirect(c) ? '' : `<div class="field"><label>${trad('Surface (m²)')}${aide(trad("Elle donne le prix au mètre carré, le seul chiffre qui permette de confronter ton estimation aux annonces du quartier. Sans elle, « 150 000 {dev} » ne se vérifie contre rien."))}</label>
             <input type="number" step="any" class="champ-large"
                    data-path="comptes.${idx}.lignes.${i}.surface" value="${num(l.surface) || ''}"></div>`}
-        </div>
-        <div class="grid g-2 g-paire">
-          <div class="field"><label>${trad('Ta part (%)')}${aide(trad("À remplir seulement si tu détiens ce bien à plusieurs : indivision, SCI, achat en couple sur deux tableaux de bord. Ton patrimoine ne compte alors que ta part. La valeur ci-dessus reste celle du bien entier, c'est elle que tu compares aux annonces. Elle ne répartit rien d'autre : le crédit, les loyers et les charges se saisissent tels que tu les dois, les reçois et les paies. Une charge partagée avec quelqu'un se règle par sa part, dans le budget."))}</label>
-            <input type="number" step="any" min="0" max="100" class="champ-large"
-                   data-path="comptes.${idx}.lignes.${i}.part" value="${estDeclare(l.part) ? num(l.part) : ''}"
-                   placeholder="100">
-            ${partEstValide(l.part) ? '' : `<p class="hint" style="margin:4px 0 0">${
-              trad('La quote-part doit être comprise entre 0 et 100 %.')}</p>`}</div>
         </div>
         ${!estBienEnDirect(c) ? '' : `<div class="field"><label>${trad('Adresse')}</label>
           <textarea rows="3" data-path="comptes.${idx}.lignes.${i}.adresse"
@@ -6624,6 +6652,10 @@ function viewFicheCompte(id) {
       ${c.statut === 'archive' ? '' : `<div class="cpt-net">${fmtEUR(valeurCompte(c))}</div>`}
       <span class="sub">${esc([sousTitreCompte(c, false), c.statut === 'archive' ? trad('archivé') : '']
         .filter(Boolean).join(' · '))}</span>
+      ${c.statut === 'archive' ? '' : (() => {
+        const dates = datesDuCompte(c).map(phraseDateValeur).filter(Boolean);
+        return dates.length ? `<p class="hint date-valeur">${dates.join(' · ')}</p>` : '';
+      })()}
       ${(() => {
         const p = resteAVerser(c);
         if (!p) return '';
@@ -6664,8 +6696,9 @@ function viewFicheCompte(id) {
         a.atteint
           ? `<b class="up">${trad('seuil des')} ${a.seuilAns} ${trad('ans atteint')}</b>`
           : `${trad('seuil des')} ${a.seuilAns} ${trad('ans le')} ${fmtDate(a.seuilLe)}`
-      }${aide(trad('Un seuil fiscal, pas une barrière à la sortie : avant lui, retirer reste possible, on y perd l’avantage d’impôt et non l’accès à l’argent. C’est pourquoi la disponibilité affichée plus bas n’en dépend pas.'))}</p>`;
+      }${aide(trad('Un seuil fiscal, pas un délai : avant lui, l’argent reste accessible, au prix de l’avantage d’impôt et, pour un PEA, du plan lui-même. C’est pourquoi la disponibilité affichée plus bas n’en dépend pas.'))}</p>`;
     })()}
+    ${t.retrait ? `<p class="hint cpt-retrait">${trad('Retraits')}${deuxPoints()} ${trad(t.retrait)}</p>` : ''}
   </div>
 
   ${espaceBien(c, idx, t)}
@@ -6677,6 +6710,8 @@ function viewFicheCompte(id) {
       <button class="btn sm ghost" data-action="scinder-cash" data-id="${esc(c.id)}"
               title="${trad('Déclarer un second usage sur le même compte')}">${trad('Scinder')}</button>
     </div>
+    ${(c.cash || []).length ? `<p class="hint" style="margin:0 0 8px">${
+      trad('C’est ici que tu mets à jour le solde : il se date à la saisie.')}</p>` : ''}
     ${(c.cash || []).length ? (c.cash || []).map((e, i) => `
       <div class="plc-ligne">
         <span class="cpt-nom">${trad('Liquidités')}</span>
@@ -6697,12 +6732,14 @@ function viewFicheCompte(id) {
   <div class="card">
     <div class="card-head"><h2>${trad(t.melange ? (t.contenant === 'banque' ? 'Supports du plan' : 'Supports du contrat')
       : t.titres ? 'Lignes de titres' : 'Placements détenus')}</h2>
-      <span class="hint">${trad('Disponibilité')}${aide(trad("Sous combien de temps chaque placement redevient de l’argent disponible. Elle alimente la carte « Réserve de sécurité » de l’accueil. « Auto » suit la règle du type de compte : un PEA de moins de cinq ans est bloqué, un compte-titres se vend en séance. La règle se trompe parfois : un non coté peut se revendre sur un marché secondaire, c’est pourquoi chaque ligne peut la contredire."))}</span>
+      <span class="hint">${trad('Disponibilité')}${aide(trad("Sous combien de temps chaque placement redevient de l’argent disponible : le délai de vente de l’actif, en séance pour un titre coté, des semaines ou des mois pour un bien ou un non coté. L’enveloppe ne l’allonge que si elle bloque vraiment l’argent, comme un PER jusqu’à la retraite ; les règles de retrait d’un PEA ou d’une assurance-vie changent l’impôt, pas ce délai, et se lisent en tête de fiche. Elle alimente la carte « Réserve de sécurité » de l’accueil. « Auto » suit ces règles, et chaque ligne peut les contredire : un non coté peut se revendre sur un marché secondaire."))}</span>
       ${t.titres ? `<button class="btn sm ghost" data-action="ajouter-ligne" data-compte="${esc(c.id)}"
                    title="${trad('Chercher un titre coté et le poser sur ce compte')}">${trad('+ Titre coté')}</button>` : ''}
       ${!t.titres || t.melange ? `<button class="btn sm ghost" data-action="ajouter-placement" data-id="${esc(c.id)}"
                    title="${trad('Ajouter un placement à ce compte')}">${trad('+ Placement')}</button>` : ''}
     </div>
+    ${lignes.length ? `<p class="hint" style="margin:0 0 8px">${trad(t.titres
+      ? 'Touche une ligne pour la modifier ou la vendre.' : 'Touche une ligne pour la modifier.')}</p>` : ''}
     ${lignes.length ? lignes.map(l => lignePlacement(l, c, true)).join('')
       : `<div class="empty">
           <p style="margin:0 0 12px">${trad('Aucun placement pour l’instant.')} ${trad(t.melange
@@ -6735,10 +6772,13 @@ function viewFicheCompte(id) {
     if (estBien(t) || !c.etabId) return '';
     const { etab, dettes, total } = creditsDuCompte(c);
     if (!etab) return '';
+    if (!dettes.length && !t.pretSurTitres) return '';
     const valeur = valeurCompte(c);
     return `
   <div class="card">
-    <div class="card-head"><h2>${trad('Financement')}${aide(trad("Ce que cet établissement te prête : une marge de courtier, un prêt sur titres, une avance. Les placements achetés avec cet argent restent comptés en entier dans tes avoirs, puisque tu les possèdes, et le montant prêté se retranche de ton patrimoine net. Ne le note pas en liquidités négatives sur le compte : il compterait deux fois, et aucun écran ne le dirait. Le crédit appartient à l’établissement, pas à ce compte : s’il en tient plusieurs, il n’est déduit qu’une fois du patrimoine."))}</h2>
+    <div class="card-head"><h2>${trad('Financement')}${aide(t.pretSurTitres
+      ? trad("Ce que cet établissement te prête : une marge de courtier, un prêt sur titres, une avance. Les placements achetés avec cet argent restent comptés en entier dans tes avoirs, puisque tu les possèdes, et le montant prêté se retranche de ton patrimoine net. Ne le note pas en liquidités négatives sur le compte : il compterait deux fois, et aucun écran ne le dirait. Le crédit appartient à l’établissement, pas à ce compte : s’il en tient plusieurs, il n’est déduit qu’une fois du patrimoine.")
+      : trad("Ce que cet établissement te prête. Le montant se retranche de ton patrimoine net ; le crédit appartient à l’établissement, pas à ce compte : s’il en tient plusieurs, il n’est déduit qu’une fois."))}</h2>
       <span class="hint">${dettes.length
         ? `${trad('chez')} ${esc(etab.nom)}, ${trad('pour tous ses comptes')}`
         : trad('marge, prêt sur titres, avance')}</span>
@@ -6756,7 +6796,7 @@ function viewFicheCompte(id) {
         <span class="ml-chiffres"><b class="dette">−${fmtEUR(num(d.montant))}</b></span>
         <span class="ml-chev" aria-hidden="true">›</span>
       </button>`).join('')}</div>
-    <dl class="kv" style="margin-top:12px">
+    ${!t.pretSurTitres ? '' : `<dl class="kv" style="margin-top:12px">
       <dt>${trad('Valeur du')} ${motCompte(t)}</dt><dd>${fmtEUR(valeur)}</dd>
       <dt>${trad('Crédits chez')} ${esc(etab.nom)}</dt><dd class="dette">−${fmtEUR(total)}</dd>
       <dt><b>${trad('Ce que tu possèdes')}</b>${aide(trad("La valeur du compte moins ce que tu dois à cet établissement. C’est ce montant qui compte dans ton patrimoine net. Si l’établissement tient plusieurs comptes, le crédit est déduit une seule fois du patrimoine, pas une fois par compte."))}</dt>
@@ -6764,7 +6804,7 @@ function viewFicheCompte(id) {
       ${valeur - total > 0.005 ? `<dt>${trad('Effet de levier')}${aide(trad("Ce que tu contrôles rapporté à ce qui est vraiment à toi sur ce compte. À 150 %, une baisse de 10 % des titres coûte 15 % de tes capitaux propres. Ce chiffre ne dit rien de la marge d’appel : l’application ne connaît pas les règles de ton courtier."))}</dt>
         <dd>${fmtPct(valeur / (valeur - total) * 100, 0)}
           <span class="muted">${trad('de tes capitaux propres')}</span></dd>` : ''}
-    </dl>
+    </dl>`}
     <button class="btn sm ghost" data-action="fiche-etab" data-id="${esc(etab.id)}"
             style="margin-top:12px">${trad('Fiche')} ${esc(etab.nom)} ›</button>`}
   </div>`;
@@ -6773,6 +6813,7 @@ function viewFicheCompte(id) {
   <div class="card">
       <div class="card-head"><h2>${trad('Informations')}</h2>
         <button class="btn sm ghost" data-action="modifier-compte" data-id="${esc(c.id)}">${trad('Modifier')}</button></div>
+      <p class="hint" style="margin:0 0 8px">${trad('Le nom, le type, l’établissement et les dates du compte. Le solde et les placements se changent dans leurs cartes.')}</p>
       <dl class="kv">
         <dt>${trad('Nom du')} ${motCompte(t)}</dt><dd>${c.libelle ? esc(c.libelle)
           : `<span class="muted">${trad('non renseigné')}</span>`}</dd>
@@ -6796,7 +6837,7 @@ function viewFicheCompte(id) {
         <dd>${num(c.plafond) ? fmtEUR(c.plafond)
               : `<span class="muted">${trad('non renseigné')}</span>`}</dd>` : ''}
         ${t.dateSensible ? `
-        <dt>${trad('Date d’ouverture')}${aide(trad("Elle donne l’ancienneté du contrat, affichée en tête de cette fiche : cinq ans pour un PEA, huit pour une assurance-vie. Ce sont des seuils d’impôt, pas des barrières à la sortie : avant eux, retirer reste possible, on y perd l’avantage fiscal et non l’accès à l’argent. C’est pour cela qu’elle est demandée ici et pas sur les autres types de compte."))}</dt>
+        <dt>${trad('Date d’ouverture')}${aide(trad("Elle donne l’ancienneté du contrat, affichée en tête de cette fiche : cinq ans pour un PEA, huit pour une assurance-vie. Ce sont des seuils d’impôt, pas des délais : avant eux, l’argent reste accessible, au prix de l’avantage fiscal et, pour un PEA, du plan lui-même. C’est pour cela qu’elle est demandée ici et pas sur les autres types de compte."))}</dt>
         <dd>${c.ouvertLe ? esc(fmtDate(c.ouvertLe))
               : `<span class="muted">${trad('à renseigner')}</span>`}</dd>`
         : (c.ouvertLe || estActifTerminal(t))
@@ -8346,7 +8387,8 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
   ];
 }
 
-function litPlacement(v, base) {
+function litPlacement(v, base, t) {
+  const genre = estValeurEstimee(t) ? 'estimation' : 'vl';
   return {
     ...base,
     libelle: v.libelle,
@@ -8355,7 +8397,9 @@ function litPlacement(v, base) {
     dateAcquisition: v.dateAcquisition || '',
     ...(v.parts !== undefined ? { parts: num(v.parts) || null } : {}),
     ...(v.vlPeriode !== undefined ? { vlPeriode: v.vlPeriode || 'trimestre' } : {}),
-    ...(v.estimeLe !== undefined ? { estimeLe: v.estimeLe || '' } : {}),
+    ...(v.estimeLe !== undefined ? { estimeLe: dateApresSaisie({
+      avant: base.valeur, apres: num(v.valeur),
+      dateAvant: base.estimeLe || '', dateSaisie: v.estimeLe || '', genre }) || '' } : {}),
     ...(v.taux !== undefined
       ? { taux: estDeclare(v.taux) ? num(v.taux) : null } : {}),
     ...(v.echeance !== undefined ? { echeance: v.echeance || '' } : {}),
@@ -8506,10 +8550,11 @@ const ACTIONS = {
   },
 
   'apercu-enregistrer'() {
+    /* Un capital corrige ici se date par `applyField`, comme partout : c'est le
+       montant qui change qui dit qu'on l'a relu. Enregistrer le panneau ne date
+       pas les credits qu'on n'a pas touches -- la fenetre d'un credit porte sa
+       date de verification, pour confirmer un capital inchange. */
     appliquerDiffere();
-    if (apercuOuvert === 'credits') {
-      for (const e of ETABS()) for (const d of (e.dettes || [])) d.verifieLe = todayISO();
-    }
     Store.save();
     render();
     if (apercuOuvert) openApercu(apercuOuvert, apercuArg);
@@ -9590,7 +9635,8 @@ const ACTIONS = {
          exactement ce que `sansCash` devait retirer. Ne rien ecrire est la seule
          facon de ne rien montrer. */
     } else {
-      cash.push({ montant: num(e3.montant), affectation: e3.usage });
+      const saisi = m => (num(m) ? { saisiLe: todayISO() } : {});
+      cash.push({ montant: num(e3.montant), affectation: e3.usage, ...saisi(e3.montant) });
       if (e3.scinder) {
         const e4 = await askForm({
           titre: trad('Seconde part'), sous: trad('Le même compte, un autre usage'),
@@ -9602,7 +9648,7 @@ const ACTIONS = {
               valeur: AFFECTATIONS.find(([v]) => v !== e3.usage)[0] },
           ],
         });
-        if (e4) cash.push({ montant: num(e4.montant), affectation: e4.usage });
+        if (e4) cash.push({ montant: num(e4.montant), affectation: e4.usage, ...saisi(e4.montant) });
       }
     }
 
@@ -9637,23 +9683,54 @@ const ACTIONS = {
 
   async 'archiver-compte'(btn) {
     const c = compteById(btn.dataset.id);
-    if (!c) return;
+    const imp = c && impactArchivage(c.id);
+    if (!imp) return;
+    const nom = nomCompteV2(c);
+    if (imp.lignesTitres) {
+      const voir = await askConfirm(`${trad('Archiver')} ${guill(nom)} ?\n`
+        + trad(imp.lignesTitres > 1 ? 'Ce compte porte encore {n} lignes de titres, pour {v}.'
+                                    : 'Ce compte porte encore {n} ligne de titres, pour {v}.')
+          .replace('{n}', imp.lignesTitres).replace('{v}', fmtEUR0(imp.valeurTitres)) + '\n\n'
+        + trad('Archivé, il sortirait de ton patrimoine, mais ses lignes resteraient comptées dans Marchés. Déplace-les vers le compte qui les reçoit, ou enregistre leur vente, puis archive-le.'),
+        { danger: false, ok: 'Voir ses lignes', refus: 'Fermer' });
+      if (voir) { posRole = 'tous'; posCompte = c.id; location.hash = '#/positions'; }
+      return;
+    }
+    const vide = Math.abs(imp.valeur) < 0.005;
+    const impact = vide ? trad('Ce compte est vide : tes totaux ne changent pas.')
+      : trad('Ton patrimoine net passerait de {a} à {b} ({e}).')
+          .replace('{a}', fmtEUR0(imp.netAvant)).replace('{b}', fmtEUR0(imp.netApres))
+          .replace('{e}', fmtSigned(imp.ecartNet))
+        + (imp.creditRestant > 0.005 ? ' ' + trad('Son crédit, {c} restant dû, reste compté dans tes dettes.')
+            .replace('{c}', fmtEUR0(imp.creditRestant)) : '');
     const v = await askForm({
-      titre: `Archiver ${guill(nomCompteV2(c))} ?`,
-      sous: trad('Il sort de tous les totaux et garde son historique. Restaurable à tout moment.'),
+      titre: `Archiver ${guill(nom)} ?`,
+      sous: `${impact} ${trad('Ses relevés passés restent dans l’historique. Restaurable à tout moment.')}`,
       ok: 'Archiver',
       champs: [
+        ...(vide ? [] : [{ cle: 'motif', label: trad('Que devient cet argent ?'), type: 'liste', valeur: '',
+          options: [['', 'à préciser'], ...MOTIFS_ARCHIVE],
+          aide: trad('Un transfert ne change pas ton patrimoine : mets à jour le compte qui a reçu l’argent, Longward n’écrit pas ce versement. Une sortie le fait baisser d’autant. Une correction retire un compte qui n’aurait pas dû exister : ses relevés passés gardent leurs montants, à corriger dans l’historique s’ils étaient faux.') }]),
         { cle: 'clotureLe', label: trad('Date de clôture'), type: 'date', valeur: todayISO(),
           aide: trad('facultative. C’est elle qui situe le compte dans le temps : une ')
               + 'vente passée sur un PEA clôturé se relit autrement quand on sait '
               + 'quand il a fermé' },
       ],
+      valide: x => (!vide && !x.motif
+        ? { cle: 'motif', message: trad('Dis ce que devient cet argent : un transfert, une sortie et une correction ne racontent pas la même chose.') }
+        : null),
     });
     if (!v) return;
     c.statut = 'archive';
     if (v.clotureLe) c.clotureLe = v.clotureLe; else delete c.clotureLe;
+    if (v.motif) c.archiveMotif = v.motif; else delete c.archiveMotif;
     refreshAccounts(); Store.save(); render();
-    toast(`${guill(nomCompteV2(c))} ${trad('archivé')}${v.clotureLe ? ` ${trad('au')} ${fmtDate(v.clotureLe)}` : ''}`);
+    const suite = v.motif === 'transfert'
+      ? trad('mets à jour le compte qui a reçu {v}').replace('{v}', fmtEUR0(imp.valeur))
+      : v.motif === 'sortie' ? `${trad('patrimoine net')} ${fmtSigned(imp.ecartNet)}`
+      : v.motif === 'correction' ? trad('ses relevés passés gardent leurs montants') : '';
+    toast(`${guill(nom)} ${trad('archivé')}${v.clotureLe ? ` ${trad('au')} ${fmtDate(v.clotureLe)}` : ''}${
+      suite ? ` · ${suite}` : ''}`);
   },
   async 'restaurer-compte'(btn) {
     const c = compteById(btn.dataset.id);
@@ -9670,6 +9747,7 @@ const ACTIONS = {
     const avait = c.clotureLe;
     c.statut = 'ouvert';
     delete c.clotureLe;
+    delete c.archiveMotif;
     refreshAccounts(); Store.save(); render();
     toast(`${guill(nomCompteV2(c))} ${trad('restauré')}${avait ? trad(', sa date de clôture est retirée') : ''}`);
   },
@@ -9931,7 +10009,7 @@ const ACTIONS = {
     if (!v) return;
     const classe = demandeSupport ? (v.classe || parDefaut) : parDefaut;
     c.lignes = c.lignes || [];
-    c.lignes.push(litPlacement(v, { id: 'l' + Date.now().toString(36), classe }));
+    c.lignes.push(litPlacement(v, { id: 'l' + Date.now().toString(36), classe }, t));
     refreshAccounts(); Store.save(); render();
     toast(`${guill(v.libelle)} ${trad('ajouté')} · ${fmtEUR0(num(v.valeur))}`);
   },
@@ -9981,7 +10059,7 @@ const ACTIONS = {
       toast(`${guill(l.libelle)} ${trad('retiré')}`);
       return;
     }
-    Object.assign(l, litPlacement(v, l));
+    Object.assign(l, litPlacement(v, l, typeCompte(c.type)));
     /* L'AUTRE SENS DU MEME NOM, et il manquait. Sur un actif terminal le compte
        EST le placement, mais c'est le nom du COMPTE que l'en-tete, la liste des
        actifs et les menus lisent — `nomCompteV2()` le prend en premier.
@@ -10183,6 +10261,8 @@ const ACTIONS = {
               + 'n’as rien remboursé par avance')
               .replace('{v}', fmtEUR0(pr.projete)).replace('{n}', pr.moisDepuis);
           })() },
+        { cle: 'verifieLe', label: trad('Vérifié le'), type: 'date', valeur: d.verifieLe || '',
+          aide: trad('le jour où tu as lu ce capital chez ta banque') },
         { cle: 'libelle', label: 'Intitulé', type: 'texte', requis: true, max: NOM_LIGNE_MAX, valeur: d.libelle || '' },
         { cle: 'initial', label: trad('Capital emprunté au départ ({dev})'), type: 'nombre',
           valeur: estDeclare(d.initial) ? num(d.initial) : '',
@@ -10237,9 +10317,10 @@ const ACTIONS = {
       return;
     }
     const avant = num(d.montant);
+    d.verifieLe = dateApresSaisie({ avant: d.montant, apres: num(v.montant),
+      dateAvant: d.verifieLe || '', dateSaisie: v.verifieLe || '', genre: 'credit' });
     d.libelle = v.libelle || d.libelle;
     d.montant = num(v.montant);
-    d.verifieLe = todayISO();
     d.initial = estDeclare(v.initial) ? num(v.initial) : null;
     if (v.mensualite !== undefined)
       d.mensualite = estDeclare(v.mensualite) ? num(v.mensualite) : null;
@@ -12958,7 +13039,10 @@ function blocFraicheur() {
   const phrase = x => {
     const d = x.depuis ? esc(fmtDate(x.depuis)) : '';
     if (x.genre === 'cours') return d ? trad('Cours actualisés le {d}').replace('{d}', d) : trad('Cours jamais actualisés');
+    if (x.genre === 'soldesSansDate') return `${trad('Soldes sans date de saisie')}${deuxPoints()} ${
+      x.noms.map(n => esc(guill(n))).join(', ')}`;
     const quoi = x.genre === 'aVerifier' ? trad('valeur à vérifier')
+      : x.genre === 'solde' ? trad('solde saisi le {d}').replace('{d}', d)
       : x.genre === 'credit' ? (d ? trad('capital restant dû vérifié le {d}').replace('{d}', d)
                                   : trad('capital restant dû jamais vérifié'))
       : x.publiee ? (d ? trad('VL du {d}').replace('{d}', d) : trad('sans date de VL'))
@@ -15833,7 +15917,13 @@ function applyField(f) {
     f.setAttribute('aria-invalid', 'true');
     return;
   }
-  if (f.type === 'number') { setPath(path, f.value === '' ? '' : Number(f.value)); return; }
+  if (f.type === 'number') {
+    const suivi = dateQuiSuit(path);
+    const avant = suivi ? getPath(path) : undefined;
+    setPath(path, f.value === '' ? '' : Number(f.value));
+    if (suivi && montantChange(avant, getPath(path))) setPath(suivi.chemin, dateApresChangement(suivi.genre));
+    return;
+  }
   if (f.dataset.type === 'num') { setPath(path, Number(f.value)); return; }
   if (f.dataset.type === 'bool') { setPath(path, f.value === 'true'); return; }
 

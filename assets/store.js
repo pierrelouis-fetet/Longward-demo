@@ -168,13 +168,25 @@ const MOBILISABLE_LABEL = {
 /* Le type de compte déduit les classes ajoutables et pré-remplit
    l'affectation du cash — il ne contraint jamais l'utilisateur, et les
    poches ne se calculent jamais dessus. `dateSensible` : la date
-   d'ouverture conditionne la mobilisabilité (PEA cinq ans, PER retraite),
-   elle est donc demandée dès la création pour ces types-là. */
+   d'ouverture donne l'anciennete de l'enveloppe, dont dependent des seuils
+   fiscaux (cinq ans pour un PEA, huit pour une assurance-vie) ; elle est donc
+   demandee des la creation pour ces types-la. Elle ne change jamais le delai
+   de vente d'une ligne : `mobilisabilite()` ne la lit pas.
+
+   DEUX QUESTIONS QUI NE SE CONFONDENT PAS. Le delai de vente est celui de
+   l'actif -- une action se vend en seance, un studio en quelques mois -- et
+   `disponibilite` ne le rallonge que pour une enveloppe qui bloque vraiment
+   l'argent (le PER jusqu'a la retraite). `retrait` dit les conditions de
+   retrait de l'enveloppe, qui sont fiscales la plupart du temps : la fiche les
+   ecrit en toutes lettres, a part du delai. `pretSurTitres` : un courtier peut
+   y preter sur les titres detenus, et la fiche propose alors de declarer ce
+   credit ; nulle part ailleurs ce discours n'a de raison d'etre. */
 const TYPES_COMPTE = [
   { id: 'courant', label: 'Compte courant', classes: ['liquidites'], defaut: 'courant',    groupe: 'cash' },
   { id: 'livret',  label: 'Livret',         classes: ['liquidites'], defaut: 'precaution', groupe: 'cash' },
-  { id: 'pea',     label: 'PEA',            classes: ['liquidites', 'actions'], defaut: 'investir', groupe: 'bourse', titres: true, dateSensible: true },
-  { id: 'cto',     label: 'Compte-titres (CTO)', classes: ['liquidites', 'actions', 'obligations'], defaut: 'investir', groupe: 'bourse', titres: true },
+  { id: 'pea',     label: 'PEA',            classes: ['liquidites', 'actions'], defaut: 'investir', groupe: 'bourse', titres: true, dateSensible: true,
+    retrait: 'Avant 5 ans, un retrait clôture le plan, sauf exceptions prévues par la loi ; après 5 ans, tu peux retirer sans le clôturer. Vendre une ligne du plan, elle, se fait en séance.' },
+  { id: 'cto',     label: 'Compte-titres (CTO)', classes: ['liquidites', 'actions', 'obligations'], defaut: 'investir', groupe: 'bourse', titres: true, pretSurTitres: true },
   /* Une enveloppe, et non un compte-titres. Ces deux-la portent tout ce que le
      contrat propose : un ETF monde qui cote, un fonds euros qui ne cote nulle
      part, une SCPI, un fonds maison sans ISIN. D'ou deux differences avec un
@@ -196,8 +208,10 @@ const TYPES_COMPTE = [
      d'autonomie. Le drapeau ne touche pas a `classes` : « liquidites » y sert
      aussi a accepter un support monetaire, qui est un placement et non du cash.
      Deux choses sous un seul mot, d'ou deux reglages. */
-  { id: 'av',      label: 'Assurance-vie',  classes: ['liquidites', 'garanti', 'actions', 'obligations', 'immobilier', 'nonCote'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, dateSensible: true },
-  { id: 'per',     label: 'Plan d’épargne retraite (PER)', classes: ['liquidites', 'garanti', 'actions', 'obligations', 'immobilier', 'nonCote'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, dateSensible: true, disponibilite: 'bloque', rubrique: 'retraite' },
+  { id: 'av',      label: 'Assurance-vie',  classes: ['liquidites', 'garanti', 'actions', 'obligations', 'immobilier', 'nonCote'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, dateSensible: true,
+    retrait: 'Un rachat est possible à tout moment et arrive en quelques jours à quelques semaines ; le seuil des 8 ans ne change que l’impôt sur les gains.' },
+  { id: 'per',     label: 'Plan d’épargne retraite (PER)', classes: ['liquidites', 'garanti', 'actions', 'obligations', 'immobilier', 'nonCote'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, dateSensible: true, disponibilite: 'bloque', rubrique: 'retraite',
+    retrait: 'Bloqué jusqu’à la retraite, sauf cas de déblocage anticipé prévus par la loi, comme l’achat de ta résidence principale.' },
   /* ENVELOPPES AMERICAINES. Quatre contenants, pas une fiscalite : aucun seuil
      d'age, aucun plafond, aucune penalite, aucun abondement n'entre ici. Ce
      sont des enveloppes de placement comme celles qui existent, et elles
@@ -221,7 +235,7 @@ const TYPES_COMPTE = [
   { id: 'traditionalIra', label: 'Traditional IRA', classes: ['liquidites', 'actions', 'obligations'], defaut: 'investir', groupe: 'bourse', titres: true, disponibilite: 'lent', rubrique: 'retraite' },
   { id: 'rothIra', label: 'Roth IRA',        classes: ['liquidites', 'actions', 'obligations'], defaut: 'investir', groupe: 'bourse', titres: true, disponibilite: 'lent', rubrique: 'retraite' },
   { id: 'hsa',     label: 'HSA',             classes: ['liquidites', 'actions', 'obligations'], defaut: 'precaution', groupe: 'bourse', titres: true, rubrique: 'retraite' },
-  { id: 'crypto',  label: 'Portefeuille de cryptomonnaies', classes: ['crypto'], defaut: 'investir', groupe: 'bourse', titres: true },
+  { id: 'crypto',  label: 'Portefeuille de cryptomonnaies', classes: ['crypto'], defaut: 'investir', groupe: 'bourse', titres: true, pretSurTitres: true },
   /* Deux metiers que le mot « crowdfunding » melange, et qui n'ont pas les memes
      champs. On prete, ou on prend des parts.
 
@@ -1211,6 +1225,65 @@ function valeurPerimee(ligne, type) {
   return joursDepuis(ligne.estimeLe) > jours;
 }
 
+/* --- DE QUAND DATE UNE VALEUR ---------------------------------------------
+
+   Chaque montant porte sa date sur l'objet qui le porte : `saisiLe` sur une part
+   de cash (le jour ou le detenteur a tape ce solde), `estimeLe` sur une ligne
+   (le jour d'une estimation, ou celui de la VL publiee), `verifieLe` sur un
+   credit (le jour ou le capital a ete lu), et `quotes.lastRun` pour les cours.
+
+   LA DATE SUIT LE MONTANT, ET RIEN D'AUTRE. Elle bouge quand le montant change
+   sous la main du detenteur, ou quand il la pose lui-meme. Renommer un compte,
+   changer un preteur, reenregistrer une fiche ne la touche pas : dater
+   d'aujourd'hui un chiffre qu'on n'a pas regarde inventerait une verification.
+   Un montant que l'application ecrit elle-meme -- le produit d'une vente
+   credite sur un compte, un releve qui recopie les valeurs du jour -- ne date
+   rien non plus : ce n'est pas une lecture chez la banque.
+
+   Un solde se dit donc « saisi le », pas « verifie le » : c'est le seul fait
+   que l'application constate. */
+const montantChange = (avant, apres) =>
+  estDeclare(avant) !== estDeclare(apres) || num(avant) !== num(apres);
+
+const dateApresChangement = (genre, jour = todayISO()) => (genre === 'vl' ? null : jour);
+
+function dateQuiSuit(chemin) {
+  let m = String(chemin).match(/^comptes\.(\d+)\.cash\.(\d+)\.montant$/);
+  if (m) return { chemin: `comptes.${m[1]}.cash.${m[2]}.saisiLe`, genre: 'solde' };
+  m = String(chemin).match(/^etabs\.(\d+)\.dettes\.(\d+)\.montant$/);
+  if (m) return { chemin: `etabs.${m[1]}.dettes.${m[2]}.verifieLe`, genre: 'credit' };
+  m = String(chemin).match(/^comptes\.(\d+)\.lignes\.(\d+)\.valeur$/);
+  if (m) {
+    const t = typeCompte((COMPTES()[+m[1]] || {}).type);
+    if (estValeurEstimee(t)) return { chemin: `comptes.${m[1]}.lignes.${m[2]}.estimeLe`, genre: 'estimation' };
+    if (t && t.vl) return { chemin: `comptes.${m[1]}.lignes.${m[2]}.estimeLe`, genre: 'vl' };
+  }
+  return null;
+}
+
+function dateApresSaisie({ avant, apres, dateAvant, dateSaisie, genre, jour = todayISO() }) {
+  if ((dateSaisie || '') !== (dateAvant || '')) return dateSaisie || null;
+  return montantChange(avant, apres) ? dateApresChangement(genre, jour) : (dateAvant || null);
+}
+
+function datesDuCompte(c) {
+  const t = typeCompte(c.type);
+  const plusAncienne = dates => (dates.some(d => !d) ? null : [...dates].sort()[0]);
+  const out = [];
+  const cash = (c.cash || []).filter(e => num(e.montant) !== 0);
+  if (cash.length) out.push({ genre: 'solde', date: plusAncienne(cash.map(e => e.saisiLe || null)) });
+  const lignes = (c.lignes || []).filter(l => estDeclare(l.valeur) && num(l.valeur) !== 0);
+  if (lignes.length && (estValeurEstimee(t) || (t && t.vl))) {
+    out.push({ genre: estValeurEstimee(t) ? 'estimation' : 'vl',
+               date: plusAncienne(lignes.map(l => l.estimeLe || null)) });
+  }
+  if ((Store.state.positions || []).some(p => p.account === c.id && !p.manual)) {
+    const last = Store.state.quotes?.lastRun;
+    out.push({ genre: 'cours', date: last ? String(last).slice(0, 10) : null });
+  }
+  return out;
+}
+
 function ageAnnees(iso) {
   if (!iso) return Infinity;                    // sans date : pas de blocage
   return (Date.now() - new Date(iso)) / (365.25 * 24 * 3600e3);
@@ -1949,6 +2022,34 @@ function comptesClosDetaches() {
    Chaque entree porte ce qui la retient — les mois qui la nomment, la valeur
    qu'elle porte encore — parce que la confirmation de suppression doit pouvoir
    le dire avant de detruire quoi que ce soit. */
+const MOTIFS_ARCHIVE = [
+  ['transfert', 'Transfert vers un autre compte suivi'],
+  ['sortie', 'Sortie du patrimoine suivi'],
+  ['correction', 'Correction d’une saisie erronée'],
+];
+
+function impactArchivage(id) {
+  const c = compteById(id);
+  if (!c || c.statut === 'archive') return null;
+  const avant = patrimoine();
+  const statut = c.statut;
+  c.statut = 'archive';
+  refreshAccounts();
+  const apres = patrimoine();
+  c.statut = statut;
+  refreshAccounts();
+  const lignes = (Store.state.positions || []).filter(p => p.account === id);
+  return {
+    valeur: round2(valeurCompte(c)),
+    brutAvant: round2(avant.brut), brutApres: round2(apres.brut),
+    netAvant: round2(avant.net), netApres: round2(apres.net),
+    ecartNet: round2(apres.net - avant.net),
+    lignesTitres: lignes.length,
+    valeurTitres: round2(lignes.reduce((s, p) => s + posValue(p), 0)),
+    creditRestant: round2(creditsDuBien(c).reduce((s, d) => s + num(d.montant), 0)),
+  };
+}
+
 function comptesAnciens() {
   const clos = comptesClosDetaches();
   const retient = new Map(clos.retenus.map(x => [x.id, x]));
@@ -8020,6 +8121,7 @@ function notifications() {
 
 const COURS_VIEUX_JOURS = 7;
 const RAPPEL_CREDIT_MOIS = 3;
+const SOLDE_VIEUX_JOURS = 31;
 
 /* --- CE QUI MERITE D'ETRE RAFRAICHI AVANT UNE PHOTO -----------------------
 
@@ -8028,18 +8130,30 @@ const RAPPEL_CREDIT_MOIS = 3;
    jamais eu ce chiffre. La liste se lit AVANT d'enregistrer, et elle ne
    bloque rien -- le detenteur sait peut-etre que sa montre n'a pas bouge.
 
-   Quatre sources, chacune deja tenue ailleurs, et aucune regle nouvelle :
+   Cinq sources, chacune deja tenue ailleurs :
      `aVerifier()`      une valeur que la porte du modele a refusee ;
      `valeurPerimee()`  une estimation ou une VL plus vieille que sa cadence ;
+     `saisiLe`          un solde saisi il y a plus d'un mois ; les soldes sans
+                        date forment UNE entree, qui les nomme -- une ligne par
+                        compte ferait une liste de tout ce qu'on n'a jamais date,
+                        et le releve ne peut rien en dire de plus ;
      `verifieLe`        un capital restant du jamais vu, ou vu il y a trop
                         longtemps ;
      `quotes.lastRun`   des cours qui n'ont pas ete actualises.
 
-   Le cash n'y est pas, et ce n'est pas un oubli : un solde de compte ne porte
-   aucune date, donc rien ne permet de dire qu'il est vieux. */
+   Le releve ne date rien de ce qu'il recopie : il fige, il ne verifie pas. */
 function aRafraichir() {
   const out = [];
   for (const x of aVerifier()) out.push({ genre: 'aVerifier', nom: x.nom || x.chemin, depuis: null });
+  const soldesSansDate = [];
+  for (const c of comptesOuverts()) {
+    const s = datesDuCompte(c).find(x => x.genre === 'solde');
+    if (!s) continue;
+    if (!s.date) soldesSansDate.push(nomCompteV2(c));
+    else if (joursDepuis(s.date) > SOLDE_VIEUX_JOURS)
+      out.push({ genre: 'solde', nom: nomCompteV2(c), depuis: s.date, compteId: c.id });
+  }
+  if (soldesSansDate.length) out.push({ genre: 'soldesSansDate', nom: '', noms: soldesSansDate, depuis: null });
   for (const c of comptesOuverts()) {
     const t = typeCompte(c.type);
     if (!(estValeurEstimee(t) || (t && t.vl))) continue;
