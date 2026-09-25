@@ -2028,6 +2028,90 @@ const MOTIFS_ARCHIVE = [
   ['correction', 'Correction d’une saisie erronée'],
 ];
 
+function enTransaction(operation, verifie = () => true) {
+  const original = Store.state;
+  Store.state = structuredClone(original);
+  try {
+    refreshAccounts();
+    const r = operation(Store.state);
+    refreshAccounts();
+    if (r === false || !verifie(r)) throw new Error('verification');
+    return { ok: true, r };
+  } catch (e) {
+    Store.state = original;
+    refreshAccounts();
+    return { ok: false, erreur: e && e.message };
+  }
+}
+
+function soldeTransferable(c) {
+  if (!c || c.statut === 'archive') return null;
+  const lignes = (c.lignes || []).some(l => estDeclare(l.valeur) && num(l.valeur) !== 0);
+  const titres = (Store.state.positions || []).some(p => p.account === c.id);
+  if (lignes || titres) return null;
+  const solde = round2((c.cash || []).reduce((s, e) => s + num(e.montant), 0));
+  return solde > 0.005 ? solde : null;
+}
+
+function destinationsTransfert(sourceId) {
+  const ok = cashTargets().filter(c => c.id !== sourceId);
+  return [...ok.filter(c => !typeCompte(c.type).titres), ...ok.filter(c => typeCompte(c.type).titres)];
+}
+
+function pocheDArrivee(c) {
+  const t = typeCompte(c.type) || {};
+  c.cash = c.cash || [];
+  let e = c.cash.find(x => x.affectation === t.defaut) || c.cash[0];
+  if (!e) { e = { montant: 0, affectation: t.defaut || 'courant' }; c.cash.push(e); }
+  return e;
+}
+
+function archiverParTransfert({ source, destination, montant, clotureLe = todayISO() }) {
+  const c = compteById(source);
+  const solde = soldeTransferable(c);
+  if (solde == null) return { ok: false, erreur: 'pasDEspeces' };
+  if (!destinationsTransfert(source).some(x => x.id === destination)) return { ok: false, erreur: 'destination' };
+  const m = round2(num(montant));
+  if (!(m > 0.005) || m > solde + 0.005) return { ok: false, erreur: 'montant' };
+  const netAvant = patrimoine().net;
+  const t = enTransaction(() => {
+    const src = compteById(source), dst = compteById(destination);
+    for (const e of (src.cash || [])) e.montant = 0;
+    const e = pocheDArrivee(dst);
+    e.montant = round2(num(e.montant) + m);
+    src.statut = 'archive';
+    src.archiveMotif = 'transfert';
+    src.archiveVers = destination;
+    if (clotureLe) src.clotureLe = clotureLe; else delete src.clotureLe;
+    return true;
+  }, () => Math.abs(patrimoine().net - (netAvant - (solde - m))) < 0.005);
+  return t.ok ? { ok: true, solde, montant: m, ecartNet: round2(m - solde) } : { ok: false, erreur: t.erreur };
+}
+
+function archivesAvecTitres() {
+  return COMPTES().filter(c => c.statut === 'archive').map(c => {
+    const lignes = (Store.state.positions || []).filter(p => p.account === c.id);
+    return { compte: c, lignes, valeur: round2(lignes.reduce((s, p) => s + posValue(p), 0)) };
+  }).filter(x => x.lignes.length);
+}
+
+const destinationsLignes = sourceId =>
+  comptesOuverts().filter(c => c.id !== sourceId && typeCompte(c.type).titres);
+
+function deplacerLignesArchivees(sourceId, destId) {
+  if (!destinationsLignes(sourceId).some(c => c.id === destId)) return { ok: false, erreur: 'destination' };
+  const lignes = (Store.state.positions || []).filter(p => p.account === sourceId);
+  if (!lignes.length) return { ok: false, erreur: 'rien' };
+  const valeur = round2(lignes.reduce((s, p) => s + posValue(p), 0));
+  const netAvant = patrimoine().net, marchesAvant = stockTotals().balance;
+  const t = enTransaction(() => {
+    for (const p of Store.state.positions) if (p.account === sourceId) p.account = destId;
+    return true;
+  }, () => Math.abs(patrimoine().net - (netAvant + valeur)) < 0.005
+        && Math.abs(stockTotals().balance - marchesAvant) < 0.005);
+  return t.ok ? { ok: true, lignes: lignes.length, valeur } : { ok: false, erreur: t.erreur };
+}
+
 function impactArchivage(id) {
   const c = compteById(id);
   if (!c || c.statut === 'archive') return null;
@@ -6858,7 +6942,7 @@ function cashTargets() {
    s'il porte du cash. `null` quand il faut la choisir. */
 function destinationAuto(accountId) {
   const c = compteById(accountId);
-  return c && (typeCompte(c.type) || {}).titres && peutPorterCash(c) ? c.id : null;
+  return c && c.statut !== 'archive' && (typeCompte(c.type) || {}).titres && peutPorterCash(c) ? c.id : null;
 }
 
 function defaultCashTarget(accountId) {
@@ -8271,6 +8355,15 @@ function healthChecks() {
       'accounts', CLE_INVENTAIRE);
   }
   sujet = 'coherence';
+
+  for (const x of archivesAvecTitres()) {
+    add('warn', trad('{n} est archivé mais porte encore des titres').replace('{n}', guill(nomCompteV2(x.compte))),
+      trad(x.lignes.length > 1
+        ? '{k} lignes, {v} : Marchés les compte, ton patrimoine non. Déplace-les, enregistre leur vente ou restaure le compte.'
+        : '{k} ligne, {v} : Marchés la compte, ton patrimoine non. Déplace-la, enregistre sa vente ou restaure le compte.')
+        .replace('{k}', x.lignes.length).replace('{v}', fmtEUR0(x.valeur)),
+      'positions', `archive-titres:${x.compte.id}`);
+  }
 
   sujet = 'cours';
   for (const p of Store.state.positions) {

@@ -751,14 +751,58 @@ const I18N = {
     "Son crédit, {c} restant dû, reste compté dans tes dettes.": "Its loan, {c} outstanding, still counts in your debts.",
     "Ses relevés passés restent dans l’historique. Restaurable à tout moment.": "Its past statements stay in your history. Restorable at any time.",
     "Que devient cet argent ?": "What happens to this money?",
-    "Un transfert ne change pas ton patrimoine : mets à jour le compte qui a reçu l’argent, Longward n’écrit pas ce versement. Une sortie le fait baisser d’autant. Une correction retire un compte qui n’aurait pas dû exister : ses relevés passés gardent leurs montants, à corriger dans l’historique s’ils étaient faux.":
-      "A transfer does not change your wealth: update the account that received the money, Longward does not record that deposit for you. A withdrawal lowers it by as much. A correction removes an account that should not have existed: its past statements keep their amounts, to correct in your history if they were wrong.",
+    "Un transfert déplace ce solde vers un autre compte suivi, dans ce même geste : ton patrimoine ne change pas. Une sortie le fait baisser d’autant. Une correction retire un compte qui n’aurait pas dû exister : ses relevés passés gardent leurs montants, à corriger dans l’historique s’ils étaient faux.":
+      "A transfer moves this balance to another tracked account, in this same step: your wealth does not change. A withdrawal lowers it by as much. A correction removes an account that should not have existed: its past statements keep their amounts, to correct in your history if they were wrong.",
+    "Une sortie fait baisser ton patrimoine d’autant. Une correction retire un compte qui n’aurait pas dû exister : ses relevés passés gardent leurs montants, à corriger dans l’historique s’ils étaient faux.":
+      "A withdrawal lowers your wealth by as much. A correction removes an account that should not have existed: its past statements keep their amounts, to correct in your history if they were wrong.",
+    "Archiver ne vend pas ce bien : s’il a été vendu, mets à jour le solde du compte qui a reçu le prix, puis archive-le.":
+      "Archiving does not sell this property: if it was sold, update the balance of the account that received the price, then archive it.",
+    "Solde son crédit dans sa fenêtre quand il est remboursé.": "Settle its loan in its window once it is repaid.",
+    "Archiver ne cède pas ce placement : s’il a été vendu ou remboursé, enregistre-le avec « Céder » sur sa fiche, qui crédite le prix sur le compte de ton choix.":
+      "Archiving does not dispose of this investment: if it was sold or repaid, record it with “Dispose” on its page, which credits the price to the account you choose.",
+    "Aucun autre compte suivi ne peut recevoir ce solde : ajoute celui qui l’a reçu pour l’y transférer.":
+      "No other tracked account can receive this balance: add the one that received it to transfer it there.",
+    "Vers quel compte ?": "To which account?",
+    "Montant transféré ({dev})": "Amount transferred ({dev})",
+    "tout le solde, sauf si une partie est partie ailleurs": "the whole balance, unless part of it went elsewhere",
+    "Indique le montant transféré.": "Enter the amount transferred.",
+    "Plus que le solde : ce montant créerait de l’argent.": "More than the balance: this amount would create money.",
+    "Tout le solde passe sur l’autre compte : ton patrimoine net ne change pas.": "The whole balance moves to the other account: your net worth does not change.",
+    "{r} non transférés sortiront de ton patrimoine suivi.": "{r} not transferred will leave the wealth you track.",
+    "Choisis le compte qui reçoit l’argent.": "Choose the account receiving the money.",
+    "Le montant transféré doit être positif et ne pas dépasser le solde.": "The amount transferred must be positive and not exceed the balance.",
+    "Le transfert n’a pas pu se faire : rien n’a été modifié.": "The transfer could not be completed: nothing was changed.",
+    "{v} transférés vers {d}": "{v} transferred to {d}",
+    "patrimoine net inchangé": "net worth unchanged",
+    "Transféré vers": "Transferred to",
+    "{n} est archivé mais porte encore des titres": "{n} is archived but still holds securities",
+    "{k} lignes, {v} : Marchés les compte, ton patrimoine non. Déplace-les, enregistre leur vente ou restaure le compte.":
+      "{k} holdings, {v}: Markets counts them, your wealth does not. Move them, record their sale or restore the account.",
+    "{k} ligne, {v} : Marchés la compte, ton patrimoine non. Déplace-la, enregistre sa vente ou restaure le compte.":
+      "{k} holding, {v}: Markets counts it, your wealth does not. Move it, record its sale or restore the account.",
+    "Marchés compte des titres que ton patrimoine ne compte pas": "Markets counts securities your wealth does not",
+    "{v} de lignes sont rattachées à un compte archivé : la valeur du portefeuille les inclut, ton patrimoine non.":
+      "{v} of holdings sit on an archived account: the portfolio value includes them, your wealth does not.",
+    "{k} lignes de titres · {v}": "{k} holdings · {v}",
+    "{k} ligne de titres · {v}": "{k} holding · {v}",
+    "Résoudre": "Resolve",
+    "des titres sur un compte archivé": "securities on an archived account",
+    "{k} lignes, {v}, sont rattachées à ce compte archivé : Marchés les compte, ton patrimoine non. Rien ne change sans ton choix.":
+      "{k} holdings, {v}, sit on this archived account: Markets counts them, your wealth does not. Nothing changes without your choice.",
+    "{k} ligne, {v}, est rattachée à ce compte archivé : Marchés la compte, ton patrimoine non. Rien ne change sans ton choix.":
+      "{k} holding, {v}, sits on this archived account: Markets counts it, your wealth does not. Nothing changes without your choice.",
+    "Elles sont sur un autre compte : les y déplacer": "They are on another account: move them there",
+    "Elles ont été vendues : enregistrer chaque vente": "They were sold: record each sale",
+    "Le compte est toujours ouvert : le restaurer": "The account is still open: restore it",
+    "Le déplacement n’a pas pu se faire : rien n’a été modifié.": "The move could not be completed: nothing was changed.",
+    "{k} lignes déplacées vers {d} · patrimoine net {e}": "{k} holdings moved to {d} · net worth {e}",
+    "Ouvre chaque ligne et enregistre sa vente : son produit arrive sur le compte que tu choisis.":
+      "Open each holding and record its sale: the proceeds go to the account you choose.",
     "Dis ce que devient cet argent : un transfert, une sortie et une correction ne racontent pas la même chose.":
       "Say what happens to this money: a transfer, a withdrawal and a correction do not tell the same story.",
     "Transfert vers un autre compte suivi": "Transfer to another tracked account",
     "Sortie du patrimoine suivi": "Leaves the wealth you track",
     "Correction d’une saisie erronée": "Correction of a wrong entry",
-    "mets à jour le compte qui a reçu {v}": "update the account that received {v}",
     "ses relevés passés gardent leurs montants": "its past statements keep their amounts",
     "Il te manque": "You are short of",
     "La base de la projection": "The basis of the projection",

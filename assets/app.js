@@ -3240,6 +3240,26 @@ function optionsCompte(comptes, choisi) {
     `<optgroup label="${esc(e)}">${liste.map(opt).join('')}</optgroup>`).join('');
 }
 
+function carteTitresArchives() {
+  const liste = archivesAvecTitres();
+  if (!liste.length) return '';
+  const total = liste.reduce((s, x) => s + x.valeur, 0);
+  return `
+  <div class="card">
+    <p class="avert" style="margin:0 0 8px"><b>${trad('Marchés compte des titres que ton patrimoine ne compte pas')}</b>
+      ${trad('{v} de lignes sont rattachées à un compte archivé : la valeur du portefeuille les inclut, ton patrimoine non.')
+        .replace('{v}', fmtEUR0(total))}</p>
+    ${liste.map(x => `
+    <div class="arch-ligne">
+      <span class="arch-nom"><b>${esc(nomCompteV2(x.compte))}</b><span class="sub">${
+        trad(x.lignes.length > 1 ? '{k} lignes de titres · {v}' : '{k} ligne de titres · {v}')
+          .replace('{k}', x.lignes.length).replace('{v}', fmtEUR0(x.valeur))}</span></span>
+      <span class="arch-actes"><button class="btn sm arch-agir" data-action="resoudre-titres-archives"
+        data-id="${esc(x.compte.id)}">${trad('Résoudre')}</button></span>
+    </div>`).join('')}
+  </div>`;
+}
+
 function viewPositions() {
   const pnl = portfolioPnl();
   /* Les trois valeurs des cartes de ventes, en bas de page. Elles vivaient dans
@@ -3339,6 +3359,7 @@ function viewPositions() {
 
   return `
   ${barreEtatCours()}
+  ${carteTitresArchives()}
 
   ${(() => {
     const st = stockTotals();
@@ -5500,15 +5521,23 @@ function viewComptesArchives() {
      La poubelle porte un nom lisible a la voix : « Supprimer » seul, repete
      douze fois, ne dit pas lequel des douze. */
   const motif = x => {
-    const m = MOTIFS_ARCHIVE.find(([k]) => k === x.compte?.archiveMotif);
-    return [m ? trad(m[1]) : '', x.compte?.clotureLe ? `${trad('au')} ${fmtDate(x.compte.clotureLe)}` : '']
-      .filter(Boolean).join(' ');
+    const c = x.compte;
+    const vers = c?.archiveMotif === 'transfert' && c.archiveVers && compteById(c.archiveVers);
+    const m = MOTIFS_ARCHIVE.find(([k]) => k === c?.archiveMotif);
+    return [vers ? `${trad('Transféré vers')} ${guill(nomCompteV2(vers))}` : m ? trad(m[1]) : '',
+            c?.clotureLe ? `${trad('au')} ${fmtDate(c.clotureLe)}` : ''].filter(Boolean).join(' ');
   };
+  const titres = new Map(archivesAvecTitres().map(a => [a.compte.id, a]));
   const ligne = x => `
       <div class="arch-ligne">
         <span class="arch-nom"><b>${esc(x.label)}</b>${
-          x.etab || motif(x) ? `<span class="sub">${esc([x.etab, motif(x)].filter(Boolean).join(' · '))}</span>` : ''}</span>
+          x.etab || motif(x) ? `<span class="sub">${esc([x.etab, motif(x)].filter(Boolean).join(' · '))}</span>` : ''}${
+          titres.has(x.id) ? `<span class="sub">${trad(titres.get(x.id).lignes.length > 1
+            ? '{k} lignes de titres · {v}' : '{k} ligne de titres · {v}')
+            .replace('{k}', titres.get(x.id).lignes.length).replace('{v}', fmtEUR0(titres.get(x.id).valeur))}</span>` : ''}</span>
         <span class="arch-actes">
+          ${titres.has(x.id) ? `<button class="btn sm arch-agir" data-action="resoudre-titres-archives"
+                data-id="${esc(x.id)}">${trad('Résoudre')}</button>` : ''}
           ${x.restaurable ? `<button class="btn sm ghost arch-agir" data-action="restaurer-compte"
                 data-id="${esc(x.id)}">${trad('Restaurer')}</button>`
             : `<button class="btn icon arch-jeter arch-agir" data-action="supprimer-compte-clos"
@@ -9717,6 +9746,44 @@ const ACTIONS = {
   },
   'fiche-etab'(btn) { location.hash = '#/etab/' + encodeURIComponent(btn.dataset.id); },
 
+  async 'resoudre-titres-archives'(btn) {
+    const x = archivesAvecTitres().find(a => a.compte.id === btn.dataset.id);
+    if (!x) return;
+    const nom = nomCompteV2(x.compte);
+    const dests = destinationsLignes(x.compte.id);
+    const v = await askForm({
+      titre: `${guill(nom)} : ${trad('des titres sur un compte archivé')}`,
+      sous: trad(x.lignes.length > 1
+        ? '{k} lignes, {v}, sont rattachées à ce compte archivé : Marchés les compte, ton patrimoine non. Rien ne change sans ton choix.'
+        : '{k} ligne, {v}, est rattachée à ce compte archivé : Marchés la compte, ton patrimoine non. Rien ne change sans ton choix.')
+        .replace('{k}', x.lignes.length).replace('{v}', fmtEUR0(x.valeur)),
+      ok: 'Continuer',
+      champs: [
+        { cle: 'geste', label: trad('Que s’est-il passé ?'), type: 'liste', valeur: dests.length ? 'deplacer' : 'vendre',
+          options: [
+            ...(dests.length ? [['deplacer', 'Elles sont sur un autre compte : les y déplacer']] : []),
+            ['vendre', 'Elles ont été vendues : enregistrer chaque vente'],
+            ['restaurer', 'Le compte est toujours ouvert : le restaurer'],
+          ] },
+        ...(dests.length ? [{ cle: 'vers', label: trad('Vers quel compte ?'), type: 'liste', valeur: dests[0].id,
+          options: dests.map(d => [d.id, nomCompteV2(d)]), montreSi: y => y.geste === 'deplacer' }] : []),
+      ],
+    });
+    if (!v) return;
+    if (v.geste === 'deplacer') {
+      const r = deplacerLignesArchivees(x.compte.id, v.vers);
+      if (!r.ok) { toast(trad('Le déplacement n’a pas pu se faire : rien n’a été modifié.')); return; }
+      Store.save(); render();
+      toast(trad('{k} lignes déplacées vers {d} · patrimoine net {e}')
+        .replace('{k}', r.lignes).replace('{d}', guill(nomCompteV2(compteById(v.vers))))
+        .replace('{e}', fmtSigned(r.valeur)));
+    } else if (v.geste === 'vendre') {
+      posRole = 'tous'; posCompte = x.compte.id; location.hash = '#/positions';
+      toast(trad('Ouvre chaque ligne et enregistre sa vente : son produit arrive sur le compte que tu choisis.'));
+    } else if (v.geste === 'restaurer') {
+      await ACTIONS['restaurer-compte']({ dataset: { id: x.compte.id } });
+    }
+  },
   async 'archiver-compte'(btn) {
     const c = compteById(btn.dataset.id);
     const imp = c && impactArchivage(c.id);
@@ -9739,31 +9806,74 @@ const ACTIONS = {
           .replace('{e}', fmtSigned(imp.ecartNet))
         + (imp.creditRestant > 0.005 ? ' ' + trad('Son crédit, {c} restant dû, reste compté dans tes dettes.')
             .replace('{c}', fmtEUR0(imp.creditRestant)) : '');
+    const t = typeCompte(c.type) || {};
+    const solde = soldeTransferable(c);
+    const dests = solde != null ? destinationsTransfert(c.id) : [];
+    const transferable = dests.length > 0;
+    const quoiFaire = vide || transferable ? ''
+      : estBien(t) ? trad('Archiver ne vend pas ce bien : s’il a été vendu, mets à jour le solde du compte qui a reçu le prix, puis archive-le.')
+        + (imp.creditRestant > 0.005 ? ' ' + trad('Solde son crédit dans sa fenêtre quand il est remboursé.') : '')
+      : solde == null ? trad('Archiver ne cède pas ce placement : s’il a été vendu ou remboursé, enregistre-le avec « Céder » sur sa fiche, qui crédite le prix sur le compte de ton choix.')
+      : trad('Aucun autre compte suivi ne peut recevoir ce solde : ajoute celui qui l’a reçu pour l’y transférer.');
+    const motifs = MOTIFS_ARCHIVE.filter(([k]) => k !== 'transfert' || transferable);
+    const effet = x => {
+      const m = num(x.montant);
+      if (!(m > 0)) return trad('Indique le montant transféré.');
+      if (m > solde + 0.005) return trad('Plus que le solde : ce montant créerait de l’argent.');
+      if (Math.abs(m - solde) < 0.005) return trad('Tout le solde passe sur l’autre compte : ton patrimoine net ne change pas.');
+      return trad('{r} non transférés sortiront de ton patrimoine suivi.').replace('{r}', fmtEUR0(solde - m));
+    };
     const v = await askForm({
       titre: `Archiver ${guill(nom)} ?`,
-      sous: `${impact} ${trad('Ses relevés passés restent dans l’historique. Restaurable à tout moment.')}`,
+      sous: `${impact}${quoiFaire ? ` ${quoiFaire}` : ''} ${trad('Ses relevés passés restent dans l’historique. Restaurable à tout moment.')}`,
       ok: 'Archiver',
       champs: [
         ...(vide ? [] : [{ cle: 'motif', label: trad('Que devient cet argent ?'), type: 'liste', valeur: '',
-          options: [['', 'à préciser'], ...MOTIFS_ARCHIVE],
-          aide: trad('Un transfert ne change pas ton patrimoine : mets à jour le compte qui a reçu l’argent, Longward n’écrit pas ce versement. Une sortie le fait baisser d’autant. Une correction retire un compte qui n’aurait pas dû exister : ses relevés passés gardent leurs montants, à corriger dans l’historique s’ils étaient faux.') }]),
+          options: [['', 'à préciser'], ...motifs],
+          aide: transferable
+            ? trad('Un transfert déplace ce solde vers un autre compte suivi, dans ce même geste : ton patrimoine ne change pas. Une sortie le fait baisser d’autant. Une correction retire un compte qui n’aurait pas dû exister : ses relevés passés gardent leurs montants, à corriger dans l’historique s’ils étaient faux.')
+            : trad('Une sortie fait baisser ton patrimoine d’autant. Une correction retire un compte qui n’aurait pas dû exister : ses relevés passés gardent leurs montants, à corriger dans l’historique s’ils étaient faux.') }]),
+        ...(!transferable ? [] : [
+          { cle: 'vers', label: trad('Vers quel compte ?'), type: 'liste', valeur: dests[0].id,
+            options: dests.map(d => [d.id, `${nomCompteV2(d)} · ${fmtEUR0(valeurCompte(d))}`]),
+            montreSi: x => x.motif === 'transfert' },
+          { cle: 'montant', label: trad('Montant transféré ({dev})'), type: 'nombre', valeur: solde,
+            aide: trad('tout le solde, sauf si une partie est partie ailleurs'),
+            montreSi: x => x.motif === 'transfert' },
+          { cle: 'effet', label: trad('Effet'), calcul: effet, montreSi: x => x.motif === 'transfert' },
+        ]),
         { cle: 'clotureLe', label: trad('Date de clôture'), type: 'date', valeur: todayISO(),
           aide: trad('facultative. C’est elle qui situe le compte dans le temps : une ')
               + 'vente passée sur un PEA clôturé se relit autrement quand on sait '
               + 'quand il a fermé' },
       ],
-      valide: x => (!vide && !x.motif
-        ? { cle: 'motif', message: trad('Dis ce que devient cet argent : un transfert, une sortie et une correction ne racontent pas la même chose.') }
-        : null),
+      valide: x => {
+        if (!vide && !x.motif) return { cle: 'motif', message: trad('Dis ce que devient cet argent : un transfert, une sortie et une correction ne racontent pas la même chose.') };
+        if (x.motif !== 'transfert') return null;
+        if (!dests.some(d => d.id === x.vers)) return { cle: 'vers', message: trad('Choisis le compte qui reçoit l’argent.') };
+        const m = num(x.montant);
+        if (!(m > 0.005) || m > solde + 0.005) return { cle: 'montant', message: trad('Le montant transféré doit être positif et ne pas dépasser le solde.') };
+        return null;
+      },
     });
     if (!v) return;
+    if (v.motif === 'transfert') {
+      /* Tout ou rien : `archiverParTransfert` travaille sur une copie de l'etat
+         et ne la garde que si le net se retrouve au centime. */
+      const r = archiverParTransfert({ source: c.id, destination: v.vers, montant: v.montant, clotureLe: v.clotureLe });
+      if (!r.ok) { toast(trad('Le transfert n’a pas pu se faire : rien n’a été modifié.')); return; }
+      Store.save(); render();
+      const dest = compteById(v.vers);
+      toast(`${guill(nom)} ${trad('archivé')} · ${trad('{v} transférés vers {d}').replace('{v}', fmtEUR0(r.montant))
+        .replace('{d}', guill(nomCompteV2(dest)))} · ${Math.abs(r.ecartNet) < 0.005
+        ? trad('patrimoine net inchangé') : `${trad('patrimoine net')} ${fmtSigned(r.ecartNet)}`}`);
+      return;
+    }
     c.statut = 'archive';
     if (v.clotureLe) c.clotureLe = v.clotureLe; else delete c.clotureLe;
     if (v.motif) c.archiveMotif = v.motif; else delete c.archiveMotif;
     refreshAccounts(); Store.save(); render();
-    const suite = v.motif === 'transfert'
-      ? trad('mets à jour le compte qui a reçu {v}').replace('{v}', fmtEUR0(imp.valeur))
-      : v.motif === 'sortie' ? `${trad('patrimoine net')} ${fmtSigned(imp.ecartNet)}`
+    const suite = v.motif === 'sortie' ? `${trad('patrimoine net')} ${fmtSigned(imp.ecartNet)}`
       : v.motif === 'correction' ? trad('ses relevés passés gardent leurs montants') : '';
     toast(`${guill(nom)} ${trad('archivé')}${v.clotureLe ? ` ${trad('au')} ${fmtDate(v.clotureLe)}` : ''}${
       suite ? ` · ${suite}` : ''}`);
@@ -9784,6 +9894,7 @@ const ACTIONS = {
     c.statut = 'ouvert';
     delete c.clotureLe;
     delete c.archiveMotif;
+    delete c.archiveVers;
     refreshAccounts(); Store.save(); render();
     toast(`${guill(nomCompteV2(c))} ${trad('restauré')}${avait ? trad(', sa date de clôture est retirée') : ''}`);
   },
@@ -11614,7 +11725,8 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
       if (!conditionnels.length) return;
       const out = valeurs();
       for (const c of conditionnels) {
-        const el = $(`#f_${c.cle}`) || $(`#s_${c.cle}`);
+        /* `c_` : un champ calcule se masque comme les autres. */
+        const el = $(`#f_${c.cle}`) || $(`#s_${c.cle}`) || $(`#c_${c.cle}`);
         const hote = el && (el.closest('.field') || el);
         if (hote) hote.hidden = !c.montreSi(out);
       }

@@ -2767,7 +2767,7 @@ suite('Archiver un compte dit ce que les totaux perdent', () => {
     vrai(/if \(imp\.lignesTitres\) \{[\s\S]*?return;\s*\}/.test(f), 'des lignes de titres empêchent d’archiver');
     vrai(/trad\('Ton patrimoine net passerait de \{a\} à \{b\} \(\{e\}\)\.'\)/.test(f), 'l’écart se dit en chiffres');
     vrai(/imp\.creditRestant > 0\.005/.test(f), 'et le crédit qui reste compté aussi');
-    vrai(/valide: x => \(!vide && !x\.motif/.test(f), 'la raison est demandée dès qu’il y a de l’argent');
+    vrai(/if \(!vide && !x\.motif\) return \{ cle: 'motif'/.test(f), 'la raison est demandée dès qu’il y a de l’argent');
     vrai(/c\.archiveMotif = v\.motif/.test(f), 'et notée sur le compte');
     vrai(!/monthly|mouvementCash|sales\.push|declarerVente/.test(f),
       'ni relevé touché, ni versement ni vente inventés');
@@ -2775,8 +2775,134 @@ suite('Archiver un compte dit ce que les totaux perdent', () => {
       'trois raisons, et elles seules');
     const r = src.slice(src.indexOf("async 'restaurer-compte'(btn)"), src.indexOf("async 'annuler-fiche'(btn)"));
     vrai(/delete c\.archiveMotif;/.test(r), 'restaurer efface la raison, comme la date de clôture');
-    vrai(/x\.compte\?\.archiveMotif/.test(src), 'la liste des archives relit la raison');
+    vrai(/const c = x\.compte;[\s\S]{0,300}c\?\.archiveMotif/.test(src), 'la liste des archives relit la raison');
     for (const [, l] of MOTIFS_ARCHIVE) vrai(!!I18N.en[l], `traduit : ${l}`);
+  });
+});
+
+/* --- Archiver par transfert : tout ou rien, et aucun euro cree ni perdu ---- */
+suite('Archiver par transfert, et les titres restés sur un compte archivé', () => {
+  const cashTotal = () => round2(COMPTES().filter(c => c.statut !== 'archive')
+    .reduce((s, c) => s + (c.cash || []).reduce((x, e) => x + num(e.montant), 0), 0));
+
+  test('transfert complet : le net ne bouge pas, l’argent change de compte', () => {
+    Fixture.poser();
+    const net = patrimoine().net, cash = cashTotal(), releves = JSON.stringify(Store.state.monthly);
+    const r = archiverParTransfert({ source: 'c_livret', destination: 'c_courant', montant: 2000, clotureLe: '2026-09-25' });
+    vrai(r.ok, 'le transfert aboutit');
+    pres(patrimoine().net, net, 'le patrimoine net est identique');
+    pres(cashTotal(), cash, 'et les espèces des comptes ouverts aussi : aucun euro créé ni perdu');
+    const courant = compteById('c_courant');
+    pres(courant.cash.reduce((s, e) => s + num(e.montant), 0), 5000, 'le compte courant reçoit le solde');
+    eq(courant.cash.length, 1, 'dans sa poche existante, sans poche « à investir » inventée');
+    const livret = compteById('c_livret');
+    eq(livret.statut, 'archive', 'le livret est archivé dans le même geste');
+    eq(livret.archiveMotif, 'transfert', 'pour un transfert');
+    eq(livret.archiveVers, 'c_courant', 'et il sait vers où');
+    pres(livret.cash.reduce((s, e) => s + num(e.montant), 0), 0, 'son solde est parti');
+    eq(JSON.stringify(Store.state.monthly), releves, 'les relevés ne sont pas touchés');
+    livret.statut = 'ouvert'; refreshAccounts();
+    pres(patrimoine().net, net, 'le restaurer ne compte pas deux fois le même argent');
+  });
+
+  test('un transfert partiel dit ce qui sort', () => {
+    Fixture.poser();
+    const net = patrimoine().net;
+    const r = archiverParTransfert({ source: 'c_livret', destination: 'c_courant', montant: 1500 });
+    vrai(r.ok, 'le transfert aboutit');
+    pres(r.ecartNet, -500, 'la part non transférée sort');
+    pres(patrimoine().net, net - 500, 'et le net baisse de cette part, pas davantage');
+  });
+
+  test('annulation et refus : rien ne change', () => {
+    Fixture.poser();
+    const avant = JSON.stringify(Store.state);
+    for (const [cas, arg] of [
+      ['plus que le solde', { source: 'c_livret', destination: 'c_courant', montant: 2500 }],
+      ['un montant nul', { source: 'c_livret', destination: 'c_courant', montant: 0 }],
+      ['un compte qui ne porte pas de cash', { source: 'c_livret', destination: 'c_pe', montant: 2000 }],
+      ['vers lui-même', { source: 'c_livret', destination: 'c_livret', montant: 2000 }],
+      ['un bien', { source: 'c_immo', destination: 'c_courant', montant: 1 }],
+      ['un compte à titres', { source: 'c_pea', destination: 'c_courant', montant: 1 }],
+    ]) {
+      eq(archiverParTransfert(arg).ok, false, `refusé : ${cas}`);
+      eq(JSON.stringify(Store.state), avant, `et l’état n’a pas bougé : ${cas}`);
+    }
+    /* Annuler la fenetre : rien ne s'ecrit avant la reponse. */
+    const src = lireSource('assets/app.js');
+    const i = src.indexOf("async 'archiver-compte'(btn)");
+    const f = src.slice(i, src.indexOf('\n  },', i));
+    const fin = f.indexOf('if (!v) return;');
+    vrai(fin > 0 && fin < f.indexOf('archiverParTransfert(') && fin < f.indexOf("c.statut = 'archive'"),
+      'fermer la fenêtre sort avant toute écriture');
+  });
+
+  test('échec partiel : tout ou rien', () => {
+    Fixture.poser();
+    const avant = JSON.stringify(Store.state);
+    const panne = enTransaction(() => {
+      compteById('c_courant').cash[0].montant += 999;
+      compteById('c_livret').statut = 'archive';
+      throw new Error('panne');
+    });
+    eq(panne.ok, false, 'une panne au milieu échoue');
+    eq(JSON.stringify(Store.state), avant, 'et ne laisse aucune des deux écritures');
+    const faux = enTransaction(() => { compteById('c_courant').cash[0].montant += 1; return true; }, () => false);
+    eq(faux.ok, false, 'une vérification qui ne tient pas échoue aussi');
+    eq(JSON.stringify(Store.state), avant, 'sans rien laisser');
+    const bloc = lireSource('assets/store.js');
+    const t = bloc.slice(bloc.indexOf('function archiverParTransfert('), bloc.indexOf('function archivesAvecTitres('));
+    vrai(/const t = enTransaction\(/.test(t) && /patrimoine\(\)\.net - \(netAvant - \(solde - m\)\)/.test(t),
+      'le transfert passe par la transaction, gardé par le net au centime');
+  });
+
+  test('un bien avec crédit restant ne se transfère pas, et son crédit reste compté', () => {
+    Fixture.poser();
+    eq(soldeTransferable(compteById('c_immo')), null, 'un bien n’est pas un solde en espèces');
+    eq(soldeTransferable(compteById('c_pe')), null, 'un placement non plus');
+    eq(soldeTransferable(compteById('c_pea')), null, 'ni un compte qui porte des titres');
+    pres(soldeTransferable(compteById('c_livret')), 2000, 'un livret, si');
+    const i = impactArchivage('c_immo');
+    pres(i.creditRestant, Fixture.DETTE, 'la fenêtre sait que le crédit reste');
+    compteById('c_immo').statut = 'archive'; refreshAccounts();
+    pres(dettesTotal(), Fixture.DETTE, 'archivé, le bien laisse son crédit compté');
+    const src = lireSource('assets/app.js');
+    vrai(/const motifs = MOTIFS_ARCHIVE\.filter\(\(\[k\]\) => k !== 'transfert' \|\| transferable\);/.test(src),
+      '« transfert » ne se propose que si le solde peut vraiment partir');
+    vrai(/estBien\(t\) \? trad\('Archiver ne vend pas ce bien/.test(src), 'et la fenêtre dit le geste qui manque');
+  });
+
+  test('un ancien compte archivé qui porte des titres se voit et se résout sans rien inventer', () => {
+    Fixture.poser(s => { s.comptes.find(c => c.id === 'c_pea').statut = 'archive'; });
+    const lignesDe_ = () => Store.state.positions.map(p => `${p.id}:${p.account}:${num(p.qty)}`).join('|');
+    const avantMigration = lignesDe_();
+    Store.migrate(); refreshAccounts();
+    eq(lignesDe_(), avantMigration, 'la migration ne déplace, ne supprime ni ne vend aucune ligne');
+    const positions = JSON.stringify(Store.state.positions);
+    eq(compteById('c_pea').statut, 'archive', 'et laisse le compte archivé');
+    const x = archivesAvecTitres();
+    eq(x.length, 1, 'le cas est détecté');
+    eq(x[0].compte.id, 'c_pea', 'sur le PEA');
+    pres(x[0].valeur, 9000, 'pour la valeur de ses lignes');
+    vrai(healthChecks().some(n => n.cle === 'archive-titres:c_pea' && n.level === 'warn'), 'la cloche le signale');
+    eq(destinationAuto('c_pea'), null, 'une vente n’y poserait pas son produit, hors du patrimoine');
+    const net = patrimoine().net, marches = stockTotals().balance;
+    const ventes = JSON.stringify(Store.state.sales), releves = JSON.stringify(Store.state.monthly);
+    eq(deplacerLignesArchivees('c_pea', 'c_livret').ok, false, 'un livret ne reçoit pas de titres');
+    eq(JSON.stringify(Store.state.positions), positions, 'et rien n’a bougé');
+    const r = deplacerLignesArchivees('c_pea', 'c_cto');
+    vrai(r.ok, 'les lignes passent sur un compte ouvert');
+    pres(patrimoine().net, net + 9000, 'elles reviennent dans le patrimoine pour leur valeur');
+    pres(stockTotals().balance, marches, 'Marchés ne bouge pas : l’écart se referme');
+    eq(archivesAvecTitres().length, 0, 'le cas est résolu');
+    eq(JSON.stringify(Store.state.sales), ventes, 'aucune vente inventée');
+    eq(JSON.stringify(Store.state.monthly), releves, 'et les relevés intacts');
+    const src = lireSource('assets/app.js');
+    vrai(/\$\{carteTitresArchives\(\)\}/.test(src), 'Marchés affiche l’écart tant qu’il existe');
+    vrai(/async 'resoudre-titres-archives'\(btn\)/.test(src), 'et propose de le résoudre');
+    for (const k of ['Elles sont sur un autre compte : les y déplacer', 'Elles ont été vendues : enregistrer chaque vente',
+      'Le compte est toujours ouvert : le restaurer', 'Marchés compte des titres que ton patrimoine ne compte pas'])
+      vrai(!!I18N.en[k], `traduit : ${k}`);
   });
 });
 
