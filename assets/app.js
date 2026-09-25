@@ -2273,7 +2273,7 @@ const carteObjectif = () => {
       <span>${g.remaining >= 0 ? `${trad('Objectif atteint')} 🎉` : ''}</span>
     </div>
     <span class="goal-depart muted">${p.depart
-      ? `${trad('Départ')}${deuxPoints()} ${fmtEUR(p.depart.valeur)} ${trad('le')} ${esc(fmtDate(p.depart.date))}`
+      ? `${trad('Départ')}${deuxPoints()} ${trad('{v} le {d}').replace('{v}', fmtEUR(p.depart.valeur)).replace('{d}', esc(fmtDate(p.depart.date)))}`
       : trad('Choisis un point de départ pour suivre l’avancement.')}</span>
   </button>`;
 };
@@ -13734,36 +13734,80 @@ const APERCUS = {
     const sansCible = !(num(g.obj) > 0);
     const p = progressionObjectif(g);
     const d = p.depart;
-    const etat = p.etat === 'inconnu' ? trad('point de départ à définir')
+    /* UNE HIERARCHIE, ET ELLE SUIT LA QUESTION QU'ON VIENT POSER.
+       En haut, ou l'on en est : le patrimoine, la cible, et la barre du depart a
+       la cible, son pourcentage en petit. Au centre, la reponse : ce qui reste et
+       le rythme qu'il faudrait tenir. Puis le point de depart, qui fonde la
+       barre, avec de quoi le changer. Puis une extrapolation, dite comme telle.
+       Les deux reglages ferment la fenetre, sous leur propre intitule : on les
+       touche rarement, et poses au milieu ils se lisaient comme des resultats.
+
+       Tout passe par `html` plutot que par `champs` et `lignes` : la fenetre
+       generique pose ses champs AVANT ses lignes, donc au milieu du suivi. Les
+       champs gardent leur `data-path`, et donc le regime differe de la fenetre :
+       rien n'entre dans l'etat avant « Enregistrer ». */
+    const avancement = p.etat === 'inconnu' ? ''
       : p.etat === 'atteinteAuDepart' ? trad('cible déjà atteinte au départ')
       : p.etat === 'atteint' ? trad('objectif atteint')
       : p.etat === 'enBaisse' ? `${fmtPct(p.pct, 1)} ${trad('du chemin : sous le point de départ')}`
       : `${fmtPct(p.pct, 1)} ${trad('du chemin parcouru')}`;
+    const depasse = g.remaining >= 0;
+    const reponse = sansCible ? '' : depasse ? `
+      <div class="obj-reponse">
+        <p><b class="obj-chiffre">+${fmtEUR0(g.remaining)}</b> ${trad('au-delà de ta cible')}</p>
+      </div>` : `
+      <div class="obj-reponse">
+        <p><b class="obj-chiffre">${fmtEUR0(-g.remaining)}</b> ${trad('restants')}</p>
+        <p>${pj.monthsLeft
+          ? `<b>${fmtEUR0(pj.needed)} ${trad('/ mois')}</b> ${trad('jusqu’à fin {a}').replace('{a}', esc(an))}`
+          : trad('à trouver avant la fin de l’année')}</p>
+      </div>`;
+    const departLigne = sansCible ? '' : `
+      <div class="obj-depart">
+        <span class="muted">${d
+          ? `${trad('Point de départ')}${deuxPoints()} ${trad('{v} le {d}').replace('{v}', fmtEUR0(d.valeur)).replace('{d}', esc(fmtDate(d.date)))}`
+          : trad('Point de départ à définir pour suivre l’avancement.')}</span>
+        <button type="button" class="btn sm ghost" data-action="objectif-depart">${trad(d ? 'Changer' : 'Choisir')}</button>
+      </div>`;
+    const extrapolation = sansCible ? '' : !(pj.paceMonths > 0) ? `
+      <p class="sous-titre-carte">${trad('Si ton rythme récent se poursuivait')}</p>
+      <p class="hint obj-texte">${trad('Pas encore assez de relevés pour mesurer un rythme.')}</p>` : `
+      <p class="sous-titre-carte">${trad('Si ton rythme récent se poursuivait')}</p>
+      <p class="hint obj-texte">${trad('Sur {n} mois, entre {d} et {f}, ton patrimoine a varié de {r} par mois en moyenne.')
+        .replace('{n}', pj.paceMois).replace('{d}', esc(fmtMonth(pj.paceDebut))).replace('{f}', esc(fmtMonth(pj.paceFin)))
+        .replace('{r}', fmtSigned(pj.paceRate))}
+        ${pj.monthsLeft ? trad(pj.atPace >= g.obj
+          ? 'À ce rythme, il serait vers {v} fin {a}, au-dessus de ta cible.'
+          : 'À ce rythme, il serait vers {v} fin {a}, en dessous de ta cible.')
+          .replace('{v}', fmtEUR0(pj.atPace)).replace('{a}', esc(an)) : ''}
+        ${trad('Cette variation mêle tes apports, les marchés et des événements ponctuels : c’est une extrapolation, pas une prévision.')}</p>`;
+    const annees = Array.from({ length: 31 }, (_, i) => anCourante + i);
+    const reglages = `
+      <p class="sous-titre-carte">${trad(sansCible ? 'Fixer un objectif' : 'Modifier l’objectif')}</p>
+      <div class="grid g-2 g-paire obj-reglages">
+        <div class="field"><label>${trad('Montant visé ({dev})')}</label>
+          <input type="number" step="500" inputmode="decimal" data-path="meta.objective"
+                 value="${esc(String(getPath('meta.objective') ?? ''))}"></div>
+        <div class="field"><label>${trad('Année')}</label>
+          <select data-path="meta.objectiveYear" data-type="num">${annees.map(y =>
+            `<option value="${y}" ${String(y) === String(an) ? 'selected' : ''}>${esc(`${trad('fin')} ${y}`)}</option>`).join('')}
+          </select></div>
+      </div>`;
     return {
       titre: `${trad('Objectif à fin')} ${an}`,
-      sous: sansCible ? trad('aucune cible fixée') : etat,
-      sousAction: sansCible ? '' : ` <button type="button" class="lien-nu" data-action="objectif-depart">${
-        trad(d ? 'Changer le point de départ' : 'Choisir le point de départ')}</button>`,
+      sous: sansCible ? trad('aucune cible fixée') : pj.monthsLeft
+        ? `${pj.monthsLeft} ${pj.monthsLeft > 1 ? trad('mois restants') : trad('mois restant')}` : trad('dernier mois'),
       total: g.total,
       totalNote: sansCible ? trad('ton patrimoine aujourd’hui') : `${trad('sur.objectif', 'sur')} ${fmtEUR0(g.obj)}`,
-      lignes: sansCible ? [] : [
-        ...(d ? [{ label: trad('Point de départ'), valeur: d.valeur,
-          meta: `${trad('le')} ${fmtDate(d.date)} · ${trad(d.source === 'releve' ? 'pris sur un relevé'
-            : d.source === 'creation' ? 'à la création de l’objectif' : 'valeur du jour choisie')}` }] : []),
-        { label: trad('Il te manque'), meta: `${trad('d’ici fin')} ${an}`, valeur: Math.max(0, -g.remaining) },
-        { label: trad('Rythme nécessaire'), meta: `${pj.monthsLeft} ${pj.monthsLeft > 1 ? trad('mois restants') : trad('mois restant')}`, valeur: pj.needed },
-        { label: trad('Ton rythme observé'), meta: trad('moyenne mensuelle'), valeur: pj.paceRate },
-        { label: `${trad('Fin')} ${an} ${trad('à ce rythme')}`, meta: pj.onTrackPace ? trad('objectif atteint') : trad('sous l’objectif'), valeur: pj.atPace },
-      ],
-      champs: [
-        { label: `${trad('Montant visé pour fin')} ${an} ({dev})`, path: 'meta.objective', step: 500 },
-        { label: trad('Objectif à fin…'), path: 'meta.objectiveYear',
-          options: Array.from({ length: 31 }, (_, i) => {
-            const y = anCourante + i;
-            return [y, `${trad('fin')} ${y}${i ? `, ${trad('dans')} ${i} ${i > 1 ? trad('ans') : trad('an')}` : `, ${trad('cette année')}`}`];
-          }) },
-      ],
-      vue: 'history', ancre: '', cta: trad('Voir les relevés'),
+      html: `
+      <div class="obj-suivi">
+        ${sansCible || p.pct == null ? '' : `<div class="goal-bar"><div class="goal-fill" style="width:${p.barre.toFixed(2)}%"></div></div>`}
+        ${sansCible || !avancement ? '' : `<p class="obj-avancement muted">${avancement}</p>`}
+        ${reponse}
+        ${departLigne}
+      </div>
+      ${extrapolation}
+      ${reglages}`,
     };
   },
 

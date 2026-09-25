@@ -2680,6 +2680,72 @@ suite('L’objectif avance depuis son point de départ', () => {
   });
 });
 
+/* --- La fenetre de l'objectif se lit du suivi vers les reglages ----------- */
+suite('La fenêtre de l’objectif se lit du suivi vers les réglages', () => {
+  const panneau = () => {
+    const src = lireSource('assets/app.js');
+    const i = src.indexOf('  objectif: () => {');
+    return src.slice(i, src.indexOf('\n  },', i));
+  };
+
+  test('le suivi, la réponse, le départ, l’extrapolation, puis les réglages', () => {
+    const f = panneau();
+    vrai(f.length > 1000, 'la fenêtre est trouvable');
+    const html = f.slice(f.indexOf('html: `'));
+    const ordre = ['class="goal-bar"', 'obj-avancement', '${reponse}', '${departLigne}', '${extrapolation}', '${reglages}']
+      .map(k => html.indexOf(k));
+    vrai(ordre.every(x => x > 0), 'chaque bloc est posé');
+    vrai(ordre.every((x, i) => !i || x > ordre[i - 1]), 'dans l’ordre de la question qu’on vient poser');
+    vrai(!/champs:\s*\[/.test(f) && !/lignes:\s*sansCible/.test(f), 'plus de champs ni de lignes génériques au milieu du suivi');
+    vrai(!/sousAction/.test(f) && !/lien-nu/.test(f), 'plus de lien dans l’en-tête');
+    vrai(/class="btn sm ghost" data-action="objectif-depart"/.test(f), 'le départ se change par une action discrète, à côté de lui');
+    vrai(/<b class="obj-chiffre">\$\{fmtEUR0\(-g\.remaining\)\}<\/b> \$\{trad\('restants'\)\}/.test(f), 'ce qui reste est le chiffre appuyé');
+    vrai(/\$\{fmtEUR0\(pj\.needed\)\} \$\{trad\('\/ mois'\)\}<\/b> \$\{trad\('jusqu’à fin \{a\}'\)/.test(f), 'avec le rythme à tenir');
+  });
+
+  test('l’extrapolation se dit comme telle, avec sa période', () => {
+    const f = panneau();
+    const x = f.slice(f.indexOf('const extrapolation'), f.indexOf('const annees'));
+    vrai(/pj\.paceDebut/.test(x) && /pj\.paceFin/.test(x) && /pj\.paceMois/.test(x), 'la période de référence est nommée');
+    vrai(/il serait vers/.test(x), 'au conditionnel');
+    vrai(!/objectif atteint/i.test(x), 'sans jamais promettre l’objectif atteint');
+    vrai(/c’est une extrapolation, pas une prévision/.test(x), 'et elle dit ce qu’elle mêle');
+    Fixture.poser(s => {
+      s.meta.objective = 200000; s.meta.objectiveYear = new Date().getFullYear() + 1;
+      s.monthly = [
+        { date: '2026-01-01', comment: '', v: { c_courant: 3000, c_livret: 2000 } },
+        { date: '2026-02-01', comment: '', v: { c_courant: 3200, c_livret: 2000 } },
+        { date: '2026-03-01', comment: '', v: { c_courant: 3500, c_livret: 2000 } },
+      ];
+    });
+    const pj = objectiveProjection(), g = objectiveStatus();
+    eq(pj.paceFin, '2026-03-01', 'la période finit au dernier relevé');
+    vrai(pj.paceMois >= 2, 'et couvre les mois entre les relevés');
+    pres(pj.needed, pj.monthsLeft ? (200000 - g.total) / pj.monthsLeft : 0, 'le rythme nécessaire ne change pas');
+    pres(pj.atPace, g.total + pj.paceRate * pj.monthsLeft, 'ni l’extrapolation elle-même');
+  });
+
+  test('le libellé du montant porte sa devise, dans les deux langues', () => {
+    const f = panneau();
+    vrai(/trad\('Montant visé \(\{dev\}\)'\)/.test(f), 'la devise passe par la traduction');
+    vrai(!/\}\s*\(\{dev\}\)/.test(f), 'et plus aucun « ({dev}) » collé hors d’elle');
+    Fixture.poser();
+    const lu = trad('Montant visé ({dev})');
+    vrai(!/\{dev\}/.test(lu) && /€/.test(lu), 'la marque devient le signe de la devise');
+    for (const k of ['restants', 'jusqu’à fin {a}', 'au-delà de ta cible', 'Si ton rythme récent se poursuivait',
+      'Sur {n} mois, entre {d} et {f}, ton patrimoine a varié de {r} par mois en moyenne.',
+      'À ce rythme, il serait vers {v} fin {a}, au-dessus de ta cible.',
+      'À ce rythme, il serait vers {v} fin {a}, en dessous de ta cible.',
+      'Cette variation mêle tes apports, les marchés et des événements ponctuels : c’est une extrapolation, pas une prévision.',
+      'Modifier l’objectif', 'Fixer un objectif', 'Montant visé ({dev})', 'Année', 'Changer',
+      'Point de départ à définir pour suivre l’avancement.', '{v} le {d}'])
+      vrai(!!I18N.en[k], `traduit : ${k}`);
+    /* La date du depart se traduit en entier : « le » seul se traduisait
+       « day » et donnait « 1 000 € day 25 Sep 2026 ». */
+    vrai(!/trad\('le'\)/.test(f), 'aucun « le » traduit seul dans la fenêtre');
+  });
+});
+
 /* --- Une fiche de compte dit ce qui vaut pour ce compte ------------------- */
 suite('Une fiche de compte ne dit que ce qui vaut pour ce compte', () => {
   test('le délai de vente et les règles de retrait ne se confondent pas', () => {

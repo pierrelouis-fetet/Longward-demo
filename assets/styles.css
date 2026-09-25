@@ -2745,6 +2745,15 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
   padding: 12px 0 10px; border-bottom: 1px solid var(--grid); margin-bottom: 4px;
 }
 .modal-total b { font-size: var(--font-2xl); font-weight: var(--fw-chiffre); letter-spacing: -.02em; }
+.modal-total:has(+ .obj-suivi) { border-bottom: none; margin-bottom: 0; padding-bottom: 8px; }
+.obj-suivi { display: flex; flex-direction: column; gap: 8px; }
+.obj-avancement { margin: 0; font-size: var(--font-sm); }
+.obj-reponse { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.obj-reponse p { margin: 0; font-size: var(--font-md); }
+.obj-chiffre { font-size: var(--font-xl); font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.obj-depart { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+              margin-top: 4px; font-size: var(--font-sm); }
+.obj-texte { margin: 0; line-height: 1.5; font-size: var(--font-sm); color: var(--text-secondary); }
 .modal-total span { font-size: var(--font-sm); color: var(--muted); }
 .modal-total span { text-align: right; }
 .modal-body table td { padding: 8px 6px; }

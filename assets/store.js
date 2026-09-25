@@ -8191,10 +8191,14 @@ function objectiveProjection() {
   const atBudget = g.total + rec.theoretical * monthsLeft;
   const needed = monthsLeft ? (g.obj - g.total) / monthsLeft : 0;
 
+  const pts = pace.points || [];
   return {
     monthsLeft, needed,
     atPace, atBudget,
     paceRate: pace.average, paceMonths: pace.count, budgetRate: rec.theoretical,
+    paceMois: pace.mois || 0,
+    paceDebut: pts.length ? String(pts[0].depuis || pts[0].date) : null,
+    paceFin: pts.length ? String(pts[pts.length - 1].date) : null,
     onTrackPace: atPace >= g.obj,
     onTrackBudget: atBudget >= g.obj,
     gapAtPace: atPace - g.obj,
