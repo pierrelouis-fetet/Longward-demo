@@ -4904,8 +4904,8 @@ function byAccountType({ financier = false } = {}) {
 }
 
 /* Ou l'on en est, en euros. Le pourcentage n'est plus ici : « patrimoine sur
-   cible » mesurait le chemin depuis zero, et un objectif de 52 000 pose a
-   50 000 s'annoncait atteint a 96 % le jour meme. L'avancement vit dans
+   cible » mesurait le chemin depuis zero, et un objectif de 30 000 pose a
+   28 000 s'annoncait atteint a 93 % le jour meme. L'avancement vit dans
    `progressionObjectif()`, qui part du point de depart. */
 function objectiveStatus() {
   const { total } = nowTotals();

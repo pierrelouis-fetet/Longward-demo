@@ -2582,32 +2582,32 @@ suite('L’objectif avance depuis son point de départ', () => {
 
   test('la barre part de zéro le jour où l’objectif naît', () => {
     const cas = (total, attendu) => {
-      const p = progressionObjectif({ total, obj: 52000, remaining: total - 52000 }, d(50226.44));
+      const p = progressionObjectif({ total, obj: 30000, remaining: total - 30000 }, d(28000.5));
       pres(p.pct, attendu, `à ${total}`);
       return p;
     };
-    eq(cas(50226.44, 0).etat, 'enCours', 'au départ, rien n’est parcouru');
-    pres(cas(50226.44, 0).barre, 0, 'et la barre est vide');
+    eq(cas(28000.5, 0).etat, 'enCours', 'au départ, rien n’est parcouru');
+    pres(cas(28000.5, 0).barre, 0, 'et la barre est vide');
     /* Le depart est arrondi au centime, le patrimoine du jour non : le jour de
        la creation, un ecart flottant ne doit pas passer pour une baisse. */
-    eq(cas(50226.44 - 1e-9, 0).etat, 'enCours', 'un bruit de virgule flottante n’est pas une baisse');
-    cas(51113.22, 50);
-    eq(cas(52000, 100).etat, 'atteint', 'à la cible, le chemin est fait');
+    eq(cas(28000.5 - 1e-9, 0).etat, 'enCours', 'un bruit de virgule flottante n’est pas une baisse');
+    cas(29000.25, 50);
+    eq(cas(30000, 100).etat, 'atteint', 'à la cible, le chemin est fait');
   });
 
   test('une baisse, une cible dépassée, une cible atteinte dès le départ', () => {
-    const baisse = progressionObjectif({ total: 49000, obj: 52000, remaining: -3000 }, d(50000));
+    const baisse = progressionObjectif({ total: 27000, obj: 30000, remaining: -3000 }, d(28000));
     eq(baisse.etat, 'enBaisse', 'sous le départ');
     pres(baisse.pct, -50, 'le chiffre dit le recul, sans se borner');
     pres(baisse.barre, 0, 'la barre, elle, reste à zéro');
-    const depasse = progressionObjectif({ total: 53000, obj: 52000, remaining: 1000 }, d(50000));
+    const depasse = progressionObjectif({ total: 31000, obj: 30000, remaining: 1000 }, d(28000));
     eq(depasse.etat, 'atteint', 'au-delà de la cible');
     pres(depasse.pct, 150, 'le dépassement se compte');
     pres(depasse.barre, 100, 'et la barre est pleine, pas plus');
-    const deja = progressionObjectif({ total: 55000, obj: 52000, remaining: 3000 }, d(54000));
+    const deja = progressionObjectif({ total: 33000, obj: 30000, remaining: 3000 }, d(32000));
     eq(deja.etat, 'atteinteAuDepart', 'une cible sous le départ n’a pas de chemin');
     eq(deja.pct, null, 'et pas de pourcentage : le diviseur serait négatif');
-    eq(progressionObjectif({ total: 50000, obj: 52000, remaining: -2000 }, null).etat, 'inconnu',
+    eq(progressionObjectif({ total: 28000, obj: 30000, remaining: -2000 }, null).etat, 'inconnu',
       'sans départ, rien ne se mesure');
     eq(progressionObjectif({ total: 50000, obj: 0, remaining: 50000 }, d(1)).etat, 'sansCible', 'sans cible non plus');
   });
