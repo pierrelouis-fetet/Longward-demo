@@ -626,8 +626,8 @@ const I18N = {
 
     'de dettes déjà déduites': 'of debt already subtracted',
     'tes crédits sont déduits': 'your loans are subtracted',
-    "Deux bases sur cette page, et chaque carte annonce la sienne. « Patrimoine net » pour la répartition : tout ce que tu possèdes moins ce que tu dois encore, un bien financé y comptant pour sa valeur moins son crédit. « Tes avoirs » pour les cartes qui disent où ton argent est posé et en combien de temps il ressort : une dette n’est posée sur aucun compte et n’a pas de délai de sortie, elle ne s’y retranche donc pas. Chaque total redonne la base annoncée juste au-dessus de lui.":
-      'Two bases on this page, and each card names its own. “Net worth” for the breakdown: everything you own minus what you still owe, a financed asset counting for its value minus its loan. “Your holdings” for the cards that say where your money sits and how long it takes to come back out: a debt sits on no account and has no exit delay, so it is not subtracted there. Every total gives back the base announced just above it.',
+    "Deux bases sur cette page, et chaque carte annonce la sienne. « Patrimoine net » pour la répartition : tout ce que tu possèdes moins ce que tu dois encore, chaque classe financée par un crédit qui lui est rattaché y comptant pour sa valeur moins ce crédit, et les crédits sans destination connue sur leur propre ligne, « Dettes non affectées ». « Tes avoirs » pour les cartes qui disent où ton argent est posé et en combien de temps il ressort : une dette n’est posée sur aucun compte et n’a pas de délai de sortie, elle ne s’y retranche donc pas. Chaque total redonne la base annoncée juste au-dessus de lui.":
+      'Two bases on this page, and each card names its own. “Net worth” for the breakdown: everything you own minus what you still owe, each class financed by a loan linked to it counting for its value minus that loan, and loans with no known destination on their own line, “Unassigned debts”. “Your holdings” for the cards that say where your money sits and how long it takes to come back out: a debt sits on no account and has no exit delay, so it is not subtracted there. Every total gives back the base announced just above it.',
     'de ta part arbitrable est en': 'of the part you can steer sits in',
     ', si tu empruntes le reste. Ajoute le crédit quand il existera : Longward n’en crée aucun tout seul.':
       ', if you borrow the rest. Add the loan once it exists: Longward never creates one on its own.',
@@ -638,8 +638,8 @@ const I18N = {
     'd’écart': 'apart',
     "Ce que tu as sorti de ta poche le jour de l'achat, frais de notaire compris. Il sert au rendement sur apport ; il ne change pas la valeur nette actuelle du bien, qui vaut sa valeur moins ce que tu dois encore.":
       'What you paid out of pocket on purchase day, notary fees included. It feeds the return on your down payment; it does not change the property\u2019s current net value, which is its value minus what you still owe.',
-    'Financier : tes placements et tes liquidités. Global : tout, immobilier et biens compris. Un crédit finance un bien, que le Financier laisse dehors : il ne s’y retire donc pas, et net et brut y donnent la même courbe.':
-      'Financial: your investments and cash. Overall: everything, property and personal assets included. A loan finances an asset that Financial leaves out, so it is not subtracted there: net and gross draw the same curve.',
+    'Financier : tes placements et tes liquidités. Global : tout, immobilier et biens compris. En Financier, la courbe ne retranche aucun crédit, pas même ceux qui financent un placement : un relevé passé ne dit pas ce que chaque dette finançait, donc net et brut y donnent la même courbe. Les dettes de ce périmètre se lisent sur la page Allocation.':
+      'Financial: your investments and cash. Overall: everything, property and personal assets included. In Financial the curve subtracts no loan, not even those funding an investment: a past statement does not say what each debt funded, so net and gross draw the same curve. The debts of this scope are shown on the Allocation page.',
     'Ce qu’il mesure': 'What it measures',
     'Volatilité attendue, pas une performance': 'Expected volatility, not a return',
     'Le VIX mesure la volatilité implicite attendue sur le S&P 500. Plus il est élevé, plus le marché anticipe de fortes variations.':
@@ -670,6 +670,24 @@ const I18N = {
     'La part de capital monte chaque mois, celle des intérêts baisse : c’est le même montant qui se répartit autrement.': 'The principal share rises every month and the interest share falls: the same amount, split differently.',
     'plusieurs classes': 'several classes',
     'Crédits déjà déduits': 'Loans already deducted',
+    "Dettes non affectées": "Unassigned debts",
+    "après {v} de crédit": "after {v} of loans",
+    "Ces parts portent sur ton patrimoine net : les {v} de capital restant dû sont déduits une seule fois.":
+      "These shares are of your net worth: the {v} of outstanding principal is deducted once.",
+    "Un crédit se retranche de la classe du compte auquel il est rattaché : un prêt rattaché à un logement, de ton immobilier ; un prêt rattaché à des parts de société, du non coté.":
+      "A loan is subtracted from the class of the account it is linked to: a loan linked to a home, from your property; a loan linked to company shares, from private assets.",
+    "Les crédits sans destination connue, {v}, forment la ligne « Dettes non affectées » : leur fiche ne désigne aucun compte, ou un compte qui mêle plusieurs classes, et Longward ne les attribue à aucune classe.":
+      "Loans with no known destination, {v}, make up the “Unassigned debts” line: their sheet names no account, or an account that mixes several classes, and Longward assigns them to no class.",
+    "Bascule sur « Brut » pour voir tes avoirs avant crédits.": "Switch to “Gross” to see your holdings before loans.",
+    "Ces parts portent sur ce que tu possèdes, avant crédits. Ton patrimoine net, en haut de page, vaut {v} : la différence est le capital qu’il te reste à rembourser. Bascule sur « Net » pour voir chaque classe diminuée des crédits qui la financent.":
+      "These shares are of what you own, before loans. Your net worth, at the top of the page, is {v}: the difference is the principal you still have to repay. Switch to “Net” to see each class reduced by the loans that fund it.",
+    "Tes autres crédits": "Your other loans",
+    "Ces crédits ne financent aucun bien détenu en direct : un prêt pour des parts de société, un prêt personnel, une dette sans destination connue. La projection les porte à leur montant, sans rendement.":
+      "These loans fund no directly held asset: a loan for company shares, a personal loan, a debt with no known destination. The projection carries them at their amount, with no return.",
+    "Tes autres crédits sont portés à leur montant d’aujourd’hui,": "Your other loans are carried at today's amount,",
+    "aujourd’hui, hors biens détenus en direct et crédits": "today, excluding directly held assets and loans",
+    "sans destination connue": "no known destination",
+    "tes biens en direct, leurs crédits et tes autres crédits": "your directly held assets, their loans and your other loans",
     'Bien immobilier': 'Physical property',
     'Biens de valeur': 'Valuables',
     'Placements non cotés': 'Private investments',
@@ -2401,7 +2419,6 @@ const I18N = {
     "Projection à": "Projection over",
     "au": "on",
     ", même période de l’année qu’aujourd’hui": ", the same time of year as today",
-    "aujourd’hui, hors immobilier": "today, property aside",
     "par an sur tes actifs de marché": "per year on your market assets",
     "par an retirée, en euros d’aujourd’hui": "per year removed, in today’s euros",
     "porté à plat, sans rendement": "carried flat, no return",

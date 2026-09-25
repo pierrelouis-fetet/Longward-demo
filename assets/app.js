@@ -1390,11 +1390,13 @@ function viewOverview() {
     </div>
     ${(() => {
       const parts = repartitionClasses({ net: evoNet });
-      if (!parts.length) return '';
+      const segments = segmentsBarre(parts);
+      if (!segments.length) return '';
       return `
       <div class="hero-barre" role="img"
-           aria-label="${trad('Répartition')}${deuxPoints()} ${parts.map(x => `${trad(x.label)} ${fmtPct(x.pct, 0)}`).join(', ')}">
-        ${parts.map(x => `<i style="width:${x.pct.toFixed(2)}%;background:${x.couleur}"></i>`).join('')}
+           aria-label="${trad('Répartition')}${deuxPoints()} ${parts.map(x => `${trad(x.label)} ${
+             x.pct == null ? fmtEUR0(x.value) : fmtPct(x.pct, 0)}`).join(', ')}">
+        ${segments.map(x => `<i style="width:${x.largeur.toFixed(2)}%;background:${x.couleur}"></i>`).join('')}
       </div>`;
     })()}
   </div>`}
@@ -1451,34 +1453,42 @@ function viewOverview() {
     if (!classes.length) return '';
     return `
   <div class="card repart">
-    ${classes.map(x => `
+    ${classes.map(x => {
+      const dettesSeules = x.classe === DETTES_NON_AFFECTEES;
+      return `
       <button type="button" class="repart-ligne" data-action="apercu"
-              data-apercu="classe" data-arg="${esc(x.classe)}"
-              title="${trad('Voir le détail de')} ${esc(trad(x.label))}">
+              data-apercu="${dettesSeules ? 'credits' : 'classe'}" data-arg="${dettesSeules ? '' : esc(x.classe)}"
+              title="${dettesSeules ? trad('Voir et mettre à jour tes crédits')
+                : `${trad('Voir le détail de')} ${esc(trad(x.label))}`}">
         <span class="repart-haut">
           <span class="dot" style="background:${x.couleur}"></span>
-          <span class="repart-nom">${esc(trad(x.label))}</span>
-          <b>${fmtEUR0(x.value)}</b>
-          <span class="repart-pct">${fmtPct(x.pct, 1)}</span>
+          <span class="repart-nom">${esc(trad(x.label))}${!dettesSeules && x.dettes > 0.005
+            ? `<span class="sub">${trad('après {v} de crédit').replace('{v}', fmtEUR0(x.dettes))}</span>` : ''}</span>
+          <b${x.value < 0 ? ' class="dette"' : ''}>${fmtEUR0(x.value)}</b>
+          <span class="repart-pct">${x.pct == null ? '' : fmtPct(x.pct, 1)}</span>
         </span>
-        <span class="repart-barre"><i style="width:${largeurPart(x.pct)};background:${x.couleur}"></i></span>
-      </button>`).join('')}
+        ${x.value > 0 ? `<span class="repart-barre"><i style="width:${largeurPart(x.pct)};background:${x.couleur}"></i></span>` : ''}
+      </button>`; }).join('')}
     ${(() => {
       const p = patrimoine();
       if (!p.dettes) return '';
       const cr = creditsEnCours();
+      const nonAffectees = dettesParDestination().nonAffectees;
+      const aideNet = [
+        trad('Ces parts portent sur ton patrimoine net : les {v} de capital restant dû sont déduits une seule fois.')
+          .replace('{v}', fmtEUR0(p.dettes)),
+        trad('Un crédit se retranche de la classe du compte auquel il est rattaché : un prêt rattaché à un logement, de ton immobilier ; un prêt rattaché à des parts de société, du non coté.'),
+        nonAffectees > 0.005
+          ? trad('Les crédits sans destination connue, {v}, forment la ligne « Dettes non affectées » : leur fiche ne désigne aucun compte, ou un compte qui mêle plusieurs classes, et Longward ne les attribue à aucune classe.')
+              .replace('{v}', fmtEUR0(nonAffectees))
+          : '',
+        trad('Bascule sur « Brut » pour voir tes avoirs avant crédits.'),
+      ].filter(Boolean).join(' ');
+      const aideBrut = trad('Ces parts portent sur ce que tu possèdes, avant crédits. Ton patrimoine net, en haut de page, vaut {v} : la différence est le capital qu’il te reste à rembourser. Bascule sur « Net » pour voir chaque classe diminuée des crédits qui la financent.')
+        .replace('{v}', fmtEUR0(p.net));
       return `
       <p class="perimetre repart-base">${mentionBase(
-        evoNet ? BASES.net : BASES.avoirs, evoNet ? p.net : p.brut)}${aide(evoNet
-        ? `Ces parts portent sur ton patrimoine net : le capital qu’il te reste à `
-          + `rembourser, ${fmtEUR0(p.dettes)}, est retiré de l’immobilier, qui est ce `
-          + `que tes crédits financent. Chaque mensualité le réduit, donc cette part `
-          + `monte d’autant, même si la valeur de tes biens ne bouge pas. Bascule sur `
-          + `« Brut » pour voir la valeur de tes biens avant crédits.`
-        : `Ces parts portent sur ce que tu possèdes, avant crédits. Ton patrimoine net, `
-          + `en haut de page, vaut ${fmtEUR0(p.net)} : la différence est le capital qu’il te `
-          + `reste à rembourser. Bascule sur « Net » pour voir la même répartition, `
-          + `crédits déduits.`)}</p>
+        evoNet ? BASES.net : BASES.avoirs, evoNet ? p.net : p.brut)}${aide(evoNet ? aideNet : aideBrut)}</p>
       <button type="button" class="repart-credits" data-action="apercu" data-apercu="credits"
               title="${trad('Voir et mettre à jour tes crédits')}">
         <span>${evoNet ? trad('Crédits déjà déduits') : trad('Crédits en cours')}</span>
@@ -2370,16 +2380,22 @@ function viewObjective() {
     const verses = num(dernier.mois) * num(s.monthly);
     const rembourse = num(dernier.capitalRendu);
     const plat = num(p.plat);
+    const detailPlat = partPlateDetail();
+    const biensNets = num(detailPlat.biensNets);
+    const aDesBiens = num(detailPlat.biens) > 0.005 || num(detailPlat.dettesBiens) > 0.005;
     const parts = [
       { label: trad('Ce que tu as déjà'), value: g.total - plat, couleur: 'var(--series-3)', apercu: 'baseProjection' },
-      { label: plat < 0 ? trad('Tes crédits')
-             : num(nowTotals().biens) > 0.005
+      ...(aDesBiens ? [{ label: num(nowTotals().biens) > 0.005
                ? (num(nowTotals().immoDirect) > 0.005
                     ? trad('Ton immobilier et tes biens, nets')
                     : trad('Tes biens de valeur, nets'))
                : trad('Ton immobilier net'),
-        value: plat, couleur: couleurClasse('immobilier'), apercu: 'immobilierNet',
-        aide: trad('Aucun rendement ne lui est appliqué : la projection le porte tel quel') },
+        value: biensNets, couleur: couleurClasse('immobilier'), apercu: 'immobilierNet', arg: 'biens',
+        aide: trad('Aucun rendement ne lui est appliqué : la projection le porte tel quel') }] : []),
+      { label: aDesBiens ? trad('Tes autres crédits') : trad('Tes crédits'),
+        value: plat - (aDesBiens ? biensNets : 0), couleur: 'var(--muted)',
+        apercu: 'immobilierNet', arg: 'autres',
+        aide: trad('Ces crédits ne financent aucun bien détenu en direct : un prêt pour des parts de société, un prêt personnel, une dette sans destination connue. La projection les porte à leur montant, sans rendement.') },
       { label: trad('Ce que tu verses'), value: verses, couleur: S1(), apercu: 'horizon' },
       /* Le desendettement a sa part, sous son nom. Il ne se filtre pas quand il
          est nul : `filter` s'en charge deja pour toutes les parts. */
@@ -2417,15 +2433,15 @@ function viewObjective() {
       + 'selon ton épargne et différentes hypothèses de rendement.')}</p>
     ${parts.map(x => `
       <button type="button" class="repart-ligne" data-action="apercu"
-              data-apercu="${esc(x.apercu)}"
+              data-apercu="${esc(x.apercu)}"${x.arg ? ` data-arg="${esc(x.arg)}"` : ''}
               title="${esc(x.aide || `${trad('Voir le détail de')} ${trad(x.label)}`)}">
         <span class="repart-haut">
           <span class="dot" style="background:${x.couleur}"></span>
           <span class="repart-nom">${esc(trad(x.label))}</span>
-          <b>${fmtEUR(x.value)}</b>
+          <b${x.value < 0 ? ' class="dette"' : ''}>${fmtEUR(x.value)}</b>
           <span class="repart-pct">${fmtPct(x.pct, 1)}</span>
         </span>
-        <span class="repart-barre"><i style="width:${x.pct.toFixed(1)}%;background:${x.couleur}"></i></span>
+        ${x.value > 0 ? `<span class="repart-barre"><i style="width:${largeurPart(x.pct)};background:${x.couleur}"></i></span>` : ''}
       </button>`).join('')}
     <!-- L'objectif 2026 figurait aussi dans ce pied. Il a sa propre carte en
          bas de page, et il n'a rien à faire sous un total qui parle
@@ -2619,7 +2635,6 @@ function viewObjective() {
       ${(() => {
         const t0 = nowTotals();
         const plat = num(p.plat), dettes = num(t0.dettes);
-        const bien = num(t0.horsFinancier);
         /* La part plate porte l'immobilier ET les biens de valeur : la phrase
            doit nommer ce qu'elle couvre, sinon une montre seule ferait dire
            « ton immobilier » a quelqu'un qui n'en a pas.
@@ -2655,14 +2670,21 @@ function viewObjective() {
             : ' ' + trad('Tes crédits restent à leur montant d’aujourd’hui : sans taux ni '
                 + 'mensualité déclarés, leur remboursement ne peut pas être projeté, et la '
                 + 'courbe sous-estime donc ton patrimoine.');
-        if (plat > 0) return note(`${sujet} ${trad('valeur d’aujourd’hui,')} ${fmtEUR0(plat)}${
-          dettes ? ' ' + trad('nets,') : ''}${trad(' du premier point au dernier : son prix '
-          + 'ne monte ni ne baisse.')}${dette}`);
-        if (!plat) return note((dette || ' ').slice(1));
-        return note(bien
-          ? `${trad('Tes crédits dépassent aujourd’hui la valeur de ton bien : cette part nette,')}
-             ${fmtEUR0(plat)}${trad(', est portée telle quelle, le prix du bien ne bougeant pas.')}${dette}`
-          : `${trad('Tes crédits sont portés à leur montant d’aujourd’hui,')} ${fmtEUR0(Math.abs(plat))}.${dette}`);
+        const dp = partPlateDetail(t0);
+        const biensNets = num(dp.biensNets), autres = num(dp.autresDettes);
+        const aDesBiens = num(dp.biens) > 0.005 || num(dp.dettesBiens) > 0.005;
+        const phraseBiens = !aDesBiens || Math.abs(biensNets) <= 0.005 ? ''
+          : biensNets > 0
+            ? `${sujet} ${trad('valeur d’aujourd’hui,')} ${fmtEUR0(biensNets)}${
+                num(dp.dettesBiens) > 0.005 ? ' ' + trad('nets,') : ''}${trad(' du premier point au dernier : son prix '
+                + 'ne monte ni ne baisse.')}`
+            : `${trad('Tes crédits dépassent aujourd’hui la valeur de ton bien : cette part nette,')} ${
+                fmtEUR0(biensNets)}${trad(', est portée telle quelle, le prix du bien ne bougeant pas.')}`;
+        const phraseAutres = autres <= 0.005 ? ''
+          : `${aDesBiens ? trad('Tes autres crédits sont portés à leur montant d’aujourd’hui,')
+                         : trad('Tes crédits sont portés à leur montant d’aujourd’hui,')} ${fmtEUR0(autres)}.`;
+        const tete = [phraseBiens, phraseAutres].filter(Boolean).join(' ');
+        return note(tete ? `${tete}${dette}` : (dette || ' ').slice(1));
       })()}
     </div>
   </div>
@@ -3741,9 +3763,9 @@ const NIVEAUX_VIX = [
 ];
 /* Ce que les deux perimetres contiennent, et la consequence qu'on observe :
    en Financier, la bascule net/brut ne bouge pas la courbe. Ce n'est pas une
-   approximation, c'est la regle de `repartitionClasses` dite a l'endroit ou on
+   approximation, c'est la regle de `pointsEvolution` dite a l'endroit ou on
    la constate. */
-const AIDE_PERIMETRE = 'Financier : tes placements et tes liquidités. Global : tout, immobilier et biens compris. Un crédit finance un bien, que le Financier laisse dehors : il ne s’y retire donc pas, et net et brut y donnent la même courbe.';
+const AIDE_PERIMETRE = 'Financier : tes placements et tes liquidités. Global : tout, immobilier et biens compris. En Financier, la courbe ne retranche aucun crédit, pas même ceux qui financent un placement : un relevé passé ne dit pas ce que chaque dette finançait, donc net et brut y donnent la même courbe. Les dettes de ce périmètre se lisent sur la page Allocation.';
 
 const estVix = l => String(l?.symbole || '') === '^VIX';
 /* `null` plutot qu'un libelle par defaut : sans valeur utilisable, la tuile ne
@@ -4229,10 +4251,14 @@ function pochesPatrimoine({ financier = false, net = false } = {}) {
   const attente = num(patrimoine().investir);
   const habits = new Map(SERIES_PATRIMOINE().map(s => [s.key, s]));
   return poidsPoches({ financier, net }).map(p => {
-    const s = habits.get(p.key) || {};
+    const s = p.key === DETTES_NON_AFFECTEES
+      ? { label: trad('Dettes non affectées'), color: 'var(--muted)' }
+      : habits.get(p.key) || {};
     return { key: p.key, label: s.label, color: s.color, value: p.value, pct: p.pct,
              note: p.key === 'cash' && attente > 0.005
-               ? `${trad('dont')} ${fmtEUR0(attente)} ${trad('à investir')}` : '' };
+               ? `${trad('dont')} ${fmtEUR0(attente)} ${trad('à investir')}`
+               : p.key !== DETTES_NON_AFFECTEES && num(p.dettes) > 0.005
+                 ? trad('après {v} de crédit').replace('{v}', fmtEUR0(p.dettes)) : '' };
   });
 }
 
@@ -4280,9 +4306,9 @@ function viewAllocation() {
       <thead><tr><th>${trad('Ligne')}</th><th>${trad('Montant')}</th><th>%</th></tr></thead>
       <tbody>${items.map(i => `<tr><td class="name">${pastilleTeinte(i.couleur || i.color)}${esc(i.label)}
         ${i.note ? `<span class="sub">${escMontant(i.note)}</span>` : ''}</td>
-        <td>${fmtEUR(i.value)}</td>
-        <td class="muted pct">${fmtPct(i.pct)}</td></tr>`).join('')}</tbody>
-      <tfoot><tr><td>${esc(totalLabel)}</td><td>${fmtEUR(total)}</td><td></td></tr></tfoot>
+        <td class="montant">${fmtEUR(i.value)}</td>
+        <td class="muted pct">${i.pct == null ? '' : fmtPct(i.pct)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td>${esc(totalLabel)}</td><td class="montant">${fmtEUR(total)}</td><td></td></tr></tfoot>
     </table>`;
 
   /* Trois teintes franchement distinctes, et pas voisines dans la palette :
@@ -4331,7 +4357,7 @@ function viewAllocation() {
       ? trad("Rien n’est écarté ici : tu n’as ni bien immobilier détenu en direct, ni bien de valeur. Le non coté reste, lui aussi. Les répartitions ci-dessous portent toutes sur ces avoirs : une dette ne se répartit pas entre tes comptes ni entre tes classes d’actifs.")
       : allocFinancier
       ? trad("Les biens immobiliers détenus en direct et les biens de valeur sont écartés, et les crédits qui leur sont explicitement rattachés le sont avec eux. La pierre papier reste : une SCPI, ou le support immobilier d’une assurance-vie, s’arbitre comme un fonds. C’est un placement, pas un mur. Les autres dettes, une marge ou un prêt personnel, se déduisent du patrimoine financier net, annoncé en tête dès qu’il en existe une. Le non coté reste : on choisit d’y remettre ou non, alors qu’on ne vend pas trois mètres carrés de salon. Les répartitions ci-dessous portent toutes sur tes avoirs financiers : une dette ne se répartit pas entre tes comptes ni entre tes classes d’actifs.")
-      : trad("Deux bases sur cette page, et chaque carte annonce la sienne. « Patrimoine net » pour la répartition : tout ce que tu possèdes moins ce que tu dois encore, un bien financé y comptant pour sa valeur moins son crédit. « Tes avoirs » pour les cartes qui disent où ton argent est posé et en combien de temps il ressort : une dette n’est posée sur aucun compte et n’a pas de délai de sortie, elle ne s’y retranche donc pas. Chaque total redonne la base annoncée juste au-dessus de lui."))}.</span></p>
+      : trad("Deux bases sur cette page, et chaque carte annonce la sienne. « Patrimoine net » pour la répartition : tout ce que tu possèdes moins ce que tu dois encore, chaque classe financée par un crédit qui lui est rattaché y comptant pour sa valeur moins ce crédit, et les crédits sans destination connue sur leur propre ligne, « Dettes non affectées ». « Tes avoirs » pour les cartes qui disent où ton argent est posé et en combien de temps il ressort : une dette n’est posée sur aucun compte et n’a pas de délai de sortie, elle ne s’y retranche donc pas. Chaque total redonne la base annoncée juste au-dessus de lui."))}.</span></p>
 
   ${allocFinancier && dettesFinancieresTotal() > 0.005 ? `
   <dl class="kv perimetre-net">
@@ -13682,9 +13708,11 @@ const APERCUS = {
     }
     const surMarche = classe === 'obligations' || classe === 'crypto';
     const MONTREES = 8;
+    const finance = num(dettesParDestination().classes[classe]);
     return {
       titre: CLASSES_ACTIFS[classe] || classe,
-      sous: `${lignes.length} placement${lignes.length > 1 ? 's' : ''}`,
+      sous: `${lignes.length} placement${lignes.length > 1 ? 's' : ''}${finance > 0.005
+        ? ` · ${trad('{v} net de crédits').replace('{v}', fmtEUR0(total - finance))}` : ''}`,
       total, lignes,
       montrer: lignes.length > MONTREES + 2 ? MONTREES : 0,
       vue: surMarche ? 'positions' : 'accounts', ancre: '',
@@ -13830,9 +13858,19 @@ const APERCUS = {
       total: j.total,
       totalNote: `${trad('dont')} ${fmtEUR0(j.gains)} ${trad('de rendement')}`,
       lignes: [
-        { label: trad('Ce que tu as déjà'), meta: trad('aujourd’hui, hors immobilier'), valeur: base },
-        ...(plat ? [{ label: plat > 0 ? trad('Ton immobilier net') : trad('Tes crédits'),
-                      meta: A_PLAT, valeur: plat }] : []),
+        { label: trad('Ce que tu as déjà'), meta: trad('aujourd’hui, hors biens détenus en direct et crédits'), valeur: base },
+        /* Les deux lignes de la part plate, comme sur la carte : leur somme fait
+           `plat`, et un pret qui ne finance aucun bien n'y est pas de l'immobilier. */
+        ...(() => {
+          const dp = partPlateDetail();
+          const aDesBiens = num(dp.biens) > 0.005 || num(dp.dettesBiens) > 0.005;
+          const biensNets = aDesBiens ? num(dp.biensNets) : 0;
+          return [
+            ...(Math.abs(biensNets) > 0.005 ? [{ label: trad('Ton immobilier net'), meta: A_PLAT, valeur: biensNets }] : []),
+            ...(Math.abs(plat - biensNets) > 0.005 ? [{ label: aDesBiens ? trad('Tes autres crédits') : trad('Tes crédits'),
+                                                        meta: A_PLAT, valeur: plat - biensNets }] : []),
+          ];
+        })(),
         { label: trad('Ce que tu verses'),
           meta: `${fmtEUR0(s.monthly)} × ${projHorizon * 12} ${trad('mois')}`, valeur: verses },
         { label: trad('Ce que le rendement ajoute'),
@@ -13895,9 +13933,14 @@ const APERCUS = {
     };
   },
 
-  immobilierNet: () => {
+  /* `quoi` suit les deux lignes de la carte : 'biens' ne rend que les biens en
+     direct et les credits qui les financent, 'autres' toutes les autres dettes,
+     et sans argument les deux. Chaque total est celui de la ligne cliquee. */
+  immobilierNet: (quoi) => {
+    const avecBiens = quoi !== 'autres', avecAutres = quoi !== 'biens';
     const lignes = [];
     for (const c of (Store.state.comptes || [])) {
+      if (!avecBiens) break;
       if (c.statut === 'archive') continue;
       /* Les comptes que le perimetre financier ecarte, et eux seuls : c'est
          mot pour mot ce que `partPlate()` gele, donc les lignes font le total.
@@ -13916,18 +13959,28 @@ const APERCUS = {
     for (const e of (ETABS() || [])) {
       for (const d of (e.dettes || [])) {
         if (!num(d.montant)) continue;
-        lignes.push({ label: d.libelle || 'Crédit',
-                      meta: `${trad('capital restant dû')} · ${e.nom}`, valeur: -num(d.montant) });
+        const c = compteFinanceParDette(d, e);
+        const duBien = !!c && estHorsPerimetreFinancier(c);
+        if (duBien ? !avecBiens : !avecAutres) continue;
+        lignes.push({ label: d.libelle || trad('Crédit'),
+                      meta: `${trad('capital restant dû')} · ${e.nom}${
+                        !duBien && !classeFinanceeParDette(d, e) ? ` · ${trad('sans destination connue')}` : ''}`,
+                      valeur: -num(d.montant) });
       }
     }
-    const plat = partPlate();
-    const aUnBien = lignes.some(l => l.valeur > 0);
+    const dp = partPlateDetail();
+    const aDesBiens = num(dp.biens) > 0.005 || num(dp.dettesBiens) > 0.005;
+    const plat = quoi === 'biens' ? num(dp.biensNets)
+               : quoi === 'autres' ? -num(dp.autresDettes) : partPlate();
     const aImmo = num(nowTotals().immoDirect) > 0.005, aBiens = num(nowTotals().biens) > 0.005;
+    const titreBiens = aImmo && aBiens ? trad('Ton immobilier et tes biens, nets')
+                     : aBiens ? trad('Tes biens de valeur, nets') : trad('Ton immobilier net');
+    const lesDeux = quoi == null && aDesBiens && num(dp.autresDettes) > 0.005;
     return {
-      titre: !aUnBien ? trad('Tes crédits')
-           : aImmo && aBiens ? trad('Ton immobilier et tes biens, nets')
-           : aBiens ? trad('Tes biens de valeur, nets') : trad('Ton immobilier net'),
-      sous: trad('Ce que la projection porte à plat'),
+      titre: quoi === 'autres' || !aDesBiens ? (aDesBiens ? trad('Tes autres crédits') : trad('Tes crédits'))
+           : lesDeux ? trad('Ce que la projection porte à plat') : titreBiens,
+      sous: lesDeux ? trad('tes biens en direct, leurs crédits et tes autres crédits')
+                    : trad('Ce que la projection porte à plat'),
       total: plat,
       totalNote: trad('Aucun rendement ne lui est appliqué'),
       lignes,

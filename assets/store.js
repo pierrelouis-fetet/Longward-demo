@@ -1741,12 +1741,11 @@ const CLASSE_COULEURS = new Proxy({}, {
    une repartition qui totalisait le brut juste dessous : les parties ne faisaient
    pas le tout, ce que ce projet s'interdit partout ailleurs.
 
-   Les dettes vont a l'immobilier, comme dans la projection : c'est `partPlate()`
-   qui pose cette regle — immobilier plus biens moins dettes — et deux calculs qui
-   repondent a la meme question doivent donner le meme chiffre. Une dette sans
-   bien pour la porter rend donc cette classe negative, et la carte le montre
-   plutot que de la masquer : le filtre garde ce qui n'est pas nul, dans les deux
-   sens.
+   Une dette ne se retranche que de la classe que son lien designe, voir
+   `classeFinanceeParDette`. Celle dont la destination est inconnue ne va a
+   aucune classe : elle a sa ligne, `DETTES_NON_AFFECTEES`, negative. Une classe
+   peut aussi devenir negative quand ce qui la finance depasse sa valeur, et la
+   carte le montre plutot que de le masquer.
 
    Allocation ne change pas : elle n'a pas de commutateur et declare une base
    unique. Deux pages, deux bases, chacune nommee — c'est le motif autorise ici,
@@ -1883,6 +1882,58 @@ function dettesFinancieresTotal() {
     .reduce((x, d) => x + num(d.montant), 0), 0);
 }
 
+/* --- ce qu'une dette finance -------------------------------------------
+
+   Le compte se lit comme la fiche le lit (`creditsDuBien`) : le lien `bienId`,
+   ou le seul compte de l'etablissement qui porte la dette. Rien d'autre ne le
+   designe, ni le nom du preteur, ni le type de l'etablissement, ni la presence
+   d'un appartement ailleurs. Un lien mort, un compte d'un autre etablissement ou
+   un compte archive ne financent plus rien de ce qui est compte aujourd'hui. */
+function compteFinanceParDette(d, e) {
+  if (!d || !e) return null;
+  const miens = (Store.state.comptes || []).filter(x => x.etabId === e.id);
+  const c = d.bienId ? compteById(d.bienId) : (miens.length === 1 ? miens[0] : null);
+  if (!c || c.etabId !== e.id || c.statut === 'archive') return null;
+  return c;
+}
+
+function classeFinanceeParDette(d, e) {
+  const c = compteFinanceParDette(d, e);
+  if (!c) return null;
+  const classes = (typeCompte(c.type).classes || []).filter(k => k !== 'liquidites');
+  return classes.length === 1 ? classes[0] : null;
+}
+
+/* Les dettes rangees par ce qu'elles financent. `nonAffectees` porte tout le
+   reste, et la somme des deux fait `dettesTotal()` : aucune dette ne disparait
+   parce que sa destination est inconnue. */
+const DETTES_NON_AFFECTEES = 'dettesNonAffectees';
+function dettesParDestination() {
+  const classes = {};
+  let nonAffectees = 0;
+  for (const e of ETABS()) {
+    for (const d of (e.dettes || [])) {
+      const m = num(d.montant);
+      if (!m) continue;
+      const k = classeFinanceeParDette(d, e);
+      if (k) classes[k] = (classes[k] || 0) + m;
+      else nonAffectees += m;
+    }
+  }
+  return { classes, nonAffectees };
+}
+
+function dettesDesBiensDirects() {
+  let s = 0;
+  for (const e of ETABS()) {
+    for (const d of (e.dettes || [])) {
+      const c = compteFinanceParDette(d, e);
+      if (c && estHorsPerimetreFinancier(c)) s += num(d.montant);
+    }
+  }
+  return s;
+}
+
 /* DEUX GRANDEURS, DEUX QUESTIONS, ET LES CONFONDRE EST LA FAUTE.
 
    `totalFinancier()` dit ce qu'on possede et qu'on peut piloter. C'est la base de
@@ -1900,18 +1951,35 @@ function netFinancier() {
 
 function repartitionClasses({ net = false, financier = false } = {}) {
   const p = patrimoine();
-  const dettes = net && !financier ? num(p.dettes) : 0;
-  const base = financier ? totalFinancier() : num(p.brut) - dettes;
-  const porteuse = ['immobilier', 'bienValeur'].find(c => Math.abs(num(p.classes[c])) > 0.005)
-    || (dettes ? 'immobilier' : null);
+  const avecDettes = net && !financier;
+  const base = financier ? totalFinancier() : num(p.brut) - (avecDettes ? num(p.dettes) : 0);
+  const dest = avecDettes ? dettesParDestination() : { classes: {}, nonAffectees: 0 };
   const classes = financier ? poches({ financier: true }).classes : p.classes;
-  return Object.entries(CLASSES_ACTIFS)
+  /* `brut` et `dettes` voyagent avec la part : la vue dit « apres tant de
+     credit » sans refaire le calcul. Une classe reste tant qu'elle a une valeur
+     OU une dette : un bien a zero finance par un pret est une part negative, pas
+     une absence. */
+  const lignes = Object.entries(CLASSES_ACTIFS)
     .map(([classe, label]) => {
-      const value = (classes[classe] || 0) - (classe === porteuse ? dettes : 0);
-      return { classe, label, couleur: CLASSE_COULEURS[classe], value,
-               pct: base ? value / base * 100 : 0 };
+      const brut = num(classes[classe]);
+      const dettes = num(dest.classes[classe]);
+      const value = brut - dettes;
+      return { classe, label, couleur: CLASSE_COULEURS[classe], value, brut, dettes,
+               pct: poidsDansTotal(value, base) };
     })
-    .filter(x => Math.abs(x.value) > 0.005);
+    .filter(x => Math.abs(x.brut) > 0.005 || Math.abs(x.dettes) > 0.005);
+  if (dest.nonAffectees > 0.005) {
+    lignes.push({ classe: DETTES_NON_AFFECTEES, label: 'Dettes non affectées',
+                  couleur: 'var(--muted)', value: -dest.nonAffectees, brut: 0,
+                  dettes: dest.nonAffectees, pct: poidsDansTotal(-dest.nonAffectees, base) });
+  }
+  return lignes;
+}
+
+function segmentsBarre(parts) {
+  const positives = (parts || []).filter(x => num(x.value) > 0.005);
+  const somme = positives.reduce((s, x) => s + num(x.value), 0);
+  return positives.map(x => ({ ...x, largeur: somme > 0 ? num(x.value) / somme * 100 : 0 }));
 }
 
 function refreshAccounts() {
@@ -2434,7 +2502,7 @@ const fmtDelaiMois = v => {
    Il vit avec les formateurs, et non dans la vue : le harnais de tests ne
    charge pas `app.js`, et une regle posee la-bas ne se verifierait que des
    yeux. Ce qu'il rend est une longueur CSS, comme `fmtEUR0` rend un montant. */
-const largeurPart = pct => num(pct) > 0 ? `max(3px, ${num(pct).toFixed(1)}%)` : '0%';
+const largeurPart = pct => num(pct) > 0 ? `max(3px, ${Math.min(100, num(pct)).toFixed(1)}%)` : '0%';
 
 const fmtSigned = v => (v >= 0 ? '+' : '−') + fmtEUR(Math.abs(v), 0);
 /* Un montant signe, sauf a zero : « +584 € », « −300 € », et « 0 € » plutot que
@@ -3972,36 +4040,42 @@ function perfLigne(ligne) {
    La vue garde ce qui est a elle : la couleur d'une poche, son nom traduit, la
    note « dont tant a investir ». Le modele rend des nombres.
 
-   La dette se retranche de la poche qui la PORTE, une seule fois, et la poche se
-   cherche plutot qu'elle ne se nomme : un renommage de clef la laisserait nulle
-   part et le total cesserait d'egaler la somme de ses parts sans que rien ne le
-   dise. En vue financiere, rien ne se retranche — le pret finance le bien, qui
-   est deja ecarte.
+   La dette se retranche de la poche qu'elle FINANCE, une seule fois ; celle dont
+   la destination est inconnue a sa propre ligne, `DETTES_NON_AFFECTEES`. En vue
+   financiere, rien ne se retranche : la synthese de la page le fait, une fois.
 
-   La poche porteuse est gardee meme a zero : un bien dont la dette depasse la
+   Une poche financee est gardee meme a zero : un bien dont la dette depasse la
    valeur rend une part negative, et la faire disparaitre ferait mentir le total. */
 function poidsPoches({ financier = false, net = false } = {}) {
   const t = nowTotals();
   const dettes = net && !financier ? num(t.dettes) : 0;
-  const porteuse = dettes
-    ? (POCHES_EVOLUTION.filter(serieHorsFinancier)
-        .find(k => Math.abs(num(t[k])) > 0.005) || 'immo')
-    : null;
+  /* Chaque dette retranchee de la poche de la classe qu'elle finance, la
+     meme regle que `repartitionClasses` : deux cartes du meme patrimoine net ne
+     peuvent pas ranger le meme pret a deux endroits. */
+  const dest = dettes ? dettesParDestination() : { classes: {}, nonAffectees: 0 };
+  const dettesDe = k => Object.entries(dest.classes)
+    .filter(([classe]) => POCHE_EVOLUTION_DE_CLASSE[classe] === k)
+    .reduce((s, [, m]) => s + m, 0);
   /* En vue financiere, `immo` se reduit a sa pierre papier : une SCPI et le
      support immobilier d'une assurance-vie sont des avoirs financiers, et la
      carte doit les montrer sous le nom de leur classe. Le mur, lui, est parti
      avec le compte. La lecture d'aujourd'hui peut faire ce partage ; la courbe
      d'historique ne le peut pas — voir `SERIES_HORS_FINANCIER`. */
   const valeur = k => (financier && k === 'immo' ? num(t.immoPapier) : num(t[k]))
-    - (k === porteuse ? dettes : 0);
+    - dettesDe(k);
   const base = financier ? totalFinancier() : num(t.brut) - dettes;
-  return POCHES_EVOLUTION
-    .filter(k => Math.abs(valeur(k)) > 0.005 || k === porteuse)
+  const parts = POCHES_EVOLUTION
+    .filter(k => Math.abs(valeur(k)) > 0.005 || dettesDe(k) > 0.005)
     .filter(k => !financier || k === 'immo' || !serieHorsFinancier(k))
     /* `null` et non zero quand la base ne se divise pas : un patrimoine net
        negatif retournerait tous les signes. */
-    .map(k => ({ key: k, value: valeur(k),
-                 pct: base > 0.005 ? valeur(k) / base * 100 : null }));
+    .map(k => ({ key: k, value: valeur(k), dettes: dettesDe(k),
+                 pct: poidsDansTotal(valeur(k), base) }));
+  if (dest.nonAffectees > 0.005) {
+    parts.push({ key: DETTES_NON_AFFECTEES, value: -dest.nonAffectees, dettes: dest.nonAffectees,
+                 pct: poidsDansTotal(-dest.nonAffectees, base) });
+  }
+  return parts;
 }
 
 function currentMonthKey() {
@@ -4277,10 +4351,12 @@ function allocationByAsset({ credits = true, financier = false, net = false } = 
     }
   };
 
-  /* La dette se retranche des lignes de l'etablissement qui la porte, au prorata
-     de leur valeur, et le classement partage alors la base de la carte qui le
+  /* La dette se retranche des lignes du compte qu'elle finance, au prorata de
+     leur valeur, et le classement partage alors la base de la carte qui le
      porte : la plus longue barre du bas est une part de la plus grosse tranche
-     du haut, ce que cette carte promet explicitement.
+     du haut, ce que cette carte promet explicitement. Le compte est celui que
+     `classeFinanceeParDette` reconnait, pas l'etablissement entier : un pret
+     personnel pris chez un courtier ne se retranche pas de ses ETF.
 
      Compter les lignes en brut sous une base nette donnait un appartement a
      178,7 % du tout. L'autre issue — poser le credit en ligne du classement,
@@ -4291,29 +4367,30 @@ function allocationByAsset({ credits = true, financier = false, net = false } = 
      Le prorata plutot qu'une poche choisie : ici l'axe est la ligne, et deux
      appartements finances par deux prets doivent chacun porter le leur.
 
-     Un etablissement qui doit sans rien detenir en ligne — une marge de
-     courtier — ne peut rien se voir retrancher : son emprunt reste une ligne
-     du classement, sinon la somme des parts cesserait d'egaler la base sans
-     que rien ne le dise. */
+     Une dette dont la destination est inconnue — une marge de courtier sans
+     lien, un pret personnel — ne peut rien se voir retrancher : elle reste une
+     ligne du classement, « Dettes non affectees », sinon la somme des parts
+     cesserait d'egaler la base sans que rien ne le dise. */
   const netLignes = net && !financier;
   const dus = new Map();
-  const assiettes = new Map();
+  let nonAffectees = 0;
   if (netLignes) {
-    for (const e of Store.state.etabs) {
-      const du = (e.dettes || []).reduce((s, d) => s + num(d.montant), 0);
-      if (du > 0.005) dus.set(e.id, du);
-    }
-    for (const c of comptesOuverts()) {
-      if (!dus.has(c.etabId)) continue;
-      assiettes.set(c.etabId, (assiettes.get(c.etabId) || 0)
-        + (c.lignes || []).reduce((s, l) => s + num(l.valeur), 0));
+    for (const e of ETABS()) {
+      for (const d of (e.dettes || [])) {
+        const m = num(d.montant);
+        if (!m) continue;
+        const c = classeFinanceeParDette(d, e) ? compteFinanceParDette(d, e) : null;
+        if (c) dus.set(c.id, (dus.get(c.id) || 0) + m);
+        else nonAffectees += m;
+      }
     }
   }
+  const assiette = c => (c.lignes || []).reduce((s, l) => s + num(l.valeur), 0);
   const valeurNette = (c, l) => {
-    const du = netLignes ? dus.get(c.etabId) : 0;
-    const assiette = assiettes.get(c.etabId) || 0;
-    if (!du || !(assiette > 0.005)) return num(l.valeur);
-    return num(l.valeur) - du * (num(l.valeur) / assiette);
+    const du = dus.get(c.id) || 0;
+    const a = assiette(c);
+    if (!du || !(a > 0.005)) return num(l.valeur);
+    return num(l.valeur) - du * (num(l.valeur) / a);
   };
 
   for (const p of Store.state.positions) {
@@ -4333,9 +4410,15 @@ function allocationByAsset({ credits = true, financier = false, net = false } = 
   }
   if (credits && dettesTotal()) add(trad('Crédits en cours'), -dettesTotal(), 'var(--critical)');
   if (netLignes) {
-    const orphelin = [...dus.entries()]
-      .reduce((s, [id, du]) => s + (assiettes.get(id) > 0.005 ? 0 : du), 0);
-    if (orphelin > 0.005) add(trad('Crédits en cours'), -orphelin, 'var(--critical)');
+    /* Un compte finance dont les lignes ne valent rien garde sa dette sous son
+       nom et dans sa classe : c'est la que `poidsPoches` la range aussi. */
+    for (const [id, du] of dus) {
+      const c = compteById(id);
+      if (assiette(c) > 0.005) continue;
+      const classe = classeFinanceeParDette({ bienId: id }, etabById(c.etabId));
+      add(c.alloc || c.libelle, -du, CLASSE_COULEURS[classe], pocheDeClasse(classe));
+    }
+    if (nonAffectees > 0.005) add(trad('Dettes non affectées'), -nonAffectees, 'var(--muted)');
   }
 
   const total = financier ? totalFinancier()
@@ -7849,6 +7932,22 @@ function partPlate(t = nowTotals()) {
   return num(t.horsFinancier) - num(t.dettes);
 }
 
+/* La meme part, dite en deux lignes, et son total ne change pas d'un centime.
+
+   Toutes les dettes restent a plat — les faire capitaliser avec l'actif
+   qu'elles financent les ferait fondre au rythme des marches — mais elles ne
+   sont pas toutes de l'immobilier. `biensNets` porte les biens detenus en
+   direct moins les credits qui les financent, `autresDettes` tout le reste :
+   un pret pour des parts de societe, un pret personnel, une dette sans
+   destination connue. */
+function partPlateDetail(t = nowTotals()) {
+  const biens = num(t.horsFinancier);
+  const dettesBiens = dettesDesBiensDirects();
+  const autresDettes = num(t.dettes) - dettesBiens;
+  return { biens, dettesBiens, biensNets: biens - dettesBiens, autresDettes,
+           total: biens - dettesBiens - autresDettes };
+}
+
 /* Les trois poches de la projection, chacune avec son sort.
 
    Un seul taux s'appliquait a tout, et il ne decrivait qu'une partie de ce
@@ -7862,7 +7961,8 @@ function partPlate(t = nowTotals()) {
      sa definition. Les versements mensuels le rejoignent, pour la meme raison.
    - `autres` : ce qui est pose sans se coter. Le non cote, le compte courant,
      l'epargne de precaution. Un taux propre, zero par defaut.
-   - `plat` : l'immobilier net, gele. Voir partPlate().
+   - `plat` : les biens en direct nets de leurs credits, et les autres dettes,
+     geles. Voir partPlate() et partPlateDetail().
 
    La propriete qui gouverne tout : la somme des trois fait le patrimoine net.
    Elle est testee, parce que c'est elle qui garantit qu'aucun euro ne se perd

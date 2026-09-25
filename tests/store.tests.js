@@ -23400,34 +23400,22 @@ suite('La répartition suit le commutateur, et ses parts font le total', () => {
        carte de repartition. On lisait donc un patrimoine net en tete et une
        repartition qui totalisait le brut juste dessous.
 
-       Les dettes vont a l'immobilier, comme dans la projection : `partPlate()`
-       pose la meme regle, et deux calculs qui repondent a la meme question
-       doivent donner le meme chiffre. */
+       Le credit du fixture est le seul de l'etablissement du studio : son lien
+       designe le studio, et il se retranche de l'immobilier. Aucune autre classe
+       ne bouge. */
     Fixture.poser();
-    const etab = Store.state.etabs[0];
-    etab.dettes = [{ id: 'd1', libelle: 'Prêt', montant: 40000, note: '' }];
-    /* Un bien pour porter la dette : sans lui la classe immobiliere n'existe pas,
-       et c'est l'autre cas, teste juste apres. */
-    const compte = Store.state.comptes[0];
-    compte.lignes = [...(compte.lignes || []),
-                     { classe: 'immobilier', libelle: 'Appartement', valeur: 120000 }];
-    refreshAccounts();
-
     const p = patrimoine();
     const net = repartitionClasses({ net: true });
     const somme = net.reduce((s, x) => s + x.value, 0);
     pres(somme, p.net, 'la somme des classes doit faire le patrimoine net');
     pres(net.reduce((s, x) => s + x.pct, 0), 100, 'et les parts doivent faire 100 %');
 
-    /* La classe qui porte la dette est bien celle de l'immobilier, et elle seule. */
     const immo = net.find(x => x.classe === 'immobilier');
     const brut = repartitionClasses();
     const immoBrut = brut.find(x => x.classe === 'immobilier');
-    /* Sur le total des dettes, et non sur celle qu'on vient d'ajouter : la
-       fixture en porte deja une, et supposer le contraire faisait echouer ce
-       controle pour une raison qui n'etait pas son sujet. */
-    pres(immo.value, immoBrut.value - p.dettes,
-      'la dette se retranche de l’immobilier, pour son montant total');
+    pres(immo.value, immoBrut.value - Fixture.DETTE,
+      'le prêt du studio se retranche de l’immobilier');
+    pres(immo.dettes, Fixture.DETTE, 'et la part dit combien de crédit elle porte');
     for (const x of net) {
       if (x.classe === 'immobilier') continue;
       const jumelle = brut.find(b => b.classe === x.classe);
@@ -23447,24 +23435,28 @@ suite('La répartition suit le commutateur, et ses parts font le total', () => {
       'la somme des classes doit faire les avoirs, crédits non déduits');
   });
 
-  test('une dette sans bien rend sa classe négative, et se voit', () => {
-    /* Un credit a la consommation, ou une marge de courtier, sans immobilier pour
-       l'absorber. La projection accepte deja une part plate negative ; la carte
-       doit la montrer plutot que de la masquer, sinon la somme cesse de faire le
-       total sans que rien ne le dise. Le filtre garde donc ce qui n'est pas nul,
-       dans les deux sens. */
-    Fixture.poser();
-    Store.state.comptes.forEach(c => {
-      c.lignes = (c.lignes || []).filter(l => l.classe !== 'immobilier');
+  test('une dette sans destination connue a sa ligne, et n’invente aucun immobilier', () => {
+    /* Un credit a la consommation chez une banque qui tient deux comptes, sans
+       lien : rien ne dit ce qu'il finance. Il allait a l'immobilier par defaut,
+       et un patrimoine sans aucun bien affichait « Immobilier » en negatif. Il
+       reste compte, sur sa propre ligne, et aucune classe ne le prend. */
+    Fixture.poser(s => {
+      s.comptes = s.comptes.filter(c => c.id !== 'c_immo');
+      s.etabs = s.etabs.filter(e => e.id !== 'e_bien');
+      s.etabs.find(e => e.id === 'e_banque').dettes =
+        [{ id: 'd1', libelle: 'Crédit conso', montant: 5000, note: '' }];
     });
-    Store.state.etabs[0].dettes = [{ id: 'd1', libelle: 'Crédit conso', montant: 5000, note: '' }];
-    refreshAccounts();
     const net = repartitionClasses({ net: true });
-    const immo = net.find(x => x.classe === 'immobilier');
-    vrai(immo, 'la classe qui porte la dette doit apparaître même sans bien');
-    vrai(immo.value < 0, `elle vaut ${immo.value} : une dette sans bien est négative`);
+    vrai(!net.some(x => x.classe === 'immobilier'), 'aucune ligne immobilière sans bien');
+    const seule = net.find(x => x.classe === DETTES_NON_AFFECTEES);
+    vrai(seule, 'la dette a sa ligne');
+    pres(seule.value, -5000, 'négative, pour son montant');
     pres(net.reduce((s, x) => s + x.value, 0), patrimoine().net,
       'et la somme fait toujours le patrimoine net');
+    for (const x of net) {
+      if (x.classe === DETTES_NON_AFFECTEES) continue;
+      pres(x.dettes, 0, `« ${x.label} » ne porte aucun crédit`);
+    }
   });
 
   test('la vue passe le même mode à ses deux lectures', () => {
@@ -24231,8 +24223,9 @@ suite('Un mur n’est pas de la pierre papier', () => {
        sous « Ton immobilier net », dans une fiche dont le total est `partPlate()`
        — qui ne la porte plus. La somme des parts aurait cesse d'egaler le total. */
     const src = lireSource('assets/app.js');
-    const fn = src.slice(src.indexOf('immobilierNet: () => {'),
+    const fn = src.slice(src.indexOf('immobilierNet: (quoi) => {'),
                          src.indexOf('capaciteEpargne: () => {'));
+    vrai(fn.length > 0, 'la fiche doit être trouvable');
     vrai(/if \(!estHorsPerimetreFinancier\(c\)\) continue;/.test(fn),
       'la fiche parcourt les comptes que le périmètre écarte');
     vrai(!/\['immobilier', 'bienValeur'\]\.includes/.test(fn),
@@ -24730,7 +24723,7 @@ suite('Deux réglages, deux questions, et ils ne se marchent pas dessus', () => 
     const store = lireSource('assets/store.js');
     vrai(/const retrancher = net && !financier;/.test(store),
       'la vue financière ne retranche aucune dette : c’est ce que l’aide promet');
-    vrai(/const dettes = net && !financier \? num\(p\.dettes\) : 0;/.test(store),
+    vrai(/const avecDettes = net && !financier;/.test(store),
       'et la répartition suit la même règle');
     vrai(/net et brut y donnent la même courbe/.test(texte),
       'l’aide dit cette conséquence, celle qu’on observe en basculant');
@@ -41320,7 +41313,7 @@ suite('Le pourcentage tient sur sa ligne', () => {
        une cellule, et la colonne des parts est la plus etroite. */
     const app = lireSource('assets/app.js');
     const css = lireSource('assets/styles.css');
-    vrai(/<td class="muted pct">\$\{fmtPct\(i\.pct\)\}<\/td>/.test(app), 'la cellule se nomme');
+    vrai(/<td class="muted pct">\$\{i\.pct == null \? '' : fmtPct\(i\.pct\)\}<\/td>/.test(app), 'la cellule se nomme');
     vrai(/\.card > table td\.pct \{ white-space: nowrap; overflow-wrap: normal; \}/.test(css),
       'et la feuille la tient sur une ligne, plus fort que la règle de repli');
     const repli = css.indexOf('white-space: normal; overflow-wrap: anywhere;');
@@ -43490,7 +43483,8 @@ suite('La carte de répartition se lit au niveau du patrimoine', () => {
 
   test('les montants perdent leurs centimes, les pourcentages gardent le leur', () => {
     const c = carte();
-    vrai(/<b>\$\{fmtEUR0\(x\.value\)\}<\/b>/.test(c), 'le montant passe par le formateur à zéro décimale');
+    vrai(/<b\$\{x\.value < 0 \? ' class="dette"' : ''\}>\$\{fmtEUR0\(x\.value\)\}<\/b>/.test(c),
+      'le montant passe par le formateur à zéro décimale');
     vrai(!/fmtEUR\(x\.value\)/.test(c), 'et plus par celui qui en rend deux');
     /* LE CONTRAIRE POUR LA PART : une poche à trois dixièmes disparaîtrait
        derrière « 0 % », alors qu'elle existe. */
@@ -46366,5 +46360,216 @@ suite('Chaque entrée porte son chiffre devant', () => {
                           ['contre {b} auparavant', '{b}']]) {
       vrai(I18N.en[c].includes(m), `et le gabarit garde ${m}`);
     }
+  });
+});
+
+/* ------------------------------------------------------------------
+   Une dette ne finance que ce que son lien designe
+   ------------------------------------------------------------------ */
+suite('Une dette se range sous ce qu’elle finance, ou sur sa propre ligne', () => {
+
+  /* Quatre patrimoines fictifs. Des liquidites dans une banque qui tient deux
+     comptes ; des parts de societe dans leur propre etablissement, avec le pret
+     qui les finance ; un appartement et son pret ; un pret personnel pose a la
+     banque, sans lien, donc sans destination connue. */
+  const cpt = (id, etabId, type, libelle, cash, lignes) => ({
+    id, etabId, type, statut: 'ouvert', ouvertLe: '2024-01-01', numero: '', notes: '',
+    libelle, court: libelle, alloc: '', cash, lignes });
+  const lig = (id, classe, libelle, valeur) => ({
+    id, classe, libelle, valeur, prixDeRevient: valeur, quantite: 1, dateAcquisition: '' });
+  const PARTS = 40000, PRET_PARTS = 25000, APPART = 180000, PRET_IMMO = 120000, PERSO = 8000;
+  const CASH = 20000;
+  const poserCas = ({ parts = false, pretParts = false, appart = false, perso = false }) =>
+    Fixture.poser(s => {
+      s.positions = []; s.monthly = []; s.sales = [];
+      s.etabs = [{ id: 'e_banque', nom: 'Banque', notes: '',
+                   dettes: perso ? [{ id: 'd_perso', libelle: 'Prêt personnel', montant: PERSO, note: '' }] : [] }];
+      s.comptes = [
+        cpt('c_courant', 'e_banque', 'courant', 'Courant', [{ montant: 6000, affectation: 'courant' }], []),
+        cpt('c_livret', 'e_banque', 'livret', 'Livret', [{ montant: 14000, affectation: 'precaution' }], []),
+      ];
+      if (parts) {
+        s.etabs.push({ id: 'e_holding', nom: 'Holding', notes: '',
+          dettes: pretParts ? [{ id: 'd_parts', libelle: 'Prêt des parts', montant: PRET_PARTS, bienId: 'c_parts', note: '' }] : [] });
+        s.comptes.push(cpt('c_parts', 'e_holding', 'pe', 'Parts', [], [lig('l_parts', 'nonCote', 'Parts', PARTS)]));
+      }
+      if (appart) {
+        s.etabs.push({ id: 'e_appart', nom: 'Appartement', notes: '',
+          dettes: [{ id: 'd_immo', libelle: 'Prêt immobilier', montant: PRET_IMMO, bienId: 'c_appart', note: '' }] });
+        s.comptes.push(cpt('c_appart', 'e_appart', 'immo', 'Appartement', [], [lig('l_appart', 'immobilier', 'Appartement', APPART)]));
+      }
+    });
+  const somme = xs => xs.reduce((s, x) => s + num(x.value), 0);
+  const part = (xs, cle) => xs.find(x => (x.classe || x.key) === cle);
+
+  /* Ce que chaque ecran doit rendre, pour chaque cas : la meme dette au meme
+     endroit, et le net total inchange. */
+  const verifierPartout = (cas, attendu) => {
+    const net = patrimoine().net;
+    pres(net, attendu.net, `${cas} : le patrimoine net ne change pas`);
+    const accueil = repartitionClasses({ net: true });
+    pres(somme(accueil), net, `${cas} : l’accueil en net fait le net`);
+    pres(accueil.reduce((s, x) => s + x.pct, 0), 100, `${cas} : et ses parts font cent`);
+    const alloc = poidsPoches({ net: true });
+    pres(somme(alloc), net, `${cas} : Allocation fait le même net`);
+    const lignes = allocationByAsset({ credits: false, net: true });
+    pres(somme(lignes), net, `${cas} : son détail ligne par ligne aussi`);
+    const q = pochesProjection();
+    pres(q.placees + q.plat, net, `${cas} : la projection part du même net`);
+    const dp = partPlateDetail();
+    pres(dp.total, partPlate(), `${cas} : le détail de la part plate redonne son total`);
+    pres(dp.biensNets - dp.autresDettes, q.plat, `${cas} : ses deux lignes font la part plate`);
+    const dest = dettesParDestination();
+    pres(Object.values(dest.classes).reduce((s, v) => s + v, 0) + dest.nonAffectees, dettesTotal(),
+      `${cas} : chaque dette est rangée une fois, et une seule`);
+    for (const [cle, v] of Object.entries(attendu.classes)) {
+      pres(num(part(accueil, cle)?.value), v, `${cas} : « ${cle} » vaut ${v} sur l’accueil`);
+    }
+    pres(num(part(accueil, 'immobilier')?.value), num(attendu.classes.immobilier),
+      `${cas} : l’immobilier ne porte que ce qui le finance`);
+    pres(-num(part(accueil, DETTES_NON_AFFECTEES)?.value), attendu.nonAffectees,
+      `${cas} : les dettes sans destination sont sur leur ligne`);
+    pres(num(part(alloc, 'pe')?.value), num(attendu.classes.nonCote),
+      `${cas} : Allocation range le non coté pareil`);
+    pres(num(part(alloc, 'immo')?.value), num(attendu.classes.immobilier),
+      `${cas} : et l’immobilier pareil`);
+    pres(dp.biensNets, attendu.biensNets, `${cas} : la projection porte les biens nets de leurs seuls crédits`);
+    pres(dp.autresDettes, attendu.autresDettes, `${cas} : et les autres crédits à part`);
+    return { accueil, alloc, lignes };
+  };
+
+  test('un prêt pour des parts non cotées, sans aucun immobilier', () => {
+    poserCas({ parts: true, pretParts: true });
+    const { accueil, lignes } = verifierPartout('A', {
+      net: CASH + PARTS - PRET_PARTS,
+      classes: { liquidites: CASH, nonCote: PARTS - PRET_PARTS },
+      nonAffectees: 0, biensNets: 0, autresDettes: PRET_PARTS });
+    vrai(!part(accueil, 'immobilier'), 'aucune ligne « Immobilier » n’apparaît');
+    pres(part(accueil, 'nonCote').dettes, PRET_PARTS, 'le non coté dit le crédit qui le finance');
+    pres(lignes.find(l => l.label === 'Parts').value, PARTS - PRET_PARTS,
+      'le détail ligne par ligne s’accorde avec la carte du haut');
+  });
+
+  test('un prêt immobilier lié à son bien', () => {
+    poserCas({ appart: true });
+    verifierPartout('B', {
+      net: CASH + APPART - PRET_IMMO,
+      classes: { liquidites: CASH, immobilier: APPART - PRET_IMMO },
+      nonAffectees: 0, biensNets: APPART - PRET_IMMO, autresDettes: 0 });
+  });
+
+  test('une dette sans destination connue', () => {
+    poserCas({ parts: true, perso: true });
+    const { accueil, lignes } = verifierPartout('C', {
+      net: CASH + PARTS - PERSO,
+      classes: { liquidites: CASH, nonCote: PARTS },
+      nonAffectees: PERSO, biensNets: 0, autresDettes: PERSO });
+    vrai(!part(accueil, 'immobilier'), 'elle ne devient pas de l’immobilier');
+    vrai(lignes.some(l => l.value < -0.005), 'le détail ligne par ligne la montre aussi');
+    pres(lignes.find(l => l.label === 'Parts').value, PARTS, 'sans la retrancher des parts');
+  });
+
+  test('plusieurs dettes de destinations différentes', () => {
+    poserCas({ parts: true, pretParts: true, appart: true, perso: true });
+    verifierPartout('D', {
+      net: CASH + PARTS + APPART - PRET_PARTS - PRET_IMMO - PERSO,
+      classes: { liquidites: CASH, nonCote: PARTS - PRET_PARTS, immobilier: APPART - PRET_IMMO },
+      nonAffectees: PERSO, biensNets: APPART - PRET_IMMO, autresDettes: PRET_PARTS + PERSO });
+  });
+
+  test('le mode Brut ne retranche rien, et la barre y compose les avoirs', () => {
+    poserCas({ parts: true, pretParts: true, appart: true, perso: true });
+    const brut = repartitionClasses();
+    pres(somme(brut), patrimoine().brut, 'les parts font les avoirs');
+    vrai(!part(brut, DETTES_NON_AFFECTEES), 'aucune ligne de dette en brut');
+    for (const x of brut) pres(x.dettes, 0, `« ${x.classe} » garde sa valeur pleine`);
+    const seg = segmentsBarre(brut);
+    for (const s of seg) pres(s.largeur, s.pct, `« ${s.classe} » : le segment vaut sa part`);
+  });
+
+  test('une part négative n’a pas de segment, et la barre reste pleine', () => {
+    poserCas({ parts: true, pretParts: true, appart: true, perso: true });
+    const net = repartitionClasses({ net: true });
+    const seg = segmentsBarre(net);
+    vrai(!seg.some(s => s.classe === DETTES_NON_AFFECTEES), 'la dette sans destination n’est pas dessinée');
+    pres(seg.reduce((s, x) => s + x.largeur, 0), 100, 'les segments remplissent la piste');
+    const positives = net.filter(x => x.value > 0).reduce((s, x) => s + x.value, 0);
+    for (const s of seg) pres(s.largeur, s.value / positives * 100, `« ${s.classe} » : sa part des parts positives`);
+    eq(largeurPart(130), 'max(3px, 100.0%)', 'une part au-delà de cent reste dans sa piste');
+    eq(largeurPart(-12), '0%', 'une part négative n’a pas de barre');
+  });
+
+  test('une classe financée au-delà de sa valeur devient négative, sans rien inventer', () => {
+    poserCas({ parts: true, pretParts: true });
+    Store.state.comptes.find(c => c.id === 'c_parts').lignes[0].valeur = 10000;
+    refreshAccounts();
+    const net = repartitionClasses({ net: true });
+    pres(part(net, 'nonCote').value, 10000 - PRET_PARTS, 'le non coté est négatif');
+    vrai(!part(net, 'immobilier'), 'et la dette ne glisse pas vers l’immobilier');
+    pres(somme(net), patrimoine().net, 'la somme fait toujours le net');
+  });
+
+  test('un compte qui mêle plusieurs classes ne dit pas laquelle il finance', () => {
+    /* Une marge rattachee a un compte-titres : le lien existe, la classe non.
+       Choisir entre actions et obligations serait deviner. */
+    poserCas({});
+    Store.state.etabs.push({ id: 'e_courtier', nom: 'Courtier', notes: '',
+      dettes: [{ id: 'd_marge', libelle: 'Marge', montant: 3000, bienId: 'c_cto', note: '' }] });
+    Store.state.comptes.push(cpt('c_cto', 'e_courtier', 'cto', 'CTO', [{ montant: 9000, affectation: 'investir' }], []));
+    refreshAccounts();
+    eq(classeFinanceeParDette(Store.state.etabs[1].dettes[0], Store.state.etabs[1]), null,
+      'aucune classe désignée');
+    pres(dettesParDestination().nonAffectees, 3000, 'elle reste sur la ligne des dettes non affectées');
+  });
+
+  test('un lien mort, ailleurs ou vers un compte archivé ne finance plus rien', () => {
+    poserCas({ parts: true, pretParts: true });
+    const d = Store.state.etabs.find(e => e.id === 'e_holding').dettes[0];
+    const e = Store.state.etabs.find(x => x.id === 'e_holding');
+    d.bienId = 'c_disparu';
+    eq(classeFinanceeParDette(d, e), null, 'un lien mort');
+    d.bienId = 'c_livret';
+    eq(classeFinanceeParDette(d, e), null, 'un compte d’un autre établissement');
+    d.bienId = 'c_parts';
+    Store.state.comptes.find(c => c.id === 'c_parts').statut = 'archive';
+    eq(classeFinanceeParDette(d, e), null, 'un compte archivé');
+    pres(dettesParDestination().nonAffectees, PRET_PARTS, 'et la dette reste comptée');
+  });
+
+  test('l’accueil dit la règle, sans supposer l’immobilier, et en deux langues', () => {
+    const src = lireSource('assets/app.js');
+    vrai(!src.includes('est retiré de l’immobilier, qui est ce'), 'l’ancienne aide est partie');
+    vrai(/segmentsBarre\(parts\)/.test(src), 'la barre du haut passe par segmentsBarre');
+    vrai(/data-apercu="\$\{dettesSeules \? 'credits' : 'classe'\}"/.test(src),
+      'la ligne des dettes ouvre les crédits');
+    for (const c of ['Dettes non affectées', 'après {v} de crédit', 'Tes autres crédits',
+                     'Ces parts portent sur ton patrimoine net : les {v} de capital restant dû sont déduits une seule fois.',
+                     'Un crédit se retranche de la classe du compte auquel il est rattaché : un prêt rattaché à un logement, de ton immobilier ; un prêt rattaché à des parts de société, du non coté.',
+                     'Les crédits sans destination connue, {v}, forment la ligne « Dettes non affectées » : leur fiche ne désigne aucun compte, ou un compte qui mêle plusieurs classes, et Longward ne les attribue à aucune classe.',
+                     'Bascule sur « Brut » pour voir tes avoirs avant crédits.',
+                     'Ces crédits ne financent aucun bien détenu en direct : un prêt pour des parts de société, un prêt personnel, une dette sans destination connue. La projection les porte à leur montant, sans rendement.',
+                     'Tes autres crédits sont portés à leur montant d’aujourd’hui,',
+                     'aujourd’hui, hors biens détenus en direct et crédits', 'sans destination connue',
+                     'tes biens en direct, leurs crédits et tes autres crédits']) {
+      vrai(!!I18N.en[c], `« ${c.slice(0, 40)} » a sa traduction`);
+      vrai(src.includes(`trad('${c}')`), `« ${c.slice(0, 40)} » passe par trad()`);
+    }
+    for (const c of ['après {v} de crédit', 'Ces parts portent sur ton patrimoine net : les {v} de capital restant dû sont déduits une seule fois.']) {
+      vrai(I18N.en[c].includes('{v}'), `« ${c.slice(0, 30)} » garde {v} en anglais`);
+    }
+  });
+
+  test('la note « après tant de crédit » ne plie pas les montants du tableau', () => {
+    /* Mesure a 375 px : la note elargissait la colonne des noms, et le total
+       « 87 000,00 EUR » du pied passait sur deux lignes. */
+    const src = lireSource('assets/app.js');
+    const css = lireSource('assets/styles.css');
+    vrai(src.includes('<td class="montant">${fmtEUR(i.value)}</td>'), 'le montant d’une ligne se nomme');
+    vrai(src.includes('<td class="montant">${fmtEUR(total)}</td>'), 'et celui du pied aussi');
+    vrai(/\.card > table td\.montant \{ white-space: nowrap; overflow-wrap: normal; \}/.test(css),
+      'la feuille les tient sur une ligne');
+    const repli = css.indexOf('white-space: normal; overflow-wrap: anywhere;\n  }');
+    vrai(repli > 0 && css.indexOf('td.montant { white-space: nowrap') > repli,
+      'déclarée après la règle de repli qu’elle contredit');
   });
 });
