@@ -305,9 +305,14 @@ const SEED = {
        deux contraintes ne peuvent pas tenir sur un horizon court.
 
        Fin 2028 les desserre : vingt-huit mois a ce rythme font 37 000 EUR de
-       marge. 240 000 laisse donc une marche visible — 82 % atteints, 43 000 a
-       faire, 1 529 EUR par mois contre 1 333 constates — et les trois chiffres
-       de la carte travaillent tous les trois.
+       marge. 240 000 laisse donc une marche visible -- ce qui reste a faire et
+       le rythme necessaire contre le rythme constate -- et ces chiffres de la
+       carte travaillent.
+
+       La graine ne pose pas de point de depart (`objectifDepart`) : la barre
+       d'avancement attend qu'on en choisisse un, parmi aujourd'hui et les
+       releves du jeu, et c'est ce que la demonstration montre d'un objectif
+       ancien dont le depart n'est pas connu.
 
        Il se relit chaque fois que les valeurs de la graine bougent : un objectif
        deja atteint ne demontre rien, et c'est le net qui decide, pas ce nombre.

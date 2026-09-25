@@ -2576,6 +2576,110 @@ suite('Le total des lignes de titres suit leurs filtres', () => {
   });
 });
 
+/* --- L'objectif avance depuis son point de depart, pas depuis zero -------- */
+suite('L’objectif avance depuis son point de départ', () => {
+  const d = (valeur, date = '2026-09-25') => ({ date, valeur, source: 'creation' });
+
+  test('la barre part de zéro le jour où l’objectif naît', () => {
+    const cas = (total, attendu) => {
+      const p = progressionObjectif({ total, obj: 52000, remaining: total - 52000 }, d(50226.44));
+      pres(p.pct, attendu, `à ${total}`);
+      return p;
+    };
+    eq(cas(50226.44, 0).etat, 'enCours', 'au départ, rien n’est parcouru');
+    pres(cas(50226.44, 0).barre, 0, 'et la barre est vide');
+    /* Le depart est arrondi au centime, le patrimoine du jour non : le jour de
+       la creation, un ecart flottant ne doit pas passer pour une baisse. */
+    eq(cas(50226.44 - 1e-9, 0).etat, 'enCours', 'un bruit de virgule flottante n’est pas une baisse');
+    cas(51113.22, 50);
+    eq(cas(52000, 100).etat, 'atteint', 'à la cible, le chemin est fait');
+  });
+
+  test('une baisse, une cible dépassée, une cible atteinte dès le départ', () => {
+    const baisse = progressionObjectif({ total: 49000, obj: 52000, remaining: -3000 }, d(50000));
+    eq(baisse.etat, 'enBaisse', 'sous le départ');
+    pres(baisse.pct, -50, 'le chiffre dit le recul, sans se borner');
+    pres(baisse.barre, 0, 'la barre, elle, reste à zéro');
+    const depasse = progressionObjectif({ total: 53000, obj: 52000, remaining: 1000 }, d(50000));
+    eq(depasse.etat, 'atteint', 'au-delà de la cible');
+    pres(depasse.pct, 150, 'le dépassement se compte');
+    pres(depasse.barre, 100, 'et la barre est pleine, pas plus');
+    const deja = progressionObjectif({ total: 55000, obj: 52000, remaining: 3000 }, d(54000));
+    eq(deja.etat, 'atteinteAuDepart', 'une cible sous le départ n’a pas de chemin');
+    eq(deja.pct, null, 'et pas de pourcentage : le diviseur serait négatif');
+    eq(progressionObjectif({ total: 50000, obj: 52000, remaining: -2000 }, null).etat, 'inconnu',
+      'sans départ, rien ne se mesure');
+    eq(progressionObjectif({ total: 50000, obj: 0, remaining: 50000 }, d(1)).etat, 'sansCible', 'sans cible non plus');
+  });
+
+  test('créer fige le départ, modifier la cible le garde, la retirer l’efface', () => {
+    Fixture.poser(s => { s.meta.objective = 0; });
+    const net = nowTotals().total;
+    suivreCibleObjectif(0, 120000, '2026-09-25');
+    const cree = departObjectif();
+    eq(cree.date, '2026-09-25', 'la date du jour de création');
+    pres(cree.valeur, net, 'et le patrimoine net de ce jour, sans le remettre à zéro');
+    eq(cree.source, 'creation', 'la source le dit');
+    pres(progressionObjectif({ ...objectiveStatus(), obj: 120000 }).pct, 0, 'la barre commence à 0 %');
+    suivreCibleObjectif(120000, 150000, '2026-12-01');
+    eq(JSON.stringify(departObjectif()), JSON.stringify(cree), 'changer la cible ne redéfinit rien');
+    Store.state.meta.objectiveYear = 2030;
+    eq(JSON.stringify(departObjectif()), JSON.stringify(cree), 'changer l’année non plus');
+    suivreCibleObjectif(150000, 0);
+    eq(departObjectif(), null, 'retirer la cible retire l’objectif et son départ');
+  });
+
+  test('un objectif sans départ n’en reçoit pas un inventé', () => {
+    Fixture.poser(s => { s.meta.objective = 200000; delete s.meta.objectifDepart; });
+    eq(departObjectif(), null, 'aucun départ supposé, ni zéro ni le 1er janvier');
+    eq(progressionObjectif().etat, 'inconnu', 'la barre attend');
+    Store.state.meta.objectifDepart = { date: '2026-13-40', valeur: 'x' };
+    eq(departObjectif(), null, 'un départ illisible ne vaut pas mieux');
+  });
+
+  test('un départ passé se prend sur un relevé, à la date de sa photo et pour son net', () => {
+    Fixture.poser(s => {
+      s.monthly.push({ date: '2026-03-01', clotureLe: '2026-03-02', comment: '', v: { c_courant: 3000, c_livret: 2000 }, dettes: 500 });
+      s.monthly.push({ date: '2026-05-01', comment: '', v: {} });
+      s.monthly.push({ date: '2099-01-01', comment: '', v: { c_courant: 1 } });
+    });
+    const avant = JSON.stringify(Store.state.monthly);
+    const p = departsPossibles('2026-09-25');
+    eq(p[0].source, 'jour', 'aujourd’hui d’abord');
+    pres(p[0].valeur, nowTotals().total, 'pour le patrimoine du jour');
+    const mars = p.find(x => x.releve === '2026-03-01');
+    vrai(mars, 'le relevé de mars est un départ possible');
+    eq(mars.date, '2026-03-02', 'à la date où sa photo a été prise');
+    pres(mars.valeur, 4500, 'pour son patrimoine net, dettes déduites');
+    vrai(!p.some(x => x.releve === '2026-05-01'), 'un relevé vide ne dit rien du patrimoine');
+    vrai(!p.some(x => x.releve === '2099-01-01'), 'un relevé à venir n’est pas un départ');
+    vrai(!p.some(x => /-01-01$/.test(x.date) && !x.releve), 'aucun 1er janvier supposé');
+    eq(JSON.stringify(Store.state.monthly), avant, 'et les relevés ne sont pas touchés');
+  });
+
+  test('le reste et le rythme ne changent pas, la carte lit l’avancement', () => {
+    Fixture.poser(s => { s.meta.objective = 120000; s.meta.objectiveYear = new Date().getFullYear() + 1; });
+    const g = objectiveStatus();
+    eq(g.pct, undefined, 'le pourcentage depuis zéro n’existe plus');
+    pres(g.remaining, g.total - 120000, 'ce qui manque reste l’écart à la cible');
+    const pj = objectiveProjection();
+    pres(pj.needed, pj.monthsLeft ? (120000 - g.total) / pj.monthsLeft : 0, 'et le rythme nécessaire le même calcul');
+    const src = lireSource('assets/app.js');
+    vrai(!/\bg\.pct\b/.test(src), 'plus aucun écran ne lit l’ancien pourcentage');
+    const carte = src.slice(src.indexOf('const carteObjectif = () => {'), src.indexOf('const ageDetaille'));
+    vrai(/const p = progressionObjectif\(g\);/.test(carte), 'la carte lit l’avancement depuis le départ');
+    vrai(/\$\{p\.pct == null \? '' : `<div class="goal-bar">/.test(carte), 'sans chemin mesurable, pas de barre');
+    vrai(/trad\('Départ'\)/.test(carte), 'et le départ se lit sur la carte');
+    vrai(/if \(path === 'meta\.objective'\) suivreCibleObjectif\(avant, getPath\(path\)\);/.test(src),
+      'une cible saisie passe par le suivi du départ');
+    vrai(/async 'objectif-depart'\(\)/.test(src) && /departsPossibles\(\)/.test(src),
+      'et le départ se choisit par un geste, parmi aujourd’hui et les relevés');
+    for (const k of ['point de départ à définir', 'cible déjà atteinte au départ', 'sous le point de départ',
+      'du chemin parcouru', 'Choisis un point de départ pour suivre l’avancement.', 'Point de départ'])
+      vrai(!!I18N.en[k], `traduit : ${k}`);
+  });
+});
+
 /* --- Une fiche de compte dit ce qui vaut pour ce compte ------------------- */
 suite('Une fiche de compte ne dit que ce qui vaut pour ce compte', () => {
   test('le délai de vente et les règles de retrait ne se confondent pas', () => {

@@ -4903,10 +4903,69 @@ function byAccountType({ financier = false } = {}) {
     .sort((a, b) => b.value - a.value);
 }
 
+/* Ou l'on en est, en euros. Le pourcentage n'est plus ici : « patrimoine sur
+   cible » mesurait le chemin depuis zero, et un objectif de 52 000 pose a
+   50 000 s'annoncait atteint a 96 % le jour meme. L'avancement vit dans
+   `progressionObjectif()`, qui part du point de depart. */
 function objectiveStatus() {
   const { total } = nowTotals();
   const obj = num(Store.state.meta.objective);
-  return { total, obj, pct: obj ? total / obj * 100 : 0, remaining: total - obj };
+  return { total, obj, remaining: total - obj };
+}
+
+/* LE POINT DE DEPART D'UN OBJECTIF : une date, le patrimoine net ce jour-la, et
+   d'ou vient ce chiffre (`creation` : l'objectif vient d'etre pose ; `releve` :
+   un releve de cette date ; `jour` : la valeur du jour, choisie apres coup).
+
+   Il se fige a la naissance de l'objectif et ne bouge plus : changer la cible ou
+   l'annee ne le redefinit pas, sinon la barre repartirait de zero a chaque
+   ajustement sans que personne l'ait demande. Il ne se change que par un geste
+   qui le nomme. Retirer la cible retire l'objectif, et son depart avec lui.
+
+   Un objectif pose avant que ce point existe n'en a pas, et il ne s'invente
+   pas : ni zero, ni le 1er janvier. Sa barre attend qu'un depart soit choisi. */
+function departObjectif() {
+  const d = Store.state.meta?.objectifDepart;
+  if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(String(d.date || '')) || !Number.isFinite(Number(d.valeur))) return null;
+  return { date: d.date, valeur: Number(d.valeur), source: d.source || 'jour', releve: d.releve || null };
+}
+
+function suivreCibleObjectif(avant, apres, jour = todayISO()) {
+  const meta = Store.state.meta;
+  if (!(num(apres) > 0)) { delete meta.objectifDepart; return; }
+  if (!(num(avant) > 0)) {
+    meta.objectifDepart = { date: jour, valeur: round2(nowTotals().total), source: 'creation' };
+  }
+}
+
+function departsPossibles(jour = todayISO()) {
+  const releves = (Store.state.monthly || [])
+    .filter(r => !rowIsEmpty(r) && String(r.date) <= jour)
+    .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+    .map(r => ({ date: /^\d{4}-\d{2}-\d{2}$/.test(String(r.clotureLe || '')) ? r.clotureLe : r.date,
+                 valeur: round2(rowNet(r)), source: 'releve', releve: r.date }));
+  return [{ date: jour, valeur: round2(nowTotals().total), source: 'jour', releve: null }, ...releves];
+}
+
+/* L'AVANCEMENT : (patrimoine actuel - depart) / (cible - depart).
+
+   Cinq etats, parce que la formule ne vaut pas partout. Sans depart connu, il
+   n'y a pas de chemin a mesurer (`inconnu`). Une cible deja atteinte au depart
+   n'a pas de chemin non plus -- le diviseur est nul ou negatif, et le quotient
+   ne voudrait rien dire (`atteinteAuDepart`). Sinon le pourcentage est vrai,
+   meme negatif quand le patrimoine est passe sous son depart (`enBaisse`), et
+   au-dela de cent quand la cible est depassee (`atteint`). La barre se borne
+   entre zero et cent ; le chiffre, lui, ne se borne pas. */
+function progressionObjectif(g = objectiveStatus(), d = departObjectif()) {
+  if (!(num(g.obj) > 0)) return { etat: 'sansCible', pct: null, depart: null };
+  if (!d) return { etat: 'inconnu', pct: null, depart: null };
+  const chemin = num(g.obj) - d.valeur;
+  if (!(chemin > 0.005)) return { etat: 'atteinteAuDepart', pct: null, depart: d, chemin };
+  const ecart = num(g.total) - d.valeur;
+  const parcouru = Math.abs(ecart) < 0.005 ? 0 : ecart;
+  const pct = parcouru / chemin * 100;
+  const etat = num(g.total) >= num(g.obj) ? 'atteint' : parcouru < 0 ? 'enBaisse' : 'enCours';
+  return { etat, pct, depart: d, chemin, parcouru, barre: Math.min(100, Math.max(0, pct)) };
 }
 
 /*   Ce qu'elle faisait, pour memoire : le patrimoine du jour plus un nombre saisi

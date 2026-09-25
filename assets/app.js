@@ -2243,6 +2243,12 @@ const carteObjectif = () => {
     <span class="muted">${trad('En poser un →')}</span>
   </button>` : '';
 
+    const p = progressionObjectif(g);
+    const etatDit = p.etat === 'inconnu' ? trad('point de départ à définir')
+      : p.etat === 'atteinteAuDepart' ? trad('cible déjà atteinte au départ')
+      : p.etat === 'atteint' ? trad('objectif atteint')
+      : p.etat === 'enBaisse' ? trad('sous le point de départ')
+      : `${fmtPct(p.pct, 1)} ${trad('du chemin parcouru')}`;
     return `
   <button type="button" class="card goal card-link" data-action="apercu" data-apercu="objectif"
           title="${trad('Modifier l\'objectif')}">
@@ -2250,7 +2256,7 @@ const carteObjectif = () => {
       <h2>${trad('Objectif à fin')} ${esc(an)}</h2>
       <span class="hint">${mois
         ? `${mois} ${mois > 1 ? trad('mois restants') : trad('mois restant')}`
-        : trad('dernier mois')} · ${fmtPct(g.pct, 2)} ${trad('atteint')}</span>
+        : trad('dernier mois')} · ${etatDit}</span>
     </div>
     <div class="goal-top">
       <b class="${g.remaining >= 0 ? 'up' : ''}">${g.remaining >= 0
@@ -2261,11 +2267,14 @@ const carteObjectif = () => {
           ? `${trad('restants, soit')} ${fmtEUR0(-g.remaining / mois)} ${trad('/ mois sur')} ${mois} ${trad('mois')}`
           : trad('restants avant la fin de l’année')}</span>
     </div>
-    <div class="goal-bar"><div class="goal-fill" style="width:${Math.min(100, Math.max(0, g.pct)).toFixed(2)}%"></div></div>
+    ${p.pct == null ? '' : `<div class="goal-bar"><div class="goal-fill" style="width:${p.barre.toFixed(2)}%"></div></div>`}
     <div class="goal-foot">
       <span>${fmtEUR(g.total)} <span class="muted">${trad('sur.objectif', 'sur')} ${fmtEUR0(g.obj)}</span></span>
       <span>${g.remaining >= 0 ? `${trad('Objectif atteint')} 🎉` : ''}</span>
     </div>
+    <span class="goal-depart muted">${p.depart
+      ? `${trad('Départ')}${deuxPoints()} ${fmtEUR(p.depart.valeur)} ${trad('le')} ${esc(fmtDate(p.depart.date))}`
+      : trad('Choisis un point de départ pour suivre l’avancement.')}</span>
   </button>`;
 };
 
@@ -8549,6 +8558,33 @@ const ACTIONS = {
     closeApercu();
   },
 
+  async 'objectif-depart'() {
+    if ($('#modalBody')?.dataset.differe === 'sale') { appliquerDiffere(); Store.save(); }
+    if (!(num(objectiveStatus().obj) > 0)) return;
+    const choix = departsPossibles();
+    const actuel = departObjectif();
+    const iActuel = actuel ? choix.findIndex(x => x.source === actuel.source && x.date === actuel.date
+      && (x.releve || null) === (actuel.releve || null)) : -1;
+    const v = await askForm({
+      titre: 'Point de départ de l’objectif',
+      sous: trad('La barre mesure le chemin entre ce point et ta cible. Un départ passé se prend sur un relevé enregistré.'),
+      ok: 'Choisir',
+      champs: [{ cle: 'depart', label: trad('Partir de'), type: 'liste', valeur: String(Math.max(0, iActuel)),
+        options: choix.map((x, i) => [String(i), x.source === 'jour'
+          ? `${trad('Aujourd’hui')} · ${fmtEUR0(x.valeur)}`
+          : `${trad('Relevé')} · ${fmtMonth(x.releve)} · ${fmtEUR0(x.valeur)}`]) }],
+    });
+    if (v) {
+      const x = choix[+v.depart];
+      if (x) {
+        Store.state.meta.objectifDepart = { date: x.date, valeur: x.valeur, source: x.source,
+                                            ...(x.releve ? { releve: x.releve } : {}) };
+        Store.save(); render();
+        toast(`${trad('Point de départ')}${deuxPoints()} ${fmtEUR0(x.valeur)} ${trad('le')} ${fmtDate(x.date)}`);
+      }
+    }
+    openApercu('objectif');
+  },
   'apercu-enregistrer'() {
     /* Un capital corrige ici se date par `applyField`, comme partout : c'est le
        montant qui change qui dit qu'on l'a relu. Enregistrer le panneau ne date
@@ -13584,12 +13620,24 @@ const APERCUS = {
     const an = Store.state.meta.objectiveYear;
     const anCourante = new Date().getFullYear();
     const sansCible = !(num(g.obj) > 0);
+    const p = progressionObjectif(g);
+    const d = p.depart;
+    const etat = p.etat === 'inconnu' ? trad('point de départ à définir')
+      : p.etat === 'atteinteAuDepart' ? trad('cible déjà atteinte au départ')
+      : p.etat === 'atteint' ? trad('objectif atteint')
+      : p.etat === 'enBaisse' ? `${fmtPct(p.pct, 1)} ${trad('du chemin : sous le point de départ')}`
+      : `${fmtPct(p.pct, 1)} ${trad('du chemin parcouru')}`;
     return {
       titre: `${trad('Objectif à fin')} ${an}`,
-      sous: sansCible ? trad('aucune cible fixée') : `${fmtPct(g.pct, 1)} ${trad('atteint')}`,
+      sous: sansCible ? trad('aucune cible fixée') : etat,
+      sousAction: sansCible ? '' : ` <button type="button" class="lien-nu" data-action="objectif-depart">${
+        trad(d ? 'Changer le point de départ' : 'Choisir le point de départ')}</button>`,
       total: g.total,
       totalNote: sansCible ? trad('ton patrimoine aujourd’hui') : `${trad('sur.objectif', 'sur')} ${fmtEUR0(g.obj)}`,
       lignes: sansCible ? [] : [
+        ...(d ? [{ label: trad('Point de départ'), valeur: d.valeur,
+          meta: `${trad('le')} ${fmtDate(d.date)} · ${trad(d.source === 'releve' ? 'pris sur un relevé'
+            : d.source === 'creation' ? 'à la création de l’objectif' : 'valeur du jour choisie')}` }] : []),
         { label: trad('Il te manque'), meta: `${trad('d’ici fin')} ${an}`, valeur: Math.max(0, -g.remaining) },
         { label: trad('Rythme nécessaire'), meta: `${pj.monthsLeft} ${pj.monthsLeft > 1 ? trad('mois restants') : trad('mois restant')}`, valeur: pj.needed },
         { label: trad('Ton rythme observé'), meta: trad('moyenne mensuelle'), valeur: pj.paceRate },
@@ -15919,9 +15967,10 @@ function applyField(f) {
   }
   if (f.type === 'number') {
     const suivi = dateQuiSuit(path);
-    const avant = suivi ? getPath(path) : undefined;
+    const avant = suivi || path === 'meta.objective' ? getPath(path) : undefined;
     setPath(path, f.value === '' ? '' : Number(f.value));
     if (suivi && montantChange(avant, getPath(path))) setPath(suivi.chemin, dateApresChangement(suivi.genre));
+    if (path === 'meta.objective') suivreCibleObjectif(avant, getPath(path));
     return;
   }
   if (f.dataset.type === 'num') { setPath(path, Number(f.value)); return; }

@@ -1622,6 +1622,7 @@ button.pf-total:focus-visible, button.pf-mesure:focus-visible {
 .goal-fill { height: 100%; border-radius: var(--radius-pill); background: var(--accent); }
 .goal-foot { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 4px 12px;
              font-size: var(--font-sm); color: var(--text-secondary); }
+.goal-depart { display: block; font-size: var(--font-xs); }
 .goal-vide {
   flex-direction: row; align-items: center; justify-content: space-between;
   gap: 12px; font-size: var(--font-md); color: var(--text-secondary);
