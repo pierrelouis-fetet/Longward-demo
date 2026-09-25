@@ -6545,18 +6545,31 @@ function barreValiderFiche(retour = 'accounts') {
     </div>`;
 }
 
+/* L'etat d'une fiche a son ouverture, pour pouvoir y revenir.
+
+   « Annuler » ne peut pas vouloir dire « ne rien ecrire » : la fiche ecrit a
+   chaque frappe, et c'est ce qui garantit qu'on ne perd jamais un montant en
+   changeant d'ecran. La regle du projet est explicite la-dessus, avec sa raison :
+   un bouton qui conditionne l'ecriture jette tout ce qu'on a tape si on quitte
+   sans le voir.
+
+   L'instantane se prend au premier rendu d'une route, pas a chaque rendu : la
+   fiche se re-rend a chaque frappe de certains champs, et reprendre la photo a
+   ce moment-la la rendrait toujours identique.
+
+   Il couvre tout ce que la fiche peut ecrire, pas seulement l'objet qu'elle
+   nomme : `instantaneFiche()` dans store.js en tient le perimetre. Il vit tant
+   qu'on reste sur la fiche -- `render()` l'abandonne des qu'on la quitte, sinon
+   un retour plus tard comparerait a une photo perimee, et « Annuler » ecraserait
+   un solde mis a jour entre-temps depuis un autre ecran. */
 let ficheAvant = null;
 
-function memoriserFiche(cle, objet) {
-  if (!ficheAvant || ficheAvant.cle !== cle) {
-    ficheAvant = { cle, copie: JSON.stringify(objet) };
-  }
+function memoriserFiche(cle) {
+  if (!ficheAvant || ficheAvant.cle !== cle) ficheAvant = instantaneFiche(cle);
 }
 
 function ficheModifiee() {
-  if (!ficheAvant) return false;
-  const o = objetDeFiche(ficheAvant.cle);
-  return !!o && JSON.stringify(o) !== ficheAvant.copie;
+  return ficheDiffere(ficheAvant);
 }
 
 function objetDeFiche(cle) {
@@ -6565,13 +6578,26 @@ function objetDeFiche(cle) {
 }
 
 function retablirFiche() {
-  if (!ficheAvant) return false;
-  const [quoi, id] = String(ficheAvant.cle).split(':');
-  const liste = quoi === 'compte' ? Store.state.comptes : Store.state.etabs;
-  const i = liste.findIndex(x => x.id === id);
-  if (i < 0) return false;
-  liste[i] = JSON.parse(ficheAvant.copie);
-  return true;
+  return retablirInstantane(ficheAvant);
+}
+
+function cleFicheCourante(vue) {
+  const r = routeParam();
+  return r && (vue === 'ficheCompte' || vue === 'ficheEtab') ? `${r.genre}:${r.id}` : null;
+}
+
+const ACTES_QUI_GERENT_LA_FICHE = new Set(['annuler-fiche', 'enregistrer-fiche']);
+async function suivreActeSurFiche(nom, faire) {
+  if (!ficheAvant || ACTES_QUI_GERENT_LA_FICHE.has(nom)) return faire();
+  const cle = ficheAvant.cle;
+  const avant = JSON.stringify(instantaneFiche(cle));
+  try {
+    return await faire();
+  } finally {
+    if (ficheAvant && ficheAvant.cle === cle && JSON.stringify(instantaneFiche(cle)) !== avant) {
+      ficheAvant = instantaneFiche(cle);
+    }
+  }
 }
 
 function viewFicheCompte(id) {
@@ -6580,7 +6606,7 @@ function viewFicheCompte(id) {
     <button class="btn" data-action="goto" data-view="accounts" data-anchor="">${trad('Retour aux actifs')}</button></div>`;
   const idx = Store.state.comptes.indexOf(c);
   const t = typeCompte(c.type);
-  memoriserFiche(`compte:${c.id}`, c);
+  memoriserFiche(`compte:${c.id}`);
   const lignes = lignesDe(c);
   const seule = estActifTerminal(t) && !estBien(t) && lignes.length === 1
     ? lignes[0] : null;
@@ -6806,7 +6832,7 @@ function viewFicheEtab(id) {
   if (!e) return `<div class="card"><p class="empty">${trad('Cet établissement n’existe plus.')}</p>
     <button class="btn" data-action="goto" data-view="accounts" data-anchor="">${trad('Retour aux actifs')}</button></div>`;
   const idx = Store.state.etabs.indexOf(e);
-  memoriserFiche(`etab:${e.id}`, e);
+  memoriserFiche(`etab:${e.id}`);
   const siens = COMPTES().filter(c => c.etabId === e.id && c.statut !== 'archive');
   const total = siens.reduce((s, c) => s + valeurCompte(c), 0);
   const credits = (e.dettes || []).reduce((s, d) => s + num(d.montant), 0);
@@ -9653,8 +9679,8 @@ const ACTIONS = {
     if (!ficheModifiee()) { retourHaptique(); ficheAvant = null; retour(); return; }
     const ok = await askConfirm(
       trad('Annuler tes modifications ?') + '\n'
-      + trad('Cette fiche revient telle qu’elle était en l’ouvrant. '
-      + 'Ce que tu as saisi depuis sera perdu.'),
+      + trad('Cette fiche revient à son dernier état enregistré, crédit et lignes compris. '
+      + 'Ce que tu y as saisi depuis sera perdu.'),
       { ok: 'Annuler les modifications', refus: 'Continuer à modifier' });
     if (!ok) return;
     retablirFiche();
@@ -9702,9 +9728,8 @@ const ACTIONS = {
       if (!ficheAvant || !String(ficheAvant.cle).startsWith('compte:')) return false;
       const c = objetDeFiche(ficheAvant.cle);
       if (!c || !estBienEnDirect(c) || usageBien(c) !== 'principale') return false;
-      let avant = null;
-      try { avant = JSON.parse(ficheAvant.copie); } catch (e) { return false; }
-      return usageBien(avant) !== 'principale';
+      const avant = compteDeLInstantane(ficheAvant, c.id);
+      return !!avant && usageBien(avant) !== 'principale';
     })();
     retourHaptique();
     Store.save();
@@ -14390,6 +14415,7 @@ function focusAnchor() {
 function render() {
   const key = currentView();
   const v = VIEWS[key];
+  if (ficheAvant && ficheAvant.cle !== cleFicheCourante(key)) ficheAvant = null;
   const cleOnglet = SOUS_ONGLETS[v.cle] && sousOngletActif[v.cle]
     ? `${v.cle}.${sousOngletActif[v.cle]}` : null;
   const propre = suffixe => {
@@ -15309,7 +15335,7 @@ function bindGlobal() {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
     const fn = ACTIONS[btn.dataset.action];
-    if (fn) { e.preventDefault(); fn(btn); }
+    if (fn) { e.preventDefault(); suivreActeSurFiche(btn.dataset.action, () => fn(btn)); }
   });
 
   /* Ecrire a la frappe, sauf dans un bloc qui attend son bouton.

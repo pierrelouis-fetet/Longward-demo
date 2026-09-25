@@ -2574,6 +2574,106 @@ suite('Le total des lignes de titres suit leurs filtres', () => {
   });
 });
 
+/* --- Annuler rend tout ce qu'une fiche a ecrit ---------------------------- */
+suite('Annuler une fiche rend aussi le crédit et les lignes', () => {
+  const dette = () => etabById('e_bien').dettes[0];
+  const studio = () => compteById('c_immo');
+
+  test('le crédit seul modifié se voit et se rend', () => {
+    Fixture.poser();
+    const inst = instantaneFiche('compte:c_immo');
+    vrai(!ficheDiffere(inst), 'sortie sans modification : rien à annuler');
+    dette().montant = 35000;
+    vrai(ficheDiffere(inst), 'le capital restant dû changé suffit à rendre la fiche modifiée');
+    vrai(retablirInstantane(inst), 'la restauration a lieu');
+    pres(dette().montant, Fixture.DETTE, 'et le capital revient');
+    vrai(!ficheDiffere(inst), 'plus rien ne diffère');
+    pres(dettesTotal(), Fixture.DETTE, 'les totaux relisent l’ancien crédit');
+  });
+
+  test('le bien et son crédit se rendent ensemble', () => {
+    Fixture.poser();
+    const inst = instantaneFiche('compte:c_immo');
+    studio().lignes[0].valeur = 125000;
+    dette().montant = 38000;
+    dette().taux = 3.2;
+    vrai(ficheDiffere(inst), 'deux objets modifiés, une seule fiche');
+    retablirInstantane(inst);
+    pres(studio().lignes[0].valeur, 120000, 'la valeur du bien revient');
+    pres(dette().montant, Fixture.DETTE, 'le capital aussi');
+    eq(dette().taux, undefined, 'et un champ qui n’existait pas disparaît');
+  });
+
+  test('après Enregistrer, Annuler ne défait plus rien', () => {
+    Fixture.poser();
+    dette().montant = 36000;
+    /* « Enregistrer » oublie l'instantane et en reprend un au rendu suivant. */
+    const inst = instantaneFiche('compte:c_immo');
+    vrai(!ficheDiffere(inst), 'le point de retour est le dernier enregistrement');
+    retablirInstantane(inst);
+    pres(dette().montant, 36000, 'la valeur enregistrée reste');
+  });
+
+  test('la fiche d’un établissement couvre le compte du bien qu’il porte', () => {
+    Fixture.poser();
+    const inst = instantaneFiche('etab:e_bien');
+    studio().apport = 20000;
+    studio().notes = 'à revoir';
+    vrai(ficheDiffere(inst), 'les champs du compte écrits depuis l’établissement comptent');
+    retablirInstantane(inst);
+    eq(studio().apport, undefined, 'l’apport revient à rien');
+    eq(studio().notes, '', 'et les notes à ce qu’elles étaient');
+  });
+
+  test('la mobilité d’une ligne de titres se rend, pas son cours', () => {
+    Fixture.poser();
+    const etf = () => Store.state.positions.find(p => p.id === 'p_etf');
+    const inst = instantaneFiche('compte:c_pea');
+    etf().price = 95;
+    vrai(!ficheDiffere(inst), 'un cours rafraîchi n’est pas une modification de la fiche');
+    etf().mobilite = 'lent';
+    vrai(ficheDiffere(inst), 'la mobilité choisie en est une');
+    retablirInstantane(inst);
+    eq(etf().mobilite, undefined, 'elle revient');
+    pres(etf().price, 95, 'et le cours du jour reste celui du jour');
+    /* Le champ que la fiche ecrit est bien celui que l'instantane couvre. */
+    for (const l of lignesDe(compteById('c_pea')).filter(x => x.marche))
+      vrai(CHAMPS_POSITION_FICHE.includes(l.refMobilite.split('.').pop()), `${l.refMobilite} est couvert`);
+  });
+
+  test('un compte hors de la fiche n’est ni comparé ni restauré', () => {
+    Fixture.poser();
+    const inst = instantaneFiche('compte:c_immo');
+    compteById('c_courant').cash[0].montant = 3500;
+    vrai(!ficheDiffere(inst), 'le compte courant ne fait pas partie de la fiche du studio');
+    retablirInstantane(inst);
+    pres(compteById('c_courant').cash[0].montant, 3500, 'et il n’est pas remis en arrière');
+    eq(instantaneFiche('compte:inconnu'), null, 'une fiche sans objet n’a pas d’instantané');
+    vrai(!ficheDiffere(null) && !retablirInstantane(null), 'et rien ne se compare ni ne se rend');
+  });
+
+  test('la vue lit ce périmètre, l’oublie en partant, et le reprend après un acte', () => {
+    const src = lireSource('assets/app.js');
+    vrai(/function memoriserFiche\(cle\) \{\s*if \(!ficheAvant \|\| ficheAvant\.cle !== cle\) ficheAvant = instantaneFiche\(cle\);/.test(src),
+      'l’instantané couvre la famille de la fiche');
+    vrai(/return ficheDiffere\(ficheAvant\);/.test(src) && /return retablirInstantane\(ficheAvant\);/.test(src),
+      'la détection et la restauration passent par le modèle');
+    const rendu = src.slice(src.indexOf('function render() {'), src.indexOf('function render() {') + 600);
+    vrai(/if \(ficheAvant && ficheAvant\.cle !== cleFicheCourante\(key\)\) ficheAvant = null;/.test(rendu),
+      'quitter la fiche oublie son instantané : un retour ne compare pas à une photo périmée');
+    vrai(/suivreActeSurFiche\(btn\.dataset\.action, \(\) => fn\(btn\)\)/.test(src),
+      'chaque acte passe par le suivi de la fiche');
+    const suivi = src.slice(src.indexOf('async function suivreActeSurFiche('), src.indexOf('async function suivreActeSurFiche(') + 600);
+    vrai(/!== avant\) \{\s*ficheAvant = instantaneFiche\(cle\);/.test(suivi),
+      'un acte qui change la fiche devient le nouveau point de retour');
+    vrai(/ACTES_QUI_GERENT_LA_FICHE = new Set\(\['annuler-fiche', 'enregistrer-fiche'\]\)/.test(src),
+      'Annuler et Enregistrer gèrent l’instantané eux-mêmes');
+    const credits = src.slice(src.indexOf('function creditsDuCompte('), src.indexOf('function creditsDuCompte(') + 200);
+    vrai(/ETABS\(\)\.findIndex\(e => e\.id === c\.etabId\)/.test(credits),
+      'les crédits édités par la fiche sont ceux de l’établissement du compte, que le périmètre inclut');
+  });
+});
+
 /* --- Marches parle de la cible, et de rien qu'il ne sache ---------------- */
 suite('Les insights de Marchés', () => {
   test('l’écart à la cible vit là où la cible se règle, et aucun apport n’est lu', () => {
@@ -12600,7 +12700,7 @@ suite('Créer un bien ne laisse plus passer une réponse sans suite', () => {
                       s.indexOf("async 'choisir-usage'(btn)"));
     vrai(f.length > 400, 'l’action doit être trouvable');
     vrai(/const devientPrincipale = \(\(\) => \{/.test(f), 'la transition se décide sur l’état d’avant');
-    vrai(/JSON\.parse\(ficheAvant\.copie\)/.test(f), 'lu dans l’instantané de la fiche');
+    vrai(/compteDeLInstantane\(ficheAvant, c\.id\)/.test(f), 'lu dans l’instantané de la fiche');
     vrai(/usageBien\(avant\) !== 'principale'/.test(f),
       'et rien ne se repose à qui réenregistre le même choix');
     vrai(/if \(devientPrincipale\) await proposerTransitionLoyer\(\);/.test(f),
@@ -16619,15 +16719,21 @@ suite('Budget : le moteur dit quel poste a bougé, ou il se tait', () => {
   });
 
   test('le rythme du mois en cours prévient d’un dépassement, pas avant le tiers', () => {
-    /* La regle regarde le seul mois non clos du catalogue, et elle le dit. */
-    poserBudget(SIX_MOIS_AVEC_DERIVE, { objectif: 1000, enCours: { Courses: 900 } });
+    /* La regle regarde le seul mois non clos du catalogue, et elle le dit.
+
+       La depense suit l'avancement du mois : un montant fixe se projette plus
+       bas a mesure que le mois avance, et passait sous le seuil en fin de mois.
+       Celle-ci se projette toujours a une fois et demie l'objectif. */
+    poserBudget(SIX_MOIS_AVEC_DERIVE, { objectif: 1000, enCours: { Courses: 1 } });
     const m = mesuresInsights(contexteInsights({}));
+    const depense = Math.round(1000 * 1.5 * m.encours.avancement);
+    poserBudget(SIX_MOIS_AVEC_DERIVE, { objectif: 1000, enCours: { Courses: depense } });
     const p = trouve('spending_target_pace');
     if (m.encours.avancement < 1 / 3) {
       vrai(!p, 'avant le tiers du mois, une projection ne mesure que le hasard des premiers jours');
     } else {
       vrai(p, 'passé le tiers du mois, le rythme se dit');
-      pres(p.params.spent, 900, 'ce qui est déjà sorti');
+      pres(p.params.spent, depense, 'ce qui est déjà sorti');
       vrai(p.params.projected > p.params.target, 'et la projection dépasse l’objectif');
     }
   });
@@ -18656,9 +18762,9 @@ suite('Une fiche se valide ou s’annule, et rien ne se saisit sans borne', () =
        re-rend a chaque frappe et la photo serait toujours identique. */
     vrai(/if \(!ficheAvant \|\| ficheAvant\.cle !== cle\)/.test(src),
       'l’instantané ne se reprend pas à chaque rendu');
-    vrai(/memoriserFiche\(`compte:\$\{c\.id\}`, c\)/.test(src),
+    vrai(/memoriserFiche\(`compte:\$\{c\.id\}`\)/.test(src),
       'la fiche d’un compte le pose');
-    vrai(/memoriserFiche\(`etab:\$\{e\.id\}`, e\)/.test(src),
+    vrai(/memoriserFiche\(`etab:\$\{e\.id\}`\)/.test(src),
       'celle d’un établissement aussi');
   });
 

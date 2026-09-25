@@ -541,6 +541,80 @@ const etabById = id => ETABS().find(e => e.id === id);
 const compteById = id => COMPTES().find(c => c.id === id);
 const comptesOuverts = () => COMPTES().filter(c => c.statut !== 'archive');
 
+const CHAMPS_POSITION_FICHE = ['mobilite'];
+
+function familleDeFiche(cle) {
+  const [quoi, id] = String(cle).split(':');
+  let etabId = null, seul = null;
+  if (quoi === 'compte') {
+    seul = compteById(id);
+    if (!seul) return null;
+    etabId = seul.etabId || null;
+  } else if (quoi === 'etab') {
+    if (!etabById(id)) return null;
+    etabId = id;
+  } else return null;
+  const comptes = COMPTES().filter(c => c === seul || (etabId != null && c.etabId === etabId));
+  const ids = new Set(comptes.map(c => c.id));
+  return {
+    etabs: etabId == null ? [] : ETABS().filter(e => e.id === etabId),
+    comptes,
+    positions: (Store.state.positions || []).filter(p => ids.has(p.account)),
+  };
+}
+
+const clePositionFiche = p => p.id ? `id:${p.id}` : `rang:${Store.state.positions.indexOf(p)}`;
+
+function instantaneFiche(cle) {
+  const f = familleDeFiche(cle);
+  if (!f) return null;
+  const champs = p => Object.fromEntries(CHAMPS_POSITION_FICHE.map(k => [k, p[k] ?? null]));
+  return {
+    cle,
+    etabs: Object.fromEntries(f.etabs.map(e => [e.id, JSON.stringify(e)])),
+    comptes: Object.fromEntries(f.comptes.map(c => [c.id, JSON.stringify(c)])),
+    positions: Object.fromEntries(f.positions.map(p => [clePositionFiche(p), champs(p)])),
+  };
+}
+
+function ficheDiffere(inst) {
+  if (!inst) return false;
+  const maintenant = instantaneFiche(inst.cle);
+  if (!maintenant) return false;
+  return JSON.stringify([inst.etabs, inst.comptes, inst.positions])
+    !== JSON.stringify([maintenant.etabs, maintenant.comptes, maintenant.positions]);
+}
+
+function retablirInstantane(inst) {
+  if (!inst) return false;
+  let fait = false;
+  const remettre = (liste, copies) => {
+    for (const [id, json] of Object.entries(copies)) {
+      const i = liste.findIndex(x => x.id === id);
+      if (i >= 0) { liste[i] = JSON.parse(json); fait = true; }
+    }
+  };
+  remettre(ETABS(), inst.etabs);
+  remettre(COMPTES(), inst.comptes);
+  for (const [cle, champs] of Object.entries(inst.positions)) {
+    const p = cle.startsWith('id:')
+      ? Store.state.positions.find(x => x.id === cle.slice(3))
+      : Store.state.positions[+cle.slice(5)];
+    if (!p) continue;
+    for (const [k, v] of Object.entries(champs)) {
+      if (v == null) delete p[k]; else p[k] = v;
+    }
+    fait = true;
+  }
+  return fait;
+}
+
+function compteDeLInstantane(inst, id) {
+  const json = inst && inst.comptes[id];
+  if (!json) return null;
+  try { return JSON.parse(json); } catch (e) { return null; }
+}
+
 const nomCompteV2 = c => c.libelle
   || (((c.lignes || []).length === 1 && !(c.cash || []).length
        && String(c.lignes[0].libelle || '').trim()) || '')

@@ -898,7 +898,7 @@ const I18N = {
     "Sa date de clôture, le {d}, sera retirée : un compte rouvert n'est pas clôturé.": "Its closing date, {d}, will be removed: a reopened account is not closed.",
     "Réversible : tu peux l'archiver de nouveau.": "Reversible: you can archive it again.",
     "Annuler tes modifications ?": "Discard your changes?",
-    "Cette fiche revient telle qu’elle était en l’ouvrant. Ce que tu as saisi depuis sera perdu.": "This card goes back to how it was when you opened it. Anything you typed since will be lost.",
+    "Cette fiche revient à son dernier état enregistré, crédit et lignes compris. Ce que tu y as saisi depuis sera perdu.": "This card goes back to its last saved state, loan and holdings included. Anything you typed since will be lost.",
     "Les espèces ne se suppriment pas": "Cash in hand cannot be deleted",
     "Ce compte existe pour tout le monde, sans établissement. S’il n’y a plus de billets, mets son montant à 0 : il sort alors de tous les totaux, et les relevés passés restent lisibles.": "This account exists for everyone, with no institution. If there are no notes left, set its amount to 0: it then drops out of every total, and past statements stay readable.",
     "Impossible de supprimer": "Cannot delete",
