@@ -42920,7 +42920,10 @@ suite('Une devise principale par profil', () => {
       style: 'currency', currency: devise, currencyDisplay: 'narrowSymbol',
       maximumFractionDigits: 1, notation: 'compact',
     }).format(v));
-    eq(enLangue('en', () => compact(125000, 'USD')), '$125k', 'anglais, dollar');
+    /* La casse du « k » appartient aux donnees de langue du navigateur, pas a
+       l'application, et elle change d'une version de Chrome a l'autre. Ce qui
+       se verifie ici est le symbole, la langue et l'echelle. */
+    vrai(/^\$125[kK]$/.test(enLangue('en', () => compact(125000, 'USD'))), 'anglais, dollar');
     vrai(/125/.test(enLangue('fr', () => compact(125000, 'EUR'))), 'français, euro');
   });
 
