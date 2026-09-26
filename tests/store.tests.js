@@ -42583,7 +42583,9 @@ suite('Le dépôt répond à @claude, sans exposer de clé', () => {
     const f = flux();
     vrai(f, 'le fichier doit être lisible');
     vrai(/uses: anthropics\/claude-code-action@v1\s*$/m.test(f), 'l’action officielle, épinglée à sa version majeure');
-    vrai(/anthropic_api_key: \$\{\{ secrets\.CLAUDE_KEY \}\}/.test(f), 'la clé se lit dans les secrets du dépôt');
+    vrai(/claude_code_oauth_token: \$\{\{ secrets\.CLAUDE_KEY \}\}/.test(f), 'le jeton d’abonnement se lit dans les secrets du dépôt');
+    vrai(!/^\s+anthropic_api_key:/m.test(f), 'et il est la seule voie : pas de clé de console à côté');
+    vrai(/claude setup-token/.test(f), 'le fichier dit comment obtenir le jeton');
     for (const droit of ['contents: write', 'pull-requests: write', 'issues: write', 'id-token: write', 'actions: read']) {
       vrai(new RegExp(`^      ${droit}\\b`, 'm').test(f), `${droit} est déclaré sur le travail`);
     }
