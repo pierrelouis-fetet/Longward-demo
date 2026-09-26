@@ -4161,6 +4161,7 @@ const pasDeclare = p => !p.declare || notifsMasquees().includes(p.declare.cle);
 
 const CLE_DEMARRAGE = 'demarrage-fini';
 const demarrageMasque = () => notifsMasquees().includes(CLE_DEMARRAGE);
+const demarrageDepasse = () => aUnComptePropre() && relevesRenseignes() >= 2;
 
 const inventaireDeclareComplet = () =>
   aUnRelevePatrimonial() || notifsMasquees().includes(CLE_INVENTAIRE);

@@ -1566,6 +1566,14 @@ button.pf-total, button.pf-mesure { cursor: pointer; }
 .pf-pct, .pf-sous { font-size: var(--font-sm); color: var(--text-secondary); }
 .pf-muet b { font-size: var(--font-md); font-weight: 600; color: var(--muted); }
 .pf-muet .pf-sous { color: var(--muted); }
+.pf-jour-muet { grid-column: 1 / -1; margin: 0; font-size: var(--font-xs); color: var(--muted); }
+
+.repart-synthese .repart-ligne { padding: 8px 0; }
+.card.retenir:not(.tout-voir) .retenir-surplus,
+.card.retenir.tout-voir .retenir-voir-plus,
+.card.retenir:not(.tout-voir) .retenir-voir-moins { display: none; }
+.retenir-voir-li { padding: 12px 0 0 16px; }
+.retenir-voir { text-align: left; }
 @media (hover: hover) {
   button.pf-total:hover > b, button.pf-mesure:hover b {
     text-decoration: underline; text-underline-offset: 4px;

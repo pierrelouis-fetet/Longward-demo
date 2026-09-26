@@ -770,16 +770,45 @@ function listeVariation(v, { avecTotal = true } = {}) {
       ${trad('Ces montants sont déjà compris dans les écarts ci-dessus.')}</p>` : ''}`;
 }
 
+/* L'accueil n'en garde que la reponse courte : la variation nette et les deux
+   ecarts qui la font surtout, credits compris. Le reste se compte et se lit
+   dans le releve, ou `listeVariation()` donne toutes les poches, les poches
+   inchangees et le journal de la periode. */
 function carteVariation() {
   const v = derniereVariation();
   if (!v) return '';
+  const ecarts = [
+    ...v.changesByPocket.filter(x => x.delta).map(x => ({
+      label: libellePoche(x.pocket), delta: x.delta,
+      sous: `${fmtEUR0(x.previousValue)} → ${fmtEUR0(x.currentValue)}` })),
+    ...(v.debtChange ? [{ label: trad('Crédits'), delta: -v.debtChange,
+      sous: trad(v.debtChange < 0 ? 'encours en baisse de {v}' : 'encours en hausse de {v}')
+        .replace('{v}', fmtEUR0(Math.abs(v.debtChange))) }] : []),
+  ].sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+  const tete = ecarts.slice(0, 2);
+  const autres = ecarts.length - tete.length;
+  const ev = v.explicitEvents.length;
   return `
     <div class="card" data-anchor="variation">
       <div class="card-head"><h2>${trad('Ce qui a changé')}${aide(trad('Les écarts de valeur entre tes deux derniers relevés, poche par poche. Ce ne sont pas des rendements : un versement, une hausse des cours ou un virement entre deux comptes font bouger une poche de la même façon, et un relevé ne dit pas lequel a eu lieu.'))}</h2></div>
       <p class="hint" style="margin:0 0 12px">${trad('Entre tes relevés de {a} et de {b}')
         .replace('{a}', esc(fmtMonth(v.depuis))).replace('{b}', esc(fmtMonth(v.jusqua)))}${v.mois > 1
         ? ` · ${trad('écart sur {n} mois').replace('{n}', v.mois)}` : ''}</p>
-      ${listeVariation(v)}
+      <dl class="kv kv-accumul">
+        <dt class="cle"><b>${trad('Patrimoine net')}</b></dt>
+          <dd class="cle"><b class="${cls(v.totalChange)}">${fmtSigned(v.totalChange)}</b></dd>
+      </dl>
+      ${tete.length ? `
+      <div class="kv-filet"></div>
+      <dl class="kv">
+        ${tete.map(x => `
+        <dt>${esc(x.label)}<span class="sub">${x.sous}</span></dt>
+          <dd>${fmtSigned(x.delta)}</dd>`).join('')}
+      </dl>` : `<p class="small muted" style="margin:8px 0 0">${trad('Aucune poche n’a bougé entre ces deux relevés.')}</p>`}
+      ${autres || ev ? `<p class="small muted" style="margin:8px 0 0">${[
+        autres ? (autres > 1 ? trad('{n} autres écarts') : trad('1 autre écart')).replace('{n}', autres) : '',
+        ev ? (ev > 1 ? trad('{n} mouvements du journal compris') : trad('1 mouvement du journal compris')).replace('{n}', ev) : '',
+      ].filter(Boolean).join(' · ')}</p>` : ''}
       <button type="button" class="lien-nu" style="margin-top:12px" data-action="voir-releve" data-i="${v.index}"
               >${trad('Voir le relevé de {m}').replace('{m}', esc(fmtMonth(v.jusqua)))}</button>
     </div>`;
@@ -896,6 +925,61 @@ function carteAccumulation() {
   </div>`;
 }
 
+function carteAccumulationResume() {
+  const rec = savingsReconciliation();
+  if ((!(rec.income > 0) && !(rec.fixed > 0) && !(rec.spend > 0)) || chargesInconnues()) {
+    return carteAccumulation();
+  }
+  return `
+  <div class="card" data-anchor="accumulation">
+    <div class="card-head"><h2>${trad('Accumulation ce mois-ci')}</h2>
+      <button type="button" class="hint lien-vue" data-action="goto" data-view="budget"
+              data-anchor="accumulation">${trad('Voir le calcul')} →</button></div>
+    <div class="goal-top goal-top-empile">
+      <b class="${cls(rec.theoretical)}">${montantSigne(rec.theoretical)} ${trad('/ mois')}</b>
+      <span class="muted">${trad(rec.spendObserved
+        ? 'selon ton budget, dépenses moyennes de l’année'
+        : 'selon ton budget, objectif de dépenses faute de dépense saisie')}${rec.theoreticalRate == null ? ''
+        : ` · ${fmtPct(rec.theoreticalRate, 1)} ${trad('de tes revenus')}`}</span>
+    </div>
+  </div>`;
+}
+
+/* La reserve de securite, reduite a ce qui se lit d'un coup d'oeil : le nombre
+   de mois, la jauge et sa cible. Les paliers mobilisables, l'argent des projets
+   et le cout de la vie retenu passent dans la fenetre `reserve`, a un geste.
+   L'ancre garde son nom d'origine : elle ne s'affiche jamais, et la renommer
+   casserait les renvois sans rien apprendre a personne.
+   SANS COUT DE LA VIE, IL N'Y A PAS DE RESERVE A COMPTER, quel que soit le
+   coussin : le rapport vaudrait zero faute de denominateur, et la carte
+   annoncerait « 0,0 mois » en rouge a quelqu'un qui vient de declarer son cash.
+   Elle dit ce qui lui manque, precisement. */
+function carteReserveResume() {
+  const r = runway();
+  const ep = r.reserve;
+  const cover = r.reserveMois;
+  const state = cover >= 3 ? 'up' : cover >= 1.5 ? '' : 'down';
+  return `
+  <div class="card" data-anchor="autonomie">
+    <div class="card-head"><h2>${trad('Réserve de sécurité')}${aide(trad("Combien de mois tu tiendrais si tes revenus s'arrêtaient demain. La jauge compte ton épargne de précaution ; la liste ajoute ce qui pourrait être mobilisé ensuite, du plus accessible au plus lent, en mois cumulés. L'immobilier et le non coté se vendent, mais en quelques mois et avec une décote si tu es pressé. Ce qui est bloqué jusqu'à son échéance reste affiché mais sort du cumul : cet argent n'arrivera pas, quoi qu'il se passe demain. Un titre coté se vend en séance, mais le virement met deux à trois jours ouvrés à arriver : c'est ce délai, pas la liquidité, qui le range en « quelques jours ». Casser un PEA de moins de cinq ans lui coûte son avantage fiscal, pas son accès. Coût mensuel retenu : charges fixes plus dépenses moyennes."))}</h2>
+      ${r.burn ? `<button type="button" class="hint lien-vue" data-action="apercu" data-apercu="reserve"
+              >${trad('Voir le détail')} →</button>` : `<span class="hint">${trad('si les revenus s\'arrêtaient')}</span>`}</div>
+    ${!r.burn ? `
+    <p class="empty" style="margin:0 0 4px">${trad(ep
+      ? 'Ce chiffre compare ton argent disponible à ce que te coûte un mois. Il attend donc tes charges fixes.'
+      : 'Ce chiffre compare ton argent disponible '
+        + 'à ce que te coûte un mois. Il attend donc deux choses : un compte avec du '
+        + 'cash, et tes charges fixes.')}</p>` : `
+    <div class="goal-top goal-top-empile" style="margin-bottom:8px">
+      <b class="${state}">${fmtMois(cover)} ${trad('mois')}</b>
+      <span class="muted">${trad('si les revenus s\'arrêtaient')} · ${trad('épargne de précaution + cash disponible')} · ${fmtEUR0(ep)}</span>
+    </div>
+    <div class="goal-bar"><div class="goal-fill" style="width:${Math.min(100, cover / 6 * 100).toFixed(0)}%;
+      background:${cover >= 3 ? 'var(--good)' : cover >= 1.5 ? 'var(--warning)' : 'var(--critical)'}"></div></div>
+    <div class="goal-foot"><span></span><span>${trad('cible 3 à 6 mois')}</span></div>`}
+  </div>`;
+}
+
 function sortiesRappel(genre, label, avant = '') {
   return `<span class="rappel-sorties">
     ${avant}
@@ -908,6 +992,7 @@ function sortiesRappel(genre, label, avant = '') {
 }
 
 const MAX_A_RETENIR = 2;
+const VISIBLES_A_RETENIR = 1;
 
 /* --- OU MENE CET INSIGHT, ET POURQUOI CA SE DERIVE ------------------------
 
@@ -1102,6 +1187,8 @@ const PRESENTATION_INSIGHT = {
 };
 
 let dernierARetenir = [];
+let dernierARetenirTous = [];
+let retenirToutVoir = false;
 
 function noterInsightsVus() {
   if (!dernierARetenir.length) return;
@@ -1147,7 +1234,9 @@ function carteARetenir() {
     .filter(([, p]) => !!p));
   const vide = !lus.length;
   const n = lus.length;
-  dernierARetenir = lus.map(([i]) => i);
+  const surplus = Math.max(0, n - VISIBLES_A_RETENIR);
+  dernierARetenirTous = lus.map(([i]) => i);
+  dernierARetenir = retenirToutVoir ? dernierARetenirTous : dernierARetenirTous.slice(0, VISIBLES_A_RETENIR);
   const replie = retenirReplie();
   /* Le meme bouton dans les deux etats, donc le meme `aria-controls` et le meme
      `aria-expanded` : un lecteur d'ecran annonce l'etat, pas une couleur. */
@@ -1158,7 +1247,7 @@ function carteARetenir() {
         ><svg class="retenir-chevron" viewBox="0 0 24 24" aria-hidden="true"
         focusable="false"><path d="M6 9.5 12 15.5 18 9.5"/></svg></span>`;
   return `
-  <section class="card retenir${replie ? ' repliee' : ''}" aria-labelledby="retenirTitre">
+  <section class="card retenir${replie ? ' repliee' : ''}${retenirToutVoir ? ' tout-voir' : ''}" aria-labelledby="retenirTitre">
     ${replie ? `
     <div class="card-head retenir-tete">
       <h2 id="retenirTitre" class="retenir-tete-pliee">
@@ -1190,9 +1279,21 @@ function carteARetenir() {
         <b class="retenir-titre">${esc(trad('Rien d’inhabituel à signaler'))}</b>
         <p class="retenir-texte">${esc(trad('Ton patrimoine reste proche de ses tendances récentes.'))}</p>
       </li>`}
-      ${lus.map(([i, p], k) => ligneInsight(i, p,
-        k ? EYEBROW_INSIGHT[lus[k - 1][0].categorie] : null,
-        lus.slice(0, k).map(([, q]) => destinationInsight(q)))).join('')}
+      ${lus.map(([i, p], k) => {
+        const li = ligneInsight(i, p,
+          k ? EYEBROW_INSIGHT[lus[k - 1][0].categorie] : null,
+          lus.slice(0, k).map(([, q]) => destinationInsight(q)));
+        return k < VISIBLES_A_RETENIR ? li
+          : li.replace('<li class="retenir-item', '<li class="retenir-item retenir-surplus');
+      }).join('')}
+      ${!surplus ? '' : `
+      <li class="retenir-voir-li">
+        <button type="button" class="lien-vue retenir-voir" data-action="retenir-tout"
+                aria-expanded="${retenirToutVoir}" aria-controls="retenirCorps">
+          <span class="retenir-voir-plus">${surplus > 1
+            ? trad('Voir {n} autres points').replace('{n}', surplus) : trad('Voir 1 autre point')}</span>
+          <span class="retenir-voir-moins">${trad('Voir moins')}</span></button>
+      </li>`}
     </ul>
     </div>
   </section>`;
@@ -1299,9 +1400,9 @@ function viewOverview() {
      jamais. `variationAn()` retient le releve le plus proche de douze mois dans
      une tolerance de trois, et rend l'AGE REEL du point retenu. Ecrire « 12 »
      sous une comparaison qui en couvre quinze serait le meme mensonge que
-     l'ecrire sous quatre. Le nombre reste donc interpole depuis le moteur : la
-     phrase dit « sur 12 mois glissants » quand le releve a douze mois, et
-     « sur 15 mois glissants » quand il en a quinze.
+     l'ecrire sous quatre. Le releve de depart se nomme donc par son mois, et
+     le nombre de mois reste interpole depuis le moteur : « depuis le releve
+     de sept. 25 · 12 mois », ou quinze quand il en a quinze.
 
      CE N'EST PAS UN RENDEMENT, et la bulle le dit en toutes lettres. Un
      « +127,7 % » se lit spontanement comme une performance de placement ; celui
@@ -1323,8 +1424,8 @@ function viewOverview() {
       <div class="hero-delta">
         <b class="${cls(varAn.eur)}">${fmtSigned(varAn.eur)}${varAn.pct == null ? ''
           : `<span class="hero-pct">· ${fmtSignedPct(varAn.pct, 1)}</span>`}</b>
-        <span>${trad(varAn.mois > 1 ? 'sur {n} mois glissants' : 'sur {n} mois glissant')
-          .replace('{n}', varAn.mois)}${aide(trad(evoNet
+        <span>${trad('depuis le relevé de {m}').replace('{m}', esc(fmtMonth(varAn.depuis)))} · ${
+          varAn.mois} ${trad('mois')}${aide(trad(evoNet
             ? 'Variation de ton patrimoine net entre aujourd’hui et le relevé le plus proche d’il y a un an. Elle inclut les versements, les retraits, le remboursement du capital des crédits et l’évolution de la valeur des actifs : ce n’est pas la performance de tes placements.'
             : 'Variation de ton patrimoine brut entre aujourd’hui et le relevé le plus proche d’il y a un an. Elle inclut les versements, les retraits et l’évolution de la valeur des actifs : ce n’est pas la performance de tes placements.'))}</span>
       </div>
@@ -1423,6 +1524,8 @@ function viewOverview() {
     ${sortiesRappel('depenses', depEnAttente.label)}
   </div>` : ''}
 
+  ${pasAFaire('comptes') ? '' : carteARetenir()}
+  ${carteObjectif()}
   ${(() => {
     /* DEUX PRECISIONS DIFFERENTES SUR LA MEME LIGNE, ET C'EST VOULU.
 
@@ -1452,7 +1555,9 @@ function viewOverview() {
     const classes = repartitionClasses({ net: evoNet });
     if (!classes.length) return '';
     return `
-  <div class="card repart">
+  <div class="card repart repart-synthese">
+    <div class="card-head"><h2>${trad('Répartition')}</h2>
+      <a class="hint lien-vue" href="#/allocation">${trad('Voir l’allocation')} →</a></div>
     ${classes.map(x => {
       const dettesSeules = x.classe === DETTES_NON_AFFECTEES;
       return `
@@ -1467,7 +1572,6 @@ function viewOverview() {
           <b${x.value < 0 ? ' class="dette"' : ''}>${fmtEUR0(x.value)}</b>
           <span class="repart-pct">${x.pct == null ? '' : fmtPct(x.pct, 1)}</span>
         </span>
-        ${x.value > 0 ? `<span class="repart-barre"><i style="width:${largeurPart(x.pct)};background:${x.couleur}"></i></span>` : ''}
       </button>`; }).join('')}
     ${(() => {
       const p = patrimoine();
@@ -1508,7 +1612,12 @@ function viewOverview() {
     ${apercuVerrou(trad('Projection'), trad('Disponible quand ta situation est suffisamment renseignée.'), 'courbe')}
   </div>`
   : `
-  ${carteARetenir()}
+
+  <div class="grid${derniereVariation() ? ' g-2-1' : ''}">
+    ${carteEvolution()}
+    ${carteVariation()}
+  </div>
+
   ${!aDesPositionsMarche() ? '' : `
   <div class="card">
     <div class="card-head"><h2>${trad('Tes titres')}</h2>
@@ -1537,13 +1646,9 @@ function viewOverview() {
         ${(() => {
           const j = dayPerformance();
           if (!j.lignes.length || j.toutHorsSeance) return `
-        <div class="pf-mesure pf-muet">
-          <span class="pf-lab">${trad('Aujourd’hui')}</span>
-          <span class="pf-val"><b>${trad('hors séance')}</b>
-            <span class="pf-sous">${j.lignes.length
+        <p class="pf-jour-muet">${trad('Aujourd’hui')}${deuxPoints()} ${trad('hors séance')}, ${j.lignes.length
               ? trad('aucune ligne n’a coté depuis minuit')
-              : trad('pas de clôture de veille en mémoire')}</span></span>
-        </div>`;
+              : trad('pas de clôture de veille en mémoire')}</p>`;
           return `
         <button type="button" class="pf-mesure" data-action="apercu" data-apercu="jourTitres">
           <span class="pf-lab">${trad('Aujourd’hui')}</span>
@@ -1555,94 +1660,12 @@ function viewOverview() {
     </div>
   </div>`}
 
-  <div class="grid${derniereVariation() ? ' g-2-1' : ''}">
-    ${carteEvolution()}
-    ${carteVariation()}
-  </div>
-
-  ${carteAccumulation()}
-
-  <div class="grid g-2-1">
-    <div class="card" data-anchor="rythme">
-      <div class="card-head"><h2>${trad('Rythme d\'accumulation')}</h2>
-        ${relevesRenseignes() >= 2 ? rangeControl('pace-range', paceRange) : ''}</div>
-      ${relevesRenseignes() >= 2 ? `<div class="chart" id="chartPace"></div>`
-        : `<p class="empty" style="margin:0">${trad('Il faut deux relevés pour une pente : le premier ouvre la courbe, le second donne le rythme.')}</p>`}
-      ${(() => {
-        const p = statsRythme(limitRange(monthlyPace().points, paceRange, { ecarts: true }));
-        if (!p.count) return '';
-        return `<dl class="kv" style="margin-top:12px">
-          ${p.apports ? `
-          <dt>${trad('Dont')} ${p.apports < 0 ? trad('sorties exceptionnelles') : trad('entrées extérieures')}${aide(
-              trad('Les entrées et sorties exceptionnelles de la période affichée : un héritage, une prime, la vente d’un bien, ou à l’inverse une voiture, des travaux. Elles déplacent ton patrimoine sans rien dire de ton épargne, et la moyenne du dessous les compte : hors elles, ton rythme propre est de')
-            + ' ' + fmtEUR0(p.averageHorsApports) + ' ' + trad('par mois. Retrouve le journal dans Aperçu > Historique.'))}</dt>
-            <dd><button type="button" class="mois-lien ${cls(p.apports)}" data-action="goto" data-view="history"
-                        data-anchor="" title="${trad('Voir le journal des entrées et sorties exceptionnelles')}"
-                >${fmtSigned(p.apports)}</button></dd>` : ''}
-          <dt>${trad('Moyenne mensuelle du patrimoine')}${aide(trad("Ce que ton patrimoine net gagne ou perd par mois, sur la période affichée. Elle comprend les mouvements de marché et les apports, pas seulement ton épargne. Un mois sans relevé n’est pas oublié : l’écart entre deux relevés éloignés se répartit sur les mois qu’il a vraiment mis à arriver. Le mois en cours reste dehors : il est incomplet."))}
-            <span class="sub">${trad('marchés et apports compris')}</span></dt><dd class="${cls(p.average)}">${fmtSigned(p.average)}</dd>
-          ${(() => {
-            const trou = num(p.mois) > p.count;
-            return `
-          <dt>${trad(trou ? 'Variations en hausse' : 'Mois en hausse')}</dt><dd>${p.positive} / ${p.count}</dd>
-          ${p.best ? `<dt>${trad(trou ? 'Meilleure variation' : 'Meilleur mois')}</dt><dd>${esc(p.best.label)} · ${fmtSigned(p.best.delta)}</dd>` : ''}
-          ${p.worst ? `<dt>${trad(trou ? 'Pire variation' : 'Pire mois')}</dt><dd>${esc(p.worst.label)} · ${fmtSigned(p.worst.delta)}</dd>` : ''}`;
-          })()}
-        </dl>`;
-      })()}
-    </div>
-  <div class="card" data-anchor="autonomie">
-    <div class="card-head"><h2>${trad('Réserve de sécurité')}${aide(trad("Combien de mois tu tiendrais si tes revenus s'arrêtaient demain. La jauge compte ton épargne de précaution ; la liste ajoute ce qui pourrait être mobilisé ensuite, du plus accessible au plus lent, en mois cumulés. L'immobilier et le non coté se vendent, mais en quelques mois et avec une décote si tu es pressé. Ce qui est bloqué jusqu'à son échéance reste affiché mais sort du cumul : cet argent n'arrivera pas, quoi qu'il se passe demain. Un titre coté se vend en séance, mais le virement met deux à trois jours ouvrés à arriver : c'est ce délai, pas la liquidité, qui le range en « quelques jours ». Casser un PEA de moins de cinq ans lui coûte son avantage fiscal, pas son accès. Coût mensuel retenu : charges fixes plus dépenses moyennes."))}</h2>
-      <span class="hint">${trad('si les revenus s\'arrêtaient')}</span></div>
-    ${(() => {
-      const r = runway();
-      /* Le coussin reel vit dans `runway()`, ou il se teste : il etait calcule
-         ici, et l'insight de l'accueil en lisait un autre. Deux chiffres justes
-         qui se contredisaient a l'ecran. */
-      const ep = r.reserve;
-      const cover = r.reserveMois;
-      const pk = poches();
-      const state = cover >= 3 ? 'up' : cover >= 1.5 ? '' : 'down';
-      if (!r.burn) return `
-        <p class="empty" style="margin:0 0 4px">${trad(ep
-          ? 'Ce chiffre compare ton argent disponible à ce que te coûte un mois. Il attend donc tes charges fixes.'
-          : 'Ce chiffre compare ton argent disponible '
-            + 'à ce que te coûte un mois. Il attend donc deux choses : un compte avec du '
-            + 'cash, et tes charges fixes.')}</p>
-`;
-      return `
-        <div class="goal-top goal-top-empile" style="margin-bottom:8px">
-          <b class="${state}">${fmtMois(cover)} ${trad('mois')}</b>
-          <span class="muted">${trad('épargne de précaution + cash disponible')} · ${fmtEUR0(ep)}</span>
-        </div>
-        <div class="goal-bar"><div class="goal-fill" style="width:${Math.min(100, cover / 6 * 100).toFixed(0)}%;
-          background:${cover >= 3 ? 'var(--good)' : cover >= 1.5 ? 'var(--warning)' : 'var(--critical)'}"></div></div>
-        <div class="goal-foot"><span></span><span>${trad('cible 3 à 6 mois')}</span></div>
-        ${pk.projet > 0.005 ? `
-        <p class="small muted" style="margin:8px 0 0">
-          + ${fmtEUR0(pk.projet)} ${trad('réservés à un projet, disponibles si tu y touches.')}
-          ${aide(trad('Ils ne comptent pas dans le coussin : la règle des 3 à 6 mois vise '
-          + 'ce qui n’a pas encore d’emploi. Ils sont bien là, et ils figurent dans '
-          + '« Disponible tout de suite » juste en dessous : c’est ce qui explique '
-          + 'l’écart entre les deux montants.'))}
-        </p>` : ''}
-        <ul class="runway">${r.tiers.filter(x => x.value > 0).map(x => `
-          <li class="rw-ligne${x.horsCumul ? ' rw-hors' : ''}">
-            <div class="rw-haut"><span class="rw-lab">${esc(trad(x.label))}</span><b class="rw-val">${fmtEUR0(x.value)}</b></div>
-            <div class="rw-bas"><span class="rw-note">${esc(trad(x.note))}</span>
-              <span class="tag rw-mois">${x.horsCumul
-                ? trad('hors réserve') : `${fmtMois(x.months)} ${trad('mois cumulés')}`}</span></div>
-          </li>`).join('')}</ul>
-        <p class="small muted" style="margin:12px 0 0">
-          ${trad('Coût de la vie retenu :')} ${fmtEUR0(r.burn)} ${trad('/ mois (charges fixes + dépenses moyennes).')}
-        </p>`;
-    })()}
-  </div>
-
+  <div class="grid g-2">
+    ${carteAccumulationResume()}
+    ${carteReserveResume()}
   </div>
 
 `}
-  ${carteObjectif()}
 `;
 }
 
@@ -1671,9 +1694,9 @@ function mountOverview() {
     Charts.sparkline($('#heroSpark'), pts.map(p => p.valeur),
       { labels: pts.map(p => p.label), height: 36 });
   })();
+}
 
-  const t = nowTotals();
-
+function monterRythme() {
   const pace = monthlyPace();
   const barres = limitRange(pace.points, paceRange, { ecarts: true });
   const moyenne = barres.length
@@ -1683,7 +1706,6 @@ function mountOverview() {
     items: barres.map(p => ({ label: p.label, value: p.delta, note: p.note })),
     average: moyenne,
   });
-
 }
 
 /* `goto` = "vue:ancre", rend la tuile cliquable et emmène à l'endroit
@@ -2270,7 +2292,7 @@ const carteObjectif = () => {
     </div>
     <div class="goal-top">
       <b class="${g.remaining >= 0 ? 'up' : ''}">${g.remaining >= 0
-        ? `+${fmtEUR(g.remaining)}` : fmtEUR(Math.abs(g.remaining))}</b>
+        ? `+${fmtEUR0(g.remaining)}` : fmtEUR0(Math.abs(g.remaining))}</b>
       <span class="muted">${g.remaining >= 0
         ? trad('de dépassement')
         : mois
@@ -2279,12 +2301,11 @@ const carteObjectif = () => {
     </div>
     ${p.pct == null ? '' : `<div class="goal-bar"><div class="goal-fill" style="width:${p.barre.toFixed(2)}%"></div></div>`}
     <div class="goal-foot">
-      <span>${fmtEUR(g.total)} <span class="muted">${trad('sur.objectif', 'sur')} ${fmtEUR0(g.obj)}</span></span>
+      <span>${fmtEUR0(g.total)} <span class="muted">${trad('sur.objectif', 'sur')} ${fmtEUR0(g.obj)}</span></span>
       <span>${g.remaining >= 0 ? `${trad('Objectif atteint')} 🎉` : ''}</span>
     </div>
-    <span class="goal-depart muted">${p.depart
-      ? `${trad('Départ')}${deuxPoints()} ${trad('{v} le {d}').replace('{v}', fmtEUR(p.depart.valeur)).replace('{d}', esc(fmtDate(p.depart.date)))}`
-      : trad('Choisis un point de départ pour suivre l’avancement.')}</span>
+    ${p.depart ? `<span class="goal-depart muted">${trad('Départ')}${deuxPoints()} ${trad('{v} le {d}')
+      .replace('{v}', fmtEUR0(p.depart.valeur)).replace('{d}', esc(fmtDate(p.depart.date)))}</span>` : ''}
   </button>`;
 };
 
@@ -4829,6 +4850,38 @@ function mountRebalance() {
 let historyShowLegacy = false;
 let historyYear = null;      // null = l'annee du dernier releve
 
+function carteRythme() {
+  return `
+  <div class="card" data-anchor="rythme">
+    <div class="card-head"><h2>${trad('Rythme d\'accumulation')}</h2>
+      ${relevesRenseignes() >= 2 ? rangeControl('pace-range', paceRange) : ''}</div>
+    ${relevesRenseignes() >= 2 ? `<div class="chart" id="chartPace"></div>`
+      : `<p class="empty" style="margin:0">${trad('Il faut deux relevés pour une pente : le premier ouvre la courbe, le second donne le rythme.')}</p>`}
+    ${(() => {
+      const p = statsRythme(limitRange(monthlyPace().points, paceRange, { ecarts: true }));
+      if (!p.count) return '';
+      return `<dl class="kv" style="margin-top:12px">
+        ${p.apports ? `
+        <dt>${trad('Dont')} ${p.apports < 0 ? trad('sorties exceptionnelles') : trad('entrées extérieures')}${aide(
+            trad('Les entrées et sorties exceptionnelles de la période affichée : un héritage, une prime, la vente d’un bien, ou à l’inverse une voiture, des travaux. Elles déplacent ton patrimoine sans rien dire de ton épargne, et la moyenne du dessous les compte : hors elles, ton rythme propre est de')
+          + ' ' + fmtEUR0(p.averageHorsApports) + ' ' + trad('par mois. Retrouve le journal dans Aperçu > Historique.'))}</dt>
+          <dd><button type="button" class="mois-lien ${cls(p.apports)}" data-action="goto" data-view="history"
+                      data-anchor="" title="${trad('Voir le journal des entrées et sorties exceptionnelles')}"
+              >${fmtSigned(p.apports)}</button></dd>` : ''}
+        <dt>${trad('Moyenne mensuelle du patrimoine')}${aide(trad("Ce que ton patrimoine net gagne ou perd par mois, sur la période affichée. Elle comprend les mouvements de marché et les apports, pas seulement ton épargne. Un mois sans relevé n’est pas oublié : l’écart entre deux relevés éloignés se répartit sur les mois qu’il a vraiment mis à arriver. Le mois en cours reste dehors : il est incomplet."))}
+          <span class="sub">${trad('marchés et apports compris')}</span></dt><dd class="${cls(p.average)}">${fmtSigned(p.average)}</dd>
+        ${(() => {
+          const trou = num(p.mois) > p.count;
+          return `
+        <dt>${trad(trou ? 'Variations en hausse' : 'Mois en hausse')}</dt><dd>${p.positive} / ${p.count}</dd>
+        ${p.best ? `<dt>${trad(trou ? 'Meilleure variation' : 'Meilleur mois')}</dt><dd>${esc(p.best.label)} · ${fmtSigned(p.best.delta)}</dd>` : ''}
+        ${p.worst ? `<dt>${trad(trou ? 'Pire variation' : 'Pire mois')}</dt><dd>${esc(p.worst.label)} · ${fmtSigned(p.worst.delta)}</dd>` : ''}`;
+        })()}
+      </dl>`;
+    })()}
+  </div>`;
+}
+
 function viewHistory() {
   const annees = historyYears();
   const anneeCourante = todayISO().slice(0, 4);
@@ -4982,12 +5035,15 @@ function viewHistory() {
         <dd class="${cls(d.net)}">${fmtSigned(d.net)}</dd>
     </dl>`}
   </div>`;
-  })()}`;
+  })()}
+
+  ${aUnComptePropre() ? carteRythme() : ''}`;
 }
 
 function mountHistory() {
   const j = $('#journalApports');
   if (j) j.addEventListener('toggle', () => { journalOuvert = j.open; });
+  monterRythme();
 }
 
 let compteVue = 'banque';            // banque | type
@@ -5775,7 +5831,7 @@ function carteDemarrage() {
      et les deux divergent la ou un pas depend d'un autre. */
   const acquis = p => (pasDeplie === p.cle && p.declare ? false
     : p.acquis ? p.acquis() : (!pasAFaire(p.cle) && pasDeclare(p)));
-  if (demarrageMasque()) return '';
+  if (demarrageMasque() || demarrageDepasse()) return '';
   const restants = PREMIERS_PAS.filter(p => !acquis(p));
   const fini = !restants.length;
   const premier = fini ? null : (restants.find(p => !p.ouvrable || p.ouvrable()) || restants[0]);
@@ -7389,6 +7445,8 @@ function viewBudget(section = 'depenses') {
     </div>
   </div>`}
 
+  ${cadre ? '' : carteAccumulation()}
+
   ${cadre ? '' : carteInsights('budget', 'À retenir')}
 
   ${cadre ? '' : `
@@ -8746,6 +8804,17 @@ const ACTIONS = {
   'regl-retenir'() {
     Store.state.meta.retenirMasquee = !Store.state.meta.retenirMasquee;
     Store.save(); render(); retourHaptique();
+  },
+  'retenir-tout'(btn) {
+    const carte = btn.closest('.card.retenir');
+    if (!carte) return;
+    retenirToutVoir = !carte.classList.contains('tout-voir');
+    carte.classList.toggle('tout-voir', retenirToutVoir);
+    btn.setAttribute('aria-expanded', String(retenirToutVoir));
+    if (retenirToutVoir) {
+      dernierARetenir = dernierARetenirTous;
+      noterInsightsVus();
+    }
   },
   'retenir-plier'() {
     Store.state.meta.retenirReplie = !retenirReplie();
@@ -11435,7 +11504,8 @@ const ACTIONS = {
 };
 
 const MOUNTS = {
-  overview: () => sousOngletActif.overview === 'projection' ? mountObjective() : mountOverview(),
+  overview: () => sousOngletActif.overview === 'projection' ? mountObjective()
+    : sousOngletActif.overview === 'historique' ? mountHistory() : mountOverview(),
   positions: () => sousOngletActif.positions === 'cible' ? mountRebalance() : mountPositions(),
   allocation: mountAllocation,
   /* Les préférences n'ont rien à monter : leurs réglages passent tous par
@@ -14043,6 +14113,40 @@ const APERCUS = {
       totalNote: trad('Aucun rendement ne lui est appliqué'),
       lignes,
       vue: 'accounts', ancre: '', cta: trad('Voir les avoirs'),
+    };
+  },
+  /* Le detail de la reserve de securite, ouvert depuis sa carte de l'accueil :
+     ce que la carte montrait sous sa jauge, sans rien recalculer. `runway()`
+     porte les paliers, la reserve et le cout de la vie, et la carte comme la
+     fenetre le lisent. */
+  reserve: () => {
+    const r = runway();
+    const pk = poches();
+    return {
+      titre: trad('Réserve de sécurité'),
+      sous: trad('si les revenus s\'arrêtaient'),
+      total: r.reserve,
+      totalNote: `${fmtMois(r.reserveMois)} ${trad('mois')} · ${trad('cible 3 à 6 mois')}`,
+      html: `
+        <p class="small muted" style="margin:0 0 12px">${trad('épargne de précaution + cash disponible')}</p>
+        ${pk.projet > 0.005 ? `
+        <p class="small muted" style="margin:0 0 12px">
+          + ${fmtEUR0(pk.projet)} ${trad('réservés à un projet, disponibles si tu y touches.')}
+          ${aide(trad('Ils ne comptent pas dans le coussin : la règle des 3 à 6 mois vise '
+          + 'ce qui n’a pas encore d’emploi. Ils sont bien là, et ils figurent dans '
+          + '« Disponible tout de suite » juste en dessous : c’est ce qui explique '
+          + 'l’écart entre les deux montants.'))}
+        </p>` : ''}
+        <ul class="runway">${r.tiers.filter(x => x.value > 0).map(x => `
+          <li class="rw-ligne${x.horsCumul ? ' rw-hors' : ''}">
+            <div class="rw-haut"><span class="rw-lab">${esc(trad(x.label))}</span><b class="rw-val">${fmtEUR0(x.value)}</b></div>
+            <div class="rw-bas"><span class="rw-note">${esc(trad(x.note))}</span>
+              <span class="tag rw-mois">${x.horsCumul
+                ? trad('hors réserve') : `${fmtMois(x.months)} ${trad('mois cumulés')}`}</span></div>
+          </li>`).join('')}</ul>
+        <p class="small muted" style="margin:12px 0 0">
+          ${trad('Coût de la vie retenu :')} ${fmtEUR0(r.burn)} ${trad('/ mois (charges fixes + dépenses moyennes).')}
+        </p>`,
     };
   },
   capaciteEpargne: () => {

@@ -2156,7 +2156,9 @@ suite('Ce qui a changé entre deux relevés', () => {
       vrai(!/gagn|rapport|investi|performance|Marchés|plus-value/i.test(t), `« ${t} » ne parle pas de gain`);
     /* Seul le total porte une couleur : une poche qui baisse n'est pas une
        faute, et l'application ne sait pas pourquoi elle baisse. */
-    eq((vue.match(/class="\$\{cls\(/g) || []).length, 1, 'une seule valeur colorée, le total');
+    const colorees = vue.match(/class="\$\{cls\(([^)]*)\)/g) || [];
+    vrai(colorees.length >= 1, 'le total est coloré');
+    vrai(colorees.every(c => /cls\(v\.totalChange\)/.test(c)), 'et lui seul, dans la liste comme dans la carte');
   });
 
   test('la courbe et la carte partagent une grille, sur l’accueil seulement', () => {
@@ -7387,13 +7389,14 @@ suite('Bandeau de l’Aperçu : net ou brut, jusqu’au bout', () => {
        termine aujourd'hui, pas qu'elle fait douze mois : écrire « 12 » sous une
        comparaison qui en couvre quinze serait le même mensonge que l'écrire
        sous quatre. */
-    vrai(/trad\(varAn\.mois > 1 \? 'sur \{n\} mois glissants' : 'sur \{n\} mois glissant'\)/.test(app),
-      'la vue écrit le nombre de mois qu’on lui donne');
-    vrai(/\.replace\('\{n\}', varAn\.mois\)/.test(app), 'et c’est l’âge réel du relevé retenu');
-    vrai(/\.replace\('\{n\}', varAn\.mois\)/.test(app), 'et le substitue');
+    /* ET LA PERIODE SE DATE : le releve de depart se nomme par son mois, puis
+       le nombre de mois suit, celui du moteur. */
+    vrai(/trad\('depuis le relevé de \{m\}'\)\.replace\('\{m\}', esc\(fmtMonth\(varAn\.depuis\)\)\)/.test(app),
+      'la vue date la variation par son relevé de départ');
+    vrai(/varAn\.mois\} \$\{trad\('mois'\)\}/.test(app), 'et écrit le nombre de mois qu’on lui donne');
     const dico = lireSource('assets/i18n.js');
-    vrai(dico.includes('"sur {n} mois glissants": "over a rolling {n}-month period"'),
-      'l’anglais dit la période à sa façon, sans calquer le français');
+    vrai(dico.includes('"depuis le relevé de {m}": "since the {m} statement"'),
+      'l’anglais dit la date à sa façon, sans calquer le français');
   });
 
   test('H. aucun historique exploitable, aucun faux zéro', () => {
@@ -7423,14 +7426,14 @@ suite('Bandeau de l’Aperçu : net ou brut, jusqu’au bout', () => {
   test('K. les quatre chaînes du bandeau se traduisent', () => {
     const dico = lireSource('assets/i18n.js');
     const declaree = cle => dico.includes('"' + cle + '":') || dico.includes("'" + cle + "':");
-    for (const cle of ['sur {n} mois glissants', 'sur {n} mois glissant',
+    for (const cle of ['depuis le relevé de {m}', 'mois',
                        'Patrimoine net', 'Patrimoine brut'])
       vrai(declaree(cle), 'traduit : ' + cle);
-    /* L'anglais dit la même chose sans calquer le français : « over a rolling
-       12-month period », et non « over the 12 last months ». */
-    eq(I18N.en['sur {n} mois glissants'], 'over a rolling {n}-month period',
-      'et la période anglaise se lit naturellement');
-    vrai(I18N.en['sur {n} mois glissants'].includes('{n}'), 'en gardant sa marque');
+    /* L'anglais dit la même chose sans calquer le français : « since the Sep 25
+       statement », et non « since the statement of Sep 25 ». */
+    eq(I18N.en['depuis le relevé de {m}'], 'since the {m} statement',
+      'et la date anglaise se lit naturellement');
+    vrai(I18N.en['depuis le relevé de {m}'].includes('{m}'), 'en gardant sa marque');
     /* L'infobulle nomme ce qui fait bouger le chiffre, et le mot qui ne doit
        pas y etre n'y est pas : ce nombre n'est pas une performance. */
     const app = vue();
@@ -7565,7 +7568,7 @@ suite('Variation du patrimoine : douze mois glissants, ou rien', () => {
     const bloc = app.slice(i, app.indexOf('`;', app.indexOf('</div>`', i)));
     const iMontant = bloc.indexOf('fmtSigned(varAn.eur)');
     const iPct = bloc.indexOf('fmtSignedPct(varAn.pct');
-    const iFenetre = bloc.indexOf('varAn.mois > 1');
+    const iFenetre = bloc.indexOf("trad('depuis le relevé de {m}')");
     vrai(iMontant > 0 && iPct > iMontant, 'le pourcentage suit le montant');
     vrai(iFenetre > iPct, 'et la fenêtre vient après les deux');
     /* Le pourcentage vit DANS le `b`, et pas a cote : `.hero-delta span` grise
@@ -18929,7 +18932,8 @@ suite('La carte Objectif met en avant l’écart, pas le patrimoine', () => {
     const bloc = src.match(/const carteObjectif = \(\) => \{[\s\S]*?\n  \};/);
     const pied = bloc[0].match(/<div class="goal-foot">[\s\S]*?<\/div>/);
     vrai(pied, 'le pied doit être trouvable');
-    vrai(/fmtEUR\(g\.total\)/.test(pied[0]) && /fmtEUR0\(g\.obj\)/.test(pied[0]),
+    /* Sans centimes, comme tout l'accueil : la fenetre garde les montants exacts. */
+    vrai(/fmtEUR0\(g\.total\)/.test(pied[0]) && /fmtEUR0\(g\.obj\)/.test(pied[0]),
       'le pied doit porter le patrimoine et la cible');
   });
 
@@ -22595,7 +22599,7 @@ suite('Une application vide dit quoi faire', () => {
     vrai(/invitePremierPas\('releves'\)/.test(evo),
       'la carte d’évolution demande le relevé qui lui manque');
     /* L'autonomie : un rapport entre deux vides n'accuse personne de rien. */
-    vrai(/if \(!r\.burn\) return/.test(src),
+    vrai(/\$\{!r\.burn \? `/.test(src.slice(src.indexOf('function carteReserveResume()'))),
       'sans coût de la vie, aucune autonomie ne se mesure, quel que soit le coussin');
     /* Le coussin et son rapport viennent de `runway()`, ou ils se testent : ils
        etaient calcules dans la vue, et l'insight de l'accueil en lisait un
@@ -25233,11 +25237,22 @@ suite('La synthèse d’accumulation a changé d’écran, pas de calcul', () =>
     }
   });
 
-  test('la carte est sur Aujourd’hui, entre la répartition et le rythme', () => {
+  test('l’équation vit dans Budget, l’accueil en garde le résultat', () => {
     const src = lireSource('assets/app.js');
     vrai(/function carteAccumulation\(\)/.test(src), 'la carte existe');
-    eq((src.match(/carteAccumulation\(\)/g) || []).length, 2,
-      'sa définition et son seul appel : un balisage recopié finirait par diverger');
+    /* Une definition, un appel dans Budget, et le repli du resume quand il n'y a
+       rien a resumer : aucun balisage recopie. */
+    eq((src.match(/carteAccumulation\(\)/g) || []).length, 3,
+      'sa définition, Budget, et le repli du résumé');
+    const budget = src.slice(src.indexOf('function viewBudget(section'), src.indexOf('function paliersCible('));
+    vrai(/\$\{cadre \? '' : carteAccumulation\(\)\}/.test(budget),
+      'Budget la porte, sur l’écran des revenus et des dépenses et non sur Charges fixes');
+    const resume = src.slice(src.indexOf('function carteAccumulationResume()'),
+                             src.indexOf('\n}\n', src.indexOf('function carteAccumulationResume()')));
+    vrai(/data-action="goto" data-view="budget"\s+data-anchor="accumulation"/.test(resume),
+      'le résumé mène au calcul');
+    vrai(/rec\.theoretical/.test(resume) && /rec\.spendObserved/.test(resume),
+      'et il dit son résultat et d’où viennent les dépenses');
     /* L'ordre de lecture : le patrimoine, sa repartition, la courbe, puis
        l'accumulation, puis son rythme. Le controle porte sur les positions
        relatives dans la vue, pas sur un numero de ligne. */
@@ -25247,12 +25262,13 @@ suite('La synthèse d’accumulation a changé d’écran, pas de calcul', () =>
        L'ancre porte donc sur la carte elle-meme, pas sur son ancien geste. */
     const iHero = vue.indexOf('<div class="hero">');
     const iEvo = vue.indexOf('${carteEvolution()}');
-    const iAcc = vue.indexOf('${carteAccumulation()}');
-    const iRythme = vue.indexOf("trad('Rythme d\\'accumulation')");
-    vrai(iHero > 0 && iEvo > 0 && iAcc > 0 && iRythme > 0, 'les quatre repères existent');
+    const iAcc = vue.indexOf('${carteAccumulationResume()}');
+    vrai(iHero > 0 && iEvo > 0 && iAcc > 0, 'les trois repères existent');
     vrai(iHero < iAcc, 'le patrimoine principal vient avant');
     vrai(iEvo < iAcc, 'la courbe aussi');
-    vrai(iAcc < iRythme, 'et le rythme, qui montre l’évolution, vient après');
+    vrai(!vue.includes('${carteAccumulation()}'), 'l’équation entière n’est plus sur l’accueil');
+    vrai(!vue.includes("trad('Rythme d\\'accumulation')") && !vue.includes('carteRythme()'),
+      'ni le rythme, parti dans l’Historique');
   });
 
   test('une seule source de vérité, et aucun calcul refait dans la vue', () => {
@@ -25603,8 +25619,8 @@ suite('La synthèse d’accumulation a changé d’écran, pas de calcul', () =>
        mois ont mis à arriver. Le nombre ne change pas — le moteur divise déjà
        par les mois réels — c'est le mot qui suit. */
     const src = lireSource('assets/app.js');
-    const i = src.indexOf("trad('Rythme d\\'accumulation')");
-    const bloc = src.slice(i, src.indexOf("trad('Réserve de sécurité')"));
+    const i = src.indexOf('function carteRythme()');
+    const bloc = src.slice(i, src.indexOf('\n}\n', i));
     vrai(/const trou = num\(p\.mois\) > p\.count;/.test(bloc),
       'la carte sait si un mois manque sur la période affichée');
     for (const [normal, trou] of [['Mois en hausse', 'Variations en hausse'],
@@ -25686,9 +25702,14 @@ suite('La synthèse d’accumulation a changé d’écran, pas de calcul', () =>
     /* Il perd la ligne qui a demenage, et rien d'autre : sa courbe, sa plage,
        sa moyenne constatee, ses apports exceptionnels et ses trois compteurs. */
     const src = lireSource('assets/app.js');
-    const i = src.indexOf("trad('Rythme d\\'accumulation')");
+    const i = src.indexOf('function carteRythme()');
     vrai(i > 0, 'la carte existe toujours');
-    const bloc = src.slice(i, src.indexOf("trad('Réserve de sécurité')"));
+    const bloc = src.slice(i, src.indexOf('\n}\n', i));
+    vrai(/trad\('Rythme d\\'accumulation'\)/.test(bloc), 'sous son nom');
+    const hist = src.slice(src.indexOf('function viewHistory()'), src.indexOf('function mountHistory()'));
+    vrai(/\$\{aUnComptePropre\(\) \? carteRythme\(\) : ''\}/.test(hist), 'et l’Historique la rend');
+    const mh = src.slice(src.indexOf('function mountHistory()'), src.indexOf('\n}\n', src.indexOf('function mountHistory()')));
+    vrai(/monterRythme\(\);/.test(mh), 'avec ses barres');
     /* Les trois compteurs se nomment desormais selon qu'un mois manque ou non
        — « Mois en hausse » ou « Variations en hausse » — donc on cherche le
        LIBELLE et non la forme exacte de l'appel. Ce que le controle protege est
@@ -26751,7 +26772,7 @@ suite('Une page s’ouvre sur son sujet, et se corrige à la fin', () => {
       'et la carte des notes est partie : le journal les porte, ligne par ligne');
   });
 
-  test('Aperçu : le patrimoine, sa répartition, puis ce qui bouge aujourd’hui', () => {
+  test('Aperçu : le patrimoine, un point, l’objectif, la répartition, puis la courbe', () => {
     /* La carte du portefeuille vivait en avant-derniere position, sous quatre
        cartes qui se comptent en mois : la courbe, l'accumulation, le rythme,
        l'autonomie. Elle porte le seul chiffre de la page qui bouge le jour
@@ -26762,21 +26783,24 @@ suite('Une page s’ouvre sur son sujet, et se corrige à la fin', () => {
     const vue = src.slice(src.indexOf('function viewOverview()'),
                           src.indexOf('function mountOverview()'));
     vrai(vue.length > 1000, 'la vue doit être trouvable');
+    /* Les appels s'ecrivent avec leurs accolades : un nom de fonction se lit
+       aussi dans un commentaire, et l'ancre nue tomberait dessus. Le depot
+       public etant servi sans commentaires, le controle serait vert la-bas et
+       rouge ici. */
     const l = positions(vue,
       'class="hero"',
-      'class="card repart"',
-      'class="pf-corps"',
-      /* Les trois appels s'ecrivent avec leurs accolades : `carteObjectif()`
-         se lit aussi dans un commentaire quinze lignes plus haut, et l'ancre
-         nue tombait dessus. Le depot public etant servi sans commentaires, le
-         controle aurait ete vert la-bas et rouge ici. */
+      "${pasAFaire('comptes') ? '' : carteARetenir()}",
+      '${carteObjectif()}',
+      'class="card repart',
       '${carteEvolution()}',
-      '${carteAccumulation()}',
-      'chartPace',
-      '${carteObjectif()}');
+      '${carteVariation()}',
+      'class="pf-corps"',
+      '${carteAccumulationResume()}',
+      '${carteReserveResume()}');
     vrai(croissant(l),
-      'l’ordre attendu est patrimoine, poches, portefeuille, courbe, '
-      + `accumulation, rythme, objectif : ${l.join(' < ')}`);
+      'l’ordre attendu est patrimoine, point à retenir, objectif, répartition, courbe, '
+      + `écarts, titres, accumulation, réserve : ${l.join(' < ')}`);
+    vrai(!vue.includes('chartPace'), 'et un seul graphique : le rythme est parti');
     /* Au quatrieme rang, un mur de zeros serait du bruit : la carte ne parait
        pas sans une seule ligne de titres. */
     const garde = vue.indexOf("${!aDesPositionsMarche() ? '' : `");
@@ -35103,7 +35127,9 @@ suite('Marchés s’ouvre à tout le monde, et dit ce qui la remplirait', () => 
     /* Aucune autre carte de l'accueil ne depend des positions : le patrimoine,
        les poches, la courbe, l'accumulation, le rythme, l'autonomie et
        l'objectif parlent du patrimoine entier et restent. */
-    const dehors = vue.slice(0, garde) + vue.slice(vue.indexOf('carteEvolution()'));
+    const finBloc = vue.indexOf('</div>`}', vue.indexOf('class="pf-corps"'));
+    vrai(finBloc > garde, 'le bloc conditionnel se referme');
+    const dehors = vue.slice(0, garde) + vue.slice(finBloc);
     vrai(!/dayPerformance\(\)/.test(dehors),
       'la performance du jour ne vit que dans la carte conditionnelle');
   });
@@ -40362,7 +40388,7 @@ suite('Un premier compte ne remplit pas l’accueil de zéros', () => {
     pres(p.courant + p.precaution, 3000, 'le coussin existe');
     eq(runway().burn, 0, 'et le coût de la vie est inconnu');
     const src = lireSource('assets/app.js');
-    vrai(/if \(!r\.burn\) return/.test(src),
+    vrai(/\$\{!r\.burn \? `/.test(src.slice(src.indexOf('function carteReserveResume()'))),
       'la carte se tait dès que le dénominateur manque, quel que soit le coussin');
     vrai(!/const cover = r\.burn \? ep \/ r\.burn : 0;/.test(src),
       'le rapport ne se replie plus sur zéro');
@@ -41335,11 +41361,11 @@ suite('Premier écran : le patrimoine d’abord, et rien de vide', () => {
     const guideDerriere = v.indexOf("${guideDevant ? '' : guide}");
     const releve = v.indexOf("${moisEnAttente.missing && !guide ?");
     const depenses = v.indexOf("${depEnAttente.missing && !guide ?");
-    const repart = v.indexOf('<div class="card repart">');
+    const repart = v.indexOf("${pasAFaire('comptes') ? '' : carteARetenir()}");
     vrai(hero > 0 && guideDerriere > hero, 'les repères existent, dans l’ordre connu');
     vrai(releve > guideDerriere && depenses > releve,
       'le relevé puis les dépenses, tous deux après le guide replié');
-    vrai(depenses < repart, 'et avant la répartition, qui détaille le chiffre');
+    vrai(depenses < repart, 'et avant tout ce qui commente le chiffre');
     vrai(v.indexOf('class="rappel card-cliquable"') > hero, 'aucun bandeau au-dessus du hero');
   });
 
@@ -41926,7 +41952,8 @@ suite('Premier lancement : Longward prend vie sous les yeux', () => {
     eq(e.vierge, false, 'le fixture a des comptes');
     vrai(!pasAFaire('comptes'), 'donc la branche des aperçus ne se rend pas');
     const s = src();
-    vrai(/if \(demarrageMasque\(\)\) return '';/.test(s.slice(s.indexOf('function carteDemarrage()'))), 'et le guide refermé ne revient pas');
+    vrai(/if \(demarrageMasque\(\) \|\| demarrageDepasse\(\)\) return '';/.test(s.slice(s.indexOf('function carteDemarrage()'))),
+      'et le guide refermé, ou dépassé, ne revient pas');
   });
 
   test('6-8. le mode exemple : des données fictives, isolées, jamais envoyées', () => {
@@ -43396,7 +43423,9 @@ suite('La réserve de sécurité passe devant le mobilisable', () => {
     pres(r.reserveMois, r.reserve / r.burn, 'et ses mois sont ce rapport');
     /* La carte ne recalcule plus rien : elle lit le modèle. */
     const a = lireSource('assets/app.js');
-    const carte = a.slice(a.indexOf('data-anchor="autonomie"'), a.indexOf('data-anchor="autonomie"') + 1600);
+    const carte = a.slice(a.indexOf('function carteReserveResume()'),
+                          a.indexOf('\n}\n', a.indexOf('function carteReserveResume()')));
+    vrai(/data-anchor="autonomie"/.test(carte), 'la carte garde son ancre');
     vrai(/const ep = r\.reserve;/.test(carte), 'la carte lit la réserve du modèle');
     vrai(!/pk\.precaution \+ pk\.courant/.test(carte), 'elle ne la recompose plus');
     /* Et l'insight lit le meme nombre, pas un troisieme. */
@@ -43593,7 +43622,7 @@ suite('La carte de répartition se lit au niveau du patrimoine', () => {
      gabarit sur d'autres ecrans, et cette passe ne les touche pas. */
   const carte = () => {
     const a = app();
-    const i = a.indexOf('<div class="card repart">');
+    const i = a.indexOf('<div class="card repart repart-synthese">');
     return a.slice(i, a.indexOf('repart-base', i));
   };
 
@@ -43674,10 +43703,12 @@ suite('La carte de répartition se lit au niveau du patrimoine', () => {
     const c = carte();
     /* Le plancher vit dans le style de la barre, et nulle part ailleurs : le
        pourcentage passe par `fmtPct` sur `x.pct`, la valeur du modèle. */
-    vrai(/width:\$\{largeurPart\(x\.pct\)\}/.test(c), 'la barre lit le plancher');
+    /* Plus de barre par ligne sur l'accueil : la barre du haut compose les
+       memes parts. Le texte lit donc la part telle quelle, et le plancher ne
+       sert plus qu'aux listes qui ont encore leurs barres. */
+    vrai(!/class="repart-barre"/.test(c), 'aucune barre par ligne');
     vrai(/fmtPct\(x\.pct, 1\)/.test(c), 'le texte lit la part telle quelle');
-    vrai(!/largeurPart/.test(c.slice(c.indexOf('repart-pct'), c.indexOf('repart-barre'))),
-      'le plancher n’entre jamais dans le texte');
+    vrai(!/largeurPart/.test(c), 'et le plancher n’entre jamais dans le texte');
   });
 
   test('la carte s’est resserrée, elle n’est pas devenue dense', () => {
@@ -43707,14 +43738,15 @@ suite('La carte de répartition se lit au niveau du patrimoine', () => {
     vrai(/tabular-nums/.test(pct), 'mais sa colonne tombe droit');
   });
 
-  test('la carte reste sans titre, et c’est le hero qui la présente', () => {
+  test('la carte se nomme, maintenant qu’elle ne suit plus le hero', () => {
     const c = carte();
-    /* Un titre serait redondant : le hero juste au-dessus porte le montant et
-       sa barre de composition, et cette carte en est le détail. La nommer
-       « Répartition » ajouterait une ligne pour redire ce que le contexte dit
-       déjà. */
-    vrai(!/card-head/.test(c), 'aucun en-tête sur cette carte');
-    vrai(!/<h2>/.test(c), 'ni aucun titre');
+    /* Elle etait sans titre parce que le hero, juste au-dessus, la presentait.
+       Le point a retenir et l'objectif s'intercalent desormais : sans nom, elle
+       se lirait comme leur suite. Son en-tete porte aussi le renvoi a la page
+       qui la detaille. */
+    vrai(/<h2>\$\{trad\('Répartition'\)\}<\/h2>/.test(c), 'elle se nomme');
+    vrai(/href="#\/allocation">\$\{trad\('Voir l’allocation'\)\} →<\/a>/.test(c), 'et mène à Allocation');
+    vrai(!!I18N.en['Voir l’allocation'], 'dans les deux langues');
   });
 
   test('les trois niveaux partagent leurs couleurs et leurs proportions', () => {
@@ -43856,21 +43888,17 @@ suite('Le hero dit sa fenêtre et ce qu’elle n’est pas', () => {
        serait le même mensonge que l'écrire sous quatre. */
     setLang('fr');
     const a = vue();
-    vrai(/'sur \{n\} mois glissants'/.test(a), 'le gabarit porte une marque, pas un douze');
-    vrai(!/sur 12 mois glissants'/.test(a), 'aucun douze écrit en dur');
-    eq(trad('sur {n} mois glissants').replace('{n}', 12), 'sur 12 mois glissants',
-      'et à douze mois, la phrase est celle qu’on attend');
-    eq(trad('sur {n} mois glissants').replace('{n}', 15), 'sur 15 mois glissants',
-      'à quinze, elle le dit');
-    eq(trad('sur {n} mois glissant').replace('{n}', 1), 'sur 1 mois glissant',
-      'et le singulier existe');
+    vrai(/'depuis le relevé de \{m\}'/.test(a), 'le gabarit porte une marque de date, pas une date écrite');
+    vrai(/varAn\.mois\} \$\{trad\('mois'\)\}/.test(a), 'le nombre de mois vient du moteur');
+    vrai(!/12 mois'/.test(a), 'aucun douze écrit en dur');
+    eq(trad('depuis le relevé de {m}').replace('{m}', 'sept. 25'), 'depuis le relevé de sept. 25',
+      'et la phrase est celle qu’on attend');
   });
 
   test('l’anglais dit la période sans calquer le français', () => {
     setLang('en');
     try {
-      eq(trad('sur {n} mois glissants').replace('{n}', 12), 'over a rolling 12-month period');
-      eq(trad('sur {n} mois glissant').replace('{n}', 1), 'over a rolling 1-month period');
+      eq(trad('depuis le relevé de {m}').replace('{m}', 'Sep 25'), 'since the Sep 25 statement');
       eq(trad('Patrimoine net'), 'Net worth', 'et le titre garde sa terminologie');
     } finally { setLang('fr'); }
   });
@@ -45791,11 +45819,13 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
   test('la section vit entre la situation et le détail', () => {
     const a = app();
     const depart = a.indexOf('function viewOverview()');
-    const repart = a.indexOf('class="card repart"', depart);
-    const retenir = a.indexOf('${carteARetenir()}', depart);
+    const hero = a.indexOf('<div class="hero">', depart);
+    const retenir = a.indexOf("${pasAFaire('comptes') ? '' : carteARetenir()}", depart);
+    const repart = a.indexOf('class="card repart', depart);
     const positions = a.indexOf("${!aDesPositionsMarche() ? '' : `", depart);
-    vrai(repart > depart && retenir > repart, 'elle suit la répartition, donc le patrimoine');
-    vrai(positions > retenir, 'et précède le détail des positions');
+    vrai(hero > depart && retenir > hero, 'elle suit le patrimoine');
+    vrai(repart > retenir, 'et passe avant la répartition, qui détaille');
+    vrai(positions > retenir, 'et avant le détail des positions');
   });
 
   test('la section se lit, elle n’alerte pas', () => {
@@ -46073,7 +46103,8 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
     }
     /* Et la carte visée lit le même moteur que l'insight : un seul chiffre. */
     const a = app();
-    const carte = a.slice(a.indexOf('data-anchor="autonomie"'), a.indexOf('data-anchor="autonomie"') + 1200);
+    const carte = a.slice(a.indexOf('function carteReserveResume()'),
+                          a.indexOf('\n}\n', a.indexOf('function carteReserveResume()')));
     vrai(/const r = runway\(\);/.test(carte), 'la carte d’autonomie lit runway(), comme l’insight');
   });
 
@@ -46095,7 +46126,7 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
     /* LES DEUX CARTES LE PASSENT, et c'est la moitie qui se perd : une seule
        des deux corrigee laisserait l'autre repeter. La liste se derive des
        entrees deja rendues, elle ne se tient pas a la main. */
-    const appels = a.match(/ligneInsight\(i, p,[\s\S]{0,180}?\)\)\.join\(''\)/g) || [];
+    const appels = a.match(/ligneInsight\(i, p,[\s\S]{0,180}?destinationInsight\(q\)\)\)/g) || [];
     eq(appels.length, 2, 'les deux cartes rendent leurs entrées par le même gabarit');
     for (const ap of appels) {
       vrai(/lus\.slice\(0, k\)\.map\(\(\[, q\]\) => destinationInsight\(q\)\)/.test(ap),
@@ -46687,5 +46718,99 @@ suite('Une dette se range sous ce qu’elle finance, ou sur sa propre ligne', ()
     const repli = css.indexOf('white-space: normal; overflow-wrap: anywhere;\n  }');
     vrai(repli > 0 && css.indexOf('td.montant { white-space: nowrap') > repli,
       'déclarée après la règle de repli qu’elle contredit');
+  });
+});
+
+/* ------------------------------------------------------------------
+   L'accueil se lit en quelques secondes
+   ------------------------------------------------------------------ */
+suite('L’accueil résume, et chaque résumé mène à son détail', () => {
+  const app = () => lireSource('assets/app.js');
+  const fonction = (src, nom) => {
+    const i = src.indexOf(nom);
+    return i < 0 ? '' : src.slice(i, src.indexOf('\n}\n', i));
+  };
+
+  test('le guide ne s’adresse plus à qui a un compte et deux relevés', () => {
+    Fixture.poser();
+    eq(relevesRenseignes(), 1, 'le fixture porte un relevé');
+    eq(demarrageDepasse(), false, 'un relevé, c’est encore le démarrage');
+    Fixture.poser(s => {
+      s.monthly.push({ date: '2026-02-28', comment: '', v: { c_courant: 3100 } });
+    });
+    eq(demarrageDepasse(), true, 'deux relevés, c’est un mois d’usage');
+    Fixture.poser(s => {
+      s.comptes = [];
+      s.monthly.push({ date: '2026-02-28', comment: '', v: { c_courant: 3100 } });
+    });
+    eq(demarrageDepasse(), false, 'sans compte, jamais');
+  });
+
+  test('un seul point se lit, le suivant se déplie sur place et se note alors', () => {
+    const a = app();
+    vrai(/const VISIBLES_A_RETENIR = 1;/.test(a), 'un point visible');
+    const carte = fonction(a, 'function carteARetenir()');
+    vrai(/k < VISIBLES_A_RETENIR \? li\s*\n?\s*: li\.replace\('<li class="retenir-item', '<li class="retenir-item retenir-surplus'\)/.test(carte),
+      'les suivants portent la classe qui les replie');
+    vrai(/dernierARetenir = retenirToutVoir \? dernierARetenirTous : dernierARetenirTous\.slice\(0, VISIBLES_A_RETENIR\);/.test(carte),
+      'un point replié n’est pas noté comme vu');
+    const acte = a.slice(a.indexOf("'retenir-tout'(btn) {"), a.indexOf('\n  },', a.indexOf("'retenir-tout'(btn) {")));
+    vrai(/dernierARetenir = dernierARetenirTous;\s*\n\s*noterInsightsVus\(\);/.test(acte),
+      'le déplier le note');
+    vrai(!/render\(\)/.test(acte), 'sans rendre la page');
+    const css = lireSource('assets/styles.css');
+    vrai(css.includes('.card.retenir:not(.tout-voir) .retenir-surplus,'), 'la feuille replie le surplus');
+  });
+
+  test('« Ce qui a changé » : la variation nette et ses deux écarts dominants', () => {
+    const carte = fonction(app(), 'function carteVariation()');
+    vrai(/\.sort\(\(a, b\) => Math\.abs\(b\.delta\) - Math\.abs\(a\.delta\)\);/.test(carte), 'les écarts se classent par ampleur');
+    vrai(/const tete = ecarts\.slice\(0, 2\);/.test(carte), 'deux se lisent');
+    vrai(/v\.debtChange \? \[\{ label: trad\('Crédits'\), delta: -v\.debtChange/.test(carte), 'crédits compris');
+    vrai(/data-action="voir-releve" data-i="\$\{v\.index\}"/.test(carte), 'et le relevé détaille tout');
+    vrai(!/listeVariation\(/.test(carte.replace(/\/\*[\s\S]*?\*\//g, '')), 'la liste complète reste au relevé');
+  });
+
+  test('la réserve se lit en mois, son détail s’ouvre à un geste', () => {
+    const a = app();
+    const carte = fonction(a, 'function carteReserveResume()');
+    vrai(/fmtMois\(cover\)/.test(carte) && /trad\('cible 3 à 6 mois'\)/.test(carte), 'les mois et la cible');
+    vrai(/data-action="apercu" data-apercu="reserve"/.test(carte), 'un accès au détail');
+    vrai(!/class="runway"/.test(carte), 'les paliers ne sont plus sur l’accueil');
+    const detail = a.slice(a.indexOf('  reserve: () => {'), a.indexOf('\n  },', a.indexOf('  reserve: () => {')));
+    vrai(/class="runway"/.test(detail) && /r\.tiers/.test(detail), 'ils sont dans la fenêtre');
+    vrai(/trad\('Coût de la vie retenu :'\)/.test(detail), 'avec le coût de la vie retenu');
+    vrai(/const r = runway\(\);/.test(detail), 'et le même modèle');
+  });
+
+  test('sans variation du jour connue, « hors séance » se dit en petit', () => {
+    const vue = fonction(app(), 'function viewOverview()');
+    const bloc = vue.slice(vue.indexOf('const j = dayPerformance();'), vue.indexOf('data-apercu="jourTitres"'));
+    vrai(/<p class="pf-jour-muet">/.test(bloc), 'une mention');
+    vrai(!/pf-mesure pf-muet/.test(bloc), 'et non plus une ligne de mesure');
+    vrai(/pas de clôture de veille en mémoire/.test(bloc), 'qui dit sa cause');
+  });
+
+  test('l’Historique monte les barres du rythme, qui l’ont rejoint', () => {
+    /* L'Historique est un sous-onglet de l'Apercu : son montage passait par
+       celui de l'accueil, et la carte du rythme y arrivait sans ses barres.
+       Mesure a 375 px : 251 px de carte, aucune barre. */
+    const a = app();
+    vrai(/sousOngletActif\.overview === 'historique' \? mountHistory\(\) : mountOverview\(\)/.test(a),
+      'le montage suit le sous-onglet');
+    vrai(/monterRythme\(\);/.test(fonction(a, 'function mountHistory()')), 'et monte les barres');
+    vrai(!/Charts\.deltaBars/.test(fonction(a, 'function mountOverview()')), 'l’accueil ne les monte plus');
+  });
+
+  test('les nouveaux textes se traduisent', () => {
+    for (const c of ['depuis le relevé de {m}', 'Voir 1 autre point', 'Voir {n} autres points', 'Voir l’allocation',
+                     '{n} autres écarts', '1 autre écart', '{n} mouvements du journal compris',
+                     '1 mouvement du journal compris', 'Voir le calcul',
+                     'selon ton budget, dépenses moyennes de l’année',
+                     'selon ton budget, objectif de dépenses faute de dépense saisie', 'Voir le détail']) {
+      vrai(!!I18N.en[c], `« ${c.slice(0, 40)} » a sa traduction`);
+    }
+    for (const c of ['depuis le relevé de {m}', 'Voir {n} autres points', '{n} autres écarts'])
+      vrai(I18N.en[c].includes(c.includes('{m}') ? '{m}' : '{n}'), `« ${c} » garde sa marque`);
   });
 });
