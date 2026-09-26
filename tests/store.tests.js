@@ -41361,8 +41361,12 @@ suite('Premier écran : le patrimoine d’abord, et rien de vide', () => {
     const guideDerriere = v.indexOf("${guideDevant ? '' : guide}");
     const releve = v.indexOf("${moisEnAttente.missing && !guide ?");
     const depenses = v.indexOf("${depEnAttente.missing && !guide ?");
-    const repart = v.indexOf("${pasAFaire('comptes') ? '' : carteARetenir()}");
+    const retenir = v.indexOf("${pasAFaire('comptes') ? '' : carteARetenir()}");
+    const repart = v.indexOf('${carteObjectif()}');
     vrai(hero > 0 && guideDerriere > hero, 'les repères existent, dans l’ordre connu');
+    /* Et apres le point a retenir : un releve a prendre reste visible, mais ce
+       n'est pas ce qu'on vient lire en premier. */
+    vrai(retenir > guideDerriere && releve > retenir, 'le point à retenir passe avant les bandeaux');
     vrai(releve > guideDerriere && depenses > releve,
       'le relevé puis les dépenses, tous deux après le guide replié');
     vrai(depenses < repart, 'et avant tout ce qui commente le chiffre');
@@ -43622,7 +43626,9 @@ suite('La carte de répartition se lit au niveau du patrimoine', () => {
      gabarit sur d'autres ecrans, et cette passe ne les touche pas. */
   const carte = () => {
     const a = app();
-    const i = a.indexOf('<div class="card repart repart-synthese">');
+    /* Depuis la synthese : le gabarit d'une ligne est ecrit juste avant la
+       balise de la carte, et il en fait partie. */
+    const i = a.indexOf('const s = syntheseRepartition(classes);');
     return a.slice(i, a.indexOf('repart-base', i));
   };
 
@@ -43745,8 +43751,8 @@ suite('La carte de répartition se lit au niveau du patrimoine', () => {
        se lirait comme leur suite. Son en-tete porte aussi le renvoi a la page
        qui la detaille. */
     vrai(/<h2>\$\{trad\('Répartition'\)\}<\/h2>/.test(c), 'elle se nomme');
-    vrai(/href="#\/allocation">\$\{trad\('Voir l’allocation'\)\} →<\/a>/.test(c), 'et mène à Allocation');
-    vrai(!!I18N.en['Voir l’allocation'], 'dans les deux langues');
+    vrai(/href="#\/allocation">\$\{trad\('Voir toute l’allocation'\)\} →<\/a>/.test(c), 'et mène à Allocation');
+    vrai(!!I18N.en['Voir toute l’allocation'], 'dans les deux langues');
   });
 
   test('les trois niveaux partagent leurs couleurs et leurs proportions', () => {
@@ -46802,8 +46808,64 @@ suite('L’accueil résume, et chaque résumé mène à son détail', () => {
     vrai(!/Charts\.deltaBars/.test(fonction(a, 'function mountOverview()')), 'l’accueil ne les monte plus');
   });
 
+  test('la répartition montre trois catégories, et compte le reste', () => {
+    /* Parts fictives, dans l'ordre de la table des classes et non par montant. */
+    const parts = [
+      { classe: 'liquidites', label: 'Liquidités', value: 150, pct: 15 },
+      { classe: 'actions', label: 'Actifs de marché', value: 400, pct: 40 },
+      { classe: 'obligations', label: 'Obligations', value: 50, pct: 5 },
+      { classe: 'crypto', label: 'Cryptomonnaies', value: 30, pct: 3 },
+      { classe: 'immobilier', label: 'Immobilier', value: 450, pct: 45 },
+      { classe: DETTES_NON_AFFECTEES, label: 'Dettes non affectées', value: -80, pct: -8 },
+    ];
+    const s = syntheseRepartition(parts);
+    eq(s.tete.map(x => x.classe).join(','), 'immobilier,actions,liquidites', 'les trois plus grosses, par montant décroissant');
+    eq(s.autres.nb, 2, 'le reste se compte');
+    pres(s.autres.value, 80, 'et vaut la somme de ce qu’il réunit');
+    pres(s.autres.pct, 8, 'avec sa part');
+    eq(s.autres.labels.join(','), 'Obligations,Cryptomonnaies', 'et nomme ce qu’il réunit');
+    eq(s.negatives.length, 1, 'une dette sans destination reste visible, hors du classement');
+    pres(s.tete.reduce((a, x) => a + x.value, 0) + s.autres.value + s.negatives.reduce((a, x) => a + x.value, 0),
+      parts.reduce((a, x) => a + x.value, 0), 'et les lignes affichées font toujours la base');
+    eq(syntheseRepartition(parts.slice(0, 3)).autres, null, 'sans reste, pas de ligne du reste');
+    eq(syntheseRepartition([{ value: 10, pct: null }, { value: 5, pct: null }, { value: 4, pct: null },
+                            { value: 1, pct: null }]).autres.pct, null, 'sans base divisible, aucune part inventée');
+  });
+
+  test('la ligne du reste mène à toute l’allocation, et le total n’est pas celui des trois', () => {
+    const vue = fonction(app(), 'function viewOverview()');
+    const carte = vue.slice(vue.indexOf('const s = syntheseRepartition(classes);'), vue.indexOf('repart-base'));
+    vrai(/\$\{s\.tete\.map\(ligneClasse\)\.join\(''\)\}/.test(carte), 'trois lignes de catégorie');
+    vrai(/<a class="repart-ligne repart-autres" href="#\/allocation"/.test(carte), 'le reste mène à Allocation');
+    vrai(/s\.autres\.labels\.map/.test(carte), 'et dit ce qu’il contient');
+    vrai(/\$\{s\.negatives\.map\(ligneClasse\)\.join\(''\)\}/.test(carte), 'les parts négatives restent affichées');
+    vrai(carte.indexOf('s.tete.map') < carte.indexOf('repart-autres') && carte.indexOf('repart-autres') < carte.indexOf('s.negatives.map'),
+      'dans cet ordre : catégories, reste, dettes');
+    vrai(!!I18N.en['{n} autres catégories'] && I18N.en['{n} autres catégories'].includes('{n}') && !!I18N.en['1 autre catégorie'],
+      'dans les deux langues');
+  });
+
+  test('le rappel du relevé se lit sans crier', () => {
+    const css = lireSource('assets/styles.css');
+    const bloc = css.slice(css.indexOf('.rappel {'), css.indexOf('}', css.indexOf('.rappel {')));
+    vrai(/background: var\(--surface-1\);/.test(bloc) && /border: 1px solid var\(--border\);/.test(bloc),
+      'une surface et un filet de carte');
+    vrai(!/--warning/.test(bloc), 'plus de fond ni de filet ambre');
+    const pastille = css.slice(css.indexOf('.rappel-pastille {'), css.indexOf('}', css.indexOf('.rappel-pastille {')));
+    vrai(/background: var\(--warning\);/.test(pastille) && !/box-shadow/.test(pastille), 'l’ambre ne reste qu’à la pastille, sans halo');
+    const vue = fonction(app(), 'function viewOverview()');
+    vrai(/sortiesRappel\('releve', moisEnAttente\.label\)/.test(vue) && /data-action="ajouter-releve"/.test(vue),
+      'son geste, « Plus tard » et la croix restent');
+    /* Mesure a 375 px : la phrase d'explication se pliait sur trois lignes a
+       cote de « Plus tard », et « sept. » se separait de « 26 ». */
+    vrai(/@media \(max-width: 479px\) \{\s*\n\s*\.rappel-texte br, \.rappel-texte \.muted \{ display: none; \}/.test(css),
+      'sur téléphone, le titre suffit');
+    vrai(css.includes('.rappel-mois { white-space: nowrap; }') && /<span class="rappel-mois">\$\{esc\(moisEnAttente\.label\)\} ›<\/span>/.test(vue),
+      'et le mois ne se coupe pas de son année');
+  });
+
   test('les nouveaux textes se traduisent', () => {
-    for (const c of ['depuis le relevé de {m}', 'Voir 1 autre point', 'Voir {n} autres points', 'Voir l’allocation',
+    for (const c of ['depuis le relevé de {m}', 'Voir 1 autre point', 'Voir {n} autres points', 'Voir toute l’allocation',
                      '{n} autres écarts', '1 autre écart', '{n} mouvements du journal compris',
                      '1 mouvement du journal compris', 'Voir le calcul',
                      'selon ton budget, dépenses moyennes de l’année',

@@ -1982,6 +1982,20 @@ function segmentsBarre(parts) {
   return positives.map(x => ({ ...x, largeur: somme > 0 ? num(x.value) / somme * 100 : 0 }));
 }
 
+const CATEGORIES_EN_TETE = 3;
+function syntheseRepartition(parts, n = CATEGORIES_EN_TETE) {
+  const positives = (parts || []).filter(x => num(x.value) > 0.005)
+    .sort((a, b) => num(b.value) - num(a.value));
+  const negatives = (parts || []).filter(x => !(num(x.value) > 0.005));
+  const reste = positives.slice(n);
+  const autres = reste.length ? {
+    nb: reste.length, labels: reste.map(x => x.label),
+    value: round2(reste.reduce((s, x) => s + num(x.value), 0)),
+    pct: reste.every(x => x.pct != null) ? reste.reduce((s, x) => s + x.pct, 0) : null,
+  } : null;
+  return { tete: positives.slice(0, n), autres, negatives };
+}
+
 function refreshAccounts() {
   const s = Store.state;
   if (s && Array.isArray(s.comptes)) {

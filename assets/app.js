@@ -1504,12 +1504,14 @@ function viewOverview() {
 
   ${guideDevant ? '' : guide}
 
+  ${pasAFaire('comptes') ? '' : carteARetenir()}
+
   ${moisEnAttente.missing && !guide ? `
   <div class="rappel card-cliquable">
     <button type="button" class="card-couvre" data-action="ajouter-releve"
             aria-label="${trad('Enregistrer le relevé de')} ${esc(moisEnAttente.label)}"></button>
     <span class="rappel-pastille"></span>
-    <span class="rappel-texte"><b>${trad('Enregistrer le relevé de')} ${esc(moisEnAttente.label)} ›</b><br>
+    <span class="rappel-texte"><b>${trad('Enregistrer le relevé de')} <span class="rappel-mois">${esc(moisEnAttente.label)} ›</span></b><br>
       <span class="muted">${trad('Ajoute ce mois à ta courbe de patrimoine · {v} aujourd’hui').replace('{v}', fmtEUR0(nowTotals().total))}</span></span>
     ${sortiesRappel('releve', moisEnAttente.label)}
   </div>` : ''}
@@ -1519,12 +1521,11 @@ function viewOverview() {
     <button type="button" class="card-couvre" data-action="saisir-mois-en-attente"
             aria-label="${trad('Saisir les dépenses de')} ${esc(depEnAttente.label)}"></button>
     <span class="rappel-pastille"></span>
-    <span class="rappel-texte"><b>${trad('Saisir les dépenses de')} ${esc(depEnAttente.label)} ›</b><br>
+    <span class="rappel-texte"><b>${trad('Saisir les dépenses de')} <span class="rappel-mois">${esc(depEnAttente.label)} ›</span></b><br>
       <span class="muted">${trad('Le mois est clos, ce qu’il a coûté reste à enregistrer')}</span></span>
     ${sortiesRappel('depenses', depEnAttente.label)}
   </div>` : ''}
 
-  ${pasAFaire('comptes') ? '' : carteARetenir()}
   ${carteObjectif()}
   ${(() => {
     /* DEUX PRECISIONS DIFFERENTES SUR LA MEME LIGNE, ET C'EST VOULU.
@@ -1554,11 +1555,8 @@ function viewOverview() {
        fermerait. C'est ce qui vient d'arriver, dans ce commentaire meme.) */
     const classes = repartitionClasses({ net: evoNet });
     if (!classes.length) return '';
-    return `
-  <div class="card repart repart-synthese">
-    <div class="card-head"><h2>${trad('Répartition')}</h2>
-      <a class="hint lien-vue" href="#/allocation">${trad('Voir l’allocation')} →</a></div>
-    ${classes.map(x => {
+    const s = syntheseRepartition(classes);
+    const ligneClasse = x => {
       const dettesSeules = x.classe === DETTES_NON_AFFECTEES;
       return `
       <button type="button" class="repart-ligne" data-action="apercu"
@@ -1572,7 +1570,23 @@ function viewOverview() {
           <b${x.value < 0 ? ' class="dette"' : ''}>${fmtEUR0(x.value)}</b>
           <span class="repart-pct">${x.pct == null ? '' : fmtPct(x.pct, 1)}</span>
         </span>
-      </button>`; }).join('')}
+      </button>`; };
+    return `
+  <div class="card repart repart-synthese">
+    <div class="card-head"><h2>${trad('Répartition')}</h2>
+      <a class="hint lien-vue" href="#/allocation">${trad('Voir toute l’allocation')} →</a></div>
+    ${s.tete.map(ligneClasse).join('')}
+    ${!s.autres ? '' : `
+    <a class="repart-ligne repart-autres" href="#/allocation"
+       title="${trad('Voir toute l’allocation')}">
+      <span class="repart-haut">
+        <span class="repart-nom">${(s.autres.nb > 1 ? trad('{n} autres catégories') : trad('1 autre catégorie'))
+          .replace('{n}', s.autres.nb)}<span class="sub">${s.autres.labels.map(l => esc(trad(l))).join(', ')}</span></span>
+        <b>${fmtEUR0(s.autres.value)}</b>
+        <span class="repart-pct">${s.autres.pct == null ? '' : fmtPct(s.autres.pct, 1)}</span>
+      </span>
+    </a>`}
+    ${s.negatives.map(ligneClasse).join('')}
     ${(() => {
       const p = patrimoine();
       if (!p.dettes) return '';

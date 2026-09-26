@@ -1569,6 +1569,9 @@ button.pf-total, button.pf-mesure { cursor: pointer; }
 .pf-jour-muet { grid-column: 1 / -1; margin: 0; font-size: var(--font-xs); color: var(--muted); }
 
 .repart-synthese .repart-ligne { padding: 8px 0; }
+.repart-autres { text-decoration: none; }
+.repart-autres .repart-haut { padding-left: 17px; }
+.repart-autres .repart-nom { font-weight: 500; color: var(--text-secondary); }
 .card.retenir:not(.tout-voir) .retenir-surplus,
 .card.retenir.tout-voir .retenir-voir-plus,
 .card.retenir:not(.tout-voir) .retenir-voir-moins { display: none; }
@@ -3530,18 +3533,21 @@ th .u {
 
 .rappel {
   display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
-  font: inherit; font-size: var(--font-md); color: var(--text-secondary); cursor: pointer;
-  padding: 13px 16px; border-radius: var(--radius);
-  background: color-mix(in oklab, var(--warning) 10%, var(--surface-1));
-  border: 1px solid color-mix(in oklab, var(--warning) 38%, transparent);
-  transition: border-color .12s, transform .12s;
+  font: inherit; font-size: var(--font-sm); color: var(--text-secondary); cursor: pointer;
+  padding: 10px 14px; border-radius: var(--radius);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  transition: border-color .12s;
 }
-@media (hover: hover) { .rappel:hover { border-color: var(--warning); transform: translateY(-1px); } }
-.rappel b { color: var(--text-primary); }
+@media (hover: hover) { .rappel:hover { border-color: color-mix(in oklab, var(--warning) 45%, var(--border)); } }
+.rappel b { color: var(--text-primary); font-weight: 600; }
 .rappel-pastille {
-  width: 9px; height: 9px; border-radius: var(--radius-pill); background: var(--warning); flex-shrink: 0;
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--warning) 22%, transparent);
+  width: 7px; height: 7px; border-radius: var(--radius-pill); background: var(--warning); flex-shrink: 0;
 }
+@media (max-width: 479px) {
+  .rappel-texte br, .rappel-texte .muted { display: none; }
+}
+.rappel-mois { white-space: nowrap; }
 .rappel-texte { flex: 1 1 140px; }
 
 /* Les sorties du rappel, groupees a droite. Elles arrivent apres
