@@ -6101,9 +6101,10 @@ suite('L’anneau du portefeuille : un total qui égale ses parts', () => {
        tranches ne composent pas son centre ne se verrait nulle part. */
     const pf = poser([1000, 500, 250, 250]);
     pres(pf.total, 2000, 'le total est celui des parts');
-    pres(pf.parts.reduce((s, x) => s + x.value, 0), pf.total, 'et il l’égale exactement');
-    pres(pf.parts.reduce((s, x) => s + x.pct, 0), 100, 'les pourcentages font cent');
-    eq(pf.parts[0].value, 1000, 'la plus grosse ligne ouvre le classement');
+    pres(pf.anneau.reduce((s, x) => s + x.value, 0), pf.total, 'l’anneau l’égale exactement');
+    pres(pf.anneau.reduce((s, x) => s + x.pct, 0), 100, 'et ses parts font cent');
+    pres(pf.tableau.lignes.reduce((s, x) => s + x.value, 0), pf.total, 'le tableau aussi');
+    eq(pf.tableau.lignes[0].value, 1000, 'la plus grosse ligne ouvre le classement');
   });
 
   test('il couvre exactement la base du portefeuille', () => {
@@ -6121,31 +6122,106 @@ suite('L’anneau du portefeuille : un total qui égale ses parts', () => {
     /* Quelqu'un dont un cinquième du portefeuille dort en attendant un point
        d'entrée doit le VOIR : c'est une allocation, pas un détail comptable. */
     const pf = poser([1600], 400);
-    const cash = pf.parts.find(x => x.attente);
-    vrai(!!cash, 'il a sa part');
+    const cash = pf.tableau.cash;
+    vrai(!!cash && cash.attente, 'il a sa ligne');
     pres(cash.value, 400, 'qui vaut ce qui attend');
     pres(cash.pct, 20, 'et pèse ce qu’il pèse');
+    vrai(pf.anneau.some(x => x.attente), 'et sa tranche');
     /* IL NE SE FAIT PAS ABSORBER PAR « AUTRES » : il n'est pas une ligne plus
        petite que les autres, c'est la part qui n'est pas investie. */
-    const gros = poser([100, 90, 80, 70, 60, 50, 40, 30, 20, 10], 5);
-    vrai(gros.parts[gros.parts.length - 1].attente,
-      'même minuscule, il garde sa part');
-    eq(gros.parts.length, 8, 'huit parts au plus, lui compris');
+    const gros = poser([1000, 900, 800, 700, 600, 500, 400, 300, 200, 100, 30, 20], 5);
+    vrai(gros.tableau.cash && gros.tableau.cash.value === 5, 'même minuscule, il reste une ligne à part');
+    vrai(!(gros.tableau.autres?.lignes || []).some(x => x.attente), 'jamais dans le groupe du tableau');
+    vrai(gros.anneau[gros.anneau.length - 1].attente, 'et il garde sa tranche');
+    vrai(gros.anneau.length <= TRANCHES_ANNEAU_PORTEFEUILLE, 'l’anneau reste sous son plafond, lui compris');
   });
 
-  test('la queue se regroupe, et le nombre se dit', () => {
-    /* Trente lignes font trente parts illisibles, dont vingt sous le degré. Et
-       une part anonyme de 18 % ne se vérifie nulle part si elle ne dit pas
-       combien de lignes elle absorbe. */
-    const pf = poser([100, 90, 80, 70, 60, 50, 40, 30, 20, 10]);
-    eq(pf.parts.length, 8, 'huit parts au plus');
-    eq(pf.regroupees, 3, 'et « Autres » dit combien il en absorbe');
-    vrai(pf.parts[7].reste, 'la dernière part est le regroupement');
-    pres(pf.parts[7].value, 60, 'qui vaut la somme de ce qu’il absorbe');
-    /* MEME SOUS REGROUPEMENT, le total reste la somme des parts rendues : sans
-       cela le pied du tableau annoncerait autre chose que l'anneau. */
-    pres(pf.parts.reduce((s, x) => s + x.value, 0), pf.total, 'le total suit');
-    pres(pf.total, 550, 'et vaut bien tout le portefeuille');
+  test('toute ligne d’au moins 1 % se voit, une à une', () => {
+    /* Un plafond de huit parts cachait des positions de plusieurs pour cent
+       sous « Autres ». Le seuil porte sur le total des comptes de marché, cash à
+       investir compris : c'est la base du pied du tableau. */
+    const pf = poser([700, 160, 100, 20, 8, 7, 5]);     // total 1 000
+    eq(pf.tableau.lignes.length, 4, 'les quatre lignes à 2 % ou plus');
+    eq(pf.tableau.autres.lignes.length, 3, 'les trois sous le seuil se regroupent');
+    pres(pf.tableau.autres.value, 20, 'le groupe vaut la somme de ce qu’il déplie');
+    pres(pf.tableau.autres.pct, 2, 'et sa part, celle de ses lignes');
+    pres(pf.tableau.autres.lignes.reduce((s, x) => s + x.pct, 0), pf.tableau.autres.pct,
+      'les parts dépliées refont celle du groupe');
+    const borne = poser([990, 10, 5, 5]);                 // 10 vaut 0,99 %
+    const juste = poser([980, 10, 5, 5]);                 // 10 vaut 1 % tout rond
+    vrai(juste.tableau.lignes.some(x => x.value === 10), 'la borne est incluse');
+    vrai(!borne.tableau.lignes.some(x => x.value === 10), 'et tient au centième');
+  });
+
+  test('une seule petite ligne ne fait pas un groupe', () => {
+    const pf = poser([600, 395, 5]);
+    eq(pf.tableau.autres, null, 'pas de groupe pour une ligne');
+    eq(pf.tableau.lignes.length, 3, 'elle reste à sa place');
+  });
+
+  test('la situation de la capture : plus aucune position de plusieurs pour cent cachée', () => {
+    /* Onze lignes et du cash : le plafond de huit parts en rangeait cinq, toutes
+       au-dessus de 1 %, sous un « Autres » de près de 10 %. Montants fictifs. */
+    const pf = poser([30000, 18000, 13000, 10000, 8000, 6400, 2600, 2100, 1900, 1700, 1300], 5000);
+    pres(pf.total, 100000, 'le total ne change pas');
+    eq(pf.tableau.lignes.length, 11, 'les onze lignes sont dans le tableau, une à une');
+    eq(pf.tableau.autres, null, 'aucune n’est sous le seuil');
+    eq(pf.tableau.repliees, null, 'et rien n’est replié');
+    eq(pf.anneau.length, TRANCHES_ANNEAU_PORTEFEUILLE, 'l’anneau garde ses huit tranches');
+    const reste = pf.resteAnneau;
+    eq(reste.nb, 5, 'sa tranche du reste réunit les cinq plus petites');
+    eq(reste.label, trad('Reste du portefeuille'), 'sous un autre nom que le groupe du tableau');
+    const sansTranche = pf.tableau.lignes.filter(x => x.tranche == null);
+    eq(sansTranche.length, 5, 'ces cinq lignes savent qu’elles n’ont pas de tranche à elles');
+    pres(sansTranche.reduce((s, x) => s + x.value, 0), reste.value,
+      'et leur somme est la tranche du reste, au centime');
+    pres(pf.tableau.lignes.reduce((s, x) => s + x.value, 0) + pf.tableau.cash.value, pf.total,
+      'le tableau fait le total du pied');
+    pres(pf.anneau.reduce((s, x) => s + x.value, 0), pf.total, 'l’anneau aussi');
+  });
+
+  test('trois lignes : tout se voit, sans groupe ni repli', () => {
+    const pf = poser([6000, 3000, 1000], 500);
+    eq(pf.tableau.lignes.length, 3, 'trois lignes');
+    eq(pf.tableau.autres, null, 'pas de groupe');
+    eq(pf.tableau.repliees, null, 'pas de repli');
+    eq(pf.resteAnneau, null, 'et pas de tranche du reste');
+    eq(pf.anneau.length, 4, 'trois tranches et le cash');
+    vrai(pf.anneau.every(x => x.tranche != null), 'chacune a la sienne');
+  });
+
+  test('trente lignes : un tableau maîtrisable, et aucune ligne perdue', () => {
+    const grosses = [9000, 8000, 7000, 6000, 5500, 5000, 4500, 4000, 3600, 3200, 2900, 2600,
+                     2300, 2100, 1900, 1700, 1500, 1300];
+    const petites = [700, 650, 600, 550, 500, 450, 400, 350, 300, 250, 200, 150];
+    const pf = poser([...grosses, ...petites], 2800);
+    pres(pf.total, 80000, 'le total ne change pas');
+    const t = pf.tableau;
+    eq(t.lignes.length, grosses.length, 'toutes les lignes d’au moins 1 % sont des rangées');
+    eq(t.lignes.filter(x => !x.replie).length, LIGNES_TABLEAU_REPLIEES, 'les premières se voient d’emblée');
+    eq(t.repliees.nb, grosses.length - LIGNES_TABLEAU_REPLIEES, 'les suivantes attendent « Voir toutes les lignes »');
+    pres(t.repliees.value, t.lignes.filter(x => x.replie).reduce((s, x) => s + x.value, 0),
+      'la rangée de repli porte leur somme');
+    eq(t.autres.lignes.length, petites.length, 'les douze sous le seuil sont dans le groupe');
+    eq(t.lignes.length + t.autres.lignes.length, grosses.length + petites.length,
+      'les trente lignes sont toutes dans le tableau');
+    pres(t.lignes.filter(x => !x.replie).reduce((s, x) => s + x.value, 0) + t.repliees.value
+         + t.autres.value + t.cash.value, pf.total,
+      'replié, ce qui se voit fait le total du pied');
+    pres(t.lignes.reduce((s, x) => s + x.value, 0) + t.autres.value + t.cash.value, pf.total,
+      'déplié aussi');
+    vrai(pf.anneau.length <= TRANCHES_ANNEAU_PORTEFEUILLE, 'l’anneau reste lisible');
+    eq(pf.resteAnneau.nb, grosses.length - pf.anneau.filter(x => x.tranche != null && !x.attente).length
+      + petites.length, 'sa tranche du reste réunit tout ce qui n’a pas la sienne');
+    vrai(t.autres.lignes.every(x => x.tranche == null), 'une ligne du groupe n’a jamais de tranche');
+  });
+
+  test('la tranche du reste garde le nom « Autres » quand elle vaut le groupe', () => {
+    /* Deux « Autres » de deux montants se liraient sur la même carte : le nom ne
+       se partage que si le montant se partage. */
+    const pf = poser([700, 160, 100, 20, 8, 7, 5]);
+    eq(pf.resteAnneau.label, trad('Autres'), 'même nom');
+    pres(pf.resteAnneau.value, pf.tableau.autres.value, 'même montant');
   });
 
   test('une valeur non positive sort, et se compte', () => {
@@ -6153,7 +6229,8 @@ suite('L’anneau du portefeuille : un total qui égale ses parts', () => {
        plutôt que de laisser un total qui ne se retrouve pas — c'est déjà ce que
        fait `latentPnl()` pour les lignes sans prix de revient. */
     const pf = poser([1000, 0, -50, 500]);
-    eq(pf.parts.length, 2, 'deux parts seulement');
+    eq(pf.anneau.length, 2, 'deux parts seulement');
+    eq(pf.tableau.lignes.length, 2, 'et deux rangées');
     eq(pf.ecartees, 2, 'et les deux autres se comptent');
     pres(pf.total, 1500, 'le total ne porte que ce qui est dessiné');
   });
@@ -6192,10 +6269,49 @@ suite('L’anneau du portefeuille : un total qui égale ses parts', () => {
       vrai(!!I18N.en[cle], '« ' + cle + ' » existe en anglais');
     }
     /* Les pastilles du tableau et les tranches de l'anneau partent de la MEME
-       teinte par rang : deux appels a `teinterParRang` sur la meme liste, donc
+       fonction, `couleurTranche`, sur le rang de tranche que le modele pose :
        elles ne peuvent pas diverger. */
-    vrai(/teinterParRang\(pf\.parts\)/.test(app), 'le tableau teinte par rang');
-    vrai(/items: teinterParRang\(pf\.parts\)/.test(app), 'et l’anneau aussi');
+    vrai(/pastilleTeinte\(couleurTranche\(x\)\)/.test(app), 'le tableau teinte par tranche');
+    vrai(/items: pf\.anneau\.map\(p => \(\{ label: p\.label, value: p\.value, color: couleurTranche\(p\) \}\)\)/.test(app),
+      'et l’anneau aussi');
+  });
+
+  test('le tableau déplie sur place, et une ligne du reste n’a pas de couleur à elle', () => {
+    const app = lireSource('assets/app.js');
+    const store = lireSource('assets/store.js');
+    const css = lireSource('assets/styles.css');
+    const fn = app.slice(app.indexOf('function tableauPortefeuille(pf) {'),
+                         app.indexOf('\n}', app.indexOf('function tableauPortefeuille(pf) {')));
+    vrai(fn.length > 0, 'le tableau doit être trouvable');
+    vrai(/const couleurTranche = x => \(x\.tranche == null\s*\n?\s*\? COULEUR_RESTE_PORTEFEUILLE/.test(app),
+      'sans tranche à soi, le gris de la tranche du reste');
+    const sous = fn.slice(fn.indexOf('class="pf-sous"'), fn.indexOf('</tr>', fn.indexOf('class="pf-sous"')));
+    vrai(sous.length > 0 && !/pastilleTeinte/.test(sous), 'une ligne dépliée du groupe ne porte aucune pastille');
+    vrai(/data-action="pf-autres" aria-expanded="\$\{pfAutresOuvert\}"/.test(fn), 'le groupe se déplie, et le dit');
+    vrai(/data-action="pf-toutes" aria-expanded="\$\{pfToutesOuvert\}"/.test(fn), 'la liste longue aussi');
+    vrai(/\$\{tableauPortefeuille\(pf\)\}/.test(app), 'la carte rend ce tableau');
+    for (const a of ["'pf-autres'(btn)", "'pf-toutes'(btn)"]) {
+      const corps = app.slice(app.indexOf(a), app.indexOf('\n  },', app.indexOf(a)));
+      vrai(corps.length > 0 && !/render\(\)/.test(corps), `${a} déplie sans rendre la page`);
+    }
+    for (const r of ['.table-portefeuille.tout-voir .pf-replie,', '.table-portefeuille.autres-ouvert .pf-sous { display: table-row; }',
+                     '.table-portefeuille.tout-voir .pf-somme { display: none; }']) {
+      vrai(css.includes(r), `la feuille porte « ${r} »`);
+    }
+    for (const c of ['Reste du portefeuille', 'Voir toutes les lignes', 'Voir moins', '{n} lignes de plus',
+                     '{n} lignes de moins de {s}',
+                     'L’anneau résume : « {l} » réunit ce qui porte une pastille grise dans le tableau, {n} lignes pour {v}, soit {p}.']) {
+      vrai(!!I18N.en[c], `« ${c.slice(0, 40)} » a sa traduction`);
+      vrai(app.includes(`trad('${c}')`) || store.includes(`trad('${c}')`), `« ${c.slice(0, 40)} » passe par trad()`);
+    }
+    vrai(!app.includes('« Autres » regroupe {n} lignes plus petites.'), 'l’ancienne phrase du plafond est partie');
+    /* Mesure a 375 px : « 1 » et « % » tombaient sur deux lignes sous « Autres ». */
+    vrai(fn.includes("fmtPct(SEUIL_LIGNE_PORTEFEUILLE_PCT, 0).replace(' ', '\\u00a0')"),
+      'le seuil garde son signe sur sa ligne');
+    vrai(css.includes('.table-portefeuille .pf-bascule .sub { overflow-wrap: normal; }'),
+      'et la règle qui coupe partout est levée là');
+    vrai(css.includes('.table-portefeuille .pf-plus .btn { margin: 0; white-space: nowrap; }'),
+      '« Voir toutes les lignes » tient sur une ligne');
   });
 });
 

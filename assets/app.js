@@ -4267,6 +4267,47 @@ const nomPortefeuille = () => trad('Comptes de marché');
 const teinterParRang = items =>
   items.map((x, i) => ({ ...x, couleur: x.couleur || x.color || `var(--series-${(i % 8) + 1})` }));
 
+const COULEUR_RESTE_PORTEFEUILLE = 'var(--muted)';
+const couleurTranche = x => (x.tranche == null
+  ? COULEUR_RESTE_PORTEFEUILLE : `var(--series-${(x.tranche % 8) + 1})`);
+
+let pfAutresOuvert = false;
+let pfToutesOuvert = false;
+
+function tableauPortefeuille(pf) {
+  const t = pf.tableau;
+  const pourcent = x => (x.pct == null ? '' : fmtPct(x.pct));
+  const cellules = x => `<td class="montant">${fmtEUR(x.value)}</td>
+        <td class="muted pct">${pourcent(x)}</td>`;
+  const rangee = (x, cls) => `
+      <tr${cls ? ` class="${cls}"` : ''}><td class="name">${pastilleTeinte(couleurTranche(x))}${esc(x.label)}</td>
+        ${cellules(x)}</tr>`;
+  const tete = t.lignes.filter(x => !x.replie);
+  const replies = t.lignes.filter(x => x.replie);
+  const classes = ['table-portefeuille', pfAutresOuvert ? 'autres-ouvert' : '',
+                   pfToutesOuvert ? 'tout-voir' : ''].filter(Boolean).join(' ');
+  return `
+    <table class="${classes}">
+      <thead><tr><th>${trad('Ligne')}</th><th>${trad('Montant')}</th><th>%</th></tr></thead>
+      <tbody>${tete.map(x => rangee(x)).join('')}${replies.map(x => rangee(x, 'pf-replie')).join('')}${t.repliees ? `
+      <tr class="pf-plus"><td class="name">
+          <button type="button" class="btn sm ghost" data-action="pf-toutes" aria-expanded="${pfToutesOuvert}">
+            <span class="pf-voir-tout">${trad('Voir toutes les lignes')}</span><span class="pf-voir-moins">${trad('Voir moins')}</span></button>
+          <span class="sub pf-somme">${trad('{n} lignes de plus').replace('{n}', t.repliees.nb)}</span></td>
+        <td class="montant"><span class="pf-somme">${fmtEUR(t.repliees.value)}</span></td>
+        <td class="muted pct"><span class="pf-somme">${pourcent(t.repliees)}</span></td></tr>` : ''}${t.autres ? `
+      <tr class="pf-autres"><td class="name">
+          <button type="button" class="pf-bascule" data-action="pf-autres" aria-expanded="${pfAutresOuvert}">${
+            pastilleTeinte(COULEUR_RESTE_PORTEFEUILLE)}<span class="pf-bascule-texte">${esc(t.autres.label)}<span class="pf-chev" aria-hidden="true">⌄</span><span class="sub">${
+            trad('{n} lignes de moins de {s}').replace('{n}', t.autres.lignes.length)
+              .replace('{s}', fmtPct(SEUIL_LIGNE_PORTEFEUILLE_PCT, 0).replace(' ', '\u00a0'))}</span></span></button></td>
+        ${cellules(t.autres)}</tr>${t.autres.lignes.map(x => `
+      <tr class="pf-sous"><td class="name">${esc(x.label)}</td>
+        ${cellules(x)}</tr>`).join('')}` : ''}${t.cash ? rangee(t.cash) : ''}</tbody>
+      <tfoot><tr><td>${esc(nomPortefeuille())}</td><td class="montant">${fmtEUR(pf.total)}</td><td></td></tr></tfoot>
+    </table>`;
+}
+
 /* Ce que le classement par poids montre sans le dire : une ligne pese un tiers
    de tout, et il fallait lire l'axe pour s'en apercevoir.
 
@@ -4405,18 +4446,21 @@ function viewAllocation() {
   ${(() => {
     const pf = repartitionPortefeuille();
     if (!pf) return '';
-    const parts = teinterParRang(pf.parts);
+    const ra = pf.resteAnneau;
+    const resteElargi = ra && ra.nb !== (pf.tableau.autres ? pf.tableau.autres.lignes.length : 0);
     return `
   <div class="card">
     <div class="card-head"><h2>${trad('Tes comptes de marché')}</h2></div>
     <p class="hint" style="margin:0 0 12px">${trad('La part de chaque ligne. Tes comptes de marché portent tes titres cotés, leurs placements sans cours et le cash qui y attend d’être investi.')}${
       aide(trad('Un fonds compte pour UNE ligne : un portefeuille d’un seul ETF monde donne une part de 100 %, ce qui ne veut pas dire qu’il est concentré. Cette carte répartit des montants, elle ne lit pas ce qu’il y a dans un fonds.'))}</p>
     <div class="chart" id="aPortefeuille"></div>
-    ${!pf.regroupees ? '' : `<p class="hint" style="margin:8px 0 0">${
-      trad('« Autres » regroupe {n} lignes plus petites.').replace('{n}', pf.regroupees)}</p>`}
+    ${!resteElargi ? '' : `<p class="hint" style="margin:8px 0 12px">${
+      trad('L’anneau résume : « {l} » réunit ce qui porte une pastille grise dans le tableau, {n} lignes pour {v}, soit {p}.')
+        .replace('{l}', esc(ra.label)).replace('{n}', ra.nb)
+        .replace('{v}', fmtEUR(ra.value)).replace('{p}', fmtPct(ra.pct))}</p>`}
     ${!pf.ecartees ? '' : `<p class="hint" style="margin:8px 0 0">${
       trad('{n} ligne(s) sans valeur positive ne figurent pas ici.').replace('{n}', pf.ecartees)}</p>`}
-    ${tbl(parts, nomPortefeuille(), pf.total)}
+    ${tableauPortefeuille(pf)}
   </div>
 
 `;
@@ -4455,17 +4499,17 @@ function mountAllocation() {
     height: 200, centerLabel: baseAlloc().nom, centerValue: valeurBaseAlloc(),
     items: pochesPatrimoine({ financier: allocFinancier, net: true }).map(p => ({ label: p.label, value: p.value, color: p.color })),
   });
-  /* L'anneau du portefeuille : les memes parts, la meme teinte par rang que le
-     tableau juste dessous, donc les pastilles et les tranches ne peuvent pas
-     diverger. Il ne se monte que si la carte s'est rendue — `mount` sort en
-     silence sur un conteneur absent, mais le dire ici evite de compter deux
-     fois la repartition. */
+  /* L'anneau du portefeuille : ses tranches et les pastilles du tableau passent
+     par la meme `couleurTranche`, donc elles ne peuvent pas diverger. Il ne se
+     monte que si la carte s'est rendue — `mount` sort en silence sur un
+     conteneur absent, mais le dire ici evite de compter deux fois la
+     repartition. */
   const pf = repartitionPortefeuille();
   if (pf) {
     Charts.donut($('#aPortefeuille'), {
       anime: animAlloc, height: 220,
       centerLabel: nomPortefeuille(), centerValue: pf.total,
-      items: teinterParRang(pf.parts).map(p => ({ label: p.label, value: p.value, color: p.couleur || p.color })),
+      items: pf.anneau.map(p => ({ label: p.label, value: p.value, color: couleurTranche(p) })),
     });
   }
   const bt = teinterParRang(byAccountType({ financier: allocFinancier }));
@@ -10558,6 +10602,20 @@ const ACTIONS = {
     evoFinancier = voulu;
     evoTransition = true;
     render();
+  },
+  'pf-autres'(btn) {
+    const table = btn.closest('table');
+    if (!table) return;
+    pfAutresOuvert = !table.classList.contains('autres-ouvert');
+    table.classList.toggle('autres-ouvert', pfAutresOuvert);
+    btn.setAttribute('aria-expanded', String(pfAutresOuvert));
+  },
+  'pf-toutes'(btn) {
+    const table = btn.closest('table');
+    if (!table) return;
+    pfToutesOuvert = !table.classList.contains('tout-voir');
+    table.classList.toggle('tout-voir', pfToutesOuvert);
+    btn.setAttribute('aria-expanded', String(pfToutesOuvert));
   },
   'alloc-base'(btn) {
     const voulu = btn.dataset.base === 'financier';

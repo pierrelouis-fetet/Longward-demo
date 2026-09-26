@@ -109,7 +109,13 @@ const I18N = {
 
     'Entrer tes charges': 'Enter your fixed costs',
     'Un fonds compte pour UNE ligne : un portefeuille d’un seul ETF monde donne une part de 100 %, ce qui ne veut pas dire qu’il est concentré. Cette carte répartit des montants, elle ne lit pas ce qu’il y a dans un fonds.': 'A fund counts as ONE holding: a portfolio made of a single world ETF shows a 100 % slice, which does not mean it is concentrated. This card splits amounts, it does not read what is inside a fund.',
-    '« Autres » regroupe {n} lignes plus petites.': '“Other” groups {n} smaller holdings.',
+    "Reste du portefeuille": "Rest of the portfolio",
+    "Voir toutes les lignes": "See all holdings",
+    "Voir moins": "See less",
+    "{n} lignes de plus": "{n} more holdings",
+    "{n} lignes de moins de {s}": "{n} holdings under {s}",
+    "L’anneau résume : « {l} » réunit ce qui porte une pastille grise dans le tableau, {n} lignes pour {v}, soit {p}.":
+      "The ring summarises: “{l}” gathers everything with a grey dot in the table, {n} holdings for {v}, or {p}.",
     '{n} ligne(s) sans valeur positive ne figurent pas ici.': '{n} holding(s) with no positive value are not shown here.',
     'Sans nom': 'Unnamed',
     'Autres': 'Other',

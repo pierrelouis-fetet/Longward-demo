@@ -7492,10 +7492,16 @@ function aDesPositionsMarche() {
    classements devinees du libelle. Celui-ci ne devine rien : il repartit des
    montants connus, et sa bulle dit ce qu'il compte.
 
-   LA QUEUE SE REGROUPE, ET LE NOMBRE SE DIT. Trente lignes font trente parts
-   illisibles, dont vingt sous le degre. Les sept plus grosses gardent leur nom,
-   le reste devient « Autres » — et « Autres » porte le compte de ce qu'il
-   absorbe, sans quoi une part anonyme de 18 % ne se verifie nulle part.
+   DEUX LECTURES, ET CHACUNE A SA REGLE. Le TABLEAU montre une a une toutes les
+   lignes qui pesent au moins `SEUIL_LIGNE_PORTEFEUILLE_PCT` du total : un
+   plafond en nombre cachait des positions de plusieurs pour cent sous « Autres ».
+   Seules les lignes sous le seuil se regroupent, et le groupe se deplie. Au-dela
+   de `LIGNES_TABLEAU_PORTEFEUILLE` lignes, les suivantes se replient derriere
+   « Voir toutes les lignes », sans jamais quitter le tableau. L'ANNEAU, lui, est
+   une synthese : au plus `TRANCHES_ANNEAU_PORTEFEUILLE` tranches, et ce qui n'en
+   a pas une a soi rejoint la tranche du reste. Chaque ligne dit si elle a sa
+   tranche (`tranche`), pour que la vue ne lui prete pas une couleur qu'elle n'a
+   pas sur l'anneau.
 
    LES NON POSITIVES SORTENT, ET SE COMPTENT. Une part negative n'existe pas sur
    un anneau. Ce qui est ecarte se compte plutot que de laisser un total qui ne
@@ -7504,7 +7510,14 @@ function aDesPositionsMarche() {
    Et le total rendu est la SOMME DES PARTS RENDUES, pas un second calcul : les
    pourcentages tombent donc toujours a cent, et le pied du tableau redonne
    exactement ce que l'anneau dessine. */
-function repartitionPortefeuille(max = 8) {
+const SEUIL_LIGNE_PORTEFEUILLE_PCT = 1;
+const TRANCHES_ANNEAU_PORTEFEUILLE = 8;
+/* Jusqu'a ce nombre de lignes, le tableau les montre toutes ; au-dela, il en
+   montre `LIGNES_TABLEAU_REPLIEES` et replie le reste. L'ecart entre les deux
+   evite de replier trois lignes pour offrir un bouton qui en montre trois. */
+const LIGNES_TABLEAU_PORTEFEUILLE = 15;
+const LIGNES_TABLEAU_REPLIEES = 10;
+function repartitionPortefeuille() {
   /* CE QU'ELLE COUVRE EST EXACTEMENT LA BASE DU PORTEFEUILLE, ni plus ni moins.
 
      `basePortefeuilleMarches()` additionne trois choses : les positions cotees,
@@ -7534,24 +7547,44 @@ function repartitionPortefeuille(max = 8) {
     ? [{ label: trad('À investir'), value: attente, attente: true }] : [];
   if (!gardees.length && !aPart.length) return null;
 
-  const place = max - aPart.length;
-  let parts;
-  let regroupees = 0;
-  if (gardees.length <= place) {
-    parts = gardees.map(x => ({ label: x.label, value: round2(x.value) }));
-  } else {
-    const tete = gardees.slice(0, place - 1);
-    const queue = gardees.slice(place - 1);
-    regroupees = queue.length;
-    parts = [...tete.map(x => ({ label: x.label, value: round2(x.value) })),
-             { label: trad('Autres'), reste: true,
-               value: round2(queue.reduce((s, x) => s + x.value, 0)) }];
-  }
-  parts = [...parts, ...aPart];
-  const total = round2(parts.reduce((s, x) => s + x.value, 0));
+  const detail = gardees.map(x => ({ label: x.label, value: round2(x.value) }));
+  const somme = xs => round2(xs.reduce((s, x) => s + x.value, 0));
+  const total = round2(somme(detail) + somme(aPart));
+  const pct = v => (total > 0 ? (v / total) * 100 : null);
+  const avecPct = x => ({ ...x, pct: pct(x.value) });
+
+  const auSeuil = x => x.value / total * 100 + 1e-9 >= SEUIL_LIGNE_PORTEFEUILLE_PCT;
+  let visibles = detail.filter(auSeuil);
+  let petites = detail.filter(x => !auSeuil(x));
+  if (petites.length === 1) { visibles = detail; petites = []; }
+
+  const places = TRANCHES_ANNEAU_PORTEFEUILLE - aPart.length;
+  const aSoi = visibles.length + (petites.length ? 1 : 0) <= places
+    ? visibles.length : places - 1;
+  const reste = [...visibles.slice(aSoi), ...petites];
+  const cash = aPart.length ? { ...avecPct(aPart[0]), tranche: aSoi } : null;
+  const lignesTableau = visibles.map((x, i) => ({
+    ...avecPct(x), tranche: i < aSoi ? i : null,
+    replie: visibles.length > LIGNES_TABLEAU_PORTEFEUILLE && i >= LIGNES_TABLEAU_REPLIEES,
+  }));
+  const repliees = lignesTableau.filter(x => x.replie);
+  const autres = petites.length
+    ? { label: trad('Autres'), reste: true, tranche: null, ...avecPct({ value: somme(petites) }),
+        lignes: petites.map(x => ({ ...avecPct(x), tranche: null })) }
+    : null;
+  const resteAnneau = reste.length
+    ? { label: reste.length === petites.length ? trad('Autres') : trad('Reste du portefeuille'),
+        reste: true, tranche: null, nb: reste.length, ...avecPct({ value: somme(reste) }) }
+    : null;
   return {
-    parts: parts.map(x => ({ ...x, pct: total > 0 ? (x.value / total) * 100 : null })),
-    total, regroupees,
+    total,
+    tableau: {
+      lignes: lignesTableau,
+      repliees: repliees.length ? { nb: repliees.length, ...avecPct({ value: somme(repliees) }) } : null,
+      autres, cash,
+    },
+    anneau: [...lignesTableau.slice(0, aSoi), ...(resteAnneau ? [resteAnneau] : []), ...(cash ? [cash] : [])],
+    resteAnneau,
     /* Ce qui est ecarte se compte plutot que de laisser un total qui ne se
        retrouve pas, comme le fait deja `latentPnl()`. Une part negative
        n'existe pas sur un anneau. */
