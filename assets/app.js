@@ -5318,7 +5318,7 @@ function phraseDateValeur(x) {
   return '';
 }
 
-function ligneCompte(c, avecEtab = true) {
+function ligneCompte(c, avecEtab = true, nomRepete = false) {
   const estimee = estValeurEstimee(typeCompte(c.type));
   const dateEstimee = estimee
     ? phraseDateValeur(datesDuCompte(c).find(x => x.genre === 'estimation') || { genre: '' }) : '';
@@ -5338,8 +5338,8 @@ function ligneCompte(c, avecEtab = true) {
       <button class="btn sm ghost" data-action="archiver-compte" data-id="${esc(c.id)}">${trad('Archiver')}</button>
     </div>
     <button type="button" class="cpt-ligne" data-action="fiche-compte" data-id="${esc(c.id)}">
-      <span class="cpt-nom">${esc(nomCompteV2(c))}
-        <span class="sub">${esc(sousTitreCompte(c, avecEtab))}</span></span>
+      <span class="cpt-nom">${esc(nomRepete ? trad(typeCompte(c.type).label) : nomCompteV2(c))}
+        ${nomRepete ? '' : `<span class="sub">${esc(sousTitreCompte(c, avecEtab))}</span>`}</span>
       <span class="cpt-val">${fmtEUR(valeurCompte(c))}
         ${estimee ? `<span class="sub">${dateEstimee || '&nbsp;'}</span>`
           : bouge ? `<span class="sub" title="${esc(trad('Écart entre la valeur de ce compte aujourd’hui et celle de ton dernier relevé, {m}. Versements et retraits compris : ce n’est pas une plus-value.').replace('{m}', v.depuis))}">${
@@ -5401,7 +5401,7 @@ function detailsPlacement(c, idx, t, l) {
          + `<span class="${cls(perf.pnl)}">${fmtSignedPct(perf.pct)}</span>`);
 
   return `
-  <div class="card">
+  <div class="card" data-anchor="estimation">
     <div class="card-head"><h2>${trad(titreActif(t))}</h2>
       <div class="tete-actes">
         <button class="btn sm ghost" data-action="editer-placement"
@@ -5420,7 +5420,11 @@ function detailsPlacement(c, idx, t, l) {
                 : (u ? nonRenseigne : null))}
       ${ligne(trad('Prix d’achat'), u ? null
               : (l.prixDeRevient ? fmtEUR(l.prixDeRevient) : nonRenseigne))}
-      ${ligne(trad('Valeur actuelle'), fmtEUR(l.valeur))}
+      ${ligne(estValeurEstimee(t)
+          ? trad('Valeur estimée') + aide(trad('Ton estimation, pas un prix de vente : ce que tu encaisserais vraiment ne se connaît qu’à la cession, et « Céder » l’enregistre.'))
+          : trad('Valeur actuelle'),
+        fmtEUR(l.valeur) + (!estValeurEstimee(t) ? '' : ` <span class="muted">·</span> <span class="muted">${
+          l.estimeLe ? trad('estimée le {d}').replace('{d}', esc(fmtDate(l.estimeLe))) : trad('estimation sans date')}</span>`))}
       ${ligne(t.prete
           ? trad('Écart depuis le prêt') + aide(trad('La valeur d’aujourd’hui moins ce que tu as prêté. Sur un prêt, l’écart vient des intérêts courus ou d’une révision de la valeur : il ne s’encaisse qu’au remboursement, et un défaut peut le ramener à zéro.'))
           : trad('Plus-value latente') + aide(trad('La valeur d’aujourd’hui moins ce que tu as payé. Latente : elle n’est encaissée qu’à la revente, et la valeur d’un placement non coté est une estimation. Aucun impôt n’en est déduit : l’application ne modélise aucun régime fiscal, ici pas plus qu’ailleurs.')),
@@ -5553,12 +5557,16 @@ function lignePlacement(l, compte, editable = false) {
    appelant se garde sans se maintenir, et finit par decrire un ecran qui
    n'existe plus.*/
 
+/* Deux listes, une par pays de contexte (`paysContexte()`, cote store : la
+   devise choisie, la langue avant ce choix). Tout type reste accessible par
+   « Autre… » ; il s'agit de mettre en premier ce qu'un lecteur de ce pays a le
+   plus de chances de posseder. Un Americain ouvre un 401(k) et un Roth IRA
+   plus souvent qu'un PEA. */
 const FAMILLES_EN_VUE = {
   fr: ['courant', 'livret', 'pea', 'av', 'cto', 'immo', 'crypto'],
-  en: ['courant', 'livret', 'cto', 'us401k', 'rothIra', 'immo', 'crypto'],
+  us: ['courant', 'livret', 'cto', 'us401k', 'rothIra', 'immo', 'crypto'],
 };
-const famillesEnVue = () => FAMILLES_EN_VUE[
-  typeof currentLang === 'function' && String(currentLang() || '').toLowerCase().startsWith('fr') ? 'fr' : 'en'];
+const famillesEnVue = () => FAMILLES_EN_VUE[paysContexte()];
 function famillesDActifs() {
   const choix = typesCompteChoix();
   const dispo = famillesEnVue().map(id => choix.find(t => t.id === id)).filter(Boolean);
@@ -5578,6 +5586,55 @@ function famillesDActifs() {
           <span class="famille-plus" aria-hidden="true">+</span>
         </button>`}
       </div>`;
+}
+
+/* CE QUI SE MET A JOUR A LA MAIN, EN TETE DE LA LISTE D'ACTIFS.
+
+   La liste vient de `valeursARevoir()` (store.js) : des soldes, des estimations
+   et des capitaux restant dus qui datent ou n'ont pas de date. Les cours n'y
+   sont pas, ils s'actualisent. Chaque ligne mene a la fiche ET au champ, par
+   `aller-fiche` avec son ancre et le curseur ; « sans date » se lit en toutes
+   lettres, ce n'est pas la meme chose qu'un chiffre vieux. Trois lignes, le
+   reste derriere un bouton qui ne re-rend pas la page (`revoir-tout`), et le
+   depli survit aux rendus suivants le temps de la session. */
+const REVOIR_VISIBLES = 3;
+let revoirToutOuvert = false;
+function carteValeursARevoir() {
+  const liste = valeursARevoir();
+  if (!liste.length) return '';
+  const phrase = x => {
+    const d = x.date ? esc(fmtDate(x.date)) : '';
+    if (x.genre === 'solde') return d ? trad('solde saisi le {d}').replace('{d}', d) : trad('solde sans date de saisie');
+    if (x.genre === 'credit') return d ? trad('capital restant dû vérifié le {d}').replace('{d}', d)
+                                       : trad('capital restant dû jamais vérifié');
+    if (x.publiee) return d ? trad('VL du {d}').replace('{d}', d) : trad('sans date de VL');
+    return d ? trad('estimée le {d}').replace('{d}', d) : trad('estimation sans date');
+  };
+  const contexte = x => {
+    const c = x.compteId ? compteById(x.compteId) : null;
+    if (x.genre === 'solde') return c ? sousTitreCompte(c) : '';
+    if (x.genre === 'credit') { const e = etabById(x.etabId); return e ? e.nom : ''; }
+    return c && nomCompteV2(c) !== x.nom ? nomCompteV2(c) : '';
+  };
+  const montrer = revoirToutOuvert ? liste.length : REVOIR_VISIBLES;
+  return `
+  <div class="card revoir${revoirToutOuvert ? ' ouvert' : ''}">
+    <div class="card-head"><h2>${trad('À mettre à jour')}</h2>
+      <span class="hint">${trad(liste.length > 1 ? '{n} valeurs saisies à la main' : '{n} valeur saisie à la main')
+        .replace('{n}', liste.length)}</span></div>
+    <p class="hint" style="margin:0 0 8px">${trad('Des soldes, des estimations et des capitaux restant dus qui datent ou n’ont pas de date. Touche une ligne pour ouvrir le champ.')}</p>
+    <div class="mlist-groupe">
+      ${liste.map((x, k) => `
+      <button type="button" class="mlist${k >= REVOIR_VISIBLES ? ' revoir-surplus' : ''}"
+              data-action="aller-fiche" data-route="${esc(x.route)}" data-anchor="${esc(x.ancre)}" data-focus="1">
+        <span class="ml-nom">${esc(x.nom)}${contexte(x) ? `<span class="sub">${esc(contexte(x))}</span>` : ''}</span>
+        <span class="ml-chiffres"><span class="${x.date ? 'muted' : ''}">${phrase(x)}</span></span>
+        <span class="ml-chev" aria-hidden="true">›</span>
+      </button>`).join('')}
+    </div>
+    ${liste.length > montrer ? `<button type="button" class="btn sm ghost" data-action="revoir-tout"
+        style="margin-top:8px">${trad('Voir les {n} autres').replace('{n}', liste.length - montrer)}</button>` : ''}
+  </div>`;
 }
 
 function viewAccounts() {
@@ -5661,7 +5718,7 @@ function viewAccounts() {
       if (!siens.length && !doitEncore) return '';
       const totalE = siens.reduce((s, c) => s + valeurCompte(c), 0);
       const credits = (e.dettes || []).reduce((s, x) => s + num(x.montant), 0);
-      const lignes = siens.map(c => ligneCompte(c, false)).join('');
+      const lignes = siens.map(c => ligneCompte(c, false, siens.length === 1 && nomCompteV2(c) === e.nom)).join('');
       const dette = credits ? `
         <div class="plc-ligne">
           <span class="cpt-nom">${trad('Crédits en cours')}
@@ -5688,19 +5745,25 @@ function viewAccounts() {
     };
 
     const chezUnTiers = ETABS().filter(e => !estEtabDeBiens(e)).map(groupeEtab).join('');
+    const especesSeules = sansContenant.length > 0
+      && sansContenant.every(c => typeCompte(c.type).interne && !valeurCompte(c));
     const enDirect = ETABS().filter(estEtabDeBiens).map(groupeEtab).join('')
-      + (sansContenant.length
+      + (sansContenant.length && !especesSeules
         ? groupe('e-sans', trad('Sans intermédiaire'), trad('espèces et objets de valeur'),
             sansContenant.map(c => ligneCompte(c, false)).join(''),
             sansContenant.reduce((s, c) => s + valeurCompte(c), 0), '',
             teinteDominante(sansContenant))
         : '');
+    const especesVides = !especesSeules ? '' : `
+      <p class="hint cpt-sans-rien"><b>${trad('Espèces')}</b>${deuxPoints()} ${trad('rien de déclaré')} ·
+        <button type="button" class="lien-nu" data-action="fiche-compte"
+                data-id="${esc(sansContenant[0].id)}">${trad('Déclarer des espèces')} ›</button></p>`;
 
     sectionsAffichees = !!chezUnTiers.trim() && !!enDirect.trim();
     corps = (sectionsAffichees ? titreSection('Comptes', 'chez une banque ou un courtier') : '')
           + chezUnTiers
           + (sectionsAffichees ? titreSection('Biens et espèces', 'ce que tu détiens en direct') : '')
-          + enDirect;
+          + enDirect + especesVides;
   } else if (compteVue === 'type') {
     /* Les groupes viennent de `groupesParEnveloppe()`, cote store : un compte
        dont le type ne figure pas dans TYPES_COMPTE y garde un groupe au lieu de
@@ -5723,6 +5786,7 @@ function viewAccounts() {
     <dt><b>${trad('Patrimoine net')}</b></dt><dd><b>${fmtEUR(pat.net)}</b></dd>` : ''}
   </dl>`}
 
+  ${sansCompte || filtre ? '' : carteValeursARevoir()}
   ${sansCompte && !filtre ? '' : carteInsights('accounts', 'À retenir')}
 
   ${sansCompte && !filtre ? '' : `<div class="card" style="padding:12px 16px">
@@ -6680,12 +6744,6 @@ function carteCredit(c, d, i, idxEtab) {
                    data-path="etabs.${idxEtab}.dettes.${i}.initial"
                    value="${estDeclare(d.initial) ? num(d.initial) : ''}"
                    placeholder="${trad('facultatif')}"></div>
-          <div class="field"><label>${trad('Capital restant dû ({dev})')}</label>
-            <input type="number" step="any" class="champ-large"
-                   data-path="etabs.${idxEtab}.dettes.${i}.montant" value="${num(d.montant)}">
-            <p class="hint" style="margin:4px 0 0">${d.verifieLe
-              ? trad('capital restant dû vérifié le {d}').replace('{d}', esc(fmtDate(d.verifieLe)))
-              : trad('capital restant dû jamais vérifié')}</p></div>
           ${chargeDuCredit(d.id) ? `
           <div class="field"><label>${trad('Mensualité ({dev})')}${aide(trad("Elle se règle dans la charge fixe qui rembourse ce crédit, pour n'exister qu'à un seul endroit. Un second champ ici laisserait les deux diverger, et c'est celui-ci que rien ne relirait."))}</label>
             <p class="hint" style="margin:0">${fmtEUR(mens)} ${trad('par mois, depuis la charge')}
@@ -6730,7 +6788,7 @@ function espaceBien(c, idx, t) {
   const gain = achat ? valeur - achat : null;
 
   return `
-  <div class="card">
+  <div class="card" data-anchor="estimation">
     ${(() => {
       const u = usageEffectifBien(c);
       if (!u.action) return '';
@@ -6754,6 +6812,36 @@ function espaceBien(c, idx, t) {
               data-id="${esc(c.id)}" style="margin-left:8px">${trad(q.bouton)}</button>`}
     </p>`;
     })()}
+    <div class="card-head"><h2>${trad('Mettre à jour')}</h2>
+      <span class="hint">${trad('ce qui vieillit')}</span></div>
+    <p class="hint" style="margin:0 0 8px">${trad('Les deux chiffres qui bougent : ce que vaut le bien, et ce qu’il reste à rembourser. Chaque chiffre tapé est déjà enregistré et se date du jour.')}</p>
+    ${biens.map(({ l, i }, k) => `
+      <div class="grid g-2 g-paire">
+        <div class="field"><label>${trad('Valeur estimée ({dev})')}${biens.length > 1 && l.libelle ? ` · ${esc(l.libelle)}` : ''}${aide(trad("Ce qu'un acheteur te paierait aujourd'hui, frais de notaire exclus : ceux-là sont partis en taxes le jour de l'achat et ne se revendent pas. C'est pour ça qu'un achat récent financé à crédit peut afficher un patrimoine net négatif, sans que rien ne soit faux."))}</label>
+          <input type="number" step="any" class="champ-large"
+                 data-path="comptes.${idx}.lignes.${i}.valeur" value="${num(l.valeur)}"${k ? '' : ' data-anchor-focus'}></div>
+        <div class="field"><label>${trad('Estimée le')}${aide(trad('le jour où tu as établi ce chiffre'))}</label>
+          <input type="date" data-path="comptes.${idx}.lignes.${i}.estimeLe"
+                 value="${esc(l.estimeLe || '')}">
+          ${l.estimeLe ? '' : `<p class="hint" style="margin:4px 0 0">${trad('estimation sans date')}</p>`}</div>
+      </div>`).join('')}
+    ${dettes.map(({ d, i }) => `
+      <div class="grid g-2 g-paire" data-anchor="credit">
+        <div class="field"><label>${trad('Capital restant dû ({dev})')} · ${esc(d.libelle || trad('Crédit'))}</label>
+          <input type="number" step="any" class="champ-large"
+                 data-path="etabs.${idxEtab}.dettes.${i}.montant" value="${num(d.montant)}" data-anchor-focus></div>
+        <div class="field"><label>${trad('Vérifié le')}${aide(trad('le jour où tu as lu ce capital chez ta banque'))}</label>
+          <input type="date" data-path="etabs.${idxEtab}.dettes.${i}.verifieLe"
+                 value="${esc(d.verifieLe || '')}">
+          ${d.verifieLe ? '' : `<p class="hint" style="margin:4px 0 0">${trad('capital restant dû jamais vérifié')}</p>`}</div>
+      </div>`).join('')}
+    ${!credit ? '' : `<dl class="kv" style="margin-top:4px">
+      <dt><b>${trad('Valeur nette')}</b>${aide(trad("La valeur du bien moins ce qu'il reste à rembourser. C'est ce montant qui compte dans ton patrimoine net."))}</dt>
+      <dd><b>${fmtEUR(valeur - credit)}</b></dd></dl>`}
+    ${barreValiderFiche()}
+  </div>
+
+  <div class="card">
     <div class="card-head"><h2>${trad('Le bien')}</h2>
       <span class="hint">${biens.length > 1
         ? `${biens.length} ${trad('lots')}` : esc(trad(t.label))}</span></div>
@@ -6762,15 +6850,6 @@ function espaceBien(c, idx, t) {
         <div class="field"><label>${trad('Nom du bien')}</label>
           <input data-action-change="renommer-bien" data-compte="${esc(c.id)}"
                  value="${esc(l.libelle || '')}" placeholder="${trad('ex. Studio Lyon 3e')}"></div>
-        <div class="grid g-2 g-paire">
-          <div class="field"><label>${trad('Valeur estimée ({dev})')}${aide(trad("Ce qu'un acheteur te paierait aujourd'hui, frais de notaire exclus : ceux-là sont partis en taxes le jour de l'achat et ne se revendent pas. C'est pour ça qu'un achat récent financé à crédit peut afficher un patrimoine net négatif, sans que rien ne soit faux."))}</label>
-            <input type="number" step="any" class="champ-large"
-                   data-path="comptes.${idx}.lignes.${i}.valeur" value="${num(l.valeur)}"></div>
-          <div class="field"><label>${trad('Estimée le')}${aide(trad('le jour où tu as établi ce chiffre'))}</label>
-            <input type="date" data-path="comptes.${idx}.lignes.${i}.estimeLe"
-                   value="${esc(l.estimeLe || '')}">
-            ${l.estimeLe ? '' : `<p class="hint" style="margin:4px 0 0">${trad('estimation sans date')}</p>`}</div>
-        </div>
         <div class="grid g-2 g-paire">
           <div class="field"><label>${trad('Date d\'acquisition')}</label>
             <input type="date" data-path="comptes.${idx}.lignes.${i}.dateAcquisition"
@@ -6959,6 +7038,7 @@ function viewFicheCompte(id) {
   const lignes = lignesDe(c);
   const seule = estActifTerminal(t) && !estBien(t) && lignes.length === 1
     ? lignes[0] : null;
+  const carteSolde = !((t.sansCash || !t.classes.includes('liquidites')) && !(c.cash || []).length);
   const parClasse = new Map();
   for (const e of (c.cash || [])) parClasse.set('liquidites', (parClasse.get('liquidites') || 0) + num(e.montant));
   for (const l of lignes) parClasse.set(l.classe, (parClasse.get(l.classe) || 0) + l.valeur);
@@ -7025,21 +7105,26 @@ function viewFicheCompte(id) {
   ${espaceBien(c, idx, t)}
   ${espaceTerminal(c, idx, t, seule)}
 
-  ${(t.sansCash || !t.classes.includes('liquidites')) && !(c.cash || []).length ? '' : `
-  <div class="card">
+  ${!carteSolde ? '' : `
+  <div class="card" data-anchor="solde">
     <div class="card-head"><h2>${BASES.liquidites.nom} ${trad('sur ce compte')}</h2>
       <button class="btn sm ghost" data-action="scinder-cash" data-id="${esc(c.id)}"
               title="${trad('Déclarer un second usage sur le même compte')}">${trad('Scinder')}</button>
     </div>
     ${(c.cash || []).length ? `<p class="hint" style="margin:0 0 8px">${
-      trad('C’est ici que tu mets à jour le solde : il se date à la saisie.')}</p>` : ''}
+      trad('C’est ici que tu mets à jour le solde : il se date à la saisie.')} ${
+      trad('Chaque chiffre tapé est déjà enregistré : « Enregistrer » le confirme, « Annuler » revient au dernier état enregistré.')}</p>` : ''}
     ${(c.cash || []).length ? (c.cash || []).map((e, i) => `
       <div class="plc-ligne">
-        <span class="cpt-nom">${trad('Liquidités')}</span>
+        <span class="cpt-nom">${trad('Liquidités')}${(() => {
+          const d = e.saisiLe ? trad('solde saisi le {d}').replace('{d}', esc(fmtDate(e.saisiLe)))
+            : num(e.montant) ? trad('solde sans date de saisie') : '';
+          return d ? `<span class="sub">${d}</span>` : '';
+        })()}</span>
         <select data-path="comptes.${idx}.cash.${i}.affectation" class="annee" title="${trad('À quoi sert cet argent ?')}">
           ${AFFECTATIONS.map(([v, l]) => `<option value="${v}" ${v === e.affectation ? 'selected' : ''}>${l}</option>`).join('')}
         </select>
-        <input type="number" step="any" class="champ-inline" data-path="comptes.${idx}.cash.${i}.montant" value="${num(e.montant)}">
+        <input type="number" step="any" class="champ-inline" data-path="comptes.${idx}.cash.${i}.montant" value="${num(e.montant)}"${i ? '' : ' data-anchor-focus'}>
         <span class="champ-unite" aria-hidden="true">${signeDeviseBase()}</span>
         ${t.interne && (c.cash || []).length < 2 ? ''
           : `<button class="btn sm ghost danger" data-action="retirer-cash" data-id="${esc(c.id)}" data-i="${i}" title="${trad('Retirer cette part')}">${trad('Retirer')}</button>`}
@@ -7047,6 +7132,7 @@ function viewFicheCompte(id) {
     : `<p class="empty">${t.titres
         ? trad('Aucune espèce en attente. « Scinder » déclare un montant à investir.')
         : trad('Pas d’argent déclaré sur ce compte. « Scinder » ajoute une première part.')}</p>`}
+    ${barreValiderFiche()}
   </div>`}
 
   ${estBien(t) || seule || (!t.classes.some(x => x !== 'liquidites') && !lignes.length) ? '' : `
@@ -7172,7 +7258,7 @@ function viewFicheCompte(id) {
       <div class="field" style="margin-top:12px"><label>${trad('Notes')}</label>
         <input data-path="comptes.${idx}.notes" value="${esc(c.notes || '')}"
                placeholder="${trad('facultatif')}" style="text-align:left"></div>
-      ${barreValiderFiche()}
+      ${carteSolde || estBien(t) ? '' : barreValiderFiche()}
     </div>
     <div class="card">
       <div class="card-head"><h2>${trad('actions.fiche', 'Actions')}</h2></div>
@@ -7250,14 +7336,14 @@ function viewFicheEtab(id) {
         </div>`}
   </div>
 
-  <div class="card">
+  <div class="card" data-anchor="credit">
     <div class="card-head"><h2>${trad('Crédits en cours')}${aide(trad("Un crédit pèse en négatif sur le patrimoine net : patrimoine net = total de tes avoirs moins tes crédits."))}</h2>
       <button class="btn sm ghost" data-action="ajouter-credit" data-id="${esc(e.id)}">${trad('+ Crédit')}</button></div>
     ${(e.dettes || []).length ? e.dettes.map((d, i) => `
       <div class="plc-ligne">
         <input data-path="etabs.${idx}.dettes.${i}.libelle" value="${esc(d.libelle)}" style="text-align:left; max-width:14em">
         <span class="spacer"></span>
-        <input type="number" step="any" class="champ-inline" data-path="etabs.${idx}.dettes.${i}.montant" value="${num(d.montant)}">
+        <input type="number" step="any" class="champ-inline" data-path="etabs.${idx}.dettes.${i}.montant" value="${num(d.montant)}"${i ? '' : ' data-anchor-focus'}>
         <button class="btn sm danger" data-action="retirer-credit"
                 data-id="${esc(e.id)}" data-i="${i}">${trad('Supprimer')}</button>
       </div>`).join('') + `
@@ -8652,18 +8738,18 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
     ...(type && type.parts ? [{ cle: 'parts', label: trad('Nombre de parts'),
       type: 'nombre', valeur: l ? (num(l.parts) || '') : '', exemple: '0',
       aide: trad('il se déduit du montant investi, et commande la valeur du jour') }] : []),
-    ...(type && type.parts ? [{ cle: 'section_valeur', label: 'Valeur actuelle', type: 'section' }] : []),
+    ...(type && type.parts ? [{ cle: 'section_valeur', label: estime ? 'Valeur estimée' : 'Valeur actuelle', type: 'section' }] : []),
     { cle: 'valeur',
       label: `${estime ? 'Valeur estimée' : 'Valeur aujourd’hui'} ({dev})`, type: 'nombre',
       valeur: l ? num(l.valeur) : '', exemple: '0',
-      aide: estime ? 'ce que tu en tirerais en le vendant aujourd’hui'
+      aide: estime ? 'ton estimation du jour : ce n’est pas un prix de vente, le produit réel se saisit à la cession'
           : publiee ? 'la dernière valeur liquidative publiée, pour les parts que tu détiens'
                     : 'ce que la ligne vaut, capital et intérêts courus compris',
       /* Le TOTAL reste la donnee stockee, le prix par part n'est qu'une autre
          facon de l'ecrire. Voir le cablage dans `askForm`. */
       ...(type && type.parts
         ? { parPart: 'parts', parPartLabel: 'Prix de la part aujourd’hui ({dev})' } : {}) },
-    ...(type && type.parts ? [{ cle: 'section_invest', label: 'Investissement initial', type: 'section' }] : []),
+    ...(type && type.parts ? [{ cle: 'section_invest', label: 'Coût d’achat', type: 'section' }] : []),
     { cle: 'prixDeRevient', label: trad('Montant investi ({dev})'), type: 'nombre',
       valeur: l ? (num(l.prixDeRevient) || '') : '', exemple: '0',
       aide: trad('facultatif, il donne la plus-value'),
@@ -9073,7 +9159,21 @@ const ACTIONS = {
     toast(`${actif ? trad('Activé') : trad('Éteint')}${deuxPoints()} ${
       (FAMILLES_NOTIF.find(f => f[0] === cle) || [, cle])[1].toLowerCase()}`);
   },
-  'aller-fiche'(btn) { closeApercu(); location.hash = btn.dataset.route; },
+  /* Une tuile peut viser une carte de la fiche (`data-anchor`) et y poser le
+     curseur (`data-focus="1"`) : c'est la porte de la liste « À mettre à
+     jour », qui mene au bon compte ET au bon champ. */
+  'aller-fiche'(btn) {
+    closeApercu();
+    pendingAnchor = btn.dataset.anchor || null;
+    pendingFocus = btn.dataset.focus === '1';
+    location.hash = btn.dataset.route;
+  },
+  'revoir-tout'(btn) {
+    revoirToutOuvert = true;
+    const carte = btn.closest('.revoir');
+    if (carte) carte.classList.add('ouvert');
+    btn.remove();
+  },
 
   'goto'(btn) {
     closeApercu();
@@ -9845,7 +9945,7 @@ const ACTIONS = {
         ...(t.parts ? [{ cle: 'parts', label: trad('Nombre de parts'),
           type: 'nombre', exemple: '0',
           aide: trad('il se déduit du montant investi, et commande la valeur du jour') }] : []),
-        ...(t.parts ? [{ cle: 'section_valeur', label: 'Valeur actuelle', type: 'section' }] : []),
+        ...(t.parts ? [{ cle: 'section_valeur', label: estValeurEstimee(t) ? 'Valeur estimée' : 'Valeur actuelle', type: 'section' }] : []),
         { cle: 'valeur', requis: true,
           label: estDetenuEnDirect(t) ? trad('Valeur estimée du bien entier ({dev})')
                                       : trad('Valeur actuelle ({dev})'),
@@ -9863,7 +9963,7 @@ const ACTIONS = {
         { cle: 'travauxInitiaux', label: trad('Travaux initiaux ({dev})'), type: 'nombre',
           exemple: '0', aide: trad('ceux du départ, pour le mettre en état') },
         ] : [
-        ...(t.parts ? [{ cle: 'section_invest', label: 'Investissement initial', type: 'section' }] : []),
+        ...(t.parts ? [{ cle: 'section_invest', label: 'Coût d’achat', type: 'section' }] : []),
         { cle: 'revient', label: trad('Montant investi ({dev})'), type: 'nombre', exemple: '0',
           aide: trad('prix d’acquisition, frais compris'),
           ...(t.parts ? { parPart: 'parts', parPartLabel: 'Prix d’achat de la part ({dev})',
@@ -15118,7 +15218,11 @@ function closeApercu() {
   apercuOuvert = null;
 }
 
+/* Ancre demandée par une tuile, consommée au prochain rendu. `pendingFocus`
+   l'accompagne quand la tuile vient corriger une valeur : le champ marque
+   `data-anchor-focus` de la cible prend alors le curseur, sans second geste. */
 let pendingAnchor = null;
+let pendingFocus = false;
 
 function focusAnchor() {
   if (!pendingAnchor) return;
@@ -15131,7 +15235,7 @@ function focusAnchor() {
     .filter(x => x.dataset.action !== 'goto');
   const el = cibles.find(x => x.offsetParent !== null) || cibles[0];
   pendingAnchor = null;
-  if (!el) return;
+  if (!el) { pendingFocus = false; return; }
   /* La marge vient de la feuille de style : `scroll-padding-top` sur `html` y
      dit, pour l'ecran courant, ce qui reste cloue en haut — barre du haut,
      sous-onglets compris sur telephone. Ce code portait 70 et 90, deux nombres
@@ -15155,6 +15259,11 @@ function focusAnchor() {
   void el.offsetWidth;                       // relance l'animation
   el.classList.add('flash-target');
   setTimeout(() => el.classList.remove('flash-target'), 1600);
+  if (pendingFocus) {
+    pendingFocus = false;
+    const champ = el.querySelector('[data-anchor-focus]');
+    if (champ) setTimeout(() => champ.focus({ preventScroll: true }), 60);
+  }
 }
 
 function render() {

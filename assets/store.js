@@ -184,7 +184,7 @@ const MOBILISABLE_LABEL = {
 const TYPES_COMPTE = [
   { id: 'courant', label: 'Compte courant', classes: ['liquidites'], defaut: 'courant',    groupe: 'cash' },
   { id: 'livret',  label: 'Livret',         classes: ['liquidites'], defaut: 'precaution', groupe: 'cash' },
-  { id: 'pea',     label: 'PEA',            classes: ['liquidites', 'actions'], defaut: 'investir', groupe: 'bourse', titres: true, dateSensible: true,
+  { id: 'pea',     label: 'PEA',            classes: ['liquidites', 'actions'], defaut: 'investir', groupe: 'bourse', titres: true, dateSensible: true, pays: 'fr',
     retrait: 'Avant 5 ans, un retrait clôture le plan, sauf exceptions prévues par la loi ; après 5 ans, tu peux retirer sans le clôturer. Vendre une ligne du plan, elle, se fait en séance.' },
   { id: 'cto',     label: 'Compte-titres (CTO)', classes: ['liquidites', 'actions', 'obligations'], defaut: 'investir', groupe: 'bourse', titres: true, pretSurTitres: true },
   /* Une enveloppe, et non un compte-titres. Ces deux-la portent tout ce que le
@@ -208,9 +208,9 @@ const TYPES_COMPTE = [
      d'autonomie. Le drapeau ne touche pas a `classes` : « liquidites » y sert
      aussi a accepter un support monetaire, qui est un placement et non du cash.
      Deux choses sous un seul mot, d'ou deux reglages. */
-  { id: 'av',      label: 'Assurance-vie',  classes: ['liquidites', 'garanti', 'actions', 'obligations', 'immobilier', 'nonCote'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, dateSensible: true,
+  { id: 'av',      label: 'Assurance-vie',  classes: ['liquidites', 'garanti', 'actions', 'obligations', 'immobilier', 'nonCote'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, dateSensible: true, pays: 'fr',
     retrait: 'Un rachat est possible à tout moment et arrive en quelques jours à quelques semaines ; le seuil des 8 ans ne change que l’impôt sur les gains.' },
-  { id: 'per',     label: 'Plan d’épargne retraite (PER)', classes: ['liquidites', 'garanti', 'actions', 'obligations', 'immobilier', 'nonCote'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, dateSensible: true, disponibilite: 'bloque', rubrique: 'retraite',
+  { id: 'per',     label: 'Plan d’épargne retraite (PER)', classes: ['liquidites', 'garanti', 'actions', 'obligations', 'immobilier', 'nonCote'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, dateSensible: true, disponibilite: 'bloque', rubrique: 'retraite', pays: 'fr',
     retrait: 'Bloqué jusqu’à la retraite, sauf cas de déblocage anticipé prévus par la loi, comme l’achat de ta résidence principale.' },
   /* ENVELOPPES AMERICAINES. Quatre contenants, pas une fiscalite : aucun seuil
      d'age, aucun plafond, aucune penalite, aucun abondement n'entre ici. Ce
@@ -231,10 +231,10 @@ const TYPES_COMPTE = [
      vrai sans modeler la regle : cet argent se casse, en quelques semaines et
      avec une decote. Un PER, lui, est ferme (`bloque`). Le HSA suit ses classes.
      `rubrique` ne sert qu'au selecteur : elle range, elle ne calcule rien. */
-  { id: 'us401k',  label: '401(k)',          classes: ['liquidites', 'garanti', 'actions', 'obligations'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, disponibilite: 'lent', contenant: 'banque', rubrique: 'retraite' },
-  { id: 'traditionalIra', label: 'Traditional IRA', classes: ['liquidites', 'actions', 'obligations'], defaut: 'investir', groupe: 'bourse', titres: true, disponibilite: 'lent', rubrique: 'retraite' },
-  { id: 'rothIra', label: 'Roth IRA',        classes: ['liquidites', 'actions', 'obligations'], defaut: 'investir', groupe: 'bourse', titres: true, disponibilite: 'lent', rubrique: 'retraite' },
-  { id: 'hsa',     label: 'HSA',             classes: ['liquidites', 'actions', 'obligations'], defaut: 'precaution', groupe: 'bourse', titres: true, rubrique: 'retraite' },
+  { id: 'us401k',  label: '401(k)',          classes: ['liquidites', 'garanti', 'actions', 'obligations'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, disponibilite: 'lent', contenant: 'banque', rubrique: 'retraite', pays: 'us' },
+  { id: 'traditionalIra', label: 'Traditional IRA', classes: ['liquidites', 'actions', 'obligations'], defaut: 'investir', groupe: 'bourse', titres: true, disponibilite: 'lent', rubrique: 'retraite', pays: 'us' },
+  { id: 'rothIra', label: 'Roth IRA',        classes: ['liquidites', 'actions', 'obligations'], defaut: 'investir', groupe: 'bourse', titres: true, disponibilite: 'lent', rubrique: 'retraite', pays: 'us' },
+  { id: 'hsa',     label: 'HSA',             classes: ['liquidites', 'actions', 'obligations'], defaut: 'precaution', groupe: 'bourse', titres: true, rubrique: 'retraite', pays: 'us' },
   { id: 'crypto',  label: 'Portefeuille de cryptomonnaies', classes: ['crypto'], defaut: 'investir', groupe: 'bourse', titres: true, pretSurTitres: true },
   /* Deux metiers que le mot « crowdfunding » melange, et qui n'ont pas les memes
      champs. On prete, ou on prend des parts.
@@ -319,7 +319,7 @@ const TYPES_COMPTE = [
      cotes », trouve par le test qui interdisait le premier. */
   { id: 'immo',    label: 'Bien immobilier', classes: ['immobilier'], defaut: 'investir',
     groupe: 'pe', direct: true, bienImmo: true },
-  { id: 'scpi',    label: 'SCPI',           classes: ['immobilier'], defaut: 'investir', groupe: 'pe', bienImmo: true },
+  { id: 'scpi',    label: 'SCPI',           classes: ['immobilier'], defaut: 'investir', groupe: 'pe', bienImmo: true, pays: 'fr' },
   /* Les billets dans un portefeuille. C'est le seul argent que personne ne
      tient pour vous : pour le noter, il fallait inventer une banque appelee
      « Espèces », et se demander pourquoi l'application reclamait un
@@ -384,11 +384,30 @@ const RUBRIQUES_TYPE = [
 ];
 const rubriqueDuType = t => t.rubrique
   || (t.groupe === 'cash' ? 'banque' : t.groupe === 'bourse' ? 'placements' : 'biens');
+
+/* LE PAYS DU CONTEXTE, pour ranger les enveloppes nationales. Un PEA, une
+   assurance-vie, un PER ou une SCPI n'existent qu'en France ; un 401(k), un
+   IRA ou un HSA qu'aux Etats-Unis. Les types le disent (`pays`), et les autres
+   sont de partout. Le contexte se lit sur la devise des que le detenteur l'a
+   choisie -- c'est le fait le plus proche du pays que l'application connaisse
+   -- et sur la langue avant ce choix, quand rien d'autre ne le dit. Rien ici
+   n'interdit un type etranger : il descend dans une rubrique a part. */
+const RUBRIQUE_AUTRES_PAYS = 'Autres pays';
+function paysContexte() {
+  const m = (Store.state && Store.state.meta) || {};
+  if (m.deviseChoisie) return deviseBase() === 'USD' ? 'us' : 'fr';
+  return typeof currentLang === 'function' && String(currentLang() || '').toLowerCase().startsWith('fr')
+    ? 'fr' : 'us';
+}
+const typeDuContexte = (t, pays = paysContexte()) => !t.pays || t.pays === pays;
 function typesCompteParRubrique() {
   const choix = typesCompteChoix();
-  return RUBRIQUES_TYPE
-    .map(([cle, titre]) => [titre, choix.filter(t => rubriqueDuType(t) === cle).map(t => [t.id, t.label])])
-    .filter(([, liste]) => liste.length);
+  const pays = paysContexte();
+  const rub = RUBRIQUES_TYPE
+    .map(([cle, titre]) => [titre, choix.filter(t => typeDuContexte(t, pays) && rubriqueDuType(t) === cle)
+      .map(t => [t.id, t.label])]);
+  rub.push([RUBRIQUE_AUTRES_PAYS, choix.filter(t => !typeDuContexte(t, pays)).map(t => [t.id, t.label])]);
+  return rub.filter(([, liste]) => liste.length);
 }
 
 function typeParDefautChez(etabId) {
@@ -8504,34 +8523,69 @@ const SOLDE_VIEUX_JOURS = 31;
      `quotes.lastRun`   des cours qui n'ont pas ete actualises.
 
    Le releve ne date rien de ce qu'il recopie : il fige, il ne verifie pas. */
+/* --- CE QUI SE MET A JOUR A LA MAIN, ET DEPUIS QUAND ----------------------
+
+   Une entree par valeur saisie a la main qui a vieilli ou qui n'a pas de date :
+   un solde (plus de SOLDE_VIEUX_JOURS), une estimation ou une VL (la cadence de
+   `valeurPerimee`), un capital restant du (jamais verifie, ou RAPPEL_CREDIT_MOIS).
+   Les cours n'y sont pas : ils s'actualisent, ils ne se ressaisissent pas.
+
+   Chaque entree dit ou aller : `route` mene a la fiche qui porte le champ, et
+   `ancre` a la carte qui le porte dans cette fiche. Un capital restant du va
+   sur la fiche du compte qu'il finance quand le lien existe, sur celle de
+   l'etablissement sinon. `date` vaut null quand la valeur n'a pas de date, et
+   c'est un etat a part entiere : « sans date » ne se confond pas avec « vieux ».
+   Les sans date passent devant, une premiere saisie les datera ; les autres
+   suivent, du plus ancien au plus recent.
+
+   La liste d'avant releve (`aRafraichir`) se derive d'ici : deux listes ecrites
+   a la main auraient fini par reclamer des choses differentes. */
+function valeursARevoir() {
+  const out = [];
+  const routeCompte = c => `#/compte/${encodeURIComponent(c.id)}`;
+  for (const c of comptesOuverts()) {
+    const t = typeCompte(c.type);
+    const s = datesDuCompte(c).find(x => x.genre === 'solde');
+    if (s && (!s.date || joursDepuis(s.date) > SOLDE_VIEUX_JOURS)) {
+      out.push({ genre: 'solde', nom: nomCompteV2(c), compteId: c.id, date: s.date || null,
+                 route: routeCompte(c), ancre: 'solde' });
+    }
+    if (!(estValeurEstimee(t) || (t && t.vl))) continue;
+    for (const l of (c.lignes || [])) {
+      if (!estDeclare(l.valeur)) continue;
+      if (!valeurPerimee(l, t)) continue;
+      /* `publiee` : une VL se date du jour de sa publication, une estimation du
+         jour ou on l'a etablie, et la phrase ne les nomme pas pareil. */
+      out.push({ genre: 'estimation', nom: nomLignePlacement(l, c), compteId: c.id,
+                 date: l.estimeLe || null, publiee: !!(t && t.vl),
+                 route: routeCompte(c), ancre: 'estimation' });
+    }
+  }
+  for (const d of creditsEnCours().lignes) {
+    if (d.verifieLe && num(d.moisDepuis) < RAPPEL_CREDIT_MOIS) continue;
+    const e = etabById(d.etabId);
+    const dette = e && (e.dettes || [])[d.index];
+    const c = e && dette ? compteFinanceParDette(dette, e) : null;
+    out.push({ genre: 'credit', nom: d.libelle, etabId: d.etabId, compteId: c ? c.id : null,
+               date: d.verifieLe || null,
+               route: c ? routeCompte(c) : `#/etab/${encodeURIComponent(d.etabId)}`, ancre: 'credit' });
+  }
+  return out.sort((a, b) => (a.date ? 1 : 0) - (b.date ? 1 : 0)
+    || String(a.date || '').localeCompare(String(b.date || '')));
+}
+
 function aRafraichir() {
   const out = [];
   for (const x of aVerifier()) out.push({ genre: 'aVerifier', nom: x.nom || x.chemin, depuis: null });
   const soldesSansDate = [];
-  for (const c of comptesOuverts()) {
-    const s = datesDuCompte(c).find(x => x.genre === 'solde');
-    if (!s) continue;
-    if (!s.date) soldesSansDate.push(nomCompteV2(c));
-    else if (joursDepuis(s.date) > SOLDE_VIEUX_JOURS)
-      out.push({ genre: 'solde', nom: nomCompteV2(c), depuis: s.date, compteId: c.id });
+  for (const x of valeursARevoir()) {
+    if (x.genre === 'solde' && !x.date) { soldesSansDate.push(x.nom); continue; }
+    if (x.genre === 'solde') out.push({ genre: 'solde', nom: x.nom, depuis: x.date, compteId: x.compteId });
+    else if (x.genre === 'estimation') out.push({ genre: 'estimation', nom: x.nom, depuis: x.date,
+                                                  compteId: x.compteId, publiee: x.publiee });
+    else if (x.genre === 'credit') out.push({ genre: 'credit', nom: x.nom, depuis: x.date });
   }
   if (soldesSansDate.length) out.push({ genre: 'soldesSansDate', nom: '', noms: soldesSansDate, depuis: null });
-  for (const c of comptesOuverts()) {
-    const t = typeCompte(c.type);
-    if (!(estValeurEstimee(t) || (t && t.vl))) continue;
-    for (const l of (c.lignes || [])) {
-      if (!estDeclare(l.valeur)) continue;
-      /* `publiee` : une VL se date du jour de sa publication, une estimation du
-         jour ou on l'a etablie, et la phrase ne les nomme pas pareil. */
-      if (valeurPerimee(l, t)) out.push({ genre: 'estimation', nom: nomLignePlacement(l, c),
-                                          depuis: l.estimeLe || null, compteId: c.id,
-                                          publiee: !!(t && t.vl) });
-    }
-  }
-  for (const d of creditsEnCours().lignes) {
-    if (!d.verifieLe || num(d.moisDepuis) >= RAPPEL_CREDIT_MOIS)
-      out.push({ genre: 'credit', nom: d.libelle, depuis: d.verifieLe || null });
-  }
   if (Store.state.positions.length) {
     const last = Store.state.quotes?.lastRun || null;
     if (!last || joursDepuis(last) > COURS_VIEUX_JOURS)

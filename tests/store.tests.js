@@ -3398,7 +3398,9 @@ suite('Les espèces sont toujours là', () => {
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
     const debut = src.indexOf("compteVue === 'banque'");
     const branche = src.slice(debut, src.indexOf("compteVue === 'type'", debut));
-    vrai(debut > 0 && branche.length > 500 && branche.length < 6000,
+    /* La borne haute a suivi la branche : la ligne des especes a zero et son
+       commentaire l'ont fait passer 6 000 caracteres. */
+    vrai(debut > 0 && branche.length > 500 && branche.length < 7000,
       'la tranche lue doit être la branche « par établissement » seule');
     vrai(/!c\.etabId/.test(branche),
       'elle doit ramasser les comptes sans établissement');
@@ -4885,10 +4887,17 @@ suite('Les champs prennent la place de ce qu’ils portent', () => {
     const bloc = t.slice(t.indexOf("<div class=\"field\"><label>${trad('Nom du bien')}</label>"),
                          t.indexOf('<div class="field"><label>${trad(\'Adresse\')}</label>'));
     vrai(bloc.length > 500, 'le bloc du bien doit être trouvable');
-    eq((bloc.match(/<div class="grid g-2 g-paire">/g) || []).length, 3,
-      'les trois grilles du bien la portent');
+    /* Deux ici, depuis que la valeur estimee et sa date vivent dans la carte
+       « Mettre a jour », en tete de fiche : ses deux grilles la portent aussi. */
+    eq((bloc.match(/<div class="grid g-2 g-paire">/g) || []).length, 2,
+      'les deux grilles restantes du bien la portent');
     vrai(!/<div class="grid g-2">/.test(bloc),
       'et aucune n’est restée en arrière');
+    const maj = t.slice(t.indexOf("<h2>${trad('Mettre à jour')}</h2>"),
+                        t.indexOf("<div class=\"field\"><label>${trad('Nom du bien')}</label>"));
+    vrai(maj.length > 500, 'la carte « Mettre à jour » doit être trouvable, avant le bien');
+    eq((maj.match(/<div class="grid g-2 g-paire(?: |")/g) || []).length, 2,
+      'la valeur et sa date, le capital et sa date : deux paires serrées');
   });
 
   test('une adresse et une note du mois tiennent sur trois lignes', () => {
@@ -6692,7 +6701,7 @@ suite('Formulaire de placement : les intitulés composés sont traduits aussi', 
       || dico.includes("'" + cle + "':");
     for (const cle of ['Valeur aujourd’hui ({dev})', 'Valeur estimée ({dev})',
                        'ce que la ligne vaut, capital et intérêts courus compris',
-                       'ce que tu en tirerais en le vendant aujourd’hui',
+                       'ton estimation du jour : ce n’est pas un prix de vente, le produit réel se saisit à la cession',
                        'la dernière valeur liquidative publiée, pour les parts que tu détiens'])
       vrai(declaree(cle), 'traduit : ' + cle.slice(0, 40));
   });
@@ -7080,7 +7089,10 @@ suite('Fiche d’une participation : la valeur d’un côté, l’identité de l
        une plus-value — il vient des interets courus, il s encaisse au
        remboursement, et un defaut peut le ramener a zero. Le calcul est le meme,
        le fait ne l est pas, et le mot suit le fait. */
-    eq((d.match(/aide\(trad\(/g) || []).length, 3, 'trois bulles, trois mesures déduites');
+    /* Quatre : la valeur estimee porte la sienne depuis qu'elle se nomme ainsi,
+       une estimation n'etant pas un prix de vente. */
+    eq((d.match(/aide\(trad\(/g) || []).length, 4, 'quatre bulles, trois mesures déduites et une estimation');
+    vrai(/pas un prix de vente/.test(d), 'l’estimation dit qu’elle n’est pas un prix de vente');
     vrai(/n’est pas coté/.test(d), 'la première rappelle que rien n’est coté');
     vrai(/à la revente/.test(d), 'la seconde, que rien n’est encaissé');
     vrai(/au remboursement/.test(d), 'et celle d’un prêt, qu’il faut être remboursé');
@@ -19296,8 +19308,11 @@ suite('Un bien de valeur se tient tout seul, et se nomme une fois', () => {
       '« Annuler » ne peut pas défaire ce qui vient d’être enregistré');
     vrai(/window\.scrollY[\s\S]{0,120}window\.scrollTo\(0, y\)/.test(action),
       'et la position dans la page est gardée : la fiche est longue');
-    eq((src.match(/barreValiderFiche\(/g) || []).length, 3,
-      'une déclaration et deux appels : la fiche d’un compte et celle d’un établissement');
+    /* Quatre appels : la carte du solde et celle des informations d'un compte
+       (l'une ou l'autre, jamais les deux), la carte « Mettre a jour » d'un
+       bien, et la carte des notes d'un etablissement. */
+    eq((src.match(/barreValiderFiche\(/g) || []).length, 5,
+      'une déclaration et quatre appels : solde, bien, informations d’un compte, notes d’un établissement');
     /* Elle ferme la carte des champs : une rangee posee hors des cartes flotte
        dans une page ou tout est encadre, et le filet la separe de la saisie. */
     vrai(/<div class="fiche-actes apres-champs">/.test(fn),
@@ -26879,10 +26894,17 @@ suite('Les boutons d’une fiche ont une géométrie et une place', () => {
     vrai(/<div class="fiche-actes apres-champs">/.test(barre),
       'elle porte la géométrie commune, et le filet qui la sépare des champs');
     vrai(!/class="card"/.test(barre), 'et ne fabrique pas sa propre carte');
-    /* Dans la fiche d'un compte, elle suit le champ des notes et reste dans la
-       carte : la balise de fermeture vient apres elle. */
-    vrai(/data-path="comptes\.\$\{idx\}\.notes"[\s\S]{0,220}\$\{barreValiderFiche\(\)\}[\s\S]{0,12}<\/div>/.test(src),
-      'dans la fiche d’un compte, au bas de la carte « Informations »');
+    /* Dans la fiche d'un compte, elle ferme la carte du solde quand la fiche en
+       a une (c'est le champ qu'on revient corriger chaque mois), la carte
+       « Mettre a jour » d'un bien, et sinon la carte des notes, ou elle suit le
+       champ et reste dans la carte : la balise de fermeture vient apres elle.
+       Jamais deux barres sur une meme fiche. */
+    vrai(/data-path="comptes\.\$\{idx\}\.notes"[\s\S]{0,420}\$\{carteSolde \|\| estBien\(t\) \? '' : barreValiderFiche\(\)\}[\s\S]{0,12}<\/div>/.test(src),
+      'dans la fiche d’un compte sans solde ni bien, au bas de la carte « Informations »');
+    vrai(/<div class="card" data-anchor="solde">[\s\S]{0,6000}\$\{barreValiderFiche\(\)\}\s*<\/div>`\}/.test(src),
+      'et au bas de la carte du solde quand la fiche en porte une');
+    vrai(/<h2>\$\{trad\('Mettre à jour'\)\}<\/h2>[\s\S]{0,4000}\$\{barreValiderFiche\(\)\}\s*<\/div>/.test(src),
+      'et au bas de la carte « Mettre à jour » d’un bien');
     /* La fiche d'un etablissement n'a pas de carte « Actions » : rien ne s'y
        archive. Sa carte de champs est celle des notes. */
     vrai(/data-path="etabs\.\$\{idx\}\.notes"[\s\S]{0,220}\$\{barreValiderFiche\(\)\}[\s\S]{0,12}<\/div>/.test(src),
@@ -34353,7 +34375,8 @@ suite('Chercher un titre, c’est en ajouter un', () => {
        la carte reste des qu'elle porte quelque chose, pour qu'on puisse
        reclasser ces euros a la main. */
     const src = lireSource('assets/app.js');
-    vrai(/\(t\.sansCash \|\| !t\.classes\.includes\('liquidites'\)\) && !\(c\.cash \|\| \[\]\)\.length \? ''/.test(src),
+    vrai(/const carteSolde = !\(\(t\.sansCash \|\| !t\.classes\.includes\('liquidites'\)\) && !\(c\.cash \|\| \[\]\)\.length\);/.test(src)
+      && /\$\{!carteSolde \? '' : `/.test(src),
       'la carte de trésorerie ne se masque que si elle est vide');
     /* Et l'assistant ne pose plus les trois questions du cash. */
     vrai(/\.\.\.\(t\.sansCash \? \[\] : \[/.test(src),
@@ -41577,7 +41600,8 @@ suite('Actif non coté : la formule montre pourquoi les montants sont liés', ()
       'investissement : montant ÷ parts = [prix] {dev} / part');
     vrai(/c\.parPartDeduitParts \? `/.test(r), 'et c’est le drapeau du champ qui choisit le sens');
     vrai(/aria-label="\$\{esc\(trad\(c\.parPartLabel\)\)\}"/.test(r), 'le champ garde son nom pour qui ne voit pas la formule');
-    vrai(!!I18N.en['{dev} / part'] && !!I18N.en['Investissement initial'] && !!I18N.en['Valeur actuelle'],
+    vrai(!!I18N.en['{dev} / part'] && !!I18N.en['Coût d’achat'] && !!I18N.en['Valeur actuelle']
+      && !!I18N.en['Valeur estimée'],
       'les mots neufs existent en anglais');
   });
 
@@ -41600,10 +41624,18 @@ suite('Actif non coté : la formule montre pourquoi les montants sont liés', ()
 
   test('deux groupes nommés, seulement pour les types qui se comptent en parts', () => {
     const s = src();
-    eq((s.match(/cle: 'section_valeur', label: 'Valeur actuelle', type: 'section'/g) || []).length, 2,
-      '« Valeur actuelle » à la fiche et à la création');
-    eq((s.match(/cle: 'section_invest', label: 'Investissement initial', type: 'section'/g) || []).length, 2,
-      '« Investissement initial » aux deux endroits aussi');
+    /* « Valeur estimee » quand c'est le detenteur qui l'apprecie, « Valeur
+       actuelle » sinon ; et « Cout d'achat » plutot qu'« Investissement
+       initial » : trois choses qui ne se confondent pas, le cout, l'estimation,
+       et le produit reel, qui ne se saisit qu'a la cession. */
+    eq((s.match(/cle: 'section_valeur', label: estime \? 'Valeur estimée' : 'Valeur actuelle', type: 'section'/g) || []).length, 1,
+      '« Valeur estimée » ou « Valeur actuelle » à la fiche');
+    eq((s.match(/cle: 'section_valeur', label: estValeurEstimee\(t\) \? 'Valeur estimée' : 'Valeur actuelle', type: 'section'/g) || []).length, 1,
+      'et à la création');
+    eq((s.match(/cle: 'section_invest', label: 'Coût d’achat', type: 'section'/g) || []).length, 2,
+      '« Coût d’achat » aux deux endroits aussi');
+    vrai(!/tirerais/.test(s.replace(/\/\*[\s\S]*?\*\//g, '')),
+      'et plus aucune aide ne présente l’estimation comme un prix de vente obtenu');
     vrai(/\.\.\.\(type && type\.parts \? \[\{ cle: 'section_valeur'/.test(s) && /\.\.\.\(t\.parts \? \[\{ cle: 'section_valeur'/.test(s),
       'et ils suivent le drapeau du type : une montre n’en a pas');
     const fiche = s.slice(s.indexOf('function champsPlacement('), s.indexOf('\nfunction ', s.indexOf('function champsPlacement(') + 10));
@@ -42460,14 +42492,18 @@ suite('Des enveloppes américaines, sans fiscalité', () => {
   });
 
   test('le sélecteur se lit par rubriques, et rien ne s’y perd', () => {
+    /* Le contexte se pose : en euros, les enveloppes francaises sont chez
+       elles et les americaines descendent dans « Autres pays ». */
+    Fixture.poser(s => { s.meta.devise = 'EUR'; s.meta.deviseChoisie = true; });
     const rub = typesCompteParRubrique();
     const titres = rub.map(([t]) => t);
-    eq(titres.join(' | '), 'Comptes bancaires | Investissements | Retraite et épargne avantagée | Biens et autres');
+    eq(titres.join(' | '), 'Comptes bancaires | Investissements | Retraite et épargne avantagée | Biens et autres | Autres pays');
     const dans = titre => rub.find(([t]) => t === titre)[1].map(([id]) => id);
     eq(dans('Comptes bancaires').join(), 'courant,livret');
     eq(dans('Investissements').join(), 'pea,cto,av,crypto');
-    eq(dans('Retraite et épargne avantagée').join(), 'per,us401k,traditionalIra,rothIra,hsa');
+    eq(dans('Retraite et épargne avantagée').join(), 'per');
     eq(dans('Biens et autres').join(), 'pe,fondsNonCote,crowdfunding,immo,scpi,bienValeur');
+    eq(dans('Autres pays').join(), 'us401k,traditionalIra,rothIra,hsa');
     eq(rub.reduce((n, [, l]) => n + l.length, 0), typesCompteChoix().length, 'chaque type choisissable est dans une rubrique');
     const s = app();
     vrai(/options: \[\.\.\.typesCompteParRubrique\(\),/.test(s), 'la création s’en sert');
@@ -42475,14 +42511,16 @@ suite('Des enveloppes américaines, sans fiscalité', () => {
   });
 
   test('sur Actifs vierge, un Américain trouve ses portes, un Français les siennes', () => {
-    const m = app().match(/const FAMILLES_EN_VUE = \{\s*fr: \[([^\]]*)\],\s*en: \[([^\]]*)\],/);
-    vrai(m, 'deux listes de portes, une par langue');
+    const m = app().match(/const FAMILLES_EN_VUE = \{\s*fr: \[([^\]]*)\],\s*us: \[([^\]]*)\],/);
+    vrai(m, 'deux listes de portes, une par pays de contexte');
     const ids = s => s.split(',').map(x => x.trim().replace(/'/g, ''));
-    eq(ids(m[1]).join(), 'courant,livret,pea,av,cto,immo,crypto', 'un lecteur francophone');
-    eq(ids(m[2]).join(), 'courant,livret,cto,us401k,rothIra,immo,crypto', 'un lecteur anglophone');
+    eq(ids(m[1]).join(), 'courant,livret,pea,av,cto,immo,crypto', 'un lecteur en France');
+    eq(ids(m[2]).join(), 'courant,livret,cto,us401k,rothIra,immo,crypto', 'un lecteur aux États-Unis');
     for (const id of [...ids(m[1]), ...ids(m[2])]) vrai(TYPES_COMPTE.some(t => t.id === id), `${id} existe`);
+    vrai(/const famillesEnVue = \(\) => FAMILLES_EN_VUE\[paysContexte\(\)\];/.test(app()),
+      'la page lit la liste du pays de contexte, le meme que le selecteur');
     vrai(/const dispo = famillesEnVue\(\)\.map\(id => choix\.find\(t => t\.id === id\)\)\.filter\(Boolean\);/.test(app()),
-      'la page lit la liste de la langue du moment ; « Autre… » ouvre le reste');
+      'et « Autre… » ouvre le reste');
   });
 });
 
@@ -47344,5 +47382,196 @@ suite('Chaque catégorie de la répartition s’ouvre, et dit comment la mettre 
       vrai(!!I18N.en[c], `« ${c.slice(0, 40)} » a sa traduction`);
     for (const [c, m] of [['Solde, {c}', '{c}'], ['Mettre à jour {n}', '{n}'], ['{n} placements', '{n}']])
       vrai(I18N.en[c].includes(m), `« ${c} » garde ${m}`);
+  });
+});
+
+/* ------------------------------------------------------------------
+   Mettre a jour sans hesiter : le geste et sa validation, ensemble
+   ------------------------------------------------------------------
+   Tout s'ecrit a la frappe, et « Enregistrer » ne fait que confirmer et
+   reposer le point de retour d'« Annuler ». Mais sur un telephone, le bouton
+   se trouvait un ecran plus bas que le champ, et l'on partait sans savoir si
+   le chiffre etait pris. La barre suit desormais le champ qu'on revient
+   corriger chaque mois ; la liste « À mettre a jour » d'Actifs mene au bon
+   compte et au bon champ ; un bien porte ses deux chiffres qui bougent en tete
+   de fiche ; et une estimation ne se presente plus comme un prix de vente. */
+suite('Mettre à jour sans hésiter : le geste et sa validation, ensemble', () => {
+  const app = () => lireSource('assets/app.js');
+  const store = () => lireSource('assets/store.js');
+  const ilYA = n => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+  const tout = s => {
+    for (const c of s.comptes) for (const l of c.lignes) l.estimeLe = todayISO();
+    for (const c of s.comptes) for (const e of c.cash) e.saisiLe = todayISO();
+    for (const e of s.etabs) for (const d of e.dettes) d.verifieLe = todayISO();
+  };
+
+  test('ce qui se met à jour à la main se liste, avec sa date ou sans', () => {
+    Fixture.poser();
+    const liste = valeursARevoir();
+    vrai(liste.length > 0, 'la graine d’essai porte des valeurs sans date');
+    vrai(!liste.some(x => x.genre === 'cours'),
+      'les cours n’y sont pas : ils s’actualisent, ils ne se ressaisissent pas');
+    for (const x of liste) {
+      vrai(/^#\/(compte|etab)\//.test(x.route), `${x.nom} mène à une fiche`);
+      vrai(['solde', 'estimation', 'credit'].includes(x.ancre), `${x.nom} vise une carte`);
+      vrai(x.date === null || /^\d{4}-\d{2}-\d{2}/.test(x.date), 'une date, ou null : jamais autre chose');
+    }
+    const soldes = liste.filter(x => x.genre === 'solde');
+    vrai(soldes.length >= 2 && soldes.every(x => x.compteId && x.route === '#/compte/' + x.compteId),
+      'un solde par compte, chacun avec sa propre fiche');
+    vrai(liste.some(x => x.genre === 'estimation' && x.compteId === 'c_immo' && x.date === null),
+      'l’estimation sans date du studio');
+    const credit = liste.find(x => x.genre === 'credit');
+    vrai(credit && credit.date === null, 'un crédit jamais vérifié');
+    eq(credit.route, '#/compte/c_immo', 'et il mène au compte qu’il finance');
+    eq(credit.ancre, 'credit', 'sur la carte du capital');
+  });
+
+  test('tout ce qui est frais disparaît ; un solde vieux revient avec sa date, devant les datés', () => {
+    Fixture.poser(tout);
+    eq(valeursARevoir().length, 0, 'rien à revoir');
+    Fixture.poser(s => {
+      tout(s);
+      s.comptes.find(c => c.id === 'c_courant').cash[0].saisiLe = ilYA(40);
+      s.comptes.find(c => c.id === 'c_livret').cash[0].saisiLe = ilYA(3);
+    });
+    const l = valeursARevoir();
+    eq(l.length, 1, 'un seul solde vieux : celui de la semaine ne se réclame pas');
+    eq(l[0].compteId, 'c_courant', 'le compte courant');
+    eq(l[0].date, ilYA(40), 'avec sa vraie date');
+    Fixture.poser(s => {
+      tout(s);
+      s.comptes.find(c => c.id === 'c_courant').cash[0].saisiLe = ilYA(40);
+      s.comptes.find(c => c.id === 'c_livret').cash[0].saisiLe = ilYA(90);
+      delete s.comptes.find(c => c.id === 'c_pea').cash[0].saisiLe;
+    });
+    eq(valeursARevoir().map(x => x.compteId).join(), 'c_pea,c_livret,c_courant',
+      'les sans date d’abord, puis du plus ancien au plus récent');
+  });
+
+  test('la liste d’avant relevé se dérive de la même source', () => {
+    Fixture.poser(s => { s.comptes.find(c => c.id === 'c_courant').cash[0].saisiLe = ilYA(40); });
+    const a = aRafraichir(), v = valeursARevoir();
+    eq(a.filter(x => x.genre === 'solde').length, v.filter(x => x.genre === 'solde' && x.date).length,
+      'les soldes vieux, un par un');
+    eq(a.find(x => x.genre === 'soldesSansDate').noms.length, v.filter(x => x.genre === 'solde' && !x.date).length,
+      'les sans date, regroupés en une entrée');
+    eq(a.filter(x => x.genre === 'estimation').length, v.filter(x => x.genre === 'estimation').length, 'les estimations');
+    eq(a.filter(x => x.genre === 'credit').length, v.filter(x => x.genre === 'credit').length, 'les crédits');
+    const src = store();
+    vrai(/for \(const x of valeursARevoir\(\)\)/.test(src.slice(src.indexOf('function aRafraichir'))),
+      'aRafraichir lit valeursARevoir au lieu de refaire les seuils');
+  });
+
+  test('un crédit sans compte financé mène à son établissement', () => {
+    Fixture.poser(s => {
+      s.etabs.find(e => e.id === 'e_banque').dettes.push({ id: 'd_conso', libelle: 'Prêt conso', montant: 5000, note: '' });
+    });
+    const x = valeursARevoir().find(y => y.genre === 'credit' && y.nom === 'Prêt conso');
+    vrai(x, 'il se liste');
+    eq(x.compteId, null, 'deux comptes chez cette banque : aucun ne le porte');
+    eq(x.route, '#/etab/e_banque', 'donc la fiche de l’établissement');
+    vrai(/<div class="card" data-anchor="credit">\s*<div class="card-head"><h2>\$\{trad\('Crédits en cours'\)\}/.test(app()),
+      'où la carte des crédits porte l’ancre');
+  });
+
+  test('la barre de validation ferme la carte du solde, et la liste mène au champ', () => {
+    const s = app();
+    vrai(/<div class="card" data-anchor="solde">/.test(s), 'la carte du solde porte son ancre');
+    vrai(/cash\.\$\{i\}\.montant" value="\$\{num\(e\.montant\)\}"\$\{i \? '' : ' data-anchor-focus'\}/.test(s),
+      'et son premier champ prend le curseur');
+    const carteSolde = s.slice(s.indexOf('<div class="card" data-anchor="solde">'));
+    vrai(/trad\('solde saisi le \{d\}'\)/.test(carteSolde.slice(0, 3000))
+      && /trad\('solde sans date de saisie'\)/.test(carteSolde.slice(0, 3000)),
+      'chaque part dit de quand date son solde, ou qu’il n’a pas de date');
+    const af = s.slice(s.indexOf("'aller-fiche'(btn)"), s.indexOf("'aller-fiche'(btn)") + 400);
+    vrai(/pendingAnchor = btn\.dataset\.anchor \|\| null;/.test(af) && /pendingFocus = btn\.dataset\.focus === '1';/.test(af),
+      'aller-fiche porte l’ancre et le curseur');
+    const fa = s.slice(s.indexOf('function focusAnchor'), s.indexOf('function render()'));
+    vrai(/if \(pendingFocus\) \{[\s\S]{0,300}\[data-anchor-focus\][\s\S]{0,200}focus\(\{ preventScroll: true \}\)/.test(fa),
+      'focusAnchor pose le curseur dans le champ marqué, sans second geste');
+    const carte = s.slice(s.indexOf('function carteValeursARevoir'), s.indexOf('function viewAccounts'));
+    vrai(/data-action="aller-fiche" data-route="\$\{esc\(x\.route\)\}" data-anchor="\$\{esc\(x\.ancre\)\}" data-focus="1"/.test(carte),
+      'chaque ligne de la liste ouvre la fiche, la carte et le champ');
+    vrai(/trad\('solde sans date de saisie'\)/.test(carte) && /trad\('solde saisi le \{d\}'\)/.test(carte)
+      && /trad\('capital restant dû jamais vérifié'\)/.test(carte) && /trad\('estimation sans date'\)/.test(carte),
+      'sans date et vieux ne se disent pas pareil, pour chaque nature');
+    vrai(/\$\{sansCompte \|\| filtre \? '' : carteValeursARevoir\(\)\}\s*\$\{sansCompte && !filtre \? '' : carteInsights\('accounts'/.test(s),
+      'la liste précède « À retenir » sur Actifs, et se tait pendant une recherche');
+    vrai(/k >= REVOIR_VISIBLES \? ' revoir-surplus' : ''/.test(carte) && /data-action="revoir-tout"/.test(carte),
+      'trois lignes, le reste derrière un bouton');
+    const css = lireSource('assets/styles.css');
+    vrai(/\.revoir \.revoir-surplus \{ display: none; \}/.test(css) && /\.revoir\.ouvert \.revoir-surplus \{ display: flex; \}/.test(css),
+      'que le style replie sans re-rendre');
+  });
+
+  test('sur un bien, les deux chiffres qui bougent vivent en tête, et nulle part ailleurs', () => {
+    const s = app();
+    const espace = s.slice(s.indexOf('function espaceBien'), s.indexOf('function barreValiderFiche'));
+    const iMaj = espace.indexOf("<h2>${trad('Mettre à jour')}</h2>");
+    const iBien = espace.indexOf("<h2>${trad('Le bien')}</h2>");
+    vrai(iMaj > 0 && iBien > iMaj, 'la carte « Mettre à jour » précède « Le bien »');
+    eq((espace.match(/data-path="comptes\.\$\{idx\}\.lignes\.\$\{i\}\.valeur"/g) || []).length, 1,
+      'la valeur estimée ne s’écrit qu’une fois');
+    eq((espace.match(/data-path="comptes\.\$\{idx\}\.lignes\.\$\{i\}\.estimeLe"/g) || []).length, 1, 'sa date aussi');
+    eq((s.match(/data-path="etabs\.\$\{idxEtab\}\.dettes\.\$\{i\}\.montant"/g) || []).length, 1,
+      'le capital restant dû ne s’écrit qu’une fois sur la fiche d’un bien');
+    vrai(espace.indexOf('dettes.${i}.montant') < iBien, 'et c’est dans la carte de tête');
+    vrai(/data-path="etabs\.\$\{idxEtab\}\.dettes\.\$\{i\}\.verifieLe"/.test(espace), 'avec sa date de vérification');
+    vrai(/trad\('capital restant dû jamais vérifié'\)/.test(espace.slice(iMaj, iBien)), 'qui dit son absence');
+    const credit = s.slice(s.indexOf('function carteCredit'), s.indexOf('function espaceBien'));
+    vrai(!/dettes\.\$\{i\}\.montant"/.test(credit), 'la carte du crédit ne propose plus le capital en saisie');
+    vrai(/<div class="card" data-anchor="estimation">/.test(espace) && /data-anchor="credit"/.test(espace),
+      'les deux ancres de la liste sont posées');
+    vrai(espace.slice(iMaj, iBien).includes('${barreValiderFiche()}'), 'et la barre ferme cette carte-là');
+  });
+
+  test('le pays de contexte suit la devise choisie, puis la langue', () => {
+    Fixture.poser(s => { s.meta.devise = 'USD'; s.meta.deviseChoisie = true; });
+    eq(paysContexte(), 'us', 'en dollars, le contexte est américain');
+    const rub = typesCompteParRubrique();
+    const dans = t => (rub.find(([x]) => x === t) || [null, []])[1].map(([id]) => id);
+    eq(dans('Retraite et épargne avantagée').join(), 'us401k,traditionalIra,rothIra,hsa');
+    eq(dans('Investissements').join(), 'cto,crypto');
+    eq(dans('Autres pays').join(), 'pea,av,per,scpi', 'les enveloppes françaises restent accessibles, une rubrique plus bas');
+    eq(rub.reduce((n, [, l]) => n + l.length, 0), typesCompteChoix().length, 'rien ne se perd');
+    Fixture.poser(s => { s.meta.devise = 'EUR'; s.meta.deviseChoisie = false; });
+    const fr = String(currentLang() || '').toLowerCase().startsWith('fr');
+    eq(paysContexte(), fr ? 'fr' : 'us', 'avant le choix de la devise, la langue décide');
+    for (const t of TYPES_COMPTE) vrai(!t.pays || ['fr', 'us'].includes(t.pays), `${t.id} : un pays connu, ou aucun`);
+    eq(TYPES_COMPTE.filter(t => t.pays === 'fr').map(t => t.id).join(), 'pea,av,per,scpi');
+    eq(TYPES_COMPTE.filter(t => t.pays === 'us').map(t => t.id).join(), 'us401k,traditionalIra,rothIra,hsa');
+    vrai(!!I18N.en['Autres pays'], 'la rubrique se traduit');
+  });
+
+  test('sur Actifs, un niveau ne se répète pas, et des espèces à zéro ne font pas un groupe', () => {
+    const s = app();
+    vrai(/ligneCompte\(c, false, siens\.length === 1 && nomCompteV2\(c\) === e\.nom\)/.test(s),
+      'l’unique compte au nom de son établissement se présente par son type');
+    vrai(/function ligneCompte\(c, avecEtab = true, nomRepete = false\)/.test(s)
+      && /nomRepete \? trad\(typeCompte\(c\.type\)\.label\) : nomCompteV2\(c\)/.test(s), 'la ligne sait le faire');
+    const branche = s.slice(s.indexOf("compteVue === 'banque'"), s.indexOf("compteVue === 'type'"));
+    vrai(/sansContenant\.every\(c => typeCompte\(c\.type\)\.interne && !valeurCompte\(c\)\)/.test(branche),
+      'des espèces internes à zéro, seules, sont reconnues');
+    vrai(/sansContenant\.length && !especesSeules/.test(branche), 'et ne font pas le groupe « Sans intermédiaire »');
+    vrai(/data-action="fiche-compte"\s*data-id="\$\{esc\(sansContenant\[0\]\.id\)\}"/.test(branche), 'mais gardent leur porte');
+    vrai(/enDirect \+ especesVides/.test(branche), 'en fin de liste');
+    for (const k of ['rien de déclaré', 'Déclarer des espèces']) vrai(!!I18N.en[k], k + ' se traduit');
+  });
+
+  test('une estimation n’est pas un prix de vente, et les mots le disent', () => {
+    const s = app();
+    const d = s.slice(s.indexOf('function detailsPlacement'), s.indexOf('\n}', s.indexOf('function detailsPlacement')));
+    vrai(/estValeurEstimee\(t\)\s*\? trad\('Valeur estimée'\)/.test(d), 'la carte dit « Valeur estimée » quand c’en est une');
+    vrai(/trad\('estimée le \{d\}'\)/.test(d) && /trad\('estimation sans date'\)/.test(d), 'avec sa date, ou son absence');
+    vrai(/<div class="card" data-anchor="estimation">/.test(d), 'et porte l’ancre de la liste');
+    for (const k of ['Valeur estimée', 'Coût d’achat', 'Mettre à jour', 'ce qui vieillit', 'À mettre à jour',
+      'ton estimation du jour : ce n’est pas un prix de vente, le produit réel se saisit à la cession',
+      'Ton estimation, pas un prix de vente : ce que tu encaisserais vraiment ne se connaît qu’à la cession, et « Céder » l’enregistre.',
+      'Chaque chiffre tapé est déjà enregistré : « Enregistrer » le confirme, « Annuler » revient au dernier état enregistré.',
+      'Les deux chiffres qui bougent : ce que vaut le bien, et ce qu’il reste à rembourser. Chaque chiffre tapé est déjà enregistré et se date du jour.',
+      'Des soldes, des estimations et des capitaux restant dus qui datent ou n’ont pas de date. Touche une ligne pour ouvrir le champ.',
+      '{n} valeurs saisies à la main', '{n} valeur saisie à la main'])
+      vrai(!!I18N.en[k], `« ${k.slice(0, 40)} » a sa traduction`);
   });
 });

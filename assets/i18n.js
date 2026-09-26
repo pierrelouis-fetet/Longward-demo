@@ -927,7 +927,23 @@ const I18N = {
     "Valeur aujourd’hui ({dev})": "Value today ({dev})",
     "Valeur estimée ({dev})": "Estimated value ({dev})",
     "ce que la ligne vaut, capital et intérêts courus compris": "what the line is worth, capital and accrued interest included",
-    "ce que tu en tirerais en le vendant aujourd’hui": "what you would get for it if you sold it today",
+    "ton estimation du jour : ce n’est pas un prix de vente, le produit réel se saisit à la cession":
+      "your estimate as of today: not a sale price, the actual proceeds are entered when you sell",
+    "Valeur estimée": "Estimated value",
+    "Ton estimation, pas un prix de vente : ce que tu encaisserais vraiment ne se connaît qu’à la cession, et « Céder » l’enregistre.":
+      "Your estimate, not a sale price: what you would really get is only known when you sell, and “Sell” records it.",
+    "Mettre à jour": "Update",
+    "ce qui vieillit": "what goes stale",
+    "Les deux chiffres qui bougent : ce que vaut le bien, et ce qu’il reste à rembourser. Chaque chiffre tapé est déjà enregistré et se date du jour.":
+      "The two figures that move: what the property is worth, and what is left to repay. Every figure you type is already saved and dated today.",
+    "À mettre à jour": "To update",
+    "{n} valeurs saisies à la main": "{n} values entered by hand",
+    "{n} valeur saisie à la main": "{n} value entered by hand",
+    "Des soldes, des estimations et des capitaux restant dus qui datent ou n’ont pas de date. Touche une ligne pour ouvrir le champ.":
+      "Balances, estimates and outstanding loan balances that are old or undated. Tap a line to open the field.",
+    "rien de déclaré": "nothing declared",
+    "Déclarer des espèces": "Declare cash",
+    "Autres pays": "Other countries",
     "Prix de la part aujourd’hui ({dev})": "Price per share today ({dev})",
     "Prix d’achat de la part ({dev})": "Purchase price per share ({dev})",
     "restants": "left",
@@ -987,6 +1003,8 @@ const I18N = {
       "The account's name, type, institution and dates. The balance and the holdings change in their own cards.",
     "solde saisi le {d}": "balance entered on {d}",
     "solde sans date de saisie": "balance with no entry date",
+    "Chaque chiffre tapé est déjà enregistré : « Enregistrer » le confirme, « Annuler » revient au dernier état enregistré.":
+      "Every figure you type is already saved: “Save” confirms it, “Cancel” goes back to the last saved state.",
     "Soldes sans date de saisie": "Balances with no entry date",
     "estimation sans date": "undated estimate",
     "cours du {d}": "prices as of {d}",
@@ -994,7 +1012,6 @@ const I18N = {
     "Vérifié le": "Checked on",
     "le jour où tu as lu ce capital chez ta banque": "the day you read this balance at your bank",
     "{dev} / part": "{dev} / share",
-    "Investissement initial": "Initial investment",
     "il donne le nombre de parts": "it gives the share count",
     "il se déduit du montant investi, et commande la valeur du jour": "it follows from the amount invested, and drives today’s value",
     "Détails du placement": "Investment details",

@@ -1873,6 +1873,9 @@ tr.ligne-ouvre .mois-lien { pointer-events: none; }
 .mlist:last-child { border-bottom: none; }
 .mlist-groupe { margin-top: 2px; }
 .mlist-groupe > .mlist:last-child { border-bottom: none; }
+.revoir .revoir-surplus { display: none; }
+.revoir.ouvert .revoir-surplus { display: flex; }
+.cpt-sans-rien { margin: 10px 4px 0; }
 .lien-vue { color: var(--series-1); text-decoration: none; }
 @media (hover: hover) { .lien-vue:hover { text-decoration: underline; } }
 .lien-vue:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--radius-xs); }
