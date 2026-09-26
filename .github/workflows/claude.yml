@@ -11,7 +11,7 @@
 # - Only people with write access to this repository can trigger a run. The
 #   action checks the author of the mention itself; `@claude` typed by a
 #   stranger in a public issue does nothing, and does not spend the key.
-# - The key never appears here. `ANTHROPIC_API_KEY` is a repository secret,
+# - The key never appears here. `CLAUDE_KEY` is a repository secret,
 #   read at run time, and a test refuses this file if a literal key ever
 #   replaces the reference.
 #
@@ -56,4 +56,4 @@ jobs:
         id: claude
         uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          anthropic_api_key: ${{ secrets.CLAUDE_KEY }}

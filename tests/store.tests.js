@@ -42583,7 +42583,7 @@ suite('Le dépôt répond à @claude, sans exposer de clé', () => {
     const f = flux();
     vrai(f, 'le fichier doit être lisible');
     vrai(/uses: anthropics\/claude-code-action@v1\s*$/m.test(f), 'l’action officielle, épinglée à sa version majeure');
-    vrai(/anthropic_api_key: \$\{\{ secrets\.ANTHROPIC_API_KEY \}\}/.test(f), 'la clé se lit dans les secrets du dépôt');
+    vrai(/anthropic_api_key: \$\{\{ secrets\.CLAUDE_KEY \}\}/.test(f), 'la clé se lit dans les secrets du dépôt');
     for (const droit of ['contents: write', 'pull-requests: write', 'issues: write', 'id-token: write', 'actions: read']) {
       vrai(new RegExp(`^      ${droit}\\b`, 'm').test(f), `${droit} est déclaré sur le travail`);
     }
