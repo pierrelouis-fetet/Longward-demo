@@ -1569,9 +1569,42 @@ button.pf-total, button.pf-mesure { cursor: pointer; }
 .pf-jour-muet { grid-column: 1 / -1; margin: 0; font-size: var(--font-xs); color: var(--muted); }
 
 .repart-synthese .repart-ligne { padding: 8px 0; }
-.repart-autres { text-decoration: none; }
 .repart-autres .repart-haut { padding-left: 17px; }
 .repart-autres .repart-nom { font-weight: 500; color: var(--text-secondary); }
+.repart-chev { display: inline-block; margin-left: 6px; color: var(--muted); transition: transform .15s ease; }
+.repart-autres[aria-expanded="true"] .repart-chev { transform: rotate(90deg); }
+.repart-autres-detail { padding-left: 17px; }
+.repart-autres-detail:not(:last-child) { border-bottom: 1px solid var(--border); }
+.repart-autres:has(+ .repart-autres-detail[hidden]:last-child) { border-bottom: none; }
+@media (prefers-reduced-motion: reduce) { .repart-chev { transition: none; } }
+
+.apercu-pied { margin: 0; text-align: center; font-size: var(--font-sm); }
+.apercu-consigne { margin: 0 0 6px; font-size: var(--font-sm); color: var(--muted); line-height: 1.45; }
+.apercu-edition h2:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: var(--radius-xs); }
+.apercu-liste { list-style: none; margin: 0; padding: 0; }
+.apercu-ligne {
+  display: flex; align-items: center; gap: 12px; min-height: 52px;
+  padding: 6px 0; border-top: 1px solid var(--grid);
+}
+.apercu-nom { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow-wrap: break-word; }
+.apercu-nom .sub { display: block; margin-top: 1px; font-weight: 400; font-size: var(--font-sm); color: var(--muted); }
+.apercu-ligne.masquee .apercu-nom { color: var(--text-secondary); }
+.apercu-commandes { flex: none; display: flex; align-items: center; gap: 6px; }
+.apercu-fleche { width: 36px; height: 36px; padding: 0; display: inline-grid; place-items: center; }
+.apercu-fleche[disabled] { opacity: .35; cursor: default; }
+.bascule.apercu-vu { width: auto; padding: 6px 0 6px 6px; border: none; background: none; }
+.apercu-edition-pied {
+  display: flex; justify-content: end; margin-top: 4px; padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.hors-ecran {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+@media (max-width: 899px) {
+  .apercu-fleche { width: 44px; height: 44px; }
+  .bascule.apercu-vu { min-height: 44px; }
+}
 .card.retenir:not(.tout-voir) .retenir-surplus,
 .card.retenir.tout-voir .retenir-voir-plus,
 .card.retenir:not(.tout-voir) .retenir-voir-moins { display: none; }

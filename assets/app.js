@@ -1349,7 +1349,7 @@ function ligneInsight(i, p, precedent, destinationsVues) {
   const oeil = EYEBROW_INSIGHT[i.categorie] === precedent
     ? null : EYEBROW_INSIGHT[i.categorie];
   const cta = p.cta && !(destinationsVues || []).includes(destinationInsight(p))
-    ? p.cta : null;
+    && !renvoiVersCarteMasquee(p) ? p.cta : null;
   return `
       <li class="retenir-item">
         ${!oeil ? '' : `<span class="retenir-oeil">${trad(oeil)}</span>`}
@@ -1382,7 +1382,6 @@ function viewOverview() {
   const t = nowTotals();
   const d = deltas();
   const g = objectiveStatus();
-  const pnl = portfolioPnl();
   const alloc = allocationByAsset();
 
   /* Le pourcentage ne s'affiche que s'il veut dire quelque chose : `deltas()`
@@ -1461,6 +1460,9 @@ function viewOverview() {
   const depEnAttente = depensesEnAttente();
   const guide = carteDemarrage();
   const guideDevant = !aUnComptePropre();
+  const sansComptes = pasAFaire('comptes');
+  const edition = apercuEdition && !sansComptes;
+  const cartes = edition ? null : cartesApercu({ sansComptes });
 
   return `
   ${guideDevant ? guide : ''}
@@ -1504,7 +1506,8 @@ function viewOverview() {
 
   ${guideDevant ? '' : guide}
 
-  ${pasAFaire('comptes') ? '' : carteARetenir()}
+  ${edition ? editeurApercu() : `
+  ${cartes.tete}
 
   ${moisEnAttente.missing && !guide ? `
   <div class="rappel card-cliquable">
@@ -1526,33 +1529,184 @@ function viewOverview() {
     ${sortiesRappel('depenses', depEnAttente.label)}
   </div>` : ''}
 
-  ${carteObjectif()}
-  ${(() => {
-    /* DEUX PRECISIONS DIFFERENTES SUR LA MEME LIGNE, ET C'EST VOULU.
+  ${cartes.suite}
 
-       Le montant perd ses centimes : un patrimoine est une lecture macro, et
-       « 14 965,00 EUR » donne a une carte de composition l'allure d'un releve
-       bancaire. Les quatre-vingt-dix centimes qui separent deux poches ne
-       changent ni la part, ni la barre, ni la decision. Rien n'est arrondi dans
-       les donnees, seulement a l'ecran, et le total de la mention de base sous
-       la carte reste ce qu'il etait.
+  ${sansComptes ? `
+  <p class="apercus-legende">${trad('Ton tableau de bord s’enrichit à mesure que tu ajoutes tes données.')}</p>
+  <div class="apercus-verrous">
+    ${apercuVerrou(trad('Patrimoine net'), trad('Ajoute au moins un compte pour commencer.'), 'barre', true)}
+    ${apercuVerrou(trad('Répartition de ton patrimoine'), trad('Disponible après tes premiers actifs.'), 'anneau')}
+    ${apercuVerrou(trad('Capacité d’épargne'), trad('Ajoute tes revenus et tes dépenses.'), 'jauge')}
+    ${apercuVerrou(trad('Projection'), trad('Disponible quand ta situation est suffisamment renseignée.'), 'courbe')}
+  </div>` : piedApercu()}
 
-       Le pourcentage, lui, garde sa decimale : une poche a trois dixiemes
-       disparaitrait derriere « 0 % » alors qu'elle existe. Le chiffre secondaire
-       est ici le plus precis des deux, parce que c'est le seul ou la precision
-       se voit.
+`}
+`;
+}
 
-       LA PLACE DE CE COMMENTAIRE N'EST PAS UN DETAIL. Il vit DANS la fonction,
-       apres le `${'$'}{(() => {` qui ouvre le code. Une ligne plus haut, il serait
-       entre deux balises d'un litteral de gabarit — donc du TEXTE, pas du
-       JavaScript : le fichier se parse, la suite reste verte, et les visiteurs
-       lisent le commentaire en clair au milieu de l'accueil. C'est arrive.
-       La regle tient en deux mots : dans le gabarit, `<!-- -->` ; dans le code,
-       un commentaire de bloc. Et un commentaire HTML dans un litteral part
-       jusqu'au DOM, donc le raisonnement se met dans le code, jamais dans le
-       balisage.
-       (Ne pas ecrire ici la sequence qui FERME un commentaire de bloc : elle le
-       fermerait. C'est ce qui vient d'arriver, dans ce commentaire meme.) */
+/* --- Les cartes de l'Apercu, et leur disposition --------------------------
+
+   Une entree par carte de CARTES_APERCU (store.js), qui porte l'ordre et la
+   visibilite ; ici vivent le nom que montre la liste de reglage et le rendu.
+   Un test verifie que les deux listes nomment les memes cartes.
+
+   `compacte` : la carte tient dans une demi-largeur sur ordinateur. Deux
+   compactes qui se suivent partagent une rangee, la courbe suivie de ce qui a
+   change partage la sienne en deux tiers et un tiers, et toute autre carte
+   prend la largeur entiere. La regle ne regarde que les cartes REELLEMENT
+   rendues : une carte masquee ou vide ne laisse aucun trou dans une rangee,
+   quel que soit l'ordre choisi. Sur telephone, ces grilles passent deja a une
+   colonne.
+
+   `presente` repond sans rendre : la liste de reglage peut dire qu'une carte
+   n'a rien a montrer pour l'instant sans appeler son rendu, qui noterait par
+   exemple des points a retenir comme vus. Sans `presente`, la carte parait
+   toujours. */
+const CARTES_APERCU_VUE = {
+  retenir:      { nom: () => trad('À retenir'), rendu: () => carteARetenir() },
+  repartition:  { nom: () => trad('Répartition'), rendu: () => carteRepartitionResume() },
+  evolution:    { nom: () => trad('Évolution du patrimoine'), rendu: () => carteEvolution() },
+  changements:  { nom: () => trad('Ce qui a changé'), rendu: () => carteVariation(), compacte: true,
+                  presente: () => !!derniereVariation() },
+  titres:       { nom: () => trad('Tes titres'), rendu: () => carteTitresResume(),
+                  presente: () => aDesPositionsMarche() },
+  accumulation: { nom: () => trad('Accumulation ce mois-ci'), rendu: () => carteAccumulationResume(),
+                  compacte: true },
+  reserve:      { nom: () => trad('Réserve de sécurité'), rendu: () => carteReserveResume(), compacte: true },
+  objectif:     { nom: () => `${trad('Objectif à fin')} ${Store.state.meta.objectiveYear}`,
+                  rendu: () => carteObjectif() },
+};
+
+const ANCRES_CARTES_APERCU = { evolution: 'evolution', variation: 'changements',
+                               accumulation: 'accumulation', autonomie: 'reserve' };
+const ancreApercuMasquee = ancre =>
+  !!ANCRES_CARTES_APERCU[ancre] && dispositionApercu().masquees.includes(ANCRES_CARTES_APERCU[ancre]);
+const renvoiVersCarteMasquee = p => {
+  const [vue, ancre] = destinationInsight(p).split(':');
+  return vue === 'overview' && ancreApercuMasquee(ancre);
+};
+
+const CARTES_AVANT_COMPTE = ['repartition', 'objectif'];
+
+function cartesApercu({ sansComptes = false } = {}) {
+  const d = dispositionApercu();
+  const rendues = d.ordre
+    .filter(id => !d.masquees.includes(id) && (!sansComptes || CARTES_AVANT_COMPTE.includes(id)))
+    .map(id => ({ id, html: CARTES_APERCU_VUE[id].rendu() }))
+    .filter(c => c.html.trim());
+  const tete = rendues[0] && rendues[0].id === 'retenir' ? rendues.shift().html : '';
+  return { tete, suite: rangeesApercu(rendues) };
+}
+
+function rangeesApercu(rendues) {
+  const compacte = c => !!(c && CARTES_APERCU_VUE[c.id].compacte);
+  let html = '';
+  for (let i = 0; i < rendues.length; i++) {
+    const a = rendues[i], b = rendues[i + 1];
+    if (b && a.id === 'evolution' && b.id === 'changements') {
+      html += `
+  <div class="grid g-2-1">${a.html}${b.html}</div>`;
+      i++;
+    } else if (compacte(a) && compacte(b)) {
+      html += `
+  <div class="grid g-2">${a.html}${b.html}</div>`;
+      i++;
+    } else html += a.html;
+  }
+  return html;
+}
+
+function piedApercu() {
+  return `
+  <p class="apercu-pied">
+    <button type="button" class="lien-vue" data-action="apercu-editer">${trad('Personnaliser l’aperçu')}</button>
+  </p>`;
+}
+
+function editeurApercu() {
+  const d = dispositionApercu();
+  const fleche = haut => `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${
+          haut ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'}"/></svg>`;
+  const ligne = (id, i) => {
+    const c = CARTES_APERCU_VUE[id];
+    const nom = esc(c.nom());
+    const cachee = d.masquees.includes(id);
+    const etat = cachee ? trad('Masquée')
+      : c.presente && !c.presente() ? trad('Rien à montrer pour l’instant') : '';
+    const pour = libelle => `${trad(libelle)}${deuxPoints()} ${nom}`;
+    return `
+      <li class="apercu-ligne${cachee ? ' masquee' : ''}" data-carte="${id}">
+        <span class="apercu-nom">${nom}${etat ? `<span class="sub">${etat}</span>` : ''}</span>
+        <span class="apercu-commandes">
+          <button type="button" class="btn ghost apercu-fleche" data-action="apercu-monter" data-carte="${id}"
+                  aria-label="${pour('Monter')}" title="${trad('Monter')}"${i === 0 ? ' disabled' : ''}>${fleche(true)}</button>
+          <button type="button" class="btn ghost apercu-fleche" data-action="apercu-descendre" data-carte="${id}"
+                  aria-label="${pour('Descendre')}" title="${trad('Descendre')}"${
+                  i === d.ordre.length - 1 ? ' disabled' : ''}>${fleche(false)}</button>
+          <button type="button" class="bascule apercu-vu${cachee ? '' : ' on'}" data-action="apercu-visibilite"
+                  data-carte="${id}" role="switch" aria-checked="${cachee ? 'false' : 'true'}"
+                  aria-label="${pour('Afficher sur l’aperçu')}" title="${trad(cachee ? 'Afficher' : 'Masquer')}">
+            <span class="bascule-piste" aria-hidden="true"><i></i></span></button>
+        </span>
+      </li>`;
+  };
+  return `
+  <section class="card apercu-edition" aria-labelledby="apercuEditionTitre">
+    <div class="card-head">
+      <h2 id="apercuEditionTitre" tabindex="-1">${trad('Personnaliser l’aperçu')}</h2>
+      <button type="button" class="btn sm" data-action="apercu-terminer">${trad('Terminé')}</button>
+    </div>
+    <p class="apercu-consigne">${trad('Choisis l’ordre des cartes et celles que tu veux voir. Les rappels de saisie gardent leur place.')}</p>
+    <ol class="apercu-liste">
+      <li class="apercu-ligne apercu-fixe">
+        <span class="apercu-nom">${trad(evoNet ? 'Patrimoine net' : 'Patrimoine brut')}<span class="sub">${
+          trad('Toujours en premier')}</span></span>
+      </li>
+      ${d.ordre.map(ligne).join('')}
+    </ol>
+    <div class="apercu-edition-pied">
+      <button type="button" class="btn sm ghost" data-action="apercu-retablir"${d.parDefaut ? ' disabled' : ''}
+              >${trad('Rétablir la disposition par défaut')}</button>
+    </div>
+    <p class="hors-ecran" role="status" id="apercuAnnonce"></p>
+  </section>`;
+}
+
+let apercuEdition = false;
+let apercuFocus = null;
+let apercuAnnonce = '';
+function deplacerSurApercu(id, sens) {
+  if (!deplacerCarteApercu(id, sens)) return;
+  Store.save();
+  const d = dispositionApercu();
+  apercuAnnonce = trad('{c}, position {n} sur {t}').replace('{c}', CARTES_APERCU_VUE[id].nom())
+    .replace('{n}', d.ordre.indexOf(id) + 2).replace('{t}', d.ordre.length + 1);
+  apercuFocus = { carte: id, action: sens < 0 ? 'apercu-monter' : 'apercu-descendre' };
+  render(); retourHaptique();
+}
+function reprendreFocusApercu() {
+  const f = apercuFocus, annonce = apercuAnnonce;
+  apercuFocus = null; apercuAnnonce = '';
+  let cible = null;
+  if (f && f.titre) cible = $('#apercuEditionTitre');
+  else if (f && f.carte) {
+    const ligne = $(`.apercu-ligne[data-carte="${f.carte}"]`);
+    const voulu = ligne && ligne.querySelector(`[data-action="${f.action}"]`);
+    cible = voulu && !voulu.disabled ? voulu : ligne && ligne.querySelector('button:not([disabled])');
+  }
+  if (cible) {
+    cible.focus({ preventScroll: true });
+    cible.scrollIntoView({ block: f.titre ? 'start' : 'nearest' });
+  }
+  if (annonce) setTimeout(() => { const r = $('#apercuAnnonce'); if (r) r.textContent = annonce; }, 60);
+}
+
+/* Ce raisonnement vit hors du gabarit, et c'est voulu. Un commentaire HTML
+   dans un litteral part jusqu'au DOM du visiteur. La regle tient en deux mots :
+   dans le gabarit, `<!-- -->` ; dans le code, un commentaire de bloc. */
+let repartAutresOuvert = false;
+function carteRepartitionResume() {
     const classes = repartitionClasses({ net: evoNet });
     if (!classes.length) return '';
     const s = syntheseRepartition(classes);
@@ -1577,15 +1731,18 @@ function viewOverview() {
       <a class="hint lien-vue" href="#/allocation">${trad('Voir toute l’allocation')} →</a></div>
     ${s.tete.map(ligneClasse).join('')}
     ${!s.autres ? '' : `
-    <a class="repart-ligne repart-autres" href="#/allocation"
-       title="${trad('Voir toute l’allocation')}">
+    <button type="button" class="repart-ligne repart-autres" data-action="repart-autres"
+            aria-expanded="${repartAutresOuvert ? 'true' : 'false'}" aria-controls="repartAutresDetail">
       <span class="repart-haut">
-        <span class="repart-nom">${(s.autres.nb > 1 ? trad('{n} autres catégories') : trad('1 autre catégorie'))
-          .replace('{n}', s.autres.nb)}<span class="sub">${s.autres.labels.map(l => esc(trad(l))).join(', ')}</span></span>
+        <span class="repart-nom">${trad('Autres')}<span class="repart-chev" aria-hidden="true">›</span><span class="sub">${
+          trad('{n} catégories').replace('{n}', s.autres.nb)}</span></span>
         <b>${fmtEUR0(s.autres.value)}</b>
         <span class="repart-pct">${s.autres.pct == null ? '' : fmtPct(s.autres.pct, 1)}</span>
       </span>
-    </a>`}
+    </button>
+    <div class="repart-autres-detail" id="repartAutresDetail"${repartAutresOuvert ? '' : ' hidden'}>
+      ${s.autres.lignes.map(ligneClasse).join('')}
+    </div>`}
     ${s.negatives.map(ligneClasse).join('')}
     ${(() => {
       const p = patrimoine();
@@ -1615,24 +1772,12 @@ function viewOverview() {
       </button>`;
     })()}
   </div>`;
-  })()}
+}
 
-  ${pasAFaire('comptes') ? `
-  <p class="apercus-legende">${trad('Ton tableau de bord s’enrichit à mesure que tu ajoutes tes données.')}</p>
-  <div class="apercus-verrous">
-    ${apercuVerrou(trad('Patrimoine net'), trad('Ajoute au moins un compte pour commencer.'), 'barre', true)}
-    ${apercuVerrou(trad('Répartition de ton patrimoine'), trad('Disponible après tes premiers actifs.'), 'anneau')}
-    ${apercuVerrou(trad('Capacité d’épargne'), trad('Ajoute tes revenus et tes dépenses.'), 'jauge')}
-    ${apercuVerrou(trad('Projection'), trad('Disponible quand ta situation est suffisamment renseignée.'), 'courbe')}
-  </div>`
-  : `
-
-  <div class="grid${derniereVariation() ? ' g-2-1' : ''}">
-    ${carteEvolution()}
-    ${carteVariation()}
-  </div>
-
-  ${!aDesPositionsMarche() ? '' : `
+function carteTitresResume() {
+  if (!aDesPositionsMarche()) return '';
+  const pnl = portfolioPnl();
+  return `
   <div class="card">
     <div class="card-head"><h2>${trad('Tes titres')}</h2>
       <a class="hint lien-vue" href="#/positions">${trad('Voir les positions')} →</a></div>
@@ -1672,20 +1817,12 @@ function viewOverview() {
         })()}
       </div>
     </div>
-  </div>`}
-
-  <div class="grid g-2">
-    ${carteAccumulationResume()}
-    ${carteReserveResume()}
-  </div>
-
-`}
-`;
+  </div>`;
 }
 
 function mountOverview() {
-  noterInsightsVus();
-  monterEvolution();
+  if (!$('.apercu-edition')) { noterInsightsVus(); monterEvolution(); }
+  else reprendreFocusApercu();
   /* La courbe du hero, sur la fenetre que la variation annonce. `mount()` sort
      en silence quand le conteneur n'est pas rendu, donc rien a garder ici. */
   (() => {
@@ -8834,6 +8971,40 @@ const ACTIONS = {
     Store.state.meta.retenirReplie = !retenirReplie();
     Store.save(); render(); retourHaptique();
   },
+  'apercu-editer'() {
+    apercuEdition = true;
+    apercuFocus = { titre: true };
+    render(); retourHaptique();
+  },
+  'apercu-terminer'() {
+    apercuEdition = false;
+    render(); window.scrollTo(0, 0); retourHaptique();
+  },
+  'apercu-monter'(btn) { deplacerSurApercu(btn.dataset.carte, -1); },
+  'apercu-descendre'(btn) { deplacerSurApercu(btn.dataset.carte, 1); },
+  'apercu-visibilite'(btn) {
+    const id = btn.dataset.carte;
+    if (!basculerCarteApercu(id)) return;
+    Store.save();
+    apercuAnnonce = trad(dispositionApercu().masquees.includes(id) ? '{c}, carte masquée' : '{c}, carte affichée')
+      .replace('{c}', CARTES_APERCU_VUE[id].nom());
+    apercuFocus = { carte: id, action: 'apercu-visibilite' };
+    render(); retourHaptique();
+  },
+  'apercu-retablir'() {
+    retablirDispositionApercu();
+    Store.save();
+    apercuAnnonce = trad('Disposition par défaut rétablie');
+    apercuFocus = { titre: true };
+    render(); retourHaptique();
+  },
+  'repart-autres'(btn) {
+    const detail = $('#repartAutresDetail');
+    if (!detail) return;
+    repartAutresOuvert = detail.hidden;
+    detail.hidden = !repartAutresOuvert;
+    btn.setAttribute('aria-expanded', String(repartAutresOuvert));
+  },
   async 'retenir-options'() {
     const v = await askOptions({
       titre: trad('Section À retenir'),
@@ -14932,6 +15103,7 @@ function focusAnchor() {
 function render() {
   const key = currentView();
   const v = VIEWS[key];
+  if (key !== 'overview' || sousOngletActif.overview !== 'aujourdhui') apercuEdition = false;
   if (ficheAvant && ficheAvant.cle !== cleFicheCourante(key)) ficheAvant = null;
   const cleOnglet = SOUS_ONGLETS[v.cle] && sousOngletActif[v.cle]
     ? `${v.cle}.${sousOngletActif[v.cle]}` : null;

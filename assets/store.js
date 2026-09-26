@@ -1987,13 +1987,80 @@ function syntheseRepartition(parts, n = CATEGORIES_EN_TETE) {
   const positives = (parts || []).filter(x => num(x.value) > 0.005)
     .sort((a, b) => num(b.value) - num(a.value));
   const negatives = (parts || []).filter(x => !(num(x.value) > 0.005));
-  const reste = positives.slice(n);
+  const enTete = positives.length === n + 1 ? n + 1 : n;
+  const reste = positives.slice(enTete);
   const autres = reste.length ? {
-    nb: reste.length, labels: reste.map(x => x.label),
+    nb: reste.length, labels: reste.map(x => x.label), lignes: reste,
     value: round2(reste.reduce((s, x) => s + num(x.value), 0)),
     pct: reste.every(x => x.pct != null) ? reste.reduce((s, x) => s + x.pct, 0) : null,
   } : null;
-  return { tete: positives.slice(0, n), autres, negatives };
+  return { tete: positives.slice(0, enTete), autres, negatives };
+}
+
+/* --- La disposition de l'accueil -----------------------------------------
+
+   Les cartes de l'Apercu qui se deplacent et se masquent, dans leur ordre par
+   defaut. Le patrimoine n'y figure pas : il ouvre toujours la page. Les
+   rappels de saisie et les alertes non plus : ils demandent un geste, ils ne
+   se lisent pas, et un rappel qu'on aurait range en bas de page ne rappelle
+   plus rien. L'objectif ferme la page : c'est une affaire de mois, lue apres
+   la situation, la courbe et les cartes de suivi.
+
+   L'ETAT NE PORTE QUE L'ECART AU DEFAUT. Rien n'est ecrit tant que personne
+   n'a rien change, et revenir a l'ordre par defaut efface la clef : un profil
+   qui n'a rien personnalise suit donc le defaut, y compris celui de demain.
+
+   « A retenir » se masquait deja, par son menu et par les Preferences, sur
+   `meta.retenirMasquee`. Sa visibilite reste sur cette clef : trois portes, un
+   seul fait, et aucune ne peut contredire les autres. */
+const CARTES_APERCU = ['retenir', 'repartition', 'evolution', 'changements', 'titres',
+                       'accumulation', 'reserve', 'objectif'];
+
+function dispositionApercu(meta = Store.state && Store.state.meta) {
+  const d = meta && meta.apercu && typeof meta.apercu === 'object' ? meta.apercu : {};
+  const ordre = (Array.isArray(d.ordre) ? d.ordre : [])
+    .filter((id, i, t) => CARTES_APERCU.includes(id) && t.indexOf(id) === i);
+  CARTES_APERCU.forEach((id, i) => {
+    if (ordre.includes(id)) return;
+    const avant = CARTES_APERCU.slice(0, i).reverse().find(x => ordre.includes(x));
+    ordre.splice(avant ? ordre.indexOf(avant) + 1 : 0, 0, id);
+  });
+  const cachees = new Set((Array.isArray(d.masquees) ? d.masquees : [])
+    .filter(id => id !== 'retenir' && CARTES_APERCU.includes(id)));
+  if (meta && meta.retenirMasquee) cachees.add('retenir');
+  const masquees = ordre.filter(id => cachees.has(id));
+  return { ordre, masquees,
+           parDefaut: !masquees.length && ordre.every((id, i) => id === CARTES_APERCU[i]) };
+}
+
+function ecrireDispositionApercu(ordre, masquees) {
+  const meta = Store.state.meta;
+  const autres = masquees.filter(id => id !== 'retenir');
+  if (ordre.every((id, i) => id === CARTES_APERCU[i]) && !autres.length) delete meta.apercu;
+  else meta.apercu = { ordre: [...ordre], masquees: autres };
+  if (masquees.includes('retenir')) meta.retenirMasquee = true;
+  else delete meta.retenirMasquee;
+}
+
+function deplacerCarteApercu(id, sens) {
+  const d = dispositionApercu();
+  const i = d.ordre.indexOf(id), j = i + (sens < 0 ? -1 : 1);
+  if (i < 0 || j < 0 || j >= d.ordre.length) return false;
+  [d.ordre[i], d.ordre[j]] = [d.ordre[j], d.ordre[i]];
+  ecrireDispositionApercu(d.ordre, d.masquees);
+  return true;
+}
+
+function basculerCarteApercu(id) {
+  const d = dispositionApercu();
+  if (!d.ordre.includes(id)) return false;
+  const masquees = d.masquees.includes(id) ? d.masquees.filter(x => x !== id) : [...d.masquees, id];
+  ecrireDispositionApercu(d.ordre, masquees);
+  return true;
+}
+
+function retablirDispositionApercu() {
+  ecrireDispositionApercu(CARTES_APERCU, []);
 }
 
 function refreshAccounts() {

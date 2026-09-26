@@ -2162,13 +2162,19 @@ suite('Ce qui a changé entre deux relevés', () => {
   });
 
   test('la courbe et la carte partagent une grille, sur l’accueil seulement', () => {
+    /* L'ordre de l'accueil est une donnee depuis qu'il se personnalise : la
+       carte suit la courbe dans l'ordre par defaut, et la grille en deux tiers
+       ne se pose que lorsque les deux se suivent vraiment a l'ecran. Rendue
+       vide faute de second releve, la carte ne laisse pas de colonne. */
     const src = app();
-    const vue = src.slice(src.indexOf('function viewOverview()'), src.indexOf('function mountOverview()'));
-    const iEvo = vue.indexOf('${carteEvolution()}'), iVar = vue.indexOf('${carteVariation()}');
-    vrai(iEvo > 0 && iVar > iEvo, 'la carte suit la courbe');
-    vrai(/<div class="grid\$\{derniereVariation\(\) \? ' g-2-1' : ''\}">/.test(vue),
-      'deux colonnes seulement quand la carte existe');
-    eq((src.match(/\$\{carteVariation\(\)\}/g) || []).length, 1, 'un seul appel');
+    const corps = nom => src.slice(src.indexOf(nom), src.indexOf('\n}\n', src.indexOf(nom)));
+    vrai(CARTES_APERCU.indexOf('changements') === CARTES_APERCU.indexOf('evolution') + 1, 'la carte suit la courbe');
+    const rangees = corps('function rangeesApercu(');
+    vrai(/a\.id === 'evolution' && b\.id === 'changements'/.test(rangees) && /class="grid g-2-1"/.test(rangees),
+      'deux colonnes seulement quand les deux sont rendues côte à côte');
+    vrai(/\.filter\(c => c\.html\.trim\(\)\)/.test(corps('function cartesApercu(')),
+      'une carte vide ne compte pas comme voisine');
+    eq((src.match(/=> carteVariation\(\)/g) || []).length, 1, 'un seul appel');
     vrai(/listeVariation\(variation, \{ avecTotal: false \}\)/.test(src),
       'la fiche du mois reprend la même liste, sans répéter son total');
   });
@@ -9764,7 +9770,13 @@ suite('Pièges de source', () => {
     vrai(source, 'app.js doit être lisible pour ce contrôle');
     /* Le titre passe par `trad()` depuis qu'il se traduit : le controle suit la
        phrase, qui est justement la clef du dictionnaire, et non le balisage. */
-    const titres = source.match(/trad\('Évolution du patrimoine'\)/g) || [];
+    /* La liste de reglage de l'accueil nomme la carte par la meme clef : c'est
+       son nom, pas une copie de son balisage, et elle est ecartee du compte. */
+    const registre = source.slice(source.indexOf('const CARTES_APERCU_VUE = {'),
+                                  source.indexOf('\n};\n', source.indexOf('const CARTES_APERCU_VUE = {')));
+    vrai(/evolution: +\{ nom: \(\) => trad\('Évolution du patrimoine'\), rendu: \(\) => carteEvolution\(\) \}/.test(registre),
+      'la liste de réglage nomme la carte et appelle son rendu');
+    const titres = source.replace(registre, '').match(/trad\('Évolution du patrimoine'\)/g) || [];
     eq(titres.length, 1,
       'la carte d’évolution doit être écrite une fois et appelée deux : ' + titres.length + ' exemplaires');
     /* Sa definition et son appel : le balisage ne doit jamais etre recopie
@@ -25260,11 +25272,15 @@ suite('La synthèse d’accumulation a changé d’écran, pas de calcul', () =>
                           src.indexOf('function mountOverview()'));
     /* La carte du haut ne porte plus de couverture cliquable : elle se lit.
        L'ancre porte donc sur la carte elle-meme, pas sur son ancien geste. */
+    /* L'ordre des cartes est une donnee depuis qu'il se personnalise : le
+       controle porte sur l'ordre par defaut, et sur le patrimoine qui reste
+       rendu avant toutes les cartes. */
     const iHero = vue.indexOf('<div class="hero">');
-    const iEvo = vue.indexOf('${carteEvolution()}');
-    const iAcc = vue.indexOf('${carteAccumulationResume()}');
-    vrai(iHero > 0 && iEvo > 0 && iAcc > 0, 'les trois repères existent');
-    vrai(iHero < iAcc, 'le patrimoine principal vient avant');
+    const iCartes = vue.indexOf('${cartes.suite}');
+    const iEvo = CARTES_APERCU.indexOf('evolution');
+    const iAcc = CARTES_APERCU.indexOf('accumulation');
+    vrai(iHero > 0 && iCartes > 0 && iEvo >= 0 && iAcc >= 0, 'les trois repères existent');
+    vrai(iHero < iCartes, 'le patrimoine principal vient avant');
     vrai(iEvo < iAcc, 'la courbe aussi');
     vrai(!vue.includes('${carteAccumulation()}'), 'l’équation entière n’est plus sur l’accueil');
     vrai(!vue.includes("trad('Rythme d\\'accumulation')") && !vue.includes('carteRythme()'),
@@ -26772,39 +26788,30 @@ suite('Une page s’ouvre sur son sujet, et se corrige à la fin', () => {
       'et la carte des notes est partie : le journal les porte, ligne par ligne');
   });
 
-  test('Aperçu : le patrimoine, un point, l’objectif, la répartition, puis la courbe', () => {
-    /* La carte du portefeuille vivait en avant-derniere position, sous quatre
-       cartes qui se comptent en mois : la courbe, l'accumulation, le rythme,
-       l'autonomie. Elle porte le seul chiffre de la page qui bouge le jour
-       meme, sur un onglet qui s'appelle « Aujourd'hui », et la ligne « Actifs
-       de marche » de la carte des poches porte exactement son montant. Elle
-       suit donc les poches, dont elle est le detail. */
+  test('Aperçu : le patrimoine, un point, la répartition, la courbe, le suivi, puis l’objectif', () => {
+    /* L'ordre de l'accueil est une donnee depuis qu'il se personnalise, et
+       c'est l'ordre PAR DEFAUT que ce controle garde. La carte du portefeuille
+       suit les poches, dont elle est le detail : elle porte le seul chiffre de
+       la page qui bouge le jour meme. L'objectif ferme la page : c'est une
+       affaire de mois, et sur telephone il ne doit plus occuper le premier
+       ecran juste apres le point a retenir. */
+    eq(CARTES_APERCU.join(' < '),
+      'retenir < repartition < evolution < changements < titres < accumulation < reserve < objectif',
+      'l’ordre par défaut');
     const src = lireSource('assets/app.js');
     const vue = src.slice(src.indexOf('function viewOverview()'),
                           src.indexOf('function mountOverview()'));
     vrai(vue.length > 1000, 'la vue doit être trouvable');
-    /* Les appels s'ecrivent avec leurs accolades : un nom de fonction se lit
-       aussi dans un commentaire, et l'ancre nue tomberait dessus. Le depot
-       public etant servi sans commentaires, le controle serait vert la-bas et
-       rouge ici. */
-    const l = positions(vue,
-      'class="hero"',
-      "${pasAFaire('comptes') ? '' : carteARetenir()}",
-      '${carteObjectif()}',
-      'class="card repart',
-      '${carteEvolution()}',
-      '${carteVariation()}',
-      'class="pf-corps"',
-      '${carteAccumulationResume()}',
-      '${carteReserveResume()}');
-    vrai(croissant(l),
-      'l’ordre attendu est patrimoine, point à retenir, objectif, répartition, courbe, '
-      + `écarts, titres, accumulation, réserve : ${l.join(' < ')}`);
+    /* Le patrimoine n'est pas une carte de la liste : il se rend a part, avant
+       toutes les autres, et rien ne peut le deplacer ni le masquer. */
+    const l = positions(vue, 'class="hero"', '${cartes.tete}', '${cartes.suite}');
+    vrai(croissant(l), `le patrimoine, puis les cartes dans l’ordre choisi : ${l.join(' < ')}`);
+    vrai(!CARTES_APERCU.includes('patrimoine') && !CARTES_APERCU.includes('hero'), 'et le patrimoine n’est pas déplaçable');
     vrai(!vue.includes('chartPace'), 'et un seul graphique : le rythme est parti');
     /* Au quatrieme rang, un mur de zeros serait du bruit : la carte ne parait
        pas sans une seule ligne de titres. */
-    const garde = vue.indexOf("${!aDesPositionsMarche() ? '' : `");
-    vrai(garde > 0 && garde < vue.indexOf('class="pf-corps"'),
+    const titres = src.slice(src.indexOf('function carteTitresResume()'), src.indexOf('class="pf-corps"'));
+    vrai(/^function carteTitresResume\(\) \{\s*\n\s*if \(!aDesPositionsMarche\(\)\) return '';/.test(titres),
       'et sans une seule ligne de titres, elle ne paraît pas du tout');
   });
 
@@ -35046,7 +35053,7 @@ suite('Marchés s’ouvre à tout le monde, et dit ce qui la remplirait', () => 
     const store = lireSource('assets/store.js');
     const src = lireSource('assets/app.js');
     vrai(/function aDesPositionsMarche\(\) \{/.test(store), 'la condition vit dans le modèle');
-    vrai(/\$\{!aDesPositionsMarche\(\) \? '' : `/.test(src),
+    vrai(/function carteTitresResume\(\) \{\s*\n\s*if \(!aDesPositionsMarche\(\)\) return '';/.test(src),
       'la carte de l’accueil la lit');
     vrai(!/!Store\.state\.positions\.length \? '' :/.test(src),
       'et aucune variante locale ne la double');
@@ -35121,15 +35128,18 @@ suite('Marchés s’ouvre à tout le monde, et dit ce qui la remplirait', () => 
     const src = lireSource('assets/app.js');
     const vue = src.slice(src.indexOf('function viewOverview()'),
                           src.indexOf('function mountOverview()'));
-    const garde = vue.indexOf("${!aDesPositionsMarche() ? '' : `");
-    vrai(garde > 0, 'la carte porte la condition centrale');
-    vrai(garde < vue.indexOf('class="pf-corps"'), 'et elle la porte avant elle');
+    /* La carte est une fonction depuis que l'accueil se range : sa condition
+       ouvre son corps, avant tout balisage. */
+    const debut = vue.indexOf('function carteTitresResume() {');
+    const garde = vue.indexOf("if (!aDesPositionsMarche()) return '';", debut);
+    vrai(debut > 0 && garde > debut, 'la carte porte la condition centrale');
+    vrai(garde < vue.indexOf('class="pf-corps"', debut), 'et elle la porte avant elle');
     /* Aucune autre carte de l'accueil ne depend des positions : le patrimoine,
        les poches, la courbe, l'accumulation, le rythme, l'autonomie et
        l'objectif parlent du patrimoine entier et restent. */
-    const finBloc = vue.indexOf('</div>`}', vue.indexOf('class="pf-corps"'));
-    vrai(finBloc > garde, 'le bloc conditionnel se referme');
-    const dehors = vue.slice(0, garde) + vue.slice(finBloc);
+    const finBloc = vue.indexOf('\n}\n', debut);
+    vrai(finBloc > garde, 'la carte se referme');
+    const dehors = vue.slice(0, debut) + vue.slice(finBloc);
     vrai(!/dayPerformance\(\)/.test(dehors),
       'la performance du jour ne vit que dans la carte conditionnelle');
   });
@@ -41361,12 +41371,15 @@ suite('Premier écran : le patrimoine d’abord, et rien de vide', () => {
     const guideDerriere = v.indexOf("${guideDevant ? '' : guide}");
     const releve = v.indexOf("${moisEnAttente.missing && !guide ?");
     const depenses = v.indexOf("${depEnAttente.missing && !guide ?");
-    const retenir = v.indexOf("${pasAFaire('comptes') ? '' : carteARetenir()}");
-    const repart = v.indexOf('${carteObjectif()}');
+    /* Le point a retenir revient a part quand il ouvre la page, voir
+       cartesApercu() ; les autres cartes suivent les bandeaux. */
+    const retenir = v.indexOf('${cartes.tete}');
+    const repart = v.indexOf('${cartes.suite}');
     vrai(hero > 0 && guideDerriere > hero, 'les repères existent, dans l’ordre connu');
     /* Et apres le point a retenir : un releve a prendre reste visible, mais ce
        n'est pas ce qu'on vient lire en premier. */
     vrai(retenir > guideDerriere && releve > retenir, 'le point à retenir passe avant les bandeaux');
+    vrai(CARTES_APERCU[0] === 'retenir', 'et il ouvre la page par défaut');
     vrai(releve > guideDerriere && depenses > releve,
       'le relevé puis les dépenses, tous deux après le guide replié');
     vrai(depenses < repart, 'et avant tout ce qui commente le chiffre');
@@ -41903,8 +41916,9 @@ suite('Premier lancement : Longward prend vie sous les yeux', () => {
     vrai(/PREMIERS_PAS\.map\(p => `[\s\S]*?motCourtPas\(p\)/.test(b), 'la progression se dérive des quatre pas du guide');
     /* Aucun chiffre inventé dans l’accueil vierge : ni montant, ni appel de format. */
     /* Les bornes sont du code, pas des commentaires : l'arbre publie n'en garde aucun. */
-    const debut = s.indexOf("${pasAFaire('comptes') ? `");
-    const v = s.slice(debut, s.indexOf("${!aDesPositionsMarche() ? '' : `", debut)).replace(/<!--[\s\S]*?-->/g, '');
+    const debut = s.indexOf("${sansComptes ? `");
+    const v = s.slice(debut, s.indexOf(': piedApercu()}', debut)).replace(/<!--[\s\S]*?-->/g, '');
+    vrai(debut > 0 && v.length > 200, 'la branche du premier lancement est trouvable');
     vrai(!/\d\s?€/.test(v) && !/fmtEUR|fmtPct|fmtSigned/.test(v), 'les aperçus ne portent aucun montant ni pourcentage');
     vrai(/apercuVerrou\(trad\('Patrimoine net'\)/.test(v) && /apercuVerrou\(trad\('Projection'\)/.test(v), 'quatre aperçus verrouillés disent ce qui viendra');
     vrai(/Ton tableau de bord s’enrichit à mesure que tu ajoutes tes données/.test(v), 'et la phrase reste');
@@ -45823,15 +45837,15 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
   });
 
   test('la section vit entre la situation et le détail', () => {
+    /* Par defaut : l'accueil se range, et l'ordre vit dans CARTES_APERCU. */
     const a = app();
     const depart = a.indexOf('function viewOverview()');
     const hero = a.indexOf('<div class="hero">', depart);
-    const retenir = a.indexOf("${pasAFaire('comptes') ? '' : carteARetenir()}", depart);
-    const repart = a.indexOf('class="card repart', depart);
-    const positions = a.indexOf("${!aDesPositionsMarche() ? '' : `", depart);
+    const retenir = a.indexOf('${cartes.tete}', depart);
     vrai(hero > depart && retenir > hero, 'elle suit le patrimoine');
-    vrai(repart > retenir, 'et passe avant la répartition, qui détaille');
-    vrai(positions > retenir, 'et avant le détail des positions');
+    vrai(CARTES_APERCU.indexOf('repartition') > CARTES_APERCU.indexOf('retenir'),
+      'et passe avant la répartition, qui détaille');
+    vrai(CARTES_APERCU.indexOf('titres') > CARTES_APERCU.indexOf('retenir'), 'et avant le détail des positions');
   });
 
   test('la section se lit, elle n’alerte pas', () => {
@@ -45893,10 +45907,17 @@ suite('À retenir se replie, se retire, et s’en souvient', () => {
     Store.state = blankState(); Store.migrate();
     eq(!!Store.state.meta.retenirReplie, false, 'déplié par défaut');
     eq(!!Store.state.meta.retenirMasquee, false, 'et visible');
-    /* Aucune migration ne pose ces clefs : leur absence vaut « non ». */
-    const s = lireSource('assets/store.js');
-    vrai(!/retenirReplie|retenirMasquee/.test(s),
-      'le modèle ne les connaît pas : c’est une préférence de vue, pas une donnée');
+    /* Aucune migration ne pose ces clefs : leur absence vaut « non ». La
+       disposition de l'accueil lit et ecrit la seconde, parce que la visibilite
+       de la section en est une partie : ce sont ses deux seules mentions. */
+    const s = lireSource('assets/store.js').replace(/\/\*[\s\S]*?\*\//g, '');
+    const corps = nom => s.slice(s.indexOf(nom), s.indexOf('\n}\n', s.indexOf(nom)));
+    const disposition = corps('function dispositionApercu(') + corps('function ecrireDispositionApercu(');
+    vrai(/meta\.retenirMasquee/.test(disposition), 'la disposition de l’accueil la lit et l’écrit');
+    vrai(!/retenirReplie|retenirMasquee/.test(s.replace(corps('function dispositionApercu('), '')
+      .replace(corps('function ecrireDispositionApercu('), '')),
+      'ailleurs le modèle ne les connaît pas : c’est une préférence de vue, pas une donnée');
+    eq(dispositionApercu(Store.state.meta).parDefaut, true, 'et un état neuf suit la disposition par défaut');
   });
 
   test('replié, la carte garde son titre, son compte et une cible confortable', () => {
@@ -46790,7 +46811,7 @@ suite('L’accueil résume, et chaque résumé mène à son détail', () => {
   });
 
   test('sans variation du jour connue, « hors séance » se dit en petit', () => {
-    const vue = fonction(app(), 'function viewOverview()');
+    const vue = fonction(app(), 'function carteTitresResume()');
     const bloc = vue.slice(vue.indexOf('const j = dayPerformance();'), vue.indexOf('data-apercu="jourTitres"'));
     vrai(/<p class="pf-jour-muet">/.test(bloc), 'une mention');
     vrai(!/pf-mesure pf-muet/.test(bloc), 'et non plus une ligne de mesure');
@@ -46818,31 +46839,78 @@ suite('L’accueil résume, et chaque résumé mène à son détail', () => {
       { classe: 'immobilier', label: 'Immobilier', value: 450, pct: 45 },
       { classe: DETTES_NON_AFFECTEES, label: 'Dettes non affectées', value: -80, pct: -8 },
     ];
+    const somme = s => s.tete.reduce((a, x) => a + x.value, 0) + (s.autres ? s.autres.value : 0)
+      + s.negatives.reduce((a, x) => a + x.value, 0);
+    const base = parts.reduce((a, x) => a + x.value, 0);
     const s = syntheseRepartition(parts);
     eq(s.tete.map(x => x.classe).join(','), 'immobilier,actions,liquidites', 'les trois plus grosses, par montant décroissant');
     eq(s.autres.nb, 2, 'le reste se compte');
     pres(s.autres.value, 80, 'et vaut la somme de ce qu’il réunit');
     pres(s.autres.pct, 8, 'avec sa part');
     eq(s.autres.labels.join(','), 'Obligations,Cryptomonnaies', 'et nomme ce qu’il réunit');
+    eq(s.autres.lignes.map(x => x.classe).join(','), 'obligations,crypto', 'et porte ses lignes, pour leur détail');
     eq(s.negatives.length, 1, 'une dette sans destination reste visible, hors du classement');
-    pres(s.tete.reduce((a, x) => a + x.value, 0) + s.autres.value + s.negatives.reduce((a, x) => a + x.value, 0),
-      parts.reduce((a, x) => a + x.value, 0), 'et les lignes affichées font toujours la base');
-    eq(syntheseRepartition(parts.slice(0, 3)).autres, null, 'sans reste, pas de ligne du reste');
+    pres(somme(s), base, 'et les lignes affichées font toujours la base');
+    /* Aucune categorie apres les trois principales : aucune ligne de plus. */
+    const trois = syntheseRepartition(parts.slice(0, 3));
+    eq(trois.autres, null, 'sans reste, pas de ligne du reste');
+    eq(trois.tete.length, 3, 'et les trois se lisent seules');
     eq(syntheseRepartition([{ value: 10, pct: null }, { value: 5, pct: null }, { value: 4, pct: null },
-                            { value: 1, pct: null }]).autres.pct, null, 'sans base divisible, aucune part inventée');
+                            { value: 1, pct: null }, { value: 1, pct: null }]).autres.pct, null,
+      'sans base divisible, aucune part inventée');
   });
 
-  test('la ligne du reste mène à toute l’allocation, et le total n’est pas celui des trois', () => {
-    const vue = fonction(app(), 'function viewOverview()');
-    const carte = vue.slice(vue.indexOf('const s = syntheseRepartition(classes);'), vue.indexOf('repart-base'));
-    vrai(/\$\{s\.tete\.map\(ligneClasse\)\.join\(''\)\}/.test(carte), 'trois lignes de catégorie');
-    vrai(/<a class="repart-ligne repart-autres" href="#\/allocation"/.test(carte), 'le reste mène à Allocation');
-    vrai(/s\.autres\.labels\.map/.test(carte), 'et dit ce qu’il contient');
+  test('une seule catégorie restante s’affiche sous son nom, jamais « 1 autre catégorie »', () => {
+    /* Le cas de la capture : trois categories nommees, puis « 1 autre
+       categorie » pour la seule crypto. Elle prend sa place de ligne, avec sa
+       couleur, son montant et sa part, et aucun montant ne bouge. */
+    const quatre = [
+      { classe: 'immobilier', label: 'Immobilier', value: 450, pct: 45, couleur: '#a' },
+      { classe: 'actions', label: 'Actifs de marché', value: 400, pct: 40, couleur: '#b' },
+      { classe: 'liquidites', label: 'Liquidités', value: 120, pct: 12, couleur: '#c' },
+      { classe: 'crypto', label: 'Cryptomonnaies', value: 30, pct: 3, couleur: '#d' },
+    ];
+    const s = syntheseRepartition(quatre);
+    eq(s.autres, null, 'pas de groupe pour une seule catégorie');
+    eq(s.tete.map(x => x.classe).join(','), 'immobilier,actions,liquidites,crypto', 'elle rejoint les lignes nommées');
+    const crypto = s.tete[3];
+    eq(crypto.label, 'Cryptomonnaies', 'sous son vrai nom');
+    eq(crypto.couleur, '#d', 'avec sa couleur');
+    pres(crypto.value, 30, 'son montant');
+    pres(crypto.pct, 3, 'et sa part, inchangés');
+    pres(s.tete.reduce((a, x) => a + x.pct, 0), 100, 'les parts font toujours 100 %');
+    /* Et le seuil ne bouge que pour ce cas : cinq categories font toujours un
+       groupe de deux. */
+    const cinq = syntheseRepartition([...quatre, { classe: 'obligations', label: 'Obligations', value: 10, pct: 1 }]);
+    eq(cinq.tete.length, 3, 'cinq catégories : trois lignes');
+    eq(cinq.autres && cinq.autres.nb, 2, 'et un groupe de deux');
+  });
+
+  test('le groupe « Autres » dit son total et son nombre, et se déplie en ses catégories', () => {
+    const a = app();
+    const carte = a.slice(a.indexOf('const s = syntheseRepartition(classes);'), a.indexOf('repart-base',
+      a.indexOf('const s = syntheseRepartition(classes);')));
+    vrai(/\$\{s\.tete\.map\(ligneClasse\)\.join\(''\)\}/.test(carte), 'les lignes de catégorie');
+    vrai(/<button type="button" class="repart-ligne repart-autres" data-action="repart-autres"/.test(carte),
+      'le groupe est un bouton');
+    vrai(/aria-expanded="\$\{repartAutresOuvert \? 'true' : 'false'\}" aria-controls="repartAutresDetail"/.test(carte),
+      'qui dit s’il est déplié et ce qu’il déplie');
+    vrai(/\$\{trad\('Autres'\)\}/.test(carte) && /trad\('\{n\} catégories'\)\.replace\('\{n\}', s\.autres\.nb\)/.test(carte),
+      'il s’appelle « Autres » et compte ses catégories');
+    vrai(/<b>\$\{fmtEUR0\(s\.autres\.value\)\}<\/b>/.test(carte), 'avec leur total');
+    vrai(/id="repartAutresDetail"\$\{repartAutresOuvert \? '' : ' hidden'\}>\s*\$\{s\.autres\.lignes\.map\(ligneClasse\)\.join\(''\)\}/.test(carte),
+      'et ses catégories suivent, au même gabarit que les autres lignes');
     vrai(/\$\{s\.negatives\.map\(ligneClasse\)\.join\(''\)\}/.test(carte), 'les parts négatives restent affichées');
     vrai(carte.indexOf('s.tete.map') < carte.indexOf('repart-autres') && carte.indexOf('repart-autres') < carte.indexOf('s.negatives.map'),
       'dans cet ordre : catégories, reste, dettes');
-    vrai(!!I18N.en['{n} autres catégories'] && I18N.en['{n} autres catégories'].includes('{n}') && !!I18N.en['1 autre catégorie'],
-      'dans les deux langues');
+    vrai(/<a class="hint lien-vue" href="#\/allocation">\$\{trad\('Voir toute l’allocation'\)\} →<\/a>/.test(a),
+      'et le lien vers toute l’allocation reste en tête de carte');
+    vrai(!/autre catégorie'\)|autres catégories'\)/.test(carte), 'plus de « 1 autre catégorie »');
+    vrai(!I18N.en['1 autre catégorie'] && !I18N.en['{n} autres catégories'], 'et ses clefs sont parties');
+    eq(I18N.en['{n} catégories'], '{n} categories', 'dans les deux langues');
+    /* Deplier ne rend rien : le bouton garde le focus. */
+    const action = a.slice(a.indexOf("'repart-autres'(btn) {"), a.indexOf('\n  },', a.indexOf("'repart-autres'(btn) {")));
+    vrai(/detail\.hidden = !repartAutresOuvert;/.test(action) && !/render\(\)/.test(action), 'se déplie sans redessiner la page');
   });
 
   test('le rappel du relevé se lit sans crier', () => {
@@ -46874,5 +46942,255 @@ suite('L’accueil résume, et chaque résumé mène à son détail', () => {
     }
     for (const c of ['depuis le relevé de {m}', 'Voir {n} autres points', '{n} autres écarts'])
       vrai(I18N.en[c].includes(c.includes('{m}') ? '{m}' : '{n}'), `« ${c} » garde sa marque`);
+  });
+});
+
+/* ------------------------------------------------------------------
+   L'accueil se range : ordre et visibilite des cartes
+   ------------------------------------------------------------------ */
+suite('L’Aperçu se personnalise, et le patrimoine reste en tête', () => {
+  const app = () => lireSource('assets/app.js');
+  const corps = (src, nom) => {
+    const i = src.indexOf(nom);
+    return i < 0 ? '' : src.slice(i, src.indexOf('\n}\n', i));
+  };
+  const neuf = () => { Store.state = blankState(); Store.migrate(); return Store.state.meta; };
+
+  test('rien de personnalisé : la disposition par défaut, et rien d’écrit', () => {
+    const meta = neuf();
+    const d = dispositionApercu(meta);
+    eq(d.ordre.join(','), CARTES_APERCU.join(','), 'l’ordre par défaut');
+    eq(d.masquees.length, 0, 'aucune carte masquée');
+    eq(d.parDefaut, true, 'et la disposition se sait par défaut');
+    vrai(!('apercu' in meta), 'aucune migration ne pose la clef');
+    Store.migrate();
+    vrai(!('apercu' in Store.state.meta), 'même jouée deux fois');
+    eq(CARTES_APERCU[CARTES_APERCU.length - 1], 'objectif', 'l’objectif ferme la page');
+    vrai(CARTES_APERCU.indexOf('objectif') > CARTES_APERCU.indexOf('evolution')
+      && CARTES_APERCU.indexOf('objectif') > CARTES_APERCU.indexOf('reserve'),
+      'après le graphique et les cartes de suivi');
+  });
+
+  test('une disposition lue n’est jamais incomplète ni invalide', () => {
+    /* Un fichier importe peut porter n'importe quoi sous cette clef. */
+    const d = dispositionApercu({ apercu: { ordre: ['objectif', 'inconnue', 'objectif', 'titres', 42],
+                                            masquees: ['titres', 'hero', 'retenir'] } });
+    eq(d.ordre.length, CARTES_APERCU.length, 'toutes les cartes, une fois chacune');
+    vrai(d.ordre.indexOf('objectif') < d.ordre.indexOf('titres'), 'l’ordre enregistré est respecté');
+    eq(d.ordre.join(','), 'retenir,repartition,evolution,changements,objectif,titres,accumulation,reserve',
+      'et les cartes qu’il ne nomme pas reprennent leur place par défaut');
+    vrai(!d.ordre.includes('inconnue') && !d.ordre.includes(42), 'l’inconnu s’ignore');
+    eq(d.masquees.join(','), 'titres', 'la visibilité d’« À retenir » ne se lit pas ici, et l’inconnu non plus');
+    /* Une carte absente de l'ordre enregistre reprend sa place, apres celle
+       qui la precede dans l'ordre par defaut. */
+    const sans = dispositionApercu({ apercu: { ordre: CARTES_APERCU.filter(id => id !== 'changements') } });
+    eq(sans.ordre.join(','), CARTES_APERCU.join(','), 'une carte oubliée revient à sa place');
+    const tete = dispositionApercu({ apercu: { ordre: ['reserve'] } });
+    eq(tete.ordre[0], 'retenir', 'une carte sans prédécesseur connu revient en tête');
+    eq(tete.ordre.length, CARTES_APERCU.length, 'et rien ne manque');
+    for (const brut of [null, 'x', 3, [], { ordre: 'x', masquees: {} }])
+      eq(dispositionApercu({ apercu: brut }).ordre.join(','), CARTES_APERCU.join(','), `${JSON.stringify(brut)} rend le défaut`);
+  });
+
+  test('monter, descendre, masquer, réafficher, rétablir', () => {
+    const meta = neuf();
+    vrai(deplacerCarteApercu('objectif', -1), 'l’objectif monte d’un cran');
+    eq(dispositionApercu().ordre.slice(-2).join(','), 'objectif,reserve', 'il passe devant la réserve');
+    eq(deplacerCarteApercu('retenir', -1), false, 'en tête, monter ne fait rien');
+    eq(deplacerCarteApercu('inconnue', 1), false, 'une carte inconnue ne bouge rien');
+    for (let i = 0; i < 10; i++) deplacerCarteApercu('objectif', -1);
+    eq(dispositionApercu().ordre[0], 'objectif', 'l’objectif peut remonter jusqu’en tête');
+    const avant = JSON.stringify(meta.apercu);
+    eq(deplacerCarteApercu('objectif', -1), false, 'et s’y arrête');
+    eq(JSON.stringify(meta.apercu), avant, 'sans rien écrire');
+    vrai(basculerCarteApercu('titres'), 'masquer');
+    eq(dispositionApercu().masquees.join(','), 'titres', 'la carte est masquée');
+    basculerCarteApercu('titres');
+    eq(dispositionApercu().masquees.length, 0, 'et se réaffiche d’un geste');
+    retablirDispositionApercu();
+    vrai(!('apercu' in meta), 'rétablir efface la clef');
+    eq(dispositionApercu().parDefaut, true, 'et rend la disposition par défaut');
+  });
+
+  test('revenir à l’ordre par défaut à la main efface aussi la clef', () => {
+    /* Sans quoi un profil qui a essaye puis defait garderait pour toujours
+       l'ordre d'aujourd'hui, et ne recevrait jamais le defaut de demain. */
+    const meta = neuf();
+    deplacerCarteApercu('titres', 1);
+    vrai('apercu' in meta, 'un écart s’écrit');
+    deplacerCarteApercu('titres', -1);
+    vrai(!('apercu' in meta), 'l’écart défait ne laisse rien');
+  });
+
+  test('« À retenir » : trois portes, un seul fait', () => {
+    const meta = neuf();
+    basculerCarteApercu('retenir');
+    eq(meta.retenirMasquee, true, 'la liste de réglage écrit la clef des Préférences');
+    vrai(!meta.apercu || !(meta.apercu.masquees || []).includes('retenir'), 'et pas une seconde clef');
+    eq(dispositionApercu().masquees.join(','), 'retenir', 'la liste la lit');
+    meta.retenirMasquee = false;
+    eq(dispositionApercu().masquees.length, 0, 'les Préférences la rallument pour la liste aussi');
+    meta.retenirMasquee = true;
+    retablirDispositionApercu();
+    vrai(!meta.retenirMasquee, 'rétablir la réaffiche');
+    const a = app();
+    vrai(/Store\.state\.meta\.retenirMasquee = !Store\.state\.meta\.retenirMasquee;/.test(a),
+      'la bascule des Préférences reste la même');
+  });
+
+  test('la disposition voyage avec la sauvegarde, et avec elle seulement', () => {
+    Fixture.poser();
+    deplacerCarteApercu('objectif', -1);
+    deplacerCarteApercu('objectif', -1);
+    basculerCarteApercu('changements');
+    const attendue = dispositionApercu();
+    /* L'export JSON est l'etat entier ; l'import le relit puis le migre. */
+    const fichier = JSON.stringify(Store.state, null, 2);
+    Store.state = blankState(); Store.migrate();
+    eq(dispositionApercu().parDefaut, true, 'un autre profil n’a rien');
+    Store.state = JSON.parse(fichier);
+    Store.migrate();
+    eq(dispositionApercu().ordre.join(','), attendue.ordre.join(','), 'l’import rend l’ordre');
+    eq(dispositionApercu().masquees.join(','), 'changements', 'et les cartes masquées');
+    /* Une sauvegarde d'avant la fonction n'a pas la clef : elle suit le defaut. */
+    const ancienne = JSON.parse(fichier);
+    delete ancienne.meta.apercu;
+    Store.state = ancienne; Store.migrate();
+    eq(dispositionApercu().parDefaut, true, 'une sauvegarde ancienne ouvre sur la disposition par défaut');
+  });
+
+  test('ranger l’accueil ne touche ni aux données ni aux calculs', () => {
+    Fixture.poser();
+    const sansMeta = () => { const s = structuredClone(Store.state); delete s.meta; return JSON.stringify(s); };
+    const donnees = sansMeta();
+    const net = nowTotals().total;
+    const parts = JSON.stringify(repartitionClasses({ net: true }));
+    for (const id of CARTES_APERCU) { deplacerCarteApercu(id, 1); basculerCarteApercu(id); }
+    retablirDispositionApercu();
+    deplacerCarteApercu('reserve', -1);
+    eq(sansMeta(), donnees, 'aucune donnée hors des préférences ne change');
+    pres(nowTotals().total, net, 'le patrimoine est le même');
+    eq(JSON.stringify(repartitionClasses({ net: true })), parts, 'et la répartition aussi');
+    const s = lireSource('assets/store.js');
+    for (const f of ['function dispositionApercu(', 'function ecrireDispositionApercu(', 'function deplacerCarteApercu(',
+                     'function basculerCarteApercu(', 'function retablirDispositionApercu('])
+      vrai(!/Store\.save|positions|comptes|monthly|budget/.test(corps(s, f).replace(/\/\*[\s\S]*?\*\//g, '')),
+        `${f.slice(9, -1)} n’écrit que la disposition`);
+  });
+
+  test('la vue et le modèle nomment les mêmes cartes', () => {
+    const a = app();
+    const registre = a.slice(a.indexOf('const CARTES_APERCU_VUE = {'), a.indexOf('\n};\n', a.indexOf('const CARTES_APERCU_VUE = {')));
+    const cles = [...registre.matchAll(/^  ([a-z]+): +\{ nom:/gm)].map(m => m[1]);
+    eq(cles.join(','), CARTES_APERCU.join(','), 'une entrée par carte, dans le même ordre');
+    for (const id of ['patrimoine', 'hero', 'rappel', 'releve', 'depenses', 'guide', 'verifier'])
+      vrai(!CARTES_APERCU.includes(id), `« ${id} » reste hors de la personnalisation`);
+    const vue = corps(a, 'function viewOverview()');
+    vrai(/\$\{moisEnAttente\.missing && !guide \?/.test(vue) && /\$\{depEnAttente\.missing && !guide \?/.test(vue),
+      'les rappels restent rendus par la vue, à leur place');
+    vrai(vue.indexOf('${carteAVerifier()}') < vue.indexOf('<div class="hero">'), 'l’alerte de vérification aussi');
+    vrai(vue.indexOf('<div class="hero">') < vue.indexOf('${cartes.tete}'), 'le patrimoine avant toutes les cartes');
+  });
+
+  test('sur ordinateur, les rangées se forment d’après les cartes rendues', () => {
+    const a = app();
+    const r = corps(a, 'function rangeesApercu(');
+    vrai(/if \(b && a\.id === 'evolution' && b\.id === 'changements'\)/.test(r), 'la courbe et ce qui a changé partagent la leur');
+    vrai(/\} else if \(compacte\(a\) && compacte\(b\)\) \{/.test(r) && /class="grid g-2"/.test(r),
+      'deux cartes compactes voisines partagent une rangée');
+    vrai(/\} else html \+= a\.html;/.test(r), 'toute autre carte prend la largeur');
+    const c = corps(a, 'function cartesApercu(');
+    vrai(/!d\.masquees\.includes\(id\)/.test(c) && /\.filter\(c => c\.html\.trim\(\)\)/.test(c),
+      'une carte masquée ou vide ne laisse aucun trou');
+    const compactes = [...a.matchAll(/^  ([a-z]+): +\{[^}]*compacte: true/gm)].map(m => m[1]);
+    eq(compactes.sort().join(','), 'accumulation,changements,reserve', 'trois cartes tiennent dans une demi-largeur');
+    const css = lireSource('assets/styles.css');
+    vrai(/\.grid:has\(> :only-child\) \{ grid-template-columns: minmax\(0, 1fr\); \}/.test(css),
+      'une rangée d’une seule carte prend toute la largeur');
+  });
+
+  test('les rappels suivent le point à retenir quand il ouvre la page, sinon le patrimoine', () => {
+    const c = corps(app(), 'function cartesApercu(');
+    vrai(/const tete = rendues\[0\] && rendues\[0\]\.id === 'retenir' \? rendues\.shift\(\)\.html : '';/.test(c),
+      'le point à retenir revient à part, et lui seul');
+    const vue = corps(app(), 'function viewOverview()');
+    const l = [vue.indexOf('${cartes.tete}'), vue.indexOf('${moisEnAttente.missing && !guide ?'),
+               vue.indexOf('${depEnAttente.missing && !guide ?'), vue.indexOf('${cartes.suite}')];
+    vrai(l.every((v, i) => v > 0 && (i === 0 || v > l[i - 1])), `tête, rappels, puis les cartes : ${l.join(' < ')}`);
+  });
+
+  test('le mode édition : une porte discrète, une liste, et « Terminé »', () => {
+    const a = app();
+    const pied = corps(a, 'function piedApercu(');
+    vrai(/class="lien-vue" data-action="apercu-editer">\$\{trad\('Personnaliser l’aperçu'\)\}/.test(pied), 'la porte');
+    const vue = corps(a, 'function viewOverview()');
+    vrai(/: piedApercu\(\)\}/.test(vue), 'au pied de la page, seulement quand il y a un compte');
+    vrai(/const edition = apercuEdition && !sansComptes;/.test(vue), 'sans compte, pas de mode édition');
+    vrai(/\$\{edition \? editeurApercu\(\) : `/.test(vue), 'la liste remplace les cartes le temps du réglage');
+    const e = corps(a, 'function editeurApercu(');
+    vrai(/d\.ordre\.map\(ligne\)/.test(e), 'toutes les cartes, masquées comprises');
+    vrai(/class="apercu-ligne apercu-fixe"/.test(e) && /trad\('Toujours en premier'\)/.test(e),
+      'le patrimoine y figure, sans commande');
+    vrai(/data-action="apercu-monter"/.test(e) && /data-action="apercu-descendre"/.test(e), 'monter et descendre');
+    vrai(/i === 0 \? ' disabled' : ''/.test(e) && /i === d\.ordre\.length - 1 \?\s*' disabled' : ''/.test(e),
+      'sans objet au bord');
+    vrai(/aria-label="\$\{pour\('Monter'\)\}"/.test(e) && /aria-label="\$\{pour\('Descendre'\)\}"/.test(e),
+      'chaque commande nomme sa carte pour qui ne la voit pas');
+    vrai(/role="switch" aria-checked="\$\{cachee \? 'false' : 'true'\}"/.test(e), 'la visibilité est un interrupteur');
+    vrai(/data-action="apercu-retablir"\$\{d\.parDefaut \? ' disabled' : ''\}/.test(e), 'rétablir, quand il y a de quoi');
+    vrai(/data-action="apercu-terminer"/.test(e), 'et refermer');
+    vrai(/role="status" id="apercuAnnonce"/.test(e), 'une région vivante annonce chaque geste');
+    /* Le mode ne survit pas a un changement d'ecran. */
+    vrai(/if \(key !== 'overview' \|\| sousOngletActif\.overview !== 'aujourdhui'\) apercuEdition = false;/.test(corps(a, 'function render()')),
+      'quitter l’onglet referme la liste');
+  });
+
+  test('au clavier, le focus reste sur la commande qu’on vient d’actionner', () => {
+    const a = app();
+    const f = corps(a, 'function reprendreFocusApercu(');
+    vrai(/\[data-action="\$\{f\.action\}"\]/.test(f), 'le même bouton, sur la même carte');
+    vrai(/voulu && !voulu\.disabled \? voulu : ligne && ligne\.querySelector\('button:not\(\[disabled\]\)'\)/.test(f),
+      'et son voisin quand il vient de se désactiver au bord');
+    vrai(/cible\.focus\(\{ preventScroll: true \}\);/.test(f), 'le focus est reposé');
+    const d = corps(a, 'function deplacerSurApercu(');
+    vrai(/apercuFocus = \{ carte: id, action: sens < 0 \? 'apercu-monter' : 'apercu-descendre' \};/.test(d),
+      'le déplacement le demande');
+    vrai(/Store\.save\(\);/.test(d), 'et s’écrit tout de suite, comme toute saisie dans une page');
+    const m = a.slice(a.indexOf('function mountOverview()'), a.indexOf('function mountOverview()') + 400);
+    vrai(/else reprendreFocusApercu\(\);/.test(m), 'le montage le reprend en mode édition');
+    vrai(/if \(!\$\('\.apercu-edition'\)\) \{ noterInsightsVus\(\); monterEvolution\(\); \}/.test(m),
+      'et ne note aucun point à retenir comme vu pendant le réglage');
+  });
+
+  test('sous le pouce, les commandes font 44 px', () => {
+    const css = lireSource('assets/styles.css');
+    vrai(/@media \(max-width: 899px\) \{\s*\n\s*\.apercu-fleche \{ width: 44px; height: 44px; \}\s*\n\s*\.bascule\.apercu-vu \{ min-height: 44px; \}/.test(css),
+      'flèches et interrupteur');
+    vrai(/\.apercu-commandes \{ flex: none; display: flex; align-items: center; gap: 6px; \}/.test(css),
+      'côte à côte, sans se chevaucher');
+    vrai(/\.apercu-nom \{ flex: 1 1 auto; min-width: 0;/.test(css), 'le nom se plie plutôt que de pousser les commandes hors de l’écran');
+  });
+
+  test('un renvoi vers une carte masquée se tait', () => {
+    const a = app();
+    vrai(/const ANCRES_CARTES_APERCU = \{ evolution: 'evolution', variation: 'changements',/.test(a), 'les ancres de l’accueil ont leur carte');
+    vrai(/&& !renvoiVersCarteMasquee\(p\) \? p\.cta : null;/.test(a), 'le point à retenir tait le renvoi');
+    /* Toutes les ancres que « À retenir » vise sur l'accueil sont connues. */
+    const ancres = [...a.matchAll(/cta: \{ vue: 'overview', ancre: '([a-z-]+)'/g)].map(m => m[1]);
+    vrai(ancres.length > 0, `${ancres.length} renvois vers l’accueil`);
+    const table = (a.match(/const ANCRES_CARTES_APERCU = \{[^}]*\}/) || [''])[0];
+    for (const x of ancres) vrai(table.includes(`${x}: '`), `« ${x} » a sa carte`);
+  });
+
+  test('les textes du réglage se traduisent', () => {
+    for (const c of ['Personnaliser l’aperçu', 'Terminé', 'Toujours en premier', 'Masquée', 'Rien à montrer pour l’instant',
+                     'Monter', 'Descendre', 'Afficher sur l’aperçu', 'Afficher', 'Masquer',
+                     'Rétablir la disposition par défaut', '{c}, carte masquée', '{c}, carte affichée',
+                     '{c}, position {n} sur {t}', 'Disposition par défaut rétablie', '{n} catégories',
+                     'Choisis l’ordre des cartes et celles que tu veux voir. Les rappels de saisie gardent leur place.'])
+      vrai(!!I18N.en[c], `« ${c.slice(0, 40)} » a sa traduction`);
+    for (const [c, marques] of [['{c}, position {n} sur {t}', ['{c}', '{n}', '{t}']], ['{c}, carte masquée', ['{c}']],
+                                ['{c}, carte affichée', ['{c}']], ['{n} catégories', ['{n}']]])
+      for (const mq of marques) vrai(I18N.en[c].includes(mq), `« ${c} » garde ${mq}`);
   });
 });
