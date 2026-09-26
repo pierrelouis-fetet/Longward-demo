@@ -347,7 +347,7 @@ function getPath(path) {
 }
 
 const VIEWS = {
-  overview:   { cle: 'overview', render: () => barreSousOnglets('overview') + (
+  overview:   { cle: 'overview', render: () => (enEditionApercu() ? '' : barreSousOnglets('overview')) + (
     sousOngletActif.overview === 'historique' ? viewHistory()
     : sousOngletActif.overview === 'projection' ? viewObjective()
     : viewOverview()) },
@@ -1379,6 +1379,7 @@ function ligneInsight(i, p, precedent, destinationsVues) {
 }
 
 function viewOverview() {
+  if (enEditionApercu()) return editeurApercu();
   const t = nowTotals();
   const d = deltas();
   const g = objectiveStatus();
@@ -1461,8 +1462,7 @@ function viewOverview() {
   const guide = carteDemarrage();
   const guideDevant = !aUnComptePropre();
   const sansComptes = pasAFaire('comptes');
-  const edition = apercuEdition && !sansComptes;
-  const cartes = edition ? null : cartesApercu({ sansComptes });
+  const cartes = cartesApercu({ sansComptes });
 
   return `
   ${guideDevant ? guide : ''}
@@ -1506,7 +1506,6 @@ function viewOverview() {
 
   ${guideDevant ? '' : guide}
 
-  ${edition ? editeurApercu() : `
   ${cartes.tete}
 
   ${moisEnAttente.missing && !guide ? `
@@ -1540,7 +1539,6 @@ function viewOverview() {
     ${apercuVerrou(trad('Projection'), trad('Disponible quand ta situation est suffisamment renseignée.'), 'courbe')}
   </div>` : piedApercu()}
 
-`}
 `;
 }
 
@@ -1652,12 +1650,14 @@ function editeurApercu() {
       </li>`;
   };
   return `
-  <section class="card apercu-edition" aria-labelledby="apercuEditionTitre">
-    <div class="card-head">
-      <h2 id="apercuEditionTitre" tabindex="-1">${trad('Personnaliser l’aperçu')}</h2>
-      <button type="button" class="btn sm" data-action="apercu-terminer">${trad('Terminé')}</button>
+  <header class="page-tete apercu-edition-tete">
+    <div>
+      <h2 id="apercuEditionTitre" tabindex="-1">${trad('Personnaliser Aujourd’hui')}</h2>
+      <p>${trad('Choisis l’ordre des cartes d’Aujourd’hui et celles que tu veux voir. Les rappels de saisie gardent leur place.')}</p>
     </div>
-    <p class="apercu-consigne">${trad('Choisis l’ordre des cartes et celles que tu veux voir. Les rappels de saisie gardent leur place.')}</p>
+    <button type="button" class="btn" data-action="apercu-terminer">${trad('Terminé')}</button>
+  </header>
+  <section class="card apercu-edition" aria-labelledby="apercuEditionTitre">
     <ol class="apercu-liste">
       <li class="apercu-ligne apercu-fixe">
         <span class="apercu-nom">${trad(evoNet ? 'Patrimoine net' : 'Patrimoine brut')}<span class="sub">${
@@ -1676,6 +1676,8 @@ function editeurApercu() {
 let apercuEdition = false;
 let apercuFocus = null;
 let apercuAnnonce = '';
+const enEditionApercu = () =>
+  apercuEdition && sousOngletActif.overview === 'aujourdhui' && !pasAFaire('comptes');
 function deplacerSurApercu(id, sens) {
   if (!deplacerCarteApercu(id, sens)) return;
   Store.save();
@@ -1697,7 +1699,7 @@ function reprendreFocusApercu() {
   }
   if (cible) {
     cible.focus({ preventScroll: true });
-    cible.scrollIntoView({ block: f.titre ? 'start' : 'nearest' });
+    if (!f.titre) setTimeout(() => cible.scrollIntoView({ block: 'nearest' }), 0);
   }
   if (annonce) setTimeout(() => { const r = $('#apercuAnnonce'); if (r) r.textContent = annonce; }, 60);
 }
@@ -1723,7 +1725,10 @@ function carteRepartitionResume() {
             ? `<span class="sub">${trad('après {v} de crédit').replace('{v}', fmtEUR0(x.dettes))}</span>` : ''}</span>
           <b${x.value < 0 ? ' class="dette"' : ''}>${fmtEUR0(x.value)}</b>
           <span class="repart-pct">${x.pct == null ? '' : fmtPct(x.pct, 1)}</span>
+          <span class="ml-chev" aria-hidden="true">›</span>
         </span>
+        <span class="hors-ecran">, ${dettesSeules ? trad('voir et mettre à jour tes crédits')
+          : trad('voir ce qui compose cette catégorie et la mettre à jour')}</span>
       </button>`; };
     return `
   <div class="card repart repart-synthese">
@@ -1734,10 +1739,11 @@ function carteRepartitionResume() {
     <button type="button" class="repart-ligne repart-autres" data-action="repart-autres"
             aria-expanded="${repartAutresOuvert ? 'true' : 'false'}" aria-controls="repartAutresDetail">
       <span class="repart-haut">
-        <span class="repart-nom">${trad('Autres')}<span class="repart-chev" aria-hidden="true">›</span><span class="sub">${
+        <span class="repart-nom">${trad('Autres')}<span class="sub">${
           trad('{n} catégories').replace('{n}', s.autres.nb)}</span></span>
         <b>${fmtEUR0(s.autres.value)}</b>
         <span class="repart-pct">${s.autres.pct == null ? '' : fmtPct(s.autres.pct, 1)}</span>
+        <span class="ml-chev repart-chev" aria-hidden="true">›</span>
       </span>
     </button>
     <div class="repart-autres-detail" id="repartAutresDetail"${repartAutresOuvert ? '' : ' hidden'}>
@@ -8974,11 +8980,14 @@ const ACTIONS = {
   'apercu-editer'() {
     apercuEdition = true;
     apercuFocus = { titre: true };
+    retourHautDemande = true;
     render(); retourHaptique();
   },
   'apercu-terminer'() {
     apercuEdition = false;
-    render(); window.scrollTo(0, 0); retourHaptique();
+    retourHautDemande = true;
+    render(); retourHaptique();
+    $('.sous-onglets button.on')?.focus({ preventScroll: true });
   },
   'apercu-monter'(btn) { deplacerSurApercu(btn.dataset.carte, -1); },
   'apercu-descendre'(btn) { deplacerSurApercu(btn.dataset.carte, 1); },
@@ -8996,6 +9005,7 @@ const ACTIONS = {
     Store.save();
     apercuAnnonce = trad('Disposition par défaut rétablie');
     apercuFocus = { titre: true };
+    retourHautDemande = true;
     render(); retourHaptique();
   },
   'repart-autres'(btn) {
@@ -13855,6 +13865,38 @@ const noteSansBase = r => !r.sansBase ? ''
 const parGainDecroissant = (a, b) =>
   (a.valeur == null) - (b.valeur == null) || b.valeur - a.valeur;
 
+function blocMiseAJour(genre, aide) {
+  return `
+    <div class="apercu-maj">
+      <b>${trad(genre === 'compte' ? 'Mettre à jour un compte' : 'Mettre à jour un actif')}</b>
+      <span>${aide}</span>
+    </div>`;
+}
+
+/* Les actifs d'une categorie, une rangee entiere par actif, au gabarit des
+   listes de l'application : le nom et ce qui le porte, la valeur, le chevron.
+   Une ligne cotee ouvre sa fiche de position, les autres la fiche du compte qui
+   les porte, la ou leur valeur se corrige. Passe `montrer`, le reste attend le
+   bouton qui deplie. */
+function lignesActifs(lignes, montrer = 0) {
+  return `
+    <div class="mlist-groupe apercu-actifs">
+      ${lignes.map((l, i) => `
+      <button type="button" class="mlist${montrer && i >= montrer ? ' apercu-surplus' : ''}"
+              ${l.ouvre ? `data-action="${esc(l.ouvre.action)}" data-i="${esc(String(l.ouvre.i))}"`
+                : `data-action="aller-fiche" data-route="${esc(l.route)}"`}>
+        <span class="ml-nom">${esc(l.label)}${l.meta ? `<span class="sub">${escMontant(l.meta)}</span>` : ''}</span>
+        <span class="ml-chiffres"><b>${l.valeur == null
+          ? `<span class="muted petit">${trad('prix de revient manquant')}</span>` : fmtEUR(l.valeur)}</b></span>
+        <span class="ml-chev" aria-hidden="true">›</span>
+        <span class="hors-ecran">, ${trad('ouvrir sa fiche pour le mettre à jour')}</span>
+      </button>`).join('')}
+      ${montrer && lignes.length > montrer ? `
+      <button type="button" class="btn sm ghost apercu-plus" data-action="apercu-voir-tout">${
+        trad('Voir les {n} autres').replace('{n}', lignes.length - montrer)}</button>` : ''}
+    </div>`;
+}
+
 const APERCUS = {
   classe: (classe) => {
     const p = patrimoine();
@@ -13906,10 +13948,13 @@ const APERCUS = {
                 <div class="liq-ligne">
                   <span class="cpt-nom">${esc(nomCompteV2(x.c))}${etab ? `<span class="sub">${esc(etab)}</span>` : ''}</span>
                   <input type="number" step="any" class="champ-inline"
-                         data-path="comptes.${x.ic}.cash.${x.j}.montant" value="${num(x.e.montant)}">
+                         data-path="comptes.${x.ic}.cash.${x.j}.montant" value="${num(x.e.montant)}"
+                         aria-label="${esc(trad('Solde, {c}').replace('{c}', nomCompteV2(x.c)))}">
                 </div>`; }).join('')}
             </div></div>
           </section>`).join('')}`,
+        avant: blocMiseAJour('compte', trad('Corrige le solde d’un compte ci-dessous, puis enregistre.')),
+        calcule: true,
         vue: 'accounts', ancre: '', cta: trad('Ouvrir Actifs'),
       };
     }
@@ -13930,7 +13975,7 @@ const APERCUS = {
         [`credit-${k}`, `−${fmtEUR(b.dettes.reduce((s, x) => s + num(x.d.montant), 0))}`],
       ]));
       return {
-        titre: 'Immobilier',
+        titre: CLASSES_ACTIFS.immobilier,
         sous: (biens.length > 1 ? trad('{n} biens') : trad('{n} bien'))
             .replace('{n}', biens.length)
           + (creditTotal
@@ -13982,10 +14027,13 @@ const APERCUS = {
               </div>` : ''}
             <button class="btn sm ghost" data-action="aller-fiche"
                     data-route="#/compte/${encodeURIComponent(b.c.id)}"
-                    aria-label="Ouvrir la fiche de ${esc(b.l.libelle || nomCompteV2(b.c))}"
-                    >${trad('Ouvrir la fiche →')}</button>
+                    aria-label="${esc(trad('Mettre à jour {n}').replace('{n}', b.l.libelle || nomCompteV2(b.c)))}"
+                    >${trad('Mettre à jour ce bien')} →</button>
           </div>`;
         }).join('') || `<p class="empty">${trad('Aucun bien immobilier.')}</p>`,
+        avant: blocMiseAJour('actif', trad('Ouvre la fiche d’un bien pour corriger sa valeur.')
+          + (creditTotal ? ` ${trad('Le capital restant dû se corrige ici même.')}` : '')),
+        calcule: true,
         vue: 'accounts', ancre: '', cta: trad('Ouvrir Actifs'),
       };
     }
@@ -13999,6 +14047,8 @@ const APERCUS = {
         titre: CLASSES_ACTIFS[classe] || classe,
         sous: `${parts.length} ${parts.length > 1 ? trad('classes') : trad('classe')}`,
         total, lignes: parts,
+        avant: blocMiseAJour('actif', trad('Les cours s’actualisent dans Marchés. Ouvre une ligne pour corriger sa quantité ou son prix de revient.')),
+        calcule: true,
         vue: 'positions', ancre: '', cta: trad('Ouvrir Marchés'),
       };
     }
@@ -14022,14 +14072,17 @@ const APERCUS = {
     const surMarche = classe === 'obligations' || classe === 'crypto';
     const MONTREES = 8;
     const finance = num(dettesParDestination().classes[classe]);
+    const montrer = lignes.length > MONTREES + 2 ? MONTREES : 0;
     return {
       titre: CLASSES_ACTIFS[classe] || classe,
-      sous: `${lignes.length} placement${lignes.length > 1 ? 's' : ''}${finance > 0.005
+      sous: `${trad(lignes.length > 1 ? '{n} placements' : '{n} placement').replace('{n}', lignes.length)}${finance > 0.005
         ? ` · ${trad('{v} net de crédits').replace('{v}', fmtEUR0(total - finance))}` : ''}`,
-      total, lignes,
-      montrer: lignes.length > MONTREES + 2 ? MONTREES : 0,
+      total, lignes, montrer,
+      avant: blocMiseAJour('actif', trad('Touche un actif pour ouvrir sa fiche et corriger sa valeur.')),
+      html: lignesActifs(lignes, montrer),
+      calcule: true,
       vue: surMarche ? 'positions' : 'accounts', ancre: '',
-      cta: surMarche ? 'Ouvrir Marchés' : 'Ouvrir Actifs',
+      cta: trad(surMarche ? 'Ouvrir Marchés' : 'Ouvrir Actifs'),
     };
   },
 
@@ -14900,8 +14953,11 @@ function appliquerDiffere(bloc = $('#modalBody')) {
    `live`. Deux copies d'une meme phrase finissent par diverger : celle-ci
    vouvoyait des deux cotes, et corriger le premier exemplaire seul aurait fait
    dire « vos avoirs » a l'ouverture et « tes avoirs » a la premiere frappe. */
+/* `calcule` : le total est la somme des lignes de la fenetre, et la note le dit,
+   pour qu'on ne le prenne pas pour un montant a corriger. */
 const noteApercu = a => a.totalNote
-  || `${fmtPct(patrimoine().brut ? a.total / patrimoine().brut * 100 : 0, 1)} ${trad('de tes avoirs')}`;
+  || `${a.calcule ? `${trad('Total calculé')} · ` : ''}${
+    fmtPct(patrimoine().brut ? a.total / patrimoine().brut * 100 : 0, 1)} ${trad('de tes avoirs')}`;
 
 function openApercu(cle, arg) {
   const a = APERCUS[cle]?.(arg);
@@ -14918,6 +14974,7 @@ function openApercu(cle, arg) {
   $('#modalBody').innerHTML = collerAides(`
     <div class="modal-total"><b>${a.totalTexte || fmtEUR(a.total)}</b>
       <span>${escMontant(noteApercu(a))}</span></div>
+    ${a.avant || ''}
 
     ${a.champs ? `<div class="modal-champs">${a.champs.map(c => `
       <div class="field">
@@ -16314,8 +16371,11 @@ function bindGlobal() {
        la regle ecrite pour le menu lateral. Le rebond et le retour en haut
        restent pour le seul cas qu'ils visaient — reappuyer sur l'onglet ou l'on
        est deja, ou l'adresse ne bouge pas et ou rien ne se produirait. */
+    const quitteEdition = apercuEdition;
+    apercuEdition = false;
     if (lien.getAttribute('href') !== location.hash) { retourHautDemande = true; return; }
     e.preventDefault();
+    if (quitteEdition) render();
     lien.classList.remove('rebond');
     void lien.offsetWidth;
     lien.classList.add('rebond');

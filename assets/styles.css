@@ -1573,15 +1573,35 @@ button.pf-total, button.pf-mesure { cursor: pointer; }
 .repart-autres .repart-nom { font-weight: 500; color: var(--text-secondary); }
 .repart-chev { display: inline-block; margin-left: 6px; color: var(--muted); transition: transform .15s ease; }
 .repart-autres[aria-expanded="true"] .repart-chev { transform: rotate(90deg); }
+/* CHAQUE CATEGORIE SE TOUCHE. La rangee entiere est la cible ; le chevron a
+   droite dit qu'elle s'ouvre, et le fond au toucher confirme le geste. Le fond
+   deborde de 8 px de chaque cote sur un pseudo-element, pour ne deplacer ni les
+   filets ni les colonnes : `isolation` le garde sous le texte de la rangee. */
+.repart-synthese .repart-ligne {
+  position: relative; isolation: isolate; -webkit-tap-highlight-color: transparent;
+}
+.repart-synthese .repart-ligne::before {
+  content: ''; position: absolute; inset: 1px -8px; z-index: -1;
+  border-radius: var(--radius-sm); background: var(--surface-2); opacity: 0;
+  transition: opacity .12s;
+}
+.repart-synthese .repart-ligne:active::before { opacity: 1; }
+@media (hover: hover) { .repart-synthese .repart-ligne:hover::before { opacity: .6; } }
+.repart-synthese .repart-ligne:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-xs); }
+@media (prefers-reduced-motion: reduce) { .repart-synthese .repart-ligne::before { transition: none; } }
 .repart-autres-detail { padding-left: 17px; }
 .repart-autres-detail:not(:last-child) { border-bottom: 1px solid var(--border); }
 .repart-autres:has(+ .repart-autres-detail[hidden]:last-child) { border-bottom: none; }
 @media (prefers-reduced-motion: reduce) { .repart-chev { transition: none; } }
 
 .apercu-pied { margin: 0; text-align: center; font-size: var(--font-sm); }
-.apercu-consigne { margin: 0 0 6px; font-size: var(--font-sm); color: var(--muted); line-height: 1.45; }
-.apercu-edition h2:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: var(--radius-xs); }
+.apercu-edition-tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.apercu-edition-tete > div { min-width: 0; }
+.apercu-edition-tete p { line-height: 1.45; }
+.apercu-edition-tete .btn { flex: none; }
+.apercu-edition-tete h2:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: var(--radius-xs); }
 .apercu-liste { list-style: none; margin: 0; padding: 0; }
+.apercu-liste > .apercu-ligne:first-child { border-top: none; }
 .apercu-ligne {
   display: flex; align-items: center; gap: 12px; min-height: 52px;
   padding: 6px 0; border-top: 1px solid var(--grid);
@@ -1930,6 +1950,7 @@ button.lien-vue {
   .ml-jauge { display: none; }
 }
 .ml-chev { flex: none; color: var(--muted); font-size: 18px; line-height: 1; }
+.repart-haut .ml-chev { margin-left: -2px; font-size: var(--font-lg); }
 
 @media (max-width: 767px) {
   .liste-mobile { display: block; }
@@ -5695,7 +5716,17 @@ details[open]::details-content { block-size: auto; }
    La fiche defile deja, c'est elle qui donne le mouvement. */
 #modalBody .apercu-surplus { display: none; }
 #modalBody.tout-voir .apercu-surplus { display: table-row; }
+#modalBody.tout-voir .mlist.apercu-surplus { display: flex; }
 #modalBody.tout-voir .apercu-plus { display: none; }
+.apercu-maj {
+  display: flex; flex-direction: column; gap: 2px; margin: 2px 0 8px;
+  padding: 10px 12px; border-radius: var(--radius-sm); background: var(--surface-2);
+  font-size: var(--font-sm); line-height: 1.4;
+}
+.apercu-maj b { font-weight: 600; color: var(--text-primary); }
+.apercu-maj span { color: var(--muted); }
+.apercu-actifs .apercu-plus { display: block; margin: 10px auto 0; }
+.apercu-actifs .mlist:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--radius-xs); }
 #modalBody .apercu-plus td { border: 0; text-align: center; padding: 12px 0 4px; }
 
 /* Une tete a trois blocs : le titre, un chiffre, les commandes.

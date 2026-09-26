@@ -7248,8 +7248,12 @@ suite('Fiches d’Aperçu : une catégorie se lit sans dérouler son inventaire'
        geste de plus pour rien : trois lignes masquees au minimum. */
     const app = lireSource('assets/app.js');
     vrai(/const MONTREES = 8;/.test(app), 'huit lignes montrées');
-    vrai(/montrer: lignes\.length > MONTREES \+ 2 \? MONTREES : 0/.test(app),
+    vrai(/const montrer = lignes\.length > MONTREES \+ 2 \? MONTREES : 0;/.test(app),
       'et le repli ne s’arme qu’au-delà de dix lignes');
+    /* Les placements d'une categorie sont des rangees de liste, pas un tableau :
+       le meme repli, porte par le gabarit des actifs. */
+    vrai(/html: lignesActifs\(lignes, montrer\)/.test(app), 'la fenêtre d’une catégorie le passe à sa liste');
+    vrai(/class="mlist\$\{montrer && i >= montrer \? ' apercu-surplus' : ''\}"/.test(app), 'qui masque le même surplus');
     /* Le surplus est dans le DOM, pas jete : le bouton le deplie sur place. */
     vrai(/a\.montrer && i >= a\.montrer \? ' class="apercu-surplus"' : ''/.test(app),
       'le surplus se rend, masqué');
@@ -47125,8 +47129,10 @@ suite('L’Aperçu se personnalise, et le patrimoine reste en tête', () => {
     vrai(/class="lien-vue" data-action="apercu-editer">\$\{trad\('Personnaliser l’aperçu'\)\}/.test(pied), 'la porte');
     const vue = corps(a, 'function viewOverview()');
     vrai(/: piedApercu\(\)\}/.test(vue), 'au pied de la page, seulement quand il y a un compte');
-    vrai(/const edition = apercuEdition && !sansComptes;/.test(vue), 'sans compte, pas de mode édition');
-    vrai(/\$\{edition \? editeurApercu\(\) : `/.test(vue), 'la liste remplace les cartes le temps du réglage');
+    vrai(/const enEditionApercu = \(\) =>\s*\n\s*apercuEdition && sousOngletActif\.overview === 'aujourdhui' && !pasAFaire\('comptes'\);/.test(a),
+      'le réglage ne vaut que pour Aujourd’hui, et seulement avec un compte');
+    vrai(/^function viewOverview\(\) \{[\s\S]{0,200}?\n  if \(enEditionApercu\(\)\) return editeurApercu\(\);/.test(vue),
+      'la liste remplace toute la page le temps du réglage, patrimoine compris');
     const e = corps(a, 'function editeurApercu(');
     vrai(/d\.ordre\.map\(ligne\)/.test(e), 'toutes les cartes, masquées comprises');
     vrai(/class="apercu-ligne apercu-fixe"/.test(e) && /trad\('Toujours en premier'\)/.test(e),
@@ -47143,6 +47149,45 @@ suite('L’Aperçu se personnalise, et le patrimoine reste en tête', () => {
     /* Le mode ne survit pas a un changement d'ecran. */
     vrai(/if \(key !== 'overview' \|\| sousOngletActif\.overview !== 'aujourdhui'\) apercuEdition = false;/.test(corps(a, 'function render()')),
       'quitter l’onglet referme la liste');
+  });
+
+  test('le réglage est un écran à part : son titre, « Terminé », et pas les trois onglets', () => {
+    /* Sur telephone, « Aujourd'hui / Historique / Projection » restaient poses
+       au-dessus de la liste et laissaient croire qu'on reglait les trois. */
+    const a = app();
+    vrai(/overview: +\{ cle: 'overview', render: \(\) => \(enEditionApercu\(\) \? '' : barreSousOnglets\('overview'\)\) \+ \(/.test(a),
+      'la barre des sous-onglets se tait pendant le réglage');
+    const e = corps(a, 'function editeurApercu(');
+    vrai(/<header class="page-tete apercu-edition-tete">/.test(e), 'un en-tête d’écran, pas un en-tête de carte');
+    vrai(/<h2 id="apercuEditionTitre" tabindex="-1">\$\{trad\('Personnaliser Aujourd’hui'\)\}<\/h2>/.test(e),
+      'le titre nomme l’onglet réglé');
+    vrai(e.indexOf('data-action="apercu-terminer"') < e.indexOf('<section class="card apercu-edition"'),
+      '« Terminé » est dans l’en-tête, avant la liste');
+    vrai(/trad\('Choisis l’ordre des cartes d’Aujourd’hui/.test(e), 'et la consigne dit aussi de quel onglet il s’agit');
+    vrai(!/trad\('Personnaliser l’aperçu'\)/.test(e), 'l’ancien titre est parti de l’écran');
+    /* Historique et Projection ne l'ouvrent jamais. */
+    const vues = a.slice(a.indexOf('const VIEWS = {'), a.indexOf('budget:', a.indexOf('const VIEWS = {')));
+    vrai(/sousOngletActif\.overview === 'historique' \? viewHistory\(\)\s*\n\s*: sousOngletActif\.overview === 'projection' \? viewObjective\(\)/.test(vues),
+      'Historique et Projection gardent leur rendu');
+    vrai(!/enEditionApercu|editeurApercu/.test(corps(a, 'function viewHistory(') + corps(a, 'function viewObjective(')),
+      'et ne connaissent pas le réglage');
+  });
+
+  test('en quittant le réglage, on revient à Aujourd’hui, en haut, dans l’ordre choisi', () => {
+    const a = app();
+    const t = a.slice(a.indexOf("'apercu-terminer'() {"), a.indexOf('\n  },', a.indexOf("'apercu-terminer'() {")));
+    vrai(/apercuEdition = false;\s*\n\s*retourHautDemande = true;\s*\n\s*render\(\);/.test(t), 'la page revient, en haut');
+    /* Sans le drapeau, render() rend la position qu'on quitte : on entrait dans
+       le reglage defile de 55 px, le titre sous la barre du haut. */
+    const e = a.slice(a.indexOf("'apercu-editer'() {"), a.indexOf('\n  },', a.indexOf("'apercu-editer'() {")));
+    vrai(/retourHautDemande = true;\s*\n\s*render\(\);/.test(e), 'et l’écran de réglage s’ouvre en haut');
+    vrai(/\$\('\.sous-onglets button\.on'\)\?\.focus\(\{ preventScroll: true \}\);/.test(t),
+      'et le clavier repart de l’onglet Aujourd’hui');
+    vrai(!/Store\.save|dispositionApercu|retablir/.test(t), 'sortir n’écrit rien : chaque geste l’a déjà fait');
+    /* La barre du bas referme aussi le reglage, meme sur l'onglet deja ouvert. */
+    const barre = a.slice(a.indexOf("$('#tabbar')?.addEventListener('click'"), a.indexOf("lien.classList.add('rebond');"));
+    vrai(/const quitteEdition = apercuEdition;\s*\n\s*apercuEdition = false;/.test(barre), 'un appui sur la barre quitte le réglage');
+    vrai(/e\.preventDefault\(\);\s*\n\s*if \(quitteEdition\) render\(\);/.test(barre), 'y compris sur « Aperçu », déjà ouvert');
   });
 
   test('au clavier, le focus reste sur la commande qu’on vient d’actionner', () => {
@@ -47187,10 +47232,117 @@ suite('L’Aperçu se personnalise, et le patrimoine reste en tête', () => {
                      'Monter', 'Descendre', 'Afficher sur l’aperçu', 'Afficher', 'Masquer',
                      'Rétablir la disposition par défaut', '{c}, carte masquée', '{c}, carte affichée',
                      '{c}, position {n} sur {t}', 'Disposition par défaut rétablie', '{n} catégories',
-                     'Choisis l’ordre des cartes et celles que tu veux voir. Les rappels de saisie gardent leur place.'])
+                     'Personnaliser Aujourd’hui',
+                     'Choisis l’ordre des cartes d’Aujourd’hui et celles que tu veux voir. Les rappels de saisie gardent leur place.'])
       vrai(!!I18N.en[c], `« ${c.slice(0, 40)} » a sa traduction`);
     for (const [c, marques] of [['{c}, position {n} sur {t}', ['{c}', '{n}', '{t}']], ['{c}, carte masquée', ['{c}']],
                                 ['{c}, carte affichée', ['{c}']], ['{n} catégories', ['{n}']]])
       for (const mq of marques) vrai(I18N.en[c].includes(mq), `« ${c} » garde ${mq}`);
+  });
+});
+
+/* ------------------------------------------------------------------
+   Repartition : je touche une categorie, je trouve ce qui la compose,
+   je mets a jour
+   ------------------------------------------------------------------ */
+suite('Chaque catégorie de la répartition s’ouvre, et dit comment la mettre à jour', () => {
+  const app = () => lireSource('assets/app.js');
+  const css = () => lireSource('assets/styles.css');
+  const tranche = (src, debut, fin) => src.slice(src.indexOf(debut), src.indexOf(fin, src.indexOf(debut)));
+  const ligne = () => tranche(app(), 'const ligneClasse = x => {', '</button>`; };');
+  const panneau = () => tranche(app(), '  classe: (classe) => {', '\n  cible: (cle) =>');
+
+  test('toute la rangée est la cible, et elle le montre', () => {
+    const l = ligne();
+    vrai(/<button type="button" class="repart-ligne" data-action="apercu"/.test(l), 'la rangée entière est un bouton');
+    vrai(/<span class="ml-chev" aria-hidden="true">›<\/span>\s*\n\s*<\/span>/.test(l), 'un chevron à droite, après la part');
+    const c = css();
+    vrai(/\.repart-synthese \.repart-ligne:active::before \{ opacity: 1; \}/.test(c), 'un fond sous le doigt');
+    vrai(/\.repart-synthese \.repart-ligne::before \{[^}]*inset: 1px -8px;[^}]*z-index: -1;/.test(c),
+      'qui déborde sans déplacer les filets ni les colonnes');
+    vrai(/\.repart-synthese \.repart-ligne \{[^}]*isolation: isolate;/.test(c), 'et reste sous le texte');
+    vrai(/\.repart-synthese \.repart-ligne:focus-visible \{ outline: 2px solid var\(--accent\);/.test(c),
+      'l’anneau de l’application au clavier');
+    /* Le groupe « Autres » porte le meme chevron, au meme endroit : il pivote
+       quand le groupe se deplie. */
+    vrai(/<span class="ml-chev repart-chev" aria-hidden="true">›<\/span>/.test(app()), 'le groupe aussi, à droite');
+    vrai(/\.repart-autres\[aria-expanded="true"\] \.repart-chev \{ transform: rotate\(90deg\); \}/.test(c), 'et il pivote');
+  });
+
+  test('un lecteur d’écran entend le nom, le montant, la part, puis le geste', () => {
+    const l = ligne();
+    vrai(/<span class="hors-ecran">, \$\{dettesSeules \? trad\('voir et mettre à jour tes crédits'\)\s*\n\s*: trad\('voir ce qui compose cette catégorie et la mettre à jour'\)\}<\/span>/.test(l),
+      'la fin du libellé n’est lue que par lui');
+    vrai(!/aria-label=/.test(l), 'aucun libellé ne remplace le montant, masqué ou non');
+    for (const c of ['voir ce qui compose cette catégorie et la mettre à jour', 'voir et mettre à jour tes crédits'])
+      vrai(!!I18N.en[c], `« ${c} » a sa traduction`);
+  });
+
+  test('la fenêtre nomme le geste : un compte pour les liquidités, un actif ailleurs', () => {
+    const p = panneau();
+    const blocs = [...p.matchAll(/avant: blocMiseAJour\('(compte|actif)'/g)].map(m => m[1]);
+    eq(blocs.join(','), 'compte,actif,actif,actif', 'liquidités, immobilier, actifs de marché, puis tous les autres');
+    const liq = tranche(p, "if (classe === 'liquidites')", "if (classe === 'immobilier')");
+    vrai(/blocMiseAJour\('compte', trad\('Corrige le solde d’un compte ci-dessous, puis enregistre\.'\)\)/.test(liq),
+      'les liquidités se corrigent sur place, compte par compte');
+    const b = tranche(app(), 'function blocMiseAJour(', '\n}\n');
+    vrai(/trad\(genre === 'compte' \? 'Mettre à jour un compte' : 'Mettre à jour un actif'\)/.test(b), 'les deux libellés demandés');
+    vrai(!/data-action|<button|<input/.test(b), 'le bloc explique, il ne fait rien lui-même');
+  });
+
+  test('le total d’une catégorie se dit calculé, et ne se modifie pas', () => {
+    const p = panneau();
+    eq((p.match(/calcule: true,/g) || []).length, 4, 'les quatre fenêtres de catégorie');
+    vrai(/\$\{a\.calcule \? `\$\{trad\('Total calculé'\)\} · ` : ''\}/.test(app()), 'la note le dit');
+    const o = tranche(app(), 'function openApercu(', "$('#modalFoot').innerHTML");
+    vrai(/<div class="modal-total"><b>\$\{a\.totalTexte \|\| fmtEUR\(a\.total\)\}<\/b>/.test(o), 'le total reste un chiffre, sans champ');
+    vrai(/\$\{a\.avant \|\| ''\}/.test(o) && o.indexOf("${a.avant || ''}") > o.indexOf('modal-total'),
+      'et le geste suit le total, avant la liste');
+    vrai(!!I18N.en['Total calculé'], 'dans les deux langues');
+  });
+
+  test('chaque placement est une rangée qui mène là où sa valeur se corrige', () => {
+    const p = panneau();
+    vrai(/html: lignesActifs\(lignes, montrer\),/.test(p), 'la liste des placements est celle des actifs');
+    vrai(/\.\.\.\(i >= 0 \? \{ ouvre: \{ action: 'open-position', i \} \}\s*\n\s*: \{ route: `#\/compte\/\$\{encodeURIComponent\(c\.id\)\}` \}\)/.test(p),
+      'une ligne cotée ouvre sa position, les autres la fiche de leur compte');
+    const f = tranche(app(), 'function lignesActifs(', '\n}\n');
+    vrai(/<button type="button" class="mlist/.test(f), 'une rangée de liste, entière');
+    vrai(/data-action="\$\{esc\(l\.ouvre\.action\)\}" data-i=/.test(f) && /data-action="aller-fiche" data-route=/.test(f),
+      'avec les deux chemins');
+    vrai(/<span class="ml-chev" aria-hidden="true">›<\/span>/.test(f), 'son chevron');
+    vrai(/<span class="hors-ecran">, \$\{trad\('ouvrir sa fiche pour le mettre à jour'\)\}<\/span>/.test(f),
+      'et ce que fait le geste, pour un lecteur d’écran');
+    vrai(/#modalBody\.tout-voir \.mlist\.apercu-surplus \{ display: flex; \}/.test(css()), 'le repli vaut aussi pour ces rangées');
+    vrai(/\.apercu-actifs \.mlist:focus-visible \{ outline: 2px solid var\(--accent\);/.test(css()), 'avec l’anneau au clavier');
+  });
+
+  test('les champs et les boutons de la fenêtre ont un nom', () => {
+    const p = panneau();
+    vrai(/aria-label="\$\{esc\(trad\('Solde, \{c\}'\)\.replace\('\{c\}', nomCompteV2\(x\.c\)\)\)\}"/.test(p),
+      'le solde de chaque compte se nomme');
+    vrai(/aria-label="\$\{esc\(trad\('Mettre à jour \{n\}'\)\.replace\('\{n\}', b\.l\.libelle \|\| nomCompteV2\(b\.c\)\)\)\}"/.test(p),
+      'le bouton de chaque bien aussi, et il se traduit');
+    vrai(/>\$\{trad\('Mettre à jour ce bien'\)\} →<\/button>/.test(p), 'et dit ce qu’il fait');
+    vrai(!/aria-label="Ouvrir la fiche de/.test(app()), 'plus de libellé français en dur');
+    vrai(!I18N.en['Ouvrir la fiche →'], 'et l’ancien libellé est parti du dictionnaire');
+  });
+
+  test('ce qui s’affichait sans traduction se traduit', () => {
+    const p = panneau();
+    vrai(/trad\(lignes\.length > 1 \? '\{n\} placements' : '\{n\} placement'\)/.test(p), 'le nombre de placements');
+    vrai(!/placement\$\{lignes\.length > 1/.test(p), 'plus de pluriel écrit à la main');
+    vrai(/cta: trad\(surMarche \? 'Ouvrir Marchés' : 'Ouvrir Actifs'\)/.test(p), 'et le bouton du pied');
+    /* La fenetre de l'immobilier portait son titre en francais dans les deux
+       langues, sous une ligne qui disait « Property ». */
+    vrai(/titre: CLASSES_ACTIFS\.immobilier,/.test(p) && !/titre: 'Immobilier'/.test(p), 'le titre de l’immobilier aussi');
+    for (const c of ['Mettre à jour un compte', 'Mettre à jour un actif', 'ouvrir sa fiche pour le mettre à jour', 'Solde, {c}',
+                     'Corrige le solde d’un compte ci-dessous, puis enregistre.', 'Mettre à jour {n}', 'Mettre à jour ce bien',
+                     'Ouvre la fiche d’un bien pour corriger sa valeur.', 'Le capital restant dû se corrige ici même.',
+                     'Les cours s’actualisent dans Marchés. Ouvre une ligne pour corriger sa quantité ou son prix de revient.',
+                     'Touche un actif pour ouvrir sa fiche et corriger sa valeur.', '{n} placements', '{n} placement'])
+      vrai(!!I18N.en[c], `« ${c.slice(0, 40)} » a sa traduction`);
+    for (const [c, m] of [['Solde, {c}', '{c}'], ['Mettre à jour {n}', '{n}'], ['{n} placements', '{n}']])
+      vrai(I18N.en[c].includes(m), `« ${c} » garde ${m}`);
   });
 });
