@@ -1,0 +1,64 @@
+/*! Longward — personal wealth dashboard
+ *  Copyright (C) 2026 Longward
+ *  Licensed under the GNU Affero General Public License, version 3 or later.
+ *  Source: https://github.com/pierrelouis-fetet/Longward-demo
+ *  Distributed WITHOUT ANY WARRANTY. See the LICENSE file for the full terms.
+ */
+
+const CACHE = 'wealth-v2';
+
+self.addEventListener('install', () => self.skipWaiting());
+
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    for (const nom of await caches.keys()) {
+      if (nom !== CACHE) await caches.delete(nom);
+    }
+    await self.clients.claim();
+  })());
+});
+
+/* « Réseau d'abord » ne suffisait pas : `fetch(request)` respecte le cache
+   HTTP du navigateur, qui pouvait donc resservir un ancien `app.js` sans
+   jamais interroger le serveur. Sur iPhone, une app ajoutée à l'écran
+   d'accueil garde ce cache très longtemps — on déployait sans rien voir
+   changer.
+
+   On force donc une requête conditionnelle : le serveur répond 304 si rien
+   n'a bougé, ce qui ne coûte presque rien, et le fichier complet sinon.
+
+   Les navigations sont laissées telles quelles : passer un `init` à `fetch`
+   avec une requête en mode `navigate` lève une exception. Ce n'est pas
+   génant, le HTML est déjà revalidé à chaque chargement. */
+function recuperer(request) {
+  if (request.mode === 'navigate') return fetch(request);
+  return fetch(request.url, {
+    cache: 'no-cache',
+    credentials: 'same-origin',
+    headers: request.headers,
+  });
+}
+
+self.addEventListener('fetch', event => {
+  const { request } = event;
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith('/api/')) return;      // toujours frais
+
+  event.respondWith((async () => {
+    try {
+      const reseau = await recuperer(request);
+      if (reseau.ok && reseau.status === 200) {
+        const cache = await caches.open(CACHE);
+        cache.put(request, reseau.clone());
+      }
+      return reseau;
+    } catch (e) {
+      const secours = await caches.match(request);
+      if (secours) return secours;
+      throw e;
+    }
+  })());
+});

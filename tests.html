@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Longward — tests</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="assets/styles-01-socle.css?v=2026-09-29p-demo">
+<link rel="stylesheet" href="assets/styles-02-barre-progression-objectif.css?v=2026-09-29p-demo">
+<link rel="stylesheet" href="assets/styles-03-vue-tableau-graphiques.css?v=2026-09-29p-demo">
+<link rel="stylesheet" href="assets/styles-04-telephone-menu-passe.css?v=2026-09-29p-demo">
+<style>
+  body { padding: 24px; max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .bilan { font-size: 15px; font-weight: 650; padding: 12px 16px; border-radius: 10px;
+           margin: 16px 0 24px; border: 1px solid var(--border); }
+  .bilan.vert { color: var(--good); border-color: color-mix(in oklab, var(--good) 45%, transparent); }
+  .bilan.rouge { color: var(--critical); border-color: color-mix(in oklab, var(--critical) 45%, transparent); }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em;
+       color: var(--text-secondary); margin: 22px 0 8px; }
+  .cas { display: flex; gap: 10px; padding: 6px 0; align-items: baseline;
+         border-bottom: 1px solid var(--grid); }
+  .cas .marque { flex: none; width: 16px; font-weight: 700; }
+  .cas.ok .marque { color: var(--good); }
+  .cas.ko .marque { color: var(--critical); }
+  .cas.ko { color: var(--critical); }
+  pre { margin: 6px 0 10px 26px; padding: 10px 12px; background: var(--surface-2);
+        border-radius: 8px; font-size: 12px; white-space: pre-wrap;
+        color: var(--text-primary); }
+</style>
+</head>
+<body>
+
+<h1>Longward — tests</h1>
+<p class="sub">Le calcul de <code>store.js</code>, sans navigateur piloté ni données réelles.
+   Recharge la page pour relancer.</p>
+
+<div id="bilan" class="bilan">exécution…</div>
+<div id="detail"></div>
+
+<!--
+  Ordre imposé : `store.js` lit `SEED` et `SEED_BUDGET` au chargement. Ni
+  `app.js` ni `charts.js` ne sont nécessaires — tout ce qui se teste ici est du
+  calcul pur, sans DOM. C'est aussi ce qui rend ces tests instantanés.
+
+  Aucun `localStorage` n'est lu : chaque test pose son propre patrimoine par
+  `Fixture.poser()`. La page peut donc tourner sur la machine de n'importe qui
+  sans rien voir de personnel, et deux exécutions donnent le même résultat.
+-->
+<script src="assets/parties.js?v=2026-09-29p-demo"></script>
+<script src="assets/i18n-1-socle.js?v=2026-09-29p-demo"></script>
+<script src="assets/i18n-2-anglais.js?v=2026-09-29p-demo"></script>
+<script src="assets/i18n-3-anglais-fin.js?v=2026-09-29p-demo"></script>
+<script src="assets/seed-budget.js?v=2026-09-29p-demo"></script>
+<script src="assets/seed.js?v=2026-09-29p-demo"></script>
+<script src="assets/store-01-socle.js?v=2026-09-29p-demo"></script>
+<script src="assets/store-02-bases-calcul-nommees.js?v=2026-09-29p-demo"></script>
+<script src="assets/store-03-calculs-1.js?v=2026-09-29p-demo"></script>
+<script src="assets/store-04-calculs-2.js?v=2026-09-29p-demo"></script>
+<script src="assets/store-05-analyses.js?v=2026-09-29p-demo"></script>
+<script src="assets/store-06-controles-coherence.js?v=2026-09-29p-demo"></script>
+<script src="assets/store-07-societes.js?v=2026-09-29p-demo"></script>
+<script src="assets/insights.js?v=2026-09-29p-demo"></script>
+
+<script src="tests/sources.js?v=2026-09-29p-demo"></script>
+<script src="tests/harness.js?v=2026-09-29p-demo"></script>
+<script src="tests/fixture.js?v=2026-09-29p-demo"></script>
+<script src="tests/01-socle.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/02-ce-qui-change-entre.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/03-source-se-lit-fois.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/04-centre-anneau-sait-passer.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/05-charges-fixes-se-rangent.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/06-projection-capitalisation.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/07-application-s-adresse-toujours.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/08-charge-fixe-vaut-ce.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/09-ligne-projection-annonce-taux.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/10-rappel-saisies-attend-son.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/11-navigation-arrive-en-haut.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/12-ecart-non-cote-se.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/13-changer-perimetre-se-voit.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/14-boutons-fiche-ont-geometrie.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/15-personnalise-est-case-pas.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/16-performance-jour-se-compte.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/17-licence-ne-ment-pas.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/18-releve-note-sa-propre.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/19-frontiere-entre-pierre-papier.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/20-versement-propose-vient-budget.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/21-premier-ecran-patrimoine-abord.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/22-infobulle-historique-dit-composition.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/23-insight-ecart-cible-allocation.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/24-chaque-categorie-repartition-s.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/25-cases-se-voient-se-touchent.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/26-gestes-se-nettoient.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/27-societes-sous-jacentes.tests.js?v=2026-09-29p-demo"></script>
+<script src="tests/28-les-chiffres-se-lisent.tests.js?v=2026-09-29p-demo"></script>
+
+<script>
+  const langueDetenteur = currentLang();
+  setLang('fr');
+  (async () => {
+  const params = new URLSearchParams(location.search);
+  const selection = { nom: params.get('suites') || '', touche: params.get('touche') || '' };
+
+  let r;
+  const debut = performance.now();
+  try { r = await Tests.run(selection); }
+  catch (e) {
+    document.getElementById('bilan').className = 'bilan rouge';
+    document.getElementById('bilan').textContent = e.message;
+    document.title = '✕ selection vide — Longward';
+    setLang(langueDetenteur);
+    return;
+  }
+  finally { setLang(langueDetenteur); }
+  const duree = (performance.now() - debut) / 1000;
+  const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+  const bilan = document.getElementById('bilan');
+  bilan.className = 'bilan ' + (r.ko ? 'rouge' : 'vert');
+  bilan.textContent = (r.ko
+    ? `${r.ko} échec${r.ko > 1 ? 's' : ''} sur ${r.total} tests`
+    : `${r.ok} tests passent`) + ` · ${duree.toFixed(1)} s`
+    + (r.partiel ? ` · PARTIEL, ${r.suites} suite${r.suites > 1 ? 's' : ''} sur ${Tests.choisir().length}` : '');
+
+  document.getElementById('detail').innerHTML = r.resultats.map(s => `
+    <h2>${esc(s.nom)}</h2>
+    ${s.cas.map(c => `
+      <div class="cas ${c.ok ? 'ok' : 'ko'}">
+        <span class="marque">${c.ok ? '✓' : '✕'}</span><span>${esc(c.nom)}</span>
+      </div>
+      ${c.ok ? '' : `<pre>${esc(c.erreur)}</pre>`}`).join('')}`).join('');
+
+  document.title = `${r.ko ? '✕ ' + r.ko + ' échecs' : '✓ ' + r.ok + ' tests'}`
+    + (r.partiel ? ' (PARTIEL)' : '') + ' — Longward';
+  })();
+</script>
+</body>
+</html>

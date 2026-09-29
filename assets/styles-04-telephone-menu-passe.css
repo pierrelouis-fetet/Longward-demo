@@ -1,0 +1,952 @@
+/*! Longward — personal wealth dashboard
+ *  Copyright (C) 2026 Longward
+ *  Licensed under the GNU Affero General Public License, version 3 or later.
+ *  Source: https://github.com/pierrelouis-fetet/Longward-demo
+ *  Distributed WITHOUT ANY WARRANTY. See the LICENSE file for the full terms.
+ */
+.entete-actions { display: flex; align-items: center; gap: 8px; position: relative; }
+.btn-rond {
+  width: 38px; height: 38px; flex: none; padding: 0;
+  display: grid; place-items: center; position: relative;
+  border-radius: var(--radius-pill); cursor: pointer;
+  border: 1px solid var(--sidebar-border); background: var(--sidebar-hover);
+  color: var(--sidebar-ink);
+  transition: background .15s, transform .12s;
+}
+.btn-rond:active { transform: scale(.94); }
+.btn-rond svg {
+  width: 19px; height: 19px;
+  fill: none; stroke: currentColor; stroke-width: 1.7;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.btn-rond[aria-expanded="true"] { background: var(--sidebar-actif, var(--sidebar-border)); }
+.btn-rond:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.pastille-ronde {
+  position: absolute; top: 1px; right: 1px;
+  width: 9px; height: 9px; border-radius: var(--radius-pill);
+  background: var(--warning);
+  box-shadow: 0 0 0 2px var(--sidebar);
+}
+
+.popover-notifs {
+  position: absolute; top: calc(100% + 10px); right: 0; z-index: 70;
+  width: min(330px, calc(100vw - 24px));
+  max-height: min(60vh, 420px); overflow-y: auto; overscroll-behavior: contain;
+  background: var(--surface-1); color: var(--text-primary);
+  border: 1px solid var(--border-strong); border-radius: var(--radius);
+  box-shadow: var(--ombre-fenetre);
+  padding: 6px;
+  transform-origin: top right;
+  animation: notifs-entree .16s cubic-bezier(.2, 1, .3, 1);
+}
+.popover-notifs[hidden] { display: none; }
+@keyframes notifs-entree {
+  from { opacity: 0; transform: scale(.94) translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .popover-notifs { animation: none; }
+}
+
+.notif-tete {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  padding: 6px 8px 8px;
+}
+.notif-tete b { font-size: var(--font-md); }
+.notif-tete span { font-size: var(--font-sm); color: var(--muted); margin-left: auto; }
+.notif-reglages { flex: none; padding: 2px 4px; }
+/* `fill` et `stroke` viennent de l'attribut du SVG : trois points pleins, pas
+   trois anneaux. La regle generale des icones au trait ne s'applique donc pas
+   ici, et c'est voulu. */
+.notif-reglages svg { width: 16px; height: 16px; display: block; }
+
+.notif-ligne {
+  display: flex; align-items: flex-start; gap: 2px; border-radius: var(--radius-sm);
+}
+@media (hover: hover) { .notif-ligne:hover { background: var(--surface-2); } }
+.notif-ligne + .notif-ligne { border-top: 1px solid var(--border); border-radius: 0; }
+.notif-corps {
+  display: flex; gap: 9px; flex: 1; min-width: 0; text-align: left;
+  padding: 9px 4px 9px 8px; border: none; background: none; border-radius: var(--radius-sm);
+  font: inherit; color: inherit; cursor: pointer;
+}
+.notif-x { margin: 6px 5px 0 0; flex: none; }
+.notif-oui { margin: 6px 6px 0 0; flex: none; white-space: nowrap; }
+@media (hover: hover) {
+  .notif-x { opacity: 0; }
+  .notif-ligne:hover .notif-x, .notif-x:focus-visible { opacity: 1; }
+}
+.notif-ic { flex: none; width: 16px; font-size: 13px; line-height: 1.5; }
+.notif-ligne.n-action .notif-ic { color: var(--warning); }
+.notif-ligne.n-error  .notif-ic { color: var(--critical); }
+.notif-ligne.n-warn   .notif-ic { color: var(--serious); }
+.notif-ligne.n-info   .notif-ic { color: var(--muted); }
+.notif-txt { min-width: 0; }
+.notif-txt b { display: block; font-size: var(--font-md); font-weight: 600; }
+.notif-txt span { font-size: var(--font-sm); color: var(--text-secondary); }
+.notif-vide { padding: 16px 10px 18px; text-align: center; color: var(--muted); font-size: var(--font-md); }
+
+.notif-fermer {
+  display: block; width: 100%; padding: 5px 0 3px; margin-top: 2px;
+  border: none; background: none; cursor: pointer;
+  border-top: 1px solid var(--border);
+  color: var(--muted); border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+@media (hover: hover) { .notif-fermer:hover { background: var(--surface-2); color: var(--text-secondary); } }
+.notif-fermer svg {
+  width: 20px; height: 20px; margin: 0 auto; display: block;
+  fill: none; stroke: currentColor; stroke-width: 1.9;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+
+@media (min-width: 901px) {
+  /* `position: sticky` CREE TOUJOURS UN CONTEXTE D'EMPILEMENT, meme sans
+     `z-index`. Tout ce qui vit dans la barre y est donc enferme : le panneau
+     des notifications avait beau demander 200, il restait sous un bandeau a 1,
+     parce que la comparaison ne se fait pas entre eux mais entre leurs
+     contextes — celui de la barre valant zero. C'est elle qu'on remonte, et le
+     panneau suit. Elle occupe sa propre colonne, donc rien ne passe dessous. */
+  .sidebar { z-index: 100; }
+  .entete-actions { position: fixed; top: 20px; right: 24px; margin: 0; }
+  .entete-actions > #btnMasqueEntete,
+  .entete-actions > #btnProfil { display: none; }
+  /* LE PANNEAU S'OUVRE VERS L'INTERIEUR, ET HORS DU CADRE DE LA BARRE.
+
+     Deux defauts se suivaient. Il etait ancre a droite parce qu'il descendait
+     d'un en-tete colle au bord droit de l'ecran : dans la barre laterale, cette
+     droite-la laisse le panneau s'etendre vers une gauche hors ecran, et les
+     trois quarts disparaissaient — 330 px ancres a 229, donc un bord gauche a
+     moins cent.
+
+     Ancre a gauche, il restait coupe net au bord de la barre. `overflow-y: auto`
+     y suffit : une seule valeur d'overflow rogne les DEUX axes, et rien de plus
+     large que la barre ne peut en sortir. La position fixe l'en affranchit.
+
+     Sa hauteur vient de `--notif-haut`, posee a l'ouverture : une position fixe
+     ne suit plus son bouton, et la barre peut defiler sous lui. */
+  .popover-notifs {
+    position: fixed;
+    top: var(--notif-haut, 70px);
+    right: 24px;
+    left: auto;
+    transform-origin: top right;
+    z-index: 200;
+  }
+}
+
+@media (max-width: 900px) {
+
+  /* Le logo reste au-dessus du panneau qu'il ouvre. Le tiroir couvre tout
+     l'écran et le recouvrait : plus rien ne le refermait, puisque c'est lui le
+     bouton, et le voile est sous le panneau. Ne restait que le balayage, qui
+     ne s'annonce pas. Même traitement que le burger sur tablette, pour la même
+     raison — et `.nav` réserve déjà 66 px de haut pour ce passage. */
+  /* Le logo redevient un logo : c'est le bouton profil qui ouvre la feuille. La
+     barre garde `flex: 1` pour que le nom de la page prenne la place et se
+     tronque proprement. */
+  .brand { padding: 2px 6px 2px 0; flex: 1; }
+
+  body.sous-page .brand-mark { display: none; }
+  body.sous-page .retour { display: grid; }
+  .retour {
+    width: 44px; height: 44px; flex: none; padding: 0; margin: 0 0 0 -5px;
+    place-items: center; cursor: pointer;
+    background: none; border: none; color: var(--sidebar-ink);
+    border-radius: var(--radius-sm);
+  }
+  .retour:active { background: var(--sidebar-hover); }
+  .retour:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .retour svg {
+    width: 22px; height: 22px; display: block;
+    fill: none; stroke: currentColor; stroke-width: 2.1;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+
+  .retour-page { display: none; }
+
+  /* Une pilule flottante, translucide, detachee des bords.
+
+     Elle etait un bandeau plein colle en bas, separe du contenu par un filet.
+     Le detacher change deux choses au-dela du style : la page continue de se
+     voir sous la barre, donc on garde le sentiment de ce qui defile, et les
+     coins de l'ecran redeviennent du vide — un bandeau pleine largeur donne
+     un plancher, une pilule laisse respirer.
+
+     Le flou fait le travail que faisait le filet : c'est lui qui detache la
+     barre du contenu, pas une bordure.
+
+     L'opacite est a 22 % et le flou a 12 px. Cinq reglages ont mene la : 72, 62,
+     46, 30, puis ceci. Les deux premiers montaient le flou a mesure qu'ils
+     baissaient le fond, par prudence, et c'etait le mauvais reflexe — ce qui
+     donne l'impression de lire a travers, c'est l'opacite basse, tandis qu'un
+     flou plus lourd cache davantage au lieu de devoiler. Les deux descendent
+     donc ensemble, et on lit maintenant ce qui passe sous la barre.
+
+     C'est le plancher. En dessous, le fond ne separe plus assez la barre du
+     contenu : le liseré et l'ombre portee restent seuls a la dessiner, et sur
+     une carte claire elle cesse de se lire comme un objet pose devant.
+
+     A ce niveau, c'est le texte qui porte la lisibilite, plus le fond. Les
+     libelles et les traits des icones ont une ombre portee courte, la methode
+     des titres poses sur une image : invisible sur fond sombre, elle tient le
+     contraste quand un aplat clair passe dessous. Sans elle, 30 % rendrait
+     « Allocation » illisible des que la courbe monte. C'est aussi ce qui permet
+     a une barre de cinq libelles de 10,5 px d'aller aussi bas qu'une barre qui
+     n'aurait que des icones. Verifie a 375 px dans les deux themes, avec les
+     aplats du graphique d'evolution derriere.
+
+     L'insert de securite passe du `padding` au `bottom` : il ne gonfle plus la
+     hauteur de la barre, il l'ecarte du bord. Sur un telephone a encoche, la
+     pilule se pose donc au-dessus de la barre de gestes au lieu de l'englober. */
+  /* Le fond et le flou n'existent que dans l'ovale. Sous l'ovale, rien.
+
+     Le diagnostic visait la mauvaise piece. Ce n'etait pas la pilule qui laissait
+     une bande morte, c'etait sa jupe : 200 px de `var(--page)` peints sous elle,
+     qui masquaient le contenu au lieu de le laisser defiler. Une barre pleine
+     largeur a bien supprime la bande, mais en la remplaçant par un flou d'un bord
+     a l'autre — « tout le bas apparait flou au lieu de juste l'ovale ».
+
+     Donc : la pilule revient, et plus rien n'est peint autour d'elle. Le contenu
+     defile jusqu'au bord bas de l'ecran, zone de gestes comprise. C'est ce qu'on
+     veut voir, et c'est exactement ce que la jupe empechait.
+
+     Pas de jupe, et pas besoin d'une. Elle existait pour le cas ou le navigateur
+     decale la fenetre visible — clavier qui se referme, barre d'outils qui se
+     replie — et decouvre une bande sous un element en `fixed`. `html, body`
+     portent `background: var(--page)` : le canvas est deja peint de la couleur de
+     la page, rien ne peut y virer au noir. */
+  .tabbar {
+    /* Les colonnes se creent a partir des enfants RENDUS, jamais d'un compte
+       ecrit ici : un onglet masque est en `display: none`, il n'est donc pas un
+       element de grille et ne laisse pas sa colonne vide. `repeat(5, 1fr)`
+       gardait un cinquieme de barre en noir des que Marches disparaissait. */
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+    position: fixed; z-index: 65;
+    left: 10px; right: 10px;
+    /* La zone de gestes ecarte la pilule du bord par `bottom` et non par
+       `padding` : elle ne gonfle pas la hauteur de la barre, elle la souleve
+       au-dessus de l'endroit ou le systeme attend son geste.
+
+       La zone de gestes ne se paie plus en entier, et c'est le troisieme reglage
+       de la journee : 43 px sous la pilule, puis 38, puis 20. « Trop haute », deux
+       fois, puis « legerement trop haute ».
+
+       Ce qui borne la descente n'est pas la zone reservee mais le trait du
+       systeme : sur un iPhone, il fait 5 px de haut et vit dans les treize
+       premiers pixels du bord. La moitie de la zone plus trois pixels laisse donc
+       sept pixels entre le bas de l'ovale et le haut de ce trait. Aller plus bas
+       les ferait se toucher, et deux barres qui se chevauchent se lisent comme un
+       defaut d'alignement, pas comme un dessin serre.
+
+       Le `max()` garde le cas inverse, celui qu'on ne voit pas en developpant sur
+       un telephone a encoche : `env(safe-area-inset-bottom)` vaut zero sur un
+       iPhone SE, sur la plupart des Android et dans toute fenetre ou le systeme ne
+       reserve rien. Sans plancher, la pilule y collerait au bord physique. */
+    bottom: max(10px, calc(3px + var(--zone-geste) / 2));
+    border-radius: var(--radius-pill);
+    background:
+      linear-gradient(to bottom,
+        rgba(255, 255, 255, .10),
+        rgba(255, 255, 255, 0) 58%),
+      color-mix(in oklab, var(--surface-1) 11%, transparent);
+    backdrop-filter: blur(18px) saturate(190%) brightness(1.06);
+    -webkit-backdrop-filter: blur(18px) saturate(190%) brightness(1.06);
+    border: 1px solid color-mix(in oklab, var(--border-strong) 70%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16),
+                inset 0 -1px 0 rgba(0, 0, 0, .22),
+                0 12px 32px -10px rgba(0, 0, 0, .55),
+                0 2px 6px -2px rgba(0, 0, 0, .35);
+  }
+  .tabbar a, .tabbar button {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    min-height: 52px; padding: 7px 2px 8px;
+    background: none; border: none; cursor: pointer; text-decoration: none;
+    font: inherit; font-size: var(--font-xs); font-weight: 550; letter-spacing: .01em;
+    text-shadow: 0 1px 2px color-mix(in oklab, var(--page) 78%, transparent),
+                 0 0 7px color-mix(in oklab, var(--page) 55%, transparent);
+    /* L'encre discrète des annotations est trop faible ici : à 10,5 px, une
+       destination doit se lire, pas se deviner. Mesuré 3,2 contre le fond
+       avec `--muted`, 6,4 avec celle-ci. */
+    color: var(--text-secondary);
+    transition: color .14s;
+  }
+  .tabbar svg {
+    width: 22px; height: 22px; display: block;
+    fill: none; stroke: currentColor; stroke-width: 1.7;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  .tabbar a.on, .tabbar button.on { color: var(--text-primary); }
+  .tabbar a.on svg, .tabbar button.on svg { color: var(--accent); }
+
+  /* La pastille glisse d'un onglet a l'autre.
+
+     Elle etait posee sur chaque onglet, en `::before` de l'onglet actif. Une
+     pastille par onglet ne peut pas se deplacer : elle disparaissait d'un cote
+     et reapparaissait de l'autre, et le lien entre les deux etait a deviner.
+     Il n'y en a plus qu'une, portee par la barre, et c'est elle qu'on voit
+     traverser — le mouvement dit d'ou l'on vient.
+
+     Sa position ne demande aucun JavaScript. La barre est une grille de cinq
+     colonnes egales, donc chaque case fait exactement 20 %, et `:has()` lit
+     directement dans le DOM quel onglet porte la classe. Rien a tenir
+     d'accord : pas de variable a mettre a jour au changement de page, pas
+     d'ecouteur de redimensionnement. La regle suit ce qui est vrai.
+
+     Le deplacement passe par `transform` et non par `left` : c'est la seule
+     facon d'obtenir un glissement fluide, et le pourcentage d'un `translateX`
+     se compte sur la largeur de l'element, non sur celle du parent. D'ou le
+     `100% + 4px` — la pastille est en retrait de 4 px, il faut les rendre pour
+     avancer d'une case pleine, sinon l'ecart s'accumule et le cinquieme onglet
+     se retrouve decale de 16 px. */
+  .tabbar::before {
+    content: ''; position: absolute;
+    /* Cinq pixels de chaque cote, sans la zone de gestes : la pilule est
+       soulevee par son `bottom`, pas gonflee par un remplissage, donc sa boite
+       ne contient plus les 34 px du geste du systeme. Les avoir comptes ici
+       quand ils etaient dans le remplissage etait juste ; les garder
+       maintenant remonterait la pastille au-dessus des libelles. */
+    top: 5px; bottom: 5px; left: 2px;
+    width: calc(100% / var(--n-onglets, 5) - 4px);
+    border-radius: var(--radius-pill);
+    background: color-mix(in oklab, var(--text-primary) 10%, transparent);
+    transform: translateX(calc(var(--onglet, 0) * (100% + 4px)));
+    transition: transform .34s cubic-bezier(.32, 1.12, .5, 1);
+    /* Sous le contenu, au-dessus du fond de la barre : `.tabbar` est un
+       contexte d'empilement, donc un enfant negatif se pose entre les deux. */
+    z-index: -1;
+  }
+  /* L'index de l'onglet actif, lu dans le DOM. Cinq regles courtes plutot
+     qu'une variable posee par le script : une variable aurait pu se desaccorder
+     de la classe `.on`, ces regles ne peuvent pas. */
+  .tabbar:has(> :nth-child(1).on) { --onglet: 0; }
+  .tabbar:has(> :nth-child(2).on) { --onglet: 1; }
+  .tabbar:has(> :nth-child(3).on) { --onglet: 2; }
+  .tabbar:has(> :nth-child(4).on) { --onglet: 3; }
+  .tabbar:has(> :nth-child(5).on) { --onglet: 4; }
+  /* Marches masque : quatre cases, et le dernier onglet devient le quatrieme.
+     Deux regles, lues dans le DOM comme les cinq du dessus — aucune variable a
+     poser depuis le script, donc rien qui puisse se desaccorder de la classe
+     `.on`. Le quatrieme onglet ne peut pas etre actif quand il est masque, donc
+     sa regle n'a pas de jumelle. */
+  .tabbar:not(:has(> .on))::before { opacity: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    .tabbar::before { transition: none; }
+  }
+
+  .tabbar a:active, .tabbar button:active { color: var(--text-secondary); }
+
+  .tab-pastille {
+    position: absolute; top: 7px; left: 50%; margin-left: 7px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--warning);
+    box-shadow: 0 0 0 2px var(--surface-1);
+  }
+  .tab-pastille[hidden] { display: none; }
+
+  .tabbar a.rebond svg { animation: rebond-onglet .32s cubic-bezier(.33, 0, .3, 1); }
+  @keyframes rebond-onglet {
+    0%   { transform: scale(1); }
+    32%  { transform: scale(.9); }
+    100% { transform: scale(1); }
+  }
+
+  .tabbar.tape { animation: appui-barre .38s cubic-bezier(.3, 1.5, .5, 1); }
+  @media (prefers-reduced-motion: reduce) {
+    .tabbar.tape { animation: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tabbar a.rebond svg { animation: none; }
+  }
+
+  .nav-outils { margin-top: 12px; }
+
+  .nav-tete {
+    display: flex !important; align-items: center; gap: 12px;
+    padding: 14px 12px; margin-bottom: 10px;
+    background: var(--sidebar-hover); border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius);
+  }
+  .nav-tete-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .nav-tete .sb-label { color: var(--sidebar-faible); }
+  .nav-tete strong {
+    font-size: var(--font-xl); font-weight: 720; letter-spacing: -.03em;
+    color: var(--sidebar-ink); font-variant-numeric: tabular-nums;
+    background: none; border: none; padding: 0; text-align: left; font-family: inherit;
+  }
+
+  .view { padding-bottom: calc(76px + var(--zone-geste)); }
+
+  /* Toute vue doit dépasser l'écran, ne serait-ce que d'un pixel.
+     iOS replie la barre d'outils de Safari dès qu'on défile, ce qui agrandit
+     la zone visible et fait descendre la barre d'onglets, en `fixed`. Une page
+     qui ne défile pas la laisse déployée. Comptes était la seule vue dans ce
+     cas — 812 px de contenu pour 812 px d'écran, marge exactement zéro, quand
+     les autres débordent de 470 à 4 136 px — si bien qu'en y arrivant la barre
+     d'onglets remontait de la hauteur de la barre d'outils, puis redescendait
+     en repartant. Le saut venait de l'écart entre les pages, pas de la barre.
+     Ce pixel garantit le même comportement partout. Il est survenu le jour où
+     la brique patrimoine a quitté Comptes : la page est passée juste sous le
+     seuil, et le réglage dépend donc du nombre de comptes. On ne le laisse
+     plus au hasard. */
+  .view { min-height: calc(100vh + 1px); }
+
+  .toast {
+    bottom: auto; top: calc(var(--h-barre) + 8px);
+    max-width: calc(100% - 32px); text-align: center;
+  }
+
+  body { overscroll-behavior-y: contain; }
+
+}
+
+@media print {
+  .sidebar, .topbar-actions, .btn { display: none !important; }
+  body { grid-template-columns: minmax(0, 1fr); }
+}
+
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong); border-radius: var(--radius-pill);
+  border: 3px solid transparent; background-clip: content-box;
+}
+@media (hover: hover) { *::-webkit-scrollbar-thumb:hover { background: var(--muted); background-clip: content-box; } }
+
+::selection { background: color-mix(in oklab, var(--accent) 18%, transparent); }
+:is(button, a, input, select, summary):focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-xs);
+}
+
+/* --- Entrée de vue : les cartes montent en cascade très courte ---
+   Vingt-cinq millisecondes d'écart suffisent à donner le sentiment que la page
+   se compose, sans jamais faire attendre.
+
+   Sous `.vue-entre` seulement, que render() ne pose qu'à l'arrivée sur une vue.
+   La cascade jouait sur chaque re-rendu, donc à chaque frappe dans un champ :
+   l'application clignotait précisément quand on s'en servait. */
+@keyframes carte-entre {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: none; }
+}
+.view.vue-entre > * {
+  animation: carte-entre .3s cubic-bezier(.22, .61, .36, 1) backwards;
+}
+.view.vue-entre > *:nth-child(1) { animation-delay: 0ms; }
+.view.vue-entre > *:nth-child(2) { animation-delay: 25ms; }
+.view.vue-entre > *:nth-child(3) { animation-delay: 50ms; }
+.view.vue-entre > *:nth-child(4) { animation-delay: 75ms; }
+.view.vue-entre > *:nth-child(n+5) { animation-delay: 90ms; }
+/* Une enveloppe qui s'efface (`display: contents`) n'a pas de boite a animer,
+   et ses cartes ne sont pas des enfants directs de la vue : elles recoivent la
+   meme entree, au retard de leur rang. Les deux piles de Budget s'effacent
+   sous 1181 px, ou sans point a retenir ; une paire de l'Apercu, sous 901 px.
+   Quand l'enveloppe garde sa boite, c'est elle qui entre, et rien dedans.
+   Sans mouvement demande par le systeme, ces regles ne s'appliquent pas. */
+@media (prefers-reduced-motion: no-preference) and (max-width: 1180px) {
+  .view.vue-entre > .budget-duo > .duo-col:first-child,
+  .view.vue-entre > .budget-duo > .duo-col:last-child > * {
+    animation: carte-entre .3s cubic-bezier(.22, .61, .36, 1) backwards;
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (min-width: 1181px) {
+  .view.vue-entre > .budget-duo:not(:has(.card.retenir)) > .duo-col:first-child,
+  .view.vue-entre > .budget-duo:not(:has(.card.retenir)) > .duo-col:last-child > * {
+    animation: carte-entre .3s cubic-bezier(.22, .61, .36, 1) backwards;
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 1180px) {
+  .view.vue-entre > .colonnes-bureau > * {
+    animation: carte-entre .3s cubic-bezier(.22, .61, .36, 1) backwards;
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 900px) {
+  .view.vue-entre > .grid.g-2[data-paire] > * {
+    animation: carte-entre .3s cubic-bezier(.22, .61, .36, 1) backwards;
+  }
+}
+.view.vue-entre > .budget-duo > .duo-col:first-child { animation-delay: 25ms; }
+.view.vue-entre > .budget-duo > .duo-col:last-child > :nth-child(1) { animation-delay: 50ms; }
+.view.vue-entre > .budget-duo > .duo-col:last-child > :nth-child(n+2) { animation-delay: 75ms; }
+.view.vue-entre > .grid.g-2[data-paire] > * { animation-delay: 90ms; }
+.view.vue-entre > .colonnes-bureau > :nth-child(1) { animation-delay: 50ms; }
+.view.vue-entre > .colonnes-bureau > :nth-child(2) { animation-delay: 75ms; }
+.view.vue-entre > .colonnes-bureau > :nth-child(n+3) { animation-delay: 90ms; }
+/* L'angle choisi dans la repartition d'Allocation entre comme une carte, dans
+   sa section seulement : la carte qui le porte reste ou elle est. Sans retard,
+   donc sans `backwards` : il n'y a pas d'image de depart a tenir. */
+.alloc-angle.angle-entre {
+  animation: carte-entre .3s cubic-bezier(.22, .61, .36, 1);
+}
+/* Le point d'aujourd'hui, au bout de la courbe du heros, s'eclaire une fois a
+   l'arrivee : un halo qui s'ouvre et s'eteint, apres la montee des cartes. Il
+   n'existe que sous `.vue-entre`, `sparkline()` ne le dessine pas ailleurs. */
+@keyframes spark-halo {
+  from { opacity: .5; transform: scale(1); }
+  to   { opacity: 0; transform: scale(4.5); }
+}
+.spark-halo {
+  transform-box: fill-box; transform-origin: center;
+  animation: spark-halo 1.2s cubic-bezier(.22, .61, .36, 1) .35s both;
+}
+@media (prefers-reduced-motion: reduce) { .spark-halo { display: none; } }
+
+/* Les jauges poussent de zéro à leur valeur à l'arrivée, une fois les cartes
+   posées. `scaleX` et non `width` : la barre s'étire sans re-calculer la mise
+   en page, soixante images par seconde même sur un téléphone modeste. Le
+   repère de cible (.reeq-cible) reste immobile : c'est un point fixe, le voir
+   glisser dirait qu'il bouge avec la valeur. */
+@keyframes barre-pousse { from { transform: scaleX(0); } }
+/* `graphes-poussent` et non `vue-entre` : les jauges repoussent aussi quand le
+   perimetre change, alors que la cascade des cartes ne rejoue qu'a l'arrivee.
+   Rejouer la cascade a chaque clic sur une bascule ferait clignoter la page
+   entiere pour un chiffre qui change. */
+.graphes-poussent :is(.repart-barre, .hero-barre, .flow-bar, .goal-bar, .reeq-jauge, .role-barre, .ml-jauge)
+  > :is(i:not(.reeq-cible), div) {
+  transform-origin: left center;
+  animation: barre-pousse .55s cubic-bezier(.22, .61, .36, 1) .14s backwards;
+}
+
+/* La piste d'un releve mensuel est la seule a avoir son zero SUR la piste, a la
+   place que lui donne geometrieJauges : un mois positif s'etend a sa droite, un
+   negatif a sa gauche. Elle rejoint donc la famille pour l'animation, mais pas
+   pour l'origine : la donner a gauche ferait partir les mois negatifs du mauvais
+   cote, en s'eloignant du zero au lieu d'en sortir.
+
+   `i.up` porte `left` au zero, donc son bord gauche EST le zero et l'origine
+   commune lui convient. `i.down` porte `right` au zero : c'est son bord droit.
+
+   Un mois plat ne pousse pas. Ce n'est pas une barre mais un point de six
+   pixels, pose sur le zero pour dire rien ne s'est passe plutot que pas de
+   donnee : il n'a aucune longueur a parcourir. */
+.graphes-poussent .ml-jauge > i.down { transform-origin: right center; }
+.graphes-poussent .ml-jauge > i.plat { animation: none; }
+
+/* Les barres des graphiques SVG poussent comme les jauges, meme courbe et meme
+   retard : elles se lisent ensemble sur une meme page, et deux rythmes s'y
+   verraient comme un defaut.
+
+   `transform-box: fill-box` est indispensable en SVG : sans lui, l'origine se
+   calcule sur la boite de vue entiere, et une barre du bas se mettrait a
+   grandir depuis un point situe hors d'elle.
+
+   Les zones de survol transparentes n'ont pas ces classes : les animer ferait
+   clignoter la cible du doigt sans que rien ne se voie. */
+@keyframes barre-svg-h { from { transform: scaleX(0); } }
+@keyframes barre-svg-v { from { transform: scaleY(0); } }
+.graphes-poussent :is(.rb-barre, .vb-barre, .gb-barre) {
+  transform-box: fill-box;
+  animation-duration: .55s;
+  animation-timing-function: cubic-bezier(.22, .61, .36, 1);
+  animation-delay: .14s;
+  animation-fill-mode: backwards;
+}
+.graphes-poussent .rb-barre {
+  transform-origin: left center; animation-name: barre-svg-h;
+}
+.graphes-poussent :is(.vb-barre, .gb-barre) {
+  transform-origin: bottom center; animation-name: barre-svg-v;
+}
+.graphes-poussent .vb-barre[data-sous] { transform-origin: top center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .view.vue-entre > *,
+  .alloc-angle.angle-entre,
+  .graphes-poussent :is(.repart-barre, .hero-barre, .flow-bar, .goal-bar, .reeq-jauge, .role-barre, .ml-jauge)
+    > :is(i:not(.reeq-cible), div),
+  .graphes-poussent :is(.rb-barre, .vb-barre, .gb-barre) { animation: none; }
+}
+
+.card { transition: border-color .15s ease; }
+@media (hover: hover) { .card:hover { border-color: color-mix(in oklab, var(--border-strong) 70%, transparent); } }
+
+.btn { transition: opacity .12s, background .12s, transform .08s; }
+.btn:active:not(:disabled) { transform: scale(.97); }
+
+tbody tr { transition: background .12s ease; }
+@media (hover: hover) { tbody tr:hover { background: color-mix(in oklab, var(--surface-2) 60%, transparent); } }
+
+.tick { font-size: var(--font-xs); }
+.chart-tip {
+  border-radius: var(--radius-sm); padding: 10px 12px;
+  box-shadow: var(--ombre-flottante);
+  backdrop-filter: blur(6px);
+}
+.chart-tip .tt-head {
+  font-size: var(--font-xs); font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 6px;
+}
+
+body, .card, .tile, .topbar {
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease;
+}
+/* La barre du haut porte la sienne, couleurs et retrait dans la meme declaration.
+
+   Elle etait dans la liste au-dessus, qui arrive apres le bloc telephone : meme
+   specificite, ecrite plus loin, donc c'est elle qui gagnait et le `transform` du
+   retour disparaissait de la liste des proprietes animees. La barre sautait au lieu
+   de glisser — « ça disparait et reapparait, c'est pas une animation » — et seul le
+   retour etait touche, le retrait ayant sa propre regle plus specifique. Mesure sur
+   place : `transition-property` valait « background-color, border-color, color ».
+
+   C'est le piege que `CLAUDE.md` nomme deja pour `.table-serree` : a specificite
+   egale, c'est l'ordre qui tranche. Une seule declaration ici l'evite pour de bon,
+   puisque plus rien ne vient apres elle. Le `transform` ne coute rien sur un grand
+   ecran, ou la barre n'en porte jamais. */
+/*   Ce n'etait pas la duree, c'etait la courbe. `cubic-bezier(.17, .84, .44, 1)` a
+   une pente de 4,9 a l'origine : mesure sur les 54 px de course, elle en faisait
+   **43 en 100 ms** et 49 en 150. Les 300 ms declarees etaient donc une illusion —
+   la barre etait arrivee, il ne restait que cinq pixels a parcourir pendant la
+   moitie du temps. On ne voyait pas un glissement, on voyait une apparition suivie
+   d'une attente.
+
+   `(.3, .55, .25, 1)` sur 420 ms garde une pente de 1,8 a l'origine — la barre
+   part au doigt, elle ne traine pas — mais elle passe 29 px a 100 ms, 40 a 150,
+   47 a 200 : on la voit traverser. Essaye et rejete : `(.4, 0, .2, 1)`, la courbe
+   standard de Material, qui ne bouge que d'un pixel dans les 30 premieres
+   millisecondes et se lit comme un retard a l'allumage.
+
+   Le depart, lui, ne change pas : ce qui s'en va peut aller vite. */
+.sidebar {
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease,
+              transform .42s cubic-bezier(.3, .55, .25, 1);
+}
+
+/* --- Fermeture des fenêtres : le geste inverse de l'ouverture ---
+   L'entrée était animée, la sortie coupait net : `hidden` tombait d'un coup.
+   C'est pourtant la sortie qu'on regarde toujours. `masquerModal()` garde la
+   fenêtre visible 170 ms avec cette classe, puis la cache pour de bon ;
+   `pointer-events: none` pendant ce répit, pour qu'un doigt pressé ne clique
+   pas dans une fenêtre en train de partir. */
+.modal.modal-ferme { pointer-events: none; animation: modal-fond-sort .17s ease forwards; }
+.modal.modal-ferme .modal-panel { animation: modal-sort var(--duree-fenetre-sortie) ease forwards; }
+@keyframes modal-fond-sort { to { opacity: 0; } }
+@keyframes modal-sort { to { opacity: 0; transform: translate3d(0, 8px, 0) scale(.985); } }
+@media (max-width: 900px) {
+  .modal.modal-ferme .modal-panel { animation: feuille-sort var(--duree-fenetre-sortie) cubic-bezier(.4, 0, 1, 1) forwards; }
+  @keyframes feuille-sort { to { transform: translate3d(0, 100%, 0); } }
+}
+
+@keyframes toast-entre {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px) scale(.94); }
+  to   { opacity: 1; transform: translateX(-50%); }
+}
+@keyframes toast-sortie {
+  to { opacity: 0; transform: translateX(-50%) translateY(6px) scale(.97); }
+}
+.toast { animation: toast-entre .32s cubic-bezier(.26, 1.25, .48, 1); }
+.toast.toast-sort { animation: toast-sortie .32s ease forwards; }
+
+@keyframes tip-pose { from { opacity: 0; transform: translateY(3px) scale(.98); } }
+.chart-tip { animation: tip-pose .15s cubic-bezier(.22, .61, .36, 1); }
+
+/* --- Dépliants : le contenu glisse au lieu d'apparaître ---
+   `interpolate-size` permet d'animer vers `auto`, ce qu'aucune hauteur en dur
+   ne fait proprement. Navigateur trop vieux : la règle est ignorée et le
+   dépliant s'ouvre d'un coup, comme avant — c'est une politesse, pas une
+   fondation. */
+:root { interpolate-size: allow-keywords; }
+details::details-content {
+  block-size: 0; overflow: clip;
+  transition: block-size .3s cubic-bezier(.22, .61, .36, 1),
+              content-visibility .3s allow-discrete;
+}
+details[open]::details-content { block-size: auto; }
+
+.segmented button, .plage button {
+  transition: background .16s ease, color .16s ease, transform .08s ease;
+}
+.segmented button:active, .plage button:active { transform: scale(.94); }
+
+/* La courbe d'evolution se decouvre de gauche a droite, a l'arrivee.
+
+   Les jauges poussaient de zero, les cartes montaient de 7 px, et le graphique
+   — la plus grande surface de l'ecran — apparaissait d'un coup. Il etait
+   paradoxalement le moins vivant de la page.
+
+   Un balayage plutot qu'un stroke-dashoffset par trace : c'est un graphique en
+   aires empilees, animer chaque courbe demanderait la longueur de chaque chemin
+   et ne dirait rien des aires. Le dessin entier se decouvre, dans le sens du
+   temps, ce qui est exactement ce que la courbe raconte.
+
+   `clip-path: inset()` s'anime sans recalculer la mise en page. Sous
+   `.vue-entre` seulement, comme `barre-pousse` : a l'arrivee sur une vue, jamais
+   a la frappe ni au rafraichissement. Le leger retard laisse les cartes se
+   poser d'abord. */
+@keyframes chart-balaye {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 -2% 0 0); }
+}
+.vue-entre .chart-trace {
+  animation: chart-balaye .78s cubic-bezier(.3, .8, .4, 1) .1s backwards;
+}
+/* PAS DE `backwards` ICI, ET C'EST UNE MESURE QUI L'A DIT. Ce mode applique
+   l'image de depart avant que l'animation parte — soit un decoupage a zero pour
+   cette image-la. Mesure dans un panneau masque, ou le navigateur ne fait pas
+   avancer les animations : la classe restait posee, l'animation n'avait jamais
+   commence, et le graphique etait INVISIBLE. Le balayage d'arrivee s'en tire
+   parce que sa classe vit sur la vue et disparait toute seule ; celle-ci
+   attendait la fin d'une animation qui n'arrivait pas.
+
+   Sans `backwards`, le pire qui arrive est un dessin pose d'un coup, ce qui est
+   exactement ce qu'on avait avant. Le retard de cent millisecondes de l'arrivee
+   n'existe pas ici non plus, donc le mode ne servait a rien d'autre. */
+.chart-trace.chart-rejoue {
+  animation: chart-balaye .45s cubic-bezier(.3, .8, .4, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .vue-entre .chart-trace,
+  .chart-trace.chart-rejoue { animation: none; }
+}
+
+.vue-entre.barre-immobile > .sous-onglets { animation: none; }
+
+@keyframes valeur-change {
+  0%   { opacity: .3; }
+  30%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+@keyframes valeur-lavis {
+  0%   { opacity: 0; }
+  18%  { opacity: .9; }
+  100% { opacity: 0; }
+}
+.valeur-maj {
+  position: relative;
+  animation: valeur-change .9s ease;
+}
+.valeur-maj::before {
+  content: ''; position: absolute; inset: -3px -6px; z-index: -1;
+  border-radius: var(--radius-xs); pointer-events: none;
+  background: color-mix(in oklab, var(--accent) 26%, transparent);
+  /* Eteint au repos, et c'est tout le correctif. `valeur-lavis` finit a
+     `opacity: 0`, mais une animation sans `fill-mode` rend a l'element la valeur
+     de sa regle des qu'elle s'acheve — donc 1, l'opacite par defaut. Le lavis
+     restait peint pour toujours : un aplat violet sur le patrimoine de la barre
+     laterale, signale trois fois, qu'on a pris pour une selection de texte puis
+     pour un reste de survol. Mesure sur place : animation terminee, opacite du
+     pseudo-element a 1.
+
+     `opacity: 0` au repos plutot que `animation-fill-mode: forwards` : le
+     premier eteint le lavis dans tous les cas, y compris si l'animation ne joue
+     jamais ou si elle est interrompue. La classe `valeur-maj`, elle, n'est
+     jamais retiree — et elle n'a pas a l'etre, une fois l'etat de repos eteint. */
+  opacity: 0;
+  animation: valeur-lavis 1.1s cubic-bezier(.22, .61, .36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .valeur-maj, .valeur-maj::before { animation: none; }
+  .valeur-maj::before { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+.an52 { margin-top: 14px; }
+.an52-tete, .an52-pied {
+  display: flex; justify-content: space-between; gap: 10px; font-size: var(--font-sm);
+}
+.an52-tete { margin-bottom: 6px; font-weight: 600; }
+.an52-pied { margin-top: 5px; }
+.an52-piste {
+  position: relative; height: 6px; border-radius: var(--radius-pill);
+  background: linear-gradient(90deg,
+    color-mix(in oklab, var(--critical) 45%, var(--surface-2)),
+    var(--surface-2) 50%,
+    color-mix(in oklab, var(--good) 45%, var(--surface-2)));
+}
+.an52-piste i {
+  position: absolute; top: 50%; width: 3px; height: 14px; border-radius: 2px;
+  background: var(--text-primary); transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 2px var(--surface-1);
+}
+
+/* ---------------- Budget : les cartes de l'onglet Charges fixes -------
+   Trois regles d'ordre vivaient ici. Elles remettaient « Epargne et croissance »
+   devant le tableau des charges, `order` evitant de deplacer soixante lignes de
+   gabarit pour un resultat identique.
+
+   Cette carte est passee sur l'accueil, ou sa question se pose vraiment. Il ne
+   reste qu'une carte dans cette grille, donc plus rien a ordonner : les trois
+   regles sont parties avec elle, et la classe `budget-charges` qui n'existait
+   que pour les porter. Une regle d'ordre sans second element est du CSS qui ne
+   fait rien, et la prochaine session la lirait comme une contrainte a tenir. */
+
+.sous-onglets .pastille-onglet {
+  display: inline-block; width: 6px; height: 6px; border-radius: var(--radius-pill);
+  margin-left: 6px; vertical-align: 2px;
+  background: var(--warning);
+}
+
+.grid:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
+
+.bandeau-demo {
+  margin: 12px 18px 0; padding: 9px 14px; border-radius: var(--radius-sm);
+  border: 1px dashed var(--border-strong, var(--grid));
+  background: var(--surface-2); color: var(--text-secondary);
+  font-size: var(--font-sm); text-align: center;
+}
+.bandeau-demo b { color: var(--text-primary); }
+.charges-tete { display: flex; flex-wrap: wrap; gap: 18px 28px; align-items: flex-end; }
+.ct-chiffre { display: flex; flex-direction: column; gap: 2px; }
+.ct-chiffre b { font-size: var(--font-2xl); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.ct-chiffre span { font-size: var(--font-sm); }
+.ct-cote { display: flex; gap: 26px; flex-wrap: wrap; margin-left: auto; }
+.ct-petit { display: flex; flex-direction: column; gap: 2px; }
+.ct-petit span { font-size: var(--font-sm); }
+.ct-petit b { font-size: var(--font-lg); font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) {
+  .ct-cote { margin-left: 0; gap: 22px; }
+}
+
+.repart-credits {
+  display: flex; align-items: baseline; gap: 10px; width: 100%;
+  margin-top: 10px; padding: 11px 0 2px;
+  border-top: 1px solid var(--border);
+  background: none; border-left: 0; border-right: 0; border-bottom: 0;
+  font: inherit; color: var(--text-secondary); text-align: left; cursor: pointer;
+}
+.repart-credits b { margin-left: auto; font-variant-numeric: tabular-nums; }
+@media (hover: hover) { .repart-credits:hover span:first-child { color: var(--text-primary); } }
+.repart-credits:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+/* ---------------- Le champ qui vient d'être enregistré ----------------
+   Tout ce qui se saisit dans une page entre dans l'état à la frappe, et le seul
+   témoin était « Sauvegardé ✓ » au bas de la barre latérale : dix pixels et demi,
+   dans le tiroir fermé sur téléphone. On tapait dans le vide.
+
+   Un liseré vert sur le champ qu'on vient de remplir, huit dixièmes de seconde.
+   `box-shadow` et non `border` : une bordure déplacerait le contenu d'un pixel à
+   chaque frappe, et le champ sauterait sous le doigt. */
+@keyframes champ-ecrit {
+  0%   { box-shadow: 0 0 0 2px color-mix(in oklab, var(--good) 70%, transparent); }
+  70%  { box-shadow: 0 0 0 2px color-mix(in oklab, var(--good) 55%, transparent); }
+  100% { box-shadow: 0 0 0 2px transparent; }
+}
+.champ-ecrit { animation: champ-ecrit .9s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .champ-ecrit { animation: none; box-shadow: 0 0 0 2px color-mix(in oklab, var(--good) 60%, transparent); }
+}
+
+/* Les rangees de boutons d'une fiche : la validation, au bas de la carte des
+   champs, et la vie du compte, dans la carte « Actions ». Une seule classe pour
+   les deux, et une seule geometrie : deux rangees de boutons a quelques pixels
+   l'une de l'autre, l'une plus large ou plus haute que l'autre, se lisent comme
+   un oubli — que la bordure d'une carte les separe ou non.
+
+   Une grille, et non un flex, et c'est ce qui les rend comparables. En flex la
+   longueur du libelle decide de la largeur — 79 px pour « Archiver », 157 pour
+   « Clôturer et supprimer » — alors qu'ici deux colonnes de meme fraction
+   donnent la meme largeur a tous, quel que soit le mot. Les deux cartes ayant la
+   meme largeur, leurs colonnes coincident d'une carte a l'autre.
+
+   Une seule colonne sous 768 px : a 375 px deux colonnes laissent 152 px, ou
+   « Clôturer et supprimer » se plie en deux lignes. Sa rangee prenait alors
+   17 px de plus que sa voisine. Empiles, les quatre boutons sont identiques et
+   la cible est plus large sous le pouce.
+
+   Au-dela, deux colonnes poussees a droite, la ou se trouve le bouton plein de
+   toutes les fenetres de l'application. Les colonnes sont plafonnees et non la
+   rangee, et la difference n'est pas cosmetique : un plafond sur la rangee la
+   reduit a la largeur des boutons, et le filet d'`apres-champs`, dessine sur
+   elle, cesse de traverser la carte pour flotter au-dessus des deux boutons
+   comme un trait sans raison. La rangee garde donc toute la largeur, et
+   `justify-content` pousse les colonnes. Sans plafond du tout, un bouton
+   prendrait les 928 px de la carte sur un ecran de 1280. */
+.fiche-actes {
+  display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr);
+}
+.fiche-actes .btn { width: 100%; }
+.fiche-actes + .fiche-actes { margin-top: 8px; }
+.fiche-actes.apres-champs {
+  margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--grid);
+}
+@media (min-width: 768px) {
+  .fiche-actes {
+    grid-template-columns: repeat(2, minmax(0, 14em));
+    justify-content: end;
+  }
+  .fiche-actes.centre { justify-content: center; }
+}
+
+.cpt-section {
+  font-size: var(--font-sm); font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text-secondary);
+  margin: 26px 0 10px; display: flex; align-items: baseline; gap: 8px;
+  flex-wrap: wrap;
+}
+.cpt-section:first-child { margin-top: 4px; }
+.cpt-section .sub {
+  font-size: var(--font-xs); font-weight: 500; text-transform: none;
+  letter-spacing: 0; color: var(--text-secondary);
+  opacity: .8;
+}
+
+/* --- l'ecran des anciens comptes ---------------------------------------
+
+   UNE LIGNE PAR COMPTE, jamais une carte par compte : douze cartes empilees sur
+   375 px font une page qu'on ne parcourt plus, et l'action se perd dans le
+   cadre. Le nom a gauche, l'etablissement dessous en gris, l'action a droite,
+   un filet entre deux lignes.
+
+   Le filet est en HAUT et non en bas : la derniere ligne n'a alors pas de trait
+   qui la separe du bord de la carte, sans qu'une regle `:last-child` ait a le
+   reprendre. */
+.arch-titre { margin-top: 4px; }
+.arch-liste { display: flex; flex-direction: column; }
+.arch-ligne {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 0; border-top: 1px solid var(--border);
+}
+.arch-ligne:first-child { border-top: 0; }
+.arch-nom { flex: 1; min-width: 0; }
+.arch-nom b { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.arch-nom .sub { display: block; }
+.arch-actes { display: flex; align-items: center; gap: 8px; flex: none; }
+/* `.arch-agir` et non `.btn` : une regle posee sur `.btn`, meme portee, se lit
+   comme une redefinition du bouton d'action de toute l'application, et le
+   controle qui garde cette famille la refuse — a raison. */
+.arch-ligne .arch-agir { min-height: 40px; }
+.arch-jeter { min-width: 40px; font-size: var(--font-lg); }
+
+/* Le surplus d'une fiche : present dans le DOM, masque jusqu'au clic.
+
+   `display: none` et non une hauteur : les rangees d'un tableau ne s'animent
+   pas, et faire semblant couterait un conteneur de plus autour de chaque ligne.
+   La fiche defile deja, c'est elle qui donne le mouvement. */
+#modalBody .apercu-surplus { display: none; }
+#modalBody.tout-voir .apercu-surplus { display: table-row; }
+#modalBody.tout-voir .mlist.apercu-surplus { display: flex; }
+#modalBody.tout-voir .apercu-plus { display: none; }
+.apercu-maj {
+  display: flex; flex-direction: column; gap: 2px; margin: 2px 0 8px;
+  padding: 10px 12px; border-radius: var(--radius-sm); background: var(--surface-2);
+  font-size: var(--font-sm); line-height: 1.4;
+}
+.apercu-maj b { font-weight: 600; color: var(--text-primary); }
+.apercu-maj span { color: var(--muted); }
+.apercu-actifs .apercu-plus { display: block; margin: 10px auto 0; }
+.apercu-actifs .mlist:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--radius-xs); }
+#modalBody .apercu-plus td { border: 0; text-align: center; padding: 12px 0 4px; }
+
+/* Une tete a trois blocs : le titre, un chiffre, les commandes.
+
+   `.card-head` est en `nowrap` partout ailleurs, et c'est juste : deux blocs y
+   tiennent toujours. A trois, il faut le laisser passer a la ligne, sinon les
+   commandes se compriment contre le chiffre sur un ecran de telephone.
+
+   Le chiffre monte donc a hauteur du titre — `margin-left: auto` le pousse au
+   bord droit — et les commandes prennent la ligne suivante entiere, ou elles
+   retrouvent la place qu'elles avaient avant qu'un chiffre ne s'invite. */
+.tete-triple { flex-wrap: wrap; }
+.tete-triple > .tete-variation { margin-left: auto; }
+.tete-triple > .row { flex-basis: 100%; }
+.tete-variation { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; }
+.tete-variation span { font-size: var(--font-xs); color: var(--muted); }
+.tete-variation b { font-size: var(--font-lg); font-weight: 600; font-variant-numeric: tabular-nums; }
