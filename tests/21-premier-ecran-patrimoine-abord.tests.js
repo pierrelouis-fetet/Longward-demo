@@ -1179,7 +1179,8 @@ suite('Le site ne sert que l’application', () => {
     const re = motif();
     for (const p of ['/tests.html', '/tests/store.tests.js', '/tests/harness.js', '/tests/fixture.js',
                      '/CLAUDE.md', '/AGENTS.md', '/regles/tests.md', '/README.md', '/DEPLOY.md', '/ICONES.md', '/schema.sql', '/wrangler.json',
-                     '/serve.py', '/executer-tests.py', '/captures.py', '/icones.py', '/.github/workflows/tests.yml']) {
+                     '/serve.py', '/executer-tests.py', '/captures.py', '/icones.py',
+                     '/.github/workflows/tests.yml', '/.github/workflows/claude.yml']) {
       vrai(re.test(p), `${p} n’a rien à faire sur le site`);
     }
     vrai(/if \(FICHIERS_DE_DEVELOPPEMENT\.test\(path\)\) return new Response\('Not found', \{ status: 404/.test(worker()),
@@ -1202,6 +1203,63 @@ suite('Le site ne sert que l’application', () => {
     vrai(!/return json\(\{ error: e\.message \}, 502\);/.test(w), 'le message interne ne part plus au client');
     vrai(/console\.error\('api', e\);\s*return json\(\{ error: 'service indisponible' \}, 502\);/.test(w),
       'il se journalise côté serveur et le client reçoit un mot');
+  });
+});
+
+/* --- Le depot repond a @claude ----------------------------------------------
+
+   Le flux d'integration qui repond aux mentions vit dans `.github/`, un dossier
+   que le site refuse deja de servir. Ce qu'il faut garder ici est plus petit et
+   plus grave : une cle ne s'ecrit jamais en clair dans un fichier versionne, le
+   flux ne part que sur une mention, et la suite de tests garde son propre flux,
+   qui ne depend pas de lui. */
+suite('Le dépôt répond à @claude, sans exposer de clé', () => {
+  /* Les fins de ligne se normalisent : un poste Windows extrait les flux en
+     CRLF, et les motifs ancres sur `\n` ne tiendraient que sur la CI. */
+  const lf = t => (t || '').replace(/\r\n/g, '\n');
+  const flux = () => lf(lireSource('.github/workflows/claude.yml'));
+
+  test('le flux existe et emploie l’action officielle', () => {
+    const f = flux();
+    vrai(f, 'le fichier doit être lisible');
+    vrai(/uses: anthropics\/claude-code-action@v1\s*$/m.test(f), 'l’action officielle, épinglée à sa version majeure');
+    vrai(/claude_code_oauth_token: \$\{\{ secrets\.CLAUDE_KEY \}\}/.test(f), 'le jeton d’abonnement se lit dans les secrets du dépôt');
+    vrai(!/^\s+anthropic_api_key:/m.test(f), 'et il est la seule voie : pas de clé de console à côté');
+    vrai(/claude setup-token/.test(f), 'le fichier dit comment obtenir le jeton');
+    for (const droit of ['contents: write', 'pull-requests: write', 'issues: write', 'id-token: write', 'actions: read']) {
+      vrai(new RegExp(`^      ${droit}\\b`, 'm').test(f), `${droit} est déclaré sur le travail`);
+    }
+  });
+
+  test('aucune clé en clair, ni ici ni dans l’autre flux', () => {
+    for (const p of ['.github/workflows/claude.yml', '.github/workflows/tests.yml']) {
+      const f = lireSource(p);
+      vrai(f, `${p} doit être lisible`);
+      vrai(!/sk-ant-/.test(f), `${p} ne porte aucune clé Anthropic`);
+      vrai(!/anthropic_api_key:\s*['"]?[A-Za-z0-9]/.test(f) && !/claude_code_oauth_token:\s*['"]?[A-Za-z0-9]/.test(f),
+        `${p} ne colle aucun jeton : seule une référence à un secret est admise`);
+    }
+  });
+
+  test('il ne répond qu’à une mention, sur les quatre événements', () => {
+    const f = flux();
+    for (const ev of ['issue_comment', 'pull_request_review_comment', 'issues', 'pull_request_review']) {
+      vrai(new RegExp(`^  ${ev}:\\n`, 'm').test(f), `${ev} déclenche`);
+      vrai(new RegExp(`github\\.event_name == '${ev}' && `).test(f), `${ev} est gardé par la condition`);
+    }
+    vrai(/contains\(github\.event\.issue\.title, '@claude'\)/.test(f) && /contains\(github\.event\.issue\.body, '@claude'\)/.test(f),
+      'une issue le mentionne dans son titre ou dans son corps');
+    vrai(!/^\s+push:/m.test(f) && !/^\s+schedule:/m.test(f) && !/^\s+workflow_dispatch:/m.test(f),
+      'jamais sur un push, une horloge ou un bouton : une mention, ou rien');
+  });
+
+  test('la suite existante reste en place, et ne dépend pas de lui', () => {
+    const t = lf(lireSource('.github/workflows/tests.yml'));
+    vrai(t, 'tests.yml doit être lisible');
+    vrai(/^on:\n  push:\n    branches: \[main\]\n  pull_request:\n    branches: \[main\]/m.test(t),
+      'la suite tourne toujours à chaque push et à chaque PR vers main');
+    vrai(/run: python executer-tests\.py\s*$/m.test(t), 'et c’est bien le lanceur qui rend le verdict');
+    vrai(!/claude/i.test(t), 'le flux des tests ne connaît pas l’autre : ils ne dépendent pas l’un de l’autre');
   });
 });
 
