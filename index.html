@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<!-- Pas de `user-scalable=no` : le zoom qui gene sur iOS est le recadrage
+     automatique d'un champ sous 16px, qui ne se defait jamais. Il se corrige
+     dans la feuille de style. Un pincement volontaire, lui, se defait en
+     pincant : l'interdire est l'anti-motif que Safari refuse depuis iOS 10. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="format-detection" content="telephone=no,date=no,address=no">
+<title>Longward</title>
+<!-- La description que Google affiche sous le lien. `og:description` ne lui
+     suffit pas : les reseaux sociaux lisent l'une, un moteur lit l'autre, et
+     sans celle-ci il compose l'extrait avec ce qu'il trouve dans la page — sur
+     une application rendue en JavaScript, il ne trouve presque rien. -->
+<meta name="description" content="Longward, a personal wealth dashboard: accounts, markets, allocation, budget and projection. Zero dependencies, no build step, 1,900+ tests.">
+<meta name="author" content="Longward">
+<meta name="google-site-verification" content="rctWphw3ZS93KFxrhuKJHalCdEqOY7g8SmfAVgTsvcM" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Longward",
+  "applicationCategory": "FinanceApplication",
+  "operatingSystem": "Web",
+  "url": "https://longward-demo.pages.dev/",
+  "description": "A personal wealth dashboard: accounts, markets, allocation, budget and projection.",
+  "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+  "author": { "@type": "Organization", "name": "Longward" },
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+}
+</script>
+<meta property="og:type" content="website">
+<meta property="og:title" content="Longward, a personal wealth dashboard">
+<meta property="og:description" content="Accounts, markets, allocation, budget, projection. Zero dependencies, no build step, 1,900+ tests. Live demo with fictional data.">
+<meta property="og:url" content="https://longward-demo.pages.dev/">
+<meta property="og:image" content="https://longward-demo.pages.dev/docs/desktop-overview.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Longward">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f9fb">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e1116">
+<meta name="theme-color" content="#0e1116">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2026-09-29f-demo">
+<!-- Prechargement de la police des titres : sans lui, le navigateur ne la
+     decouvre qu'apres analyse de styles.css et le nom bascule sous les yeux.
+     `crossorigin` est obligatoire meme en meme origine — une police se
+     recupere toujours en mode CORS. Aucune balise de version ici : cet URL
+     doit coincider a l'octet pres avec l'url() de l'@font-face, sinon le
+     fichier est telecharge deux fois. -->
+<link rel="preload" href="assets/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/styles-01-socle.css?v=2026-09-29f-demo">
+<link rel="stylesheet" href="assets/styles-02-barre-progression-objectif.css?v=2026-09-29f-demo">
+<link rel="stylesheet" href="assets/styles-03-vue-tableau-graphiques.css?v=2026-09-29f-demo">
+<link rel="stylesheet" href="assets/styles-04-telephone-menu-passe.css?v=2026-09-29f-demo">
+<link rel="icon" href="/icon-192.png?v=2026-09-29f-demo" type="image/png">
+</head>
+<body>
+
+<div class="lancement" id="lancement" aria-hidden="true">
+  <div class="lancement-marque">
+    <img src="/icon-192.png?v=2026-09-29f-demo" alt="" width="72" height="72">
+    <span>Longward</span>
+
+    <em class="lancement-slogan"><span data-i18n="Vois juste.">See clearly.</span> <b data-i18n="Avance.">Move forward.</b></em>
+  </div>
+</div>
+
+<aside class="sidebar">
+  <button class="burger" id="burger" type="button" aria-label="Ouvrir le menu"
+          aria-expanded="false" aria-controls="nav"><span></span></button>
+
+  <button class="retour" id="btnRetour" type="button" hidden aria-label="Retour">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="14.5,5.5 8,12 14.5,18.5"/></svg>
+  </button>
+
+  <a class="brand" href="#/overview" title="Retour à la vue d'ensemble">
+    <img class="brand-mark" src="/icon-192.png?v=2026-09-29f-demo" alt="" width="34" height="34">
+    <div class="brand-text">
+      <strong>Longward</strong>
+      
+      <span class="brand-sous"><span data-i18n="Vois juste.">See clearly.</span> <b data-i18n="Avance.">Move forward.</b></span>
+      <span class="brand-vue" id="brandView"></span>
+    </div>
+  </a>
+
+  <div class="entete-actions">
+    
+    <button class="btn-rond btn-oeil-entete" id="btnMasqueEntete" type="button"
+            data-action="toggle-masque" aria-pressed="false"
+            aria-label="Masquer les montants" title="Masquer les montants (touche h)">
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path class="o-contour" d="M1.9 12S5.9 5.6 12 5.6 22.1 12 22.1 12 18.1 18.4 12 18.4 1.9 12 1.9 12Z"/>
+        <circle class="o-pupille" cx="12" cy="12" r="3"/>
+        <line class="o-barre" x1="4.5" y1="19.5" x2="19.5" y2="4.5"/>
+      </svg>
+    </button>
+    <button class="btn-rond" id="btnCloche" type="button" data-action="notifications"
+            aria-label="Ce qui demande ton attention">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.2a5.4 5.4 0 0 0-5.4 5.4c0 4-1.6 5.2-1.6 5.2h14s-1.6-1.2-1.6-5.2A5.4 5.4 0 0 0 12 4.2Z"/><path d="M10.2 18.1a2 2 0 0 0 3.6 0"/></svg>
+      <i class="pastille-ronde" id="pastilleCloche" hidden></i>
+    </button>
+    <button class="btn-rond" id="btnProfil" type="button" aria-expanded="false" aria-controls="nav"
+            aria-label="Ouvrir le menu">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="9.2" r="3.4"/><path d="M5.4 19.2a6.8 6.8 0 0 1 13.2 0"/></svg>
+    </button>
+
+    <!-- Le panneau des notifications vit ici et non dans `#view`, qui se reecrit a
+     chaque rendu : il serait ferme par le premier changement de page. -->
+    <div class="popover-notifs" id="panneauNotifs" hidden role="dialog"
+         aria-label="Ce qui demande ton attention"></div>
+  </div>
+
+  <nav class="nav" id="nav">
+    
+    <div class="nav-tete">
+      <img class="brand-mark" src="/icon-192.png?v=2026-09-29f-demo" alt="" width="38" height="38">
+      <div class="nav-tete-txt">
+        <span class="sb-label" data-i18n="nav.networth">Net worth</span>
+        <strong id="navNetWorth" class="val-masquable" role="button" tabindex="0"
+                data-action="toggle-masque" title="Masquer les montants"></strong>
+        <span class="sb-delta" id="navDelta"></span>
+      </div>
+    </div>
+
+    
+    <span class="nav-groupe" data-i18n="nav.group.tracking">Steering</span>
+    <a href="#/overview"   data-view="overview"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.2" y="3.2" width="7.4" height="7.4" rx="2"/><rect x="13.4" y="3.2" width="7.4" height="7.4" rx="2"/><rect x="3.2" y="13.4" width="7.4" height="7.4" rx="2"/><rect x="13.4" y="13.4" width="7.4" height="7.4" rx="2"/></svg><span data-i18n="nav.overview">Overview</span><span class="badge" id="badgeOverview" hidden>✎</span></a>
+    <a href="#/budget"     data-view="budget"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.8" y="5.5" width="18.4" height="13" rx="2.6"/><path d="M2.8 10h18.4"/><circle cx="17" cy="14.2" r="1.4"/></svg><span data-i18n="nav.budget">Budget</span><span class="badge" id="badgeBudget" hidden>✎</span></a>
+
+    
+    <span class="nav-groupe" data-i18n="nav.group.portfolio">Portfolio</span>
+    <a href="#/allocation" data-view="allocation"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M12 12V3.6"/><path d="M12 12l6.2 5.6"/></svg><span data-i18n="nav.allocation">Allocation</span></a>
+    <a href="#/positions"  data-view="positions"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><polyline points="3,16.5 9,10.5 13,14.5 21,6"/><polyline points="15.5,6 21,6 21,11.5"/></svg><span data-i18n="nav.positions">Markets</span></a>
+    <a href="#/accounts"   data-view="accounts"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2 21 7.6l-9 4.4-9-4.4Z"/><path d="M3 12.2l9 4.4 9-4.4"/><path d="M3 16.8l9 4.4 9-4.4"/></svg><span data-i18n="nav.accounts">Assets</span></a>
+
+    <span class="nav-groupe" data-i18n="nav.group.settings">Settings</span>
+    <a href="#/data"       data-view="data"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5v9"/><polyline points="8,9.5 12,13.5 16,9.5"/><path d="M5.5 18.5h13"/></svg><span data-i18n="nav.data">Data</span></a>
+    <a href="#/settings"   data-view="settings"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5h9.2"/><path d="M18.4 8.5H20"/><circle cx="15.8" cy="8.5" r="2.1"/><path d="M4 15.5h4.2"/><path d="M13.4 15.5H20"/><circle cx="10.8" cy="15.5" r="2.1"/></svg><span data-i18n="nav.settings">Preferences</span></a>
+    <a href="#/profil"     data-view="profil"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.2" r="3.6"/><path d="M4.8 19.8c0-3.5 3.2-5.6 7.2-5.6s7.2 2.1 7.2 5.6"/></svg><span data-i18n="nav.profil">Account</span></a>
+
+    <div class="nav-outils">
+      <button class="btn-oeil" id="btnMasque" type="button" data-action="toggle-masque"
+              title="Masquer les montants" aria-pressed="false" aria-label="Masquer les montants">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path class="o-contour" d="M1.9 12S5.9 5.6 12 5.6 22.1 12 22.1 12 18.1 18.4 12 18.4 1.9 12 1.9 12Z"/>
+          <circle class="o-pupille" cx="12" cy="12" r="3"/>
+          <line class="o-barre" x1="4.5" y1="19.5" x2="19.5" y2="4.5"/>
+        </svg>
+      </button>
+      <button class="btn-oeil" id="themeToggle" type="button" title="Basculer clair / sombre"
+              aria-label="Basculer le thème clair ou sombre"><span class="ic">◐</span></button>
+    </div>
+    <div class="compte-liens">
+      <a href="/privacy" data-i18n="account.privacy">Privacy</a>
+      <a href="/LICENSE" data-i18n="account.licence">AGPL-3.0</a>
+      <a href="/api/logout" id="btnLogout" data-i18n="account.signout">Sign out</a>
+    </div>
+  </nav>
+
+  <div class="sidebar-foot">
+    <div class="sb-net">
+      <span class="sb-label" data-i18n="nav.networth">Net worth</span>
+      <strong id="sbNetWorth" class="val-masquable" role="button" tabindex="0"
+              data-action="toggle-masque" title="Masquer les montants (touche h)"></strong>
+      <span class="sb-delta" id="sbDelta"></span>
+    </div>
+    <span class="saved" id="savedFlag" data-i18n="Sauvegardé localement">Saved locally</span>
+  </div>
+</aside>
+
+<main class="main">
+  <header class="topbar">
+    <div>
+      <h1 id="viewTitle">Aperçu</h1>
+      <p class="sub" id="viewSub">Photo instantanée de ton patrimoine</p>
+    </div>
+  </header>
+
+  <div class="bandeau-demo" id="bandeauDemo" hidden><b data-i18n="demo.badge">Fictional demo data</b> · <button type="button" class="lien-nu" data-action="quitter-demo" data-i18n="demo.quitter">Leave the example</button></div>
+  <div class="bandeau-demo" id="bandeauGraine" hidden><span data-i18n="demo.graine">A new version of the demo data is available.</span> · <button type="button" class="lien-nu" data-action="recharger-demo" data-i18n="demo.recharger">Reload the demo</button></div>
+
+  <div id="view" class="view"></div>
+</main>
+
+<div class="nav-backdrop" id="navBackdrop" hidden></div>
+
+<nav class="tabbar" id="tabbar" aria-label="Navigation principale">
+  <a href="#/overview" data-view="overview">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.2" y="3.2" width="7.4" height="7.4" rx="2"/><rect x="13.4" y="3.2" width="7.4" height="7.4" rx="2"/><rect x="3.2" y="13.4" width="7.4" height="7.4" rx="2"/><rect x="13.4" y="13.4" width="7.4" height="7.4" rx="2"/></svg>
+    <span data-i18n="Aperçu">Overview</span>
+    <i class="tab-pastille" id="tabBadgeOverview" hidden></i>
+  </a>
+  <a href="#/budget" data-view="budget">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.8" y="5.5" width="18.4" height="13" rx="2.6"/><path d="M2.8 10h18.4"/><circle cx="17" cy="14.2" r="1.4"/></svg>
+    <span data-i18n="nav.budget">Budget</span>
+    <i class="tab-pastille" id="tabBadgeBudget" hidden></i>
+  </a>
+  <a href="#/allocation" data-view="allocation">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M12 12V3.6"/><path d="M12 12l6.2 5.6"/></svg>
+    <span data-i18n="nav.allocation">Allocation</span>
+  </a>
+  <a href="#/positions" data-view="positions">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3,16.5 9,10.5 13,14.5 21,6"/><polyline points="15.5,6 21,6 21,11.5"/></svg>
+    <span data-i18n="nav.positions">Markets</span>
+  </a>
+  
+  <a href="#/accounts" data-view="accounts">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2 21 7.6l-9 4.4-9-4.4Z"/><path d="M3 12.2l9 4.4 9-4.4"/><path d="M3 16.8l9 4.4 9-4.4"/></svg>
+    <span data-i18n="nav.accounts">Assets</span>
+  </a>
+</nav>
+
+<div class="modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-panel">
+    <header class="modal-head">
+      <div>
+        <h2 id="modalTitle"></h2>
+        <p class="modal-sub" id="modalSub"></p>
+      </div>
+      <button class="btn icon" id="modalClose" type="button" aria-label="Fermer">✕</button>
+    </header>
+    <div class="modal-body" id="modalBody"></div>
+    <footer class="modal-foot" id="modalFoot"></footer>
+  </div>
+</div>
+<div class="modal" id="confirm" hidden role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="modal-panel confirm-panel">
+    <header class="modal-head"><h2 id="confirmTitle"></h2></header>
+    <div class="modal-body"><p id="confirmMsg"></p></div>
+    <footer class="modal-foot">
+      <button class="btn ghost" id="confirmNo" type="button">Annuler</button>
+      <button class="btn" id="confirmYes" type="button">Confirmer</button>
+    </footer>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="assets/parties.js?v=2026-09-29f-demo"></script>
+<script src="assets/i18n-1-socle.js?v=2026-09-29f-demo"></script>
+<script src="assets/i18n-2-anglais.js?v=2026-09-29f-demo"></script>
+<script src="assets/i18n-3-anglais-fin.js?v=2026-09-29f-demo"></script>
+<script src="assets/seed-budget.js?v=2026-09-29f-demo"></script>
+<script src="assets/seed.js?v=2026-09-29f-demo"></script>
+<script src="assets/store-01-socle.js?v=2026-09-29f-demo"></script>
+<script src="assets/store-02-bases-calcul-nommees.js?v=2026-09-29f-demo"></script>
+<script src="assets/store-03-calculs-1.js?v=2026-09-29f-demo"></script>
+<script src="assets/store-04-calculs-2.js?v=2026-09-29f-demo"></script>
+<script src="assets/store-05-analyses.js?v=2026-09-29f-demo"></script>
+<script src="assets/store-06-controles-coherence.js?v=2026-09-29f-demo"></script>
+<script src="assets/insights.js?v=2026-09-29f-demo"></script>
+<script src="assets/charts.js?v=2026-09-29f-demo"></script>
+<script src="assets/xlsx.js?v=2026-09-29f-demo"></script>
+<script src="assets/quotes.js?v=2026-09-29f-demo"></script>
+<script src="assets/cloudsync.js?v=2026-09-29f-demo"></script>
+<script src="assets/app-01-socle.js?v=2026-09-29f-demo"></script>
+<script src="assets/app-02-vue-ensemble.js?v=2026-09-29f-demo"></script>
+<script src="assets/app-03-positions.js?v=2026-09-29f-demo"></script>
+<script src="assets/app-04-cours-automatiques.js?v=2026-09-29f-demo"></script>
+<script src="assets/app-05-avoirs-comptes-portefeuilles.js?v=2026-09-29f-demo"></script>
+<script src="assets/app-06-fiche-compte-page.js?v=2026-09-29f-demo"></script>
+<script src="assets/app-07-budget-depenses.js?v=2026-09-29f-demo"></script>
+<script src="assets/app-08-actions-apercu.js?v=2026-09-29f-demo"></script>
+<script src="assets/app-08-actions-marches.js?v=2026-09-29f-demo"></script>
+<script src="assets/app-08-actions-allocation.js?v=2026-09-29f-demo"></script>
+<script src="assets/app-08-actions-comptes.js?v=2026-09-29f-demo"></script>
+<script src="assets/app-08-actions-budget.js?v=2026-09-29f-demo"></script>
+<script src="assets/app-08-actions-donnees.js?v=2026-09-29f-demo"></script>
+<script src="assets/app-09-rendu.js?v=2026-09-29f-demo"></script>
+<script src="assets/app-10-formulaire-generique.js?v=2026-09-29f-demo"></script>
+<script src="assets/app-11-fenetre-apercu.js?v=2026-09-29f-demo"></script>
+</body>
+</html>

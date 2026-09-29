@@ -1,0 +1,26 @@
+# Clé d'accès du mode réseau local — ne doit JAMAIS partir sur Git ni en ligne
+.access-key
+
+# Python
+__pycache__/
+*.pyc
+
+# Exports et sauvegardes générés localement (ils contiennent tes montants)
+*.xlsx
+*.csv
+wealth-dashboard-*.json
+patrimoine-*.json
+positions-*.json
+historique-*.json
+
+# Système
+Thumbs.db
+desktop.ini
+.DS_Store
+_validate_palette.mjs
+
+# Le journal du projet reste local. Il ne porte aucun montant reel, mais il
+# decrit le profil d'investisseur du proprietaire — ses classes, ses habitudes
+# d'achat, ses arbitrages — et un depot public n'a pas besoin de ca. Il continue
+# de s'ecrire ici, et le depot prive le versionne.
+ETAT.md

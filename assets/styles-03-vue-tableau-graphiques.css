@@ -1,0 +1,1818 @@
+/*! Longward — personal wealth dashboard
+ *  Copyright (C) 2026 Longward
+ *  Licensed under the GNU Affero General Public License, version 3 or later.
+ *  Source: https://github.com/pierrelouis-fetet/Longward-demo
+ *  Distributed WITHOUT ANY WARRANTY. See the LICENSE file for the full terms.
+ */
+.aide {
+  /* `inline-flex` : le « ? » etait centre par le bouton qu'il n'est plus. */
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; padding: 0; margin-left: 5px;
+  border-radius: var(--radius-pill); border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--muted);
+  font: inherit; font-size: 10px; font-weight: 700; line-height: 1;
+  cursor: help; vertical-align: middle; flex-shrink: 0;
+  position: relative;
+}
+.aide-collee { white-space: nowrap; }
+
+.aide:focus-visible {
+  color: var(--text-primary); border-color: var(--text-secondary);
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+.aide::after {
+  content: ''; position: absolute; inset: -6px;
+  border-radius: var(--radius-pill);
+}
+@media (hover: hover) { .aide:hover {
+  color: var(--text-primary); border-color: var(--text-secondary);
+} }
+/* Un intitule de colonne qui porte son explication.
+
+   Le « ? » rond ne tient pas dans une colonne de 48 px, ou « Poids » occupe
+   deja 40 pixels : c'est donc l'intitule qui declenche le panneau. Le pointille
+   sous le mot dit qu'il y a quelque chose a lire, sans rien ajouter en largeur.
+
+   `<i>` plutot qu'un `<span>` : les regles qui masquent des colonnes sous
+   460 px visent les `span` de l'en-tete par `nth-child`, et un span imbrique
+   aurait fait douter en relisant, meme sans casser le compte. Le style le
+   redresse, un `<i>` n'a rien d'italique a faire ici. */
+.col-aide {
+  font-style: normal; cursor: help;
+  border-bottom: 1px dotted color-mix(in oklab, currentColor 55%, transparent);
+}
+.col-aide:focus-visible {
+  color: var(--text-secondary); border-bottom-color: currentColor;
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px;
+}
+@media (hover: hover) { .col-aide:hover {
+  color: var(--text-secondary); border-bottom-color: currentColor;
+} }
+/* En `fixed`, et au-dessus de tout. */
+.aide-panneau {
+  position: fixed; z-index: 210; max-width: 290px;
+  padding: 9px 11px; border-radius: var(--radius-sm);
+  background: var(--surface-1); border: 1px solid var(--border);
+  box-shadow: var(--ombre-flottante);
+  font-size: var(--font-sm); line-height: 1.5; color: var(--text-secondary);
+  pointer-events: none;
+}
+.aide-panneau[hidden] { display: none; }
+
+/* La jauge du tirer-pour-rafraichir, sur Marches.
+
+   En `fixed` et hors du flux : elle ne pousse rien et n'a pas a etre reservee
+   dans la mise en page d'une carte. Posee sous l'en-tete, centree, invisible
+   tant que le doigt n'a rien tire — son opacite suit la course.
+
+   Le disque se remplit de violet quand le seuil est franchi : c'est le signal
+   qu'on peut lacher. Sans lui, on tire au hasard en esperant avoir assez tire. */
+.tirer {
+  position: fixed; left: 50%; top: calc(var(--h-barre) + 4px);
+  z-index: 60; opacity: 0; pointer-events: none;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--surface-1); border: 1px solid var(--border-strong);
+  box-shadow: var(--ombre-flottante);
+  transform: translate(-50%, 0);
+  display: grid; place-items: center;
+}
+.tirer > i {
+  display: block; width: 12px; height: 12px; border-radius: 50%;
+  border: 2px solid var(--text-secondary); border-top-color: transparent;
+}
+.tirer.prete { border-color: var(--accent); }
+.tirer.prete > i { border-color: var(--accent); border-top-color: transparent; }
+.tirer.tourne > i { animation: tirer-tourne .7s linear infinite; }
+@keyframes tirer-tourne { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .tirer.tourne > i { animation-duration: 2s; }
+}
+
+.jour-total { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px 16px; margin: 4px 0 18px; }
+.jour-eur { font-size: clamp(30px, 6vw, 44px); font-weight: 720; letter-spacing: -.02em; }
+.jour-pct { font-size: var(--font-lg); font-weight: 650; }
+.jour-note { font-size: var(--font-sm); color: var(--text-secondary); flex-basis: 100%; }
+.jour-total.up .jour-eur, .jour-total.up .jour-pct { color: var(--good); }
+.jour-total.down .jour-eur, .jour-total.down .jour-pct { color: var(--critical); }
+
+/* Bandeau de repères, défilement libre.
+   Le `scroll-snap-type` accrochait le geste : sept tuiles de 104 px qu'on
+   pousse d'un pouce, et le doigt se faisait reprendre à chaque case. Un
+   ruban d'indices se parcourt, il ne se feuillette pas.
+   `overscroll-behavior-x` empêche le geste horizontal de déborder sur la
+   page — sur iOS, arriver au bout déclenchait le retour arrière. */
+/* Les familles de reperes : des onglets de texte, pas des pastilles pleines.
+
+   Le ruban en dessous porte deja des tuiles encadrees ; deux etages de boites
+   se disputeraient le regard, et c'est le contenu qui doit gagner. Un souligne
+   sur l'onglet actif suffit a dire ou l'on est, comme sur CNBC.
+
+   `touch-action: pan-x` et exclusion du tirage : cette barre defile a
+   l'horizontale, juste au-dessus d'un ruban qui defile aussi, a l'endroit
+   precis ou le geste de rafraichissement s'arme. Voir `monteTirerRafraichir`,
+   qui ecarte `.reperes` et cette barre du meme geste. */
+.reperes-familles {
+  position: relative;
+  display: flex; gap: 4px; overflow-x: auto; margin-bottom: 8px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain; touch-action: pan-x;
+}
+.reperes-familles::-webkit-scrollbar { display: none; }
+.rp-famille {
+  flex: none; background: none; border: none; cursor: pointer;
+  padding: 5px 9px 7px; font: inherit; font-size: var(--font-sm); font-weight: 600;
+  color: var(--muted); white-space: nowrap;
+  transition: color .2s ease;
+}
+@media (hover: hover) { .rp-famille:hover { color: var(--text-secondary); } }
+.rp-famille.on { color: var(--text-primary); }
+
+/* Le soulignement glisse d'un onglet a l'autre.
+
+   Un `border-bottom` pose sur l'onglet actif sautait : la bordure disparait
+   d'un mot et reapparait sur l'autre, sans rien entre les deux. Un seul trait,
+   deplace en `transform`, fait le trajet — et c'est ce trajet qui dit « ces
+   quatre onglets sont une seule chose a quatre etats », la ou deux bordures
+   clignotantes disent « deux boutons independants ».
+
+   `transform` et `width`, pas `left` : la composition se fait sur le GPU et la
+   mise en page n'est pas recalculee, donc soixante images par seconde meme sur
+   un telephone modeste. La courbe part vite et finit doucement, avec un cheveu
+   de depassement — c'est ce leger excedent qui donne l'impression d'un objet
+   qui a une masse plutot que d'une valeur qui change.
+
+   La classe `glisse` n'arrive qu'apres le premier placement : au chargement, un
+   trait qui arrive en glissant depuis la gauche serait un mouvement que
+   personne n'a demande. */
+.rp-curseur {
+  position: absolute; left: 0; bottom: 0; height: 2px;
+  background: var(--accent); border-radius: 2px;
+  pointer-events: none;
+}
+.rp-curseur.glisse {
+  transition: transform .34s cubic-bezier(.34, 1.28, .48, 1),
+              width .34s cubic-bezier(.34, 1.28, .48, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .rp-curseur.glisse { transition: none; }
+}
+
+/* Le ruban se repose quand on change de famille, et il vient du bon cote.
+
+   Trois choses ont change. La duree passe a 0,42 s et l'ecart a 55 ms, donc le
+   dernier arrive vers 0,64 s : assez lent pour se voir, assez court pour ne pas
+   se faire attendre. Le mouvement devient lateral, parce que le ruban est
+   lateral — une tuile qui monte de 7 px dans une barre horizontale ne raconte
+   rien. Et il porte le sens du trajet : on passe d'Indices a Crypto, les
+   nouvelles tuiles entrent par la droite, comme la page suivante d'un carrousel.
+   C'est `--sens`, pose par la vue selon la position des deux familles dans la
+   liste.
+
+   Elle ne joue qu'au changement de famille, jamais au rafraichissement des
+   cours : la classe est posee par le clic sur un onglet, pas par le rendu. Une
+   barre qui frissonne toutes les cinq minutes fatiguerait. */
+@keyframes repere-entre {
+  from { opacity: 0; transform: translateX(calc(var(--sens, 1) * 22px)) scale(.97); }
+  to   { opacity: 1; transform: none; }
+}
+.reperes.rp-entre > .repere {
+  animation: repere-entre .42s cubic-bezier(.22, .61, .36, 1) backwards;
+}
+.reperes.rp-entre > .repere:nth-child(1) { animation-delay: 0ms; }
+.reperes.rp-entre > .repere:nth-child(2) { animation-delay: 55ms; }
+.reperes.rp-entre > .repere:nth-child(3) { animation-delay: 110ms; }
+.reperes.rp-entre > .repere:nth-child(4) { animation-delay: 165ms; }
+.reperes.rp-entre > .repere:nth-child(n+5) { animation-delay: 220ms; }
+@media (prefers-reduced-motion: reduce) {
+  .reperes.rp-entre > .repere { animation: none; }
+}
+
+.reperes {
+  display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+}
+.reperes::-webkit-scrollbar { display: none; }
+@media (max-width: 767px) {
+  /* 16 px : la marge laterale de `.view` sous 900 px. */
+  .reperes { margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
+}
+.rp-tete { display: flex; align-items: center; gap: 6px; }
+.rp-tete .rp-nom { flex: 1; min-width: 0; }
+.rp-seance {
+  flex: none; width: 12px; height: 12px;
+  fill: none; stroke: currentColor; stroke-width: 1.9;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.rp-seance.open  { color: var(--good); }
+.rp-seance.pre,
+.rp-seance.post  { color: var(--warning); }
+.rp-seance.close { color: var(--muted); fill: currentColor; stroke: none; }
+
+.repere {
+  flex: none;
+  /* Une LARGEUR, pas un plancher. `min-width` laissait chaque tuile grandir
+     avec son contenu : celle du VIX, dont la troisieme ligne porte des mots au
+     lieu d'un pourcentage, faisait 123 px contre 104 pour ses cinq voisines, et
+     le ruban se lisait comme une rangee mal alignee. Les cinq autres tenaient
+     dans 80 px de contenu, donc la largeur commune ne coute rien a personne. */
+  display: grid; gap: 1px; width: 104px;
+  padding: 8px 11px; border-radius: var(--radius-sm);
+  background: var(--surface-1); border: 1px solid var(--border);
+  font: inherit; color: inherit; text-align: left; cursor: pointer;
+  transition: border-color .12s;
+}
+@media (hover: hover) { .repere:hover { border-color: var(--accent); } }
+.rp-nom { font-size: var(--font-xs); font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.rp-prix { font-size: var(--font-base); font-weight: 600; font-variant-numeric: tabular-nums; }
+.rp-unite { font-size: var(--font-xs); font-weight: 500; color: var(--text-secondary); margin-left: 2px; }
+.rp-var { font-size: var(--font-sm); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* APRES `.rp-var`, et c'est la seule chose qui fait tenir cette regle : la
+   tuile porte les deux classes, elles ont la meme specificite, et c'est l'ordre
+   qui tranche. Ecrite avant, elle a longtemps declare une taille de 10,5 px que
+   `.rp-var` ecrasait sans que rien ne le dise — la couleur passait, la taille
+   non, et seule une mesure du style calcule pouvait le montrer.
+
+   Cette taille reduite a disparu avec sa raison d'etre : elle servait a loger
+   un libelle long, or le niveau se dit maintenant d'un mot. Il se lit donc a la
+   meme taille que le pourcentage des voisines, ce qui est plus juste : c'est la
+   meme ligne et la meme fonction.
+
+   L'encre reste secondaire : un vert pour « faible » et un rouge pour « tres
+   elevee » feraient d'un chiffre de contexte une alerte. La coupure reste un
+   filet de securite : la tuile a une largeur fixe, plus rien ne peut l'elargir,
+   mais un libelle trop long doit se couper plutot que de deborder. */
+.rp-vix {
+  color: var(--text-secondary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.jour-lignes { display: flex; flex-direction: column; gap: 2px; }
+.jour-mouv {
+  display: grid; width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 12px; row-gap: 0;
+  padding: 9px 2px; background: none; border: none;
+  border-bottom: 1px solid color-mix(in oklab, var(--grid) 60%, transparent);
+  font: inherit; color: var(--text-primary); text-align: left; cursor: pointer;
+}
+.jour-mouv:last-child { border-bottom: none; }
+.jour-mouv:active { background: var(--surface-2); }
+/* LE MASQUAGE DOIT PORTER DEUX CLASSES ICI, et ce n'est pas une precaution.
+   `.large-seulement` vit bien plus haut dans cette feuille et ne porte qu'une
+   classe, exactement comme le `display: grid` juste au-dessus : a specificite
+   egale c'est l'ordre qui tranche, donc la grille gagnait et les trois
+   mouvements de trop restaient visibles sur un telephone. Mesure a l'appui,
+   six lignes rendues et six affichees a 375 px. */
+@media (max-width: 767px) {
+  .jour-mouv.large-seulement { display: none; }
+}
+.jm-nom {
+  grid-row: 1 / 3; align-self: center;
+  font-size: var(--font-md); font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.jm-eur, .jm-pct { text-align: right; font-variant-numeric: tabular-nums; }
+.jm-eur { font-size: var(--font-lg); font-weight: 700; letter-spacing: -.01em; }
+.jm-pct { font-size: var(--font-sm); font-weight: 500; }
+/* Les memes teintes que partout : `cls()` pose up / down / flat, et le neutre
+   reste neutre plutot que de choisir un camp. */
+.jm-eur.up, .jm-pct.up { color: var(--good); }
+.jm-eur.down, .jm-pct.down { color: var(--critical); }
+.jm-eur.flat, .jm-pct.flat { color: var(--text-secondary); }
+.jm-poids { display: none; text-align: right; font-variant-numeric: tabular-nums; }
+.jour-lignes > .jm-entete { display: none; }
+
+@media (min-width: 768px) {
+  .jour-lignes {
+    --jour-cols: minmax(0, 5fr) minmax(64px, 1.4fr) minmax(76px, 1.6fr) minmax(88px, 1.6fr);
+  }
+  /* Deux classes : la regle de base de `.jour-ligne` vient plus bas dans la
+     feuille, et a specificite egale c'est l'ordre qui tranche. */
+  .jour-lignes .jour-ligne { grid-template-columns: var(--jour-cols); }
+  .jour-lignes > .jm-entete { display: block; }
+  .jour-mouv {
+    grid-template-columns: var(--jour-cols); column-gap: 10px; align-items: center;
+    padding: 7px 0;
+  }
+  .jour-mouv .jm-nom { grid-row: auto; grid-column: 1; }
+  .jour-mouv .jm-poids { display: block; grid-column: 2; }
+  .jour-mouv .jm-pct { grid-column: 3; grid-row: 1; font-size: var(--font-md); }
+  .jour-mouv .jm-eur { grid-column: 4; grid-row: 1; font-size: var(--font-md); font-weight: 650; }
+  .jour-reglages {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 8px 16px; margin: -4px 0 12px;
+  }
+  .jour-reglages > .carte-filtres, .jour-reglages > .carte-meta { margin: 0; }
+  .jour-reglages > .carte-meta { gap: 14px; margin-left: auto; }
+}
+
+/* LE DEROULEMENT DE LA CARTE DU JOUR.
+
+   `overflow: hidden` n'est pose QUE pendant le mouvement, et c'est important :
+   en permanence, il rognerait une infobulle de colonne qui deborde du cadre.
+   Il vit donc sur la classe, que la vue retire des la fin.
+
+   La HAUTEUR N'EST PAS ANIMEE ICI. Elle l'a ete, et la regle ne servait a
+   rien : la vue se redessine en entier a chaque clic, et une transition ne
+   demarre pas sur un element qui vient d'etre insere. C'est la vue qui mene le
+   mouvement, par l'API d'animation, qui n'a pas besoin d'un etat d'avant. La
+   duree et la courbe vivent donc a cote du geste, dans `deroulerJour`. */
+.jour-lignes.jl-deroule { overflow: hidden; }
+
+@keyframes jour-entre {
+  from { opacity: 0; transform: translate3d(0, -6px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+.jour-lignes.jl-deroule > * {
+  animation: jour-entre .3s cubic-bezier(.22, .61, .36, 1) backwards;
+}
+.jour-lignes.jl-deroule > :nth-child(2) { animation-delay: 40ms; }
+.jour-lignes.jl-deroule > :nth-child(3) { animation-delay: 80ms; }
+.jour-lignes.jl-deroule > :nth-child(n+4) { animation-delay: 110ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .jour-lignes.jl-deroule > * { animation: none; }
+}
+
+.jour-plus {
+  display: block; width: 100%; margin-top: 10px; padding: 9px 8px;
+  background: none; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font: inherit; font-size: var(--font-sm); font-weight: 600;
+  color: var(--text-secondary); cursor: pointer;
+}
+@media (hover: hover) {
+  .jour-plus:hover { color: var(--text-primary); border-color: var(--border-strong, var(--border)); }
+}
+.jour-plus:active { background: var(--surface-2); }
+
+.jour-ligne {
+  display: grid; align-items: center;
+  column-gap: 10px; row-gap: 1px;
+  grid-template-columns: minmax(0, 1fr) 58px 76px 92px;
+  font-size: var(--font-md); padding: 6px 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--grid) 60%, transparent);
+}
+.jour-ligne:last-child { border-bottom: none; }
+.jl-nom, .jl-nom .mois-lien {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: block; max-width: 100%;
+}
+.jour-ligne.entete {
+  font-size: var(--font-xs); font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--muted); padding-bottom: 4px;
+}
+/* Les intitules s'alignent sur leurs chiffres, a droite. Deux regles, parce
+   qu'un intitule est un bloc -- la grille blockifie ses enfants -- et que
+   `text-align` place son texte, quand `justify-content` placerait les enfants
+   d'un conteneur flex : chacune ne couvre qu'un des deux cas. */
+.jour-ligne.entete span:not(:first-child) { text-align: right; justify-content: flex-end; }
+.jl-nom { font-weight: 600; overflow: hidden; }
+.jl-nom .sub {
+  display: flex; align-items: center; gap: 5px;
+  font-size: var(--font-xs); color: var(--muted); font-weight: 400; margin-top: 1px;
+}
+.jl-poids, .jl-pct, .jl-eur {
+  text-align: right; font-variant-numeric: tabular-nums;
+}
+.jl-eur { font-weight: 650; }
+/* Le mouvement du jour, sur sa propre rangée, en pleine largeur.
+
+   Logé dans la colonne du nom, il était coupé net — « 588,77 $US → 5… » — la
+   colonne faisant 110 px à 375 px pour un texte qui en demande 150, et `.jl-nom`
+   portant `overflow: hidden` pour les noms longs. C'est un sous-titre de la
+   ligne, pas du nom : `1 / -1` lui donne la ligne entière, et il ne peut plus
+   déborder de quoi que ce soit.
+
+   La clôture de la veille en gris, la flèche plus discrète encore, le cours du
+   jour en gras et de la couleur du texte : l'œil doit tomber sur le prix
+   d'aujourd'hui — c'est lui qu'on cherche — et trouver d'où il vient sans avoir
+   à le chercher. */
+.jl-mouv {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+  font-size: var(--font-xs); color: var(--muted); font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+/* La clôture de la veille occupe une largeur fixe, calée à droite.
+
+   « Que penses-tu de mettre le prix en blanc sur une troisième ligne, aligné
+   avec le prix gris ? » Le constat est juste : les prix du jour démarraient en
+   escalier, puisqu'ils suivent une clôture dont la largeur change à chaque
+   ligne — « 588,77 $US » ne fait pas la largeur de « 19,24 € ».
+
+   Mais une troisième ligne coûte un tiers de hauteur par titre, et c'est
+   exactement ce qu'on venait de retirer pour que la carte cesse d'être lourde.
+   Elle perdrait aussi la lecture « de ceci vers cela » que la flèche porte :
+   deux prix empilés ne disent plus lequel est l'ancien.
+
+   Une largeur fixe suffit, et elle aligne les trois d'un coup : les clôtures
+   occupent la même boîte, donc les flèches partent du même pixel, donc les prix
+   du jour aussi.
+
+   Calée à **gauche**, et c'est un second correctif. À droite, le vide se
+   creusait devant le montant : « 6,23 € » démarrait 40 px après le bord, sous
+   l'en-tête POIDS, et la ligne semblait appartenir à cette colonne plutôt qu'au
+   ticker au-dessus d'elle — « le prix ne doit pas aller sous le poids ». Le même
+   vide existe toujours, mais il est passé de l'autre côté du montant, entre lui
+   et sa flèche, où rien ne le lit comme un décalage.
+
+   `6.6em` sur la police de ce sous-titre : la valeur la plus large qu'on y
+   rencontre est « 588,77 $US », et les chiffres sont tabulaires. */
+.jl-prix { color: var(--text-primary); font-weight: 650; }
+.jl-prix.jl-fige { color: var(--text-secondary); font-weight: 600; }
+/* La mention de fraîcheur se cale à droite, contre le bord de la carte.
+
+   « Le mot cours d'hier n'est pas du tout aligné en vertical » : elle suivait
+   le mouvement, dont la largeur change à chaque ligne — « 6,23 € → 6,22 € » ne
+   fait pas la largeur de « 588,77 $US → 589,90 $US » — donc elle démarrait en
+   escalier. Poussée à droite, les cinq mentions finissent au même pixel et
+   forment leur propre colonne, sans qu'il faille en déclarer une.
+
+   `margin-left: auto` plutôt qu'une largeur fixe : « pas coté aujourd'hui » et
+   « cours d'hier à 22:00 » n'ont pas la même longueur, et une colonne dimensionnée
+   sur la plus longue laisserait un vide au milieu de la ligne le reste du temps. */
+.jl-quand { margin-left: auto; padding-left: 8px; white-space: nowrap; }
+
+.pastille { width: 7px; height: 7px; border-radius: var(--radius-pill); flex-shrink: 0; display: inline-block; }
+.pastille.open { background: var(--good); animation: bat 2s ease-in-out infinite; }
+.pastille.pre, .pastille.post { background: var(--warning); }
+.pastille.close { background: var(--muted); }
+@keyframes bat { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
+@media (prefers-reduced-motion: reduce) { .pastille.open { animation: none } }
+
+@media (max-width: 460px) {
+  .jour-ligne { grid-template-columns: minmax(0, 1fr) 58px 70px 74px; column-gap: 8px; }
+}
+
+.plage { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.plage select {
+  width: auto; padding: 5px 6px; font-size: var(--font-sm);
+  color: var(--text-secondary); background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.plage select.on {
+  color: var(--text-primary); border-color: color-mix(in oklab, var(--accent) 55%, transparent);
+  background-color: color-mix(in oklab, var(--accent) 16%, var(--surface-2));
+  font-weight: 650;
+}
+.plage select.annee {
+  appearance: none; -webkit-appearance: none; padding-right: 26px; min-height: 32px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23918c9c' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 7px center; background-size: 14px;
+}
+
+.evo-commandes {
+  display: flex; justify-content: flex-end; flex-wrap: wrap;
+  margin: 0 0 10px; min-width: 0;
+}
+
+.barre-recherche {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+}
+.barre-recherche #symQuery {
+  flex: 1 1 260px; max-width: 340px; min-width: 0;
+}
+/* Le plafond vient de `menu-serre`, pose sur la balise : celui qui vivait ici,
+   220 px, etait plus large que lui et le rendait inoperant. Deux plafonds sur le
+   meme menu, c'est le plus grand qui ne sert jamais. */
+.barre-recherche select {
+  flex: 0 1 auto; width: auto;
+  font-size: var(--font-sm); color: var(--text-secondary);
+}
+
+.prix-cell > div, .prix-cell { white-space: nowrap; }
+.prix-cell input { width: calc(100% - 20px); }
+.prix-cell .dev {
+  display: inline-block; width: 16px; text-align: left;
+  font-size: var(--font-xs); color: var(--text-secondary); cursor: help;
+}
+.prix-cell .dev.etr { color: var(--series-4); font-weight: 700; }
+
+th .u {
+  font-size: var(--font-xs); font-weight: 600; opacity: .55;
+  margin-left: 3px; text-transform: none;
+}
+
+/* ---------------- Rappel de saisie mensuelle ----------------
+   Une pastille collée au mot, pas un crayon renvoyé au bout de la ligne.
+
+   Le crayon était plus parlant en théorie — il dit ce qu'on attend, écrire
+   quelque chose — mais `margin-left: auto` l'expédiait à l'autre extrémité du
+   menu. Détaché de « Relevés » par cinq centimètres de vide, incliné et
+   rouge, il se lisait comme une rayure sur l'écran plutôt que comme un
+   rappel, et on ne savait pas à quelle ligne il se rapportait.
+
+   Ambre, comme la bannière de rappel : un relevé qui attend n'est pas une
+   panne. La pastille est petite et posée contre le mot — c'est le voisinage
+   qui porte le sens, pas la taille. */
+.badge {
+  flex-shrink: 0; align-self: center;
+  width: 6px; height: 6px; border-radius: var(--radius-pill); margin-left: -4px;
+  background: var(--warning); color: transparent;
+  font-size: 0; line-height: 0; overflow: hidden;
+  animation: pastille-rappel 2.4s ease-in-out infinite;
+}
+.badge[hidden] { display: none; }
+
+@keyframes pastille-rappel {
+  0%, 100% { opacity: .5;  box-shadow: 0 0 0 0 color-mix(in oklab, var(--warning) 40%, transparent); }
+  50%      { opacity: 1;   box-shadow: 0 0 0 3px color-mix(in oklab, var(--warning) 22%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .badge { animation: none; opacity: 1; }
+}
+
+.rappel {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  font: inherit; font-size: var(--font-sm); color: var(--text-secondary); cursor: pointer;
+  padding: 10px 14px; border-radius: var(--radius);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  transition: border-color .12s;
+}
+@media (hover: hover) { .rappel:hover { border-color: color-mix(in oklab, var(--warning) 45%, var(--border)); } }
+.rappel b { color: var(--text-primary); font-weight: 600; }
+.rappel-pastille {
+  width: 7px; height: 7px; border-radius: var(--radius-pill); background: var(--warning); flex-shrink: 0;
+}
+@media (max-width: 479px) {
+  .rappel-texte br, .rappel-texte .muted { display: none; }
+}
+.rappel-mois { white-space: nowrap; }
+.rappel-texte { flex: 1 1 140px; }
+
+/* Les sorties du rappel, groupees a droite. Elles arrivent apres
+   `.note-relance .btn`, qui pose `margin-left: auto` sur chaque bouton :
+   a specificite egale, c'est l'ordre qui tranche, et trois marges
+   automatiques dans une meme rangee se partagent l'espace au lieu de
+   pousser le groupe au bout. */
+.rappel-sorties {
+  display: flex; align-items: center; gap: 6px;
+  margin-left: auto; flex: none;
+}
+/* `nowrap` : a 375 px, « Aller à la ligne » se pliait sur trois lignes et
+   « Plus tard » sur deux, ce qui triplait la hauteur du bandeau. */
+.rappel-sorties .btn { margin-left: 0; white-space: nowrap; }
+
+:is(.note-relance, .note:has(> .rappel-sorties)) { flex-wrap: wrap; }
+:is(.note-relance, .note:has(> .rappel-sorties)) > span:not(.rappel-sorties) {
+  flex: 1 1 220px;
+}
+.rappel-sorties .btn.ghost { color: var(--text-secondary); }
+.rappel-sorties .btn.icon.xs { font-size: var(--font-md); padding: 3px 7px; }
+@media (hover: hover) { .rappel-sorties .btn.icon.xs:hover:not(:disabled) { color: var(--text-primary); background: var(--surface-2); } }
+
+@keyframes flash-row {
+  0%, 100% { background: transparent; }
+  15%, 60% { background: color-mix(in oklab, var(--accent) 24%, transparent); }
+}
+tr.flash-target td { animation: flash-row 1.6s ease; }
+
+/* --- Donnees : le centre de donnees -------------------------------------
+   Un point de couleur et deux lignes pour l'etat, des sections separees par un
+   filet plutot que sept cartes de meme poids, une frise pour les sauvegardes.
+   Le jaune ne reste que sur ce qui merite d'etre verifie. Aucune couleur neuve :
+   `--good`, `--warning`, `--critical` disent l'etat comme partout ailleurs. */
+.page-tete { margin: 2px 0 2px; }
+.page-tete h2 { margin: 0; font-size: var(--font-xl); font-weight: 700; letter-spacing: -.02em; color: var(--text-primary); }
+.page-tete p { margin: 3px 0 0; font-size: var(--font-sm); color: var(--muted); }
+
+.etat-donnees { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 2px 12px; align-items: start; }
+.etat-point { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; background: var(--good);
+              box-shadow: 0 0 0 4px color-mix(in oklab, var(--good) 16%, transparent); }
+.etat-attente .etat-point, .etat-alerte .etat-point, .controles-alerte .etat-point {
+  background: var(--warning); box-shadow: 0 0 0 4px color-mix(in oklab, var(--warning) 16%, transparent); }
+.etat-erreur .etat-point { background: var(--critical); box-shadow: 0 0 0 4px color-mix(in oklab, var(--critical) 16%, transparent); }
+.etat-texte { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.etat-texte > b { font-size: var(--font-md); font-weight: 650; color: var(--text-primary); }
+.etat-texte .sub { display: block; }
+.etat-compte { margin-top: 5px; font-size: var(--font-sm); color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.etat-sync { align-self: start; margin: -4px -6px 0 0; font-size: var(--font-xl); line-height: 1; }
+.etat-conflit { grid-column: 1 / -1; margin-top: 10px; }
+.btn.en-cours { opacity: .55; animation: tourne 1s linear infinite; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .btn.en-cours { animation: none; } }
+
+.surtitre { font-size: var(--font-xs); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.controles-tete { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 1px 12px; align-items: center; }
+.controles-tete .etat-point { grid-row: 1 / span 2; margin-top: 0; }
+.controles-tete > b { font-size: var(--font-md); font-weight: 650; color: var(--text-primary); }
+.controles-liste { list-style: none; margin: 8px 0 0; padding: 0; }
+.controle { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+            padding: 10px 0; border-top: 1px solid var(--grid); }
+.controle-texte { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.controle-texte b, .controle-texte h2 { margin: 0; font-size: var(--font-md); font-weight: 600; color: var(--text-primary); }
+.controle-texte .sub { display: block; overflow-wrap: anywhere; }
+.controle-ic { text-align: center; font-size: var(--font-md); color: var(--warning); }
+.controle-error .controle-ic { color: var(--critical); }
+.controle-info .controle-ic { color: var(--muted); }
+.controle .btn { flex: none; text-decoration: none; }
+.controles-debut { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--grid); }
+.controle-debut { grid-template-columns: minmax(0, 1fr) auto; border-top: none; padding-top: 6px; }
+
+.donnees-sections { padding-top: 4px; padding-bottom: 4px; }
+.donnees-section { padding: 12px 0; border-top: 1px solid var(--grid); }
+.donnees-section:first-child { border-top: none; }
+.donnees-section .paire-btn, .donnees-section > .btn { max-width: 34em; }
+.donnees-section > h2 { margin: 0 0 10px; font-size: var(--font-md); font-weight: 650; letter-spacing: -.01em; color: var(--text-primary); }
+.donnees-section .small { margin: 10px 0 0; line-height: 1.5; }
+.donnees-annuler { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; }
+.demo-bascule { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--grid); gap: 8px 12px; }
+.demo-bascule .sub { flex: 1 1 12em; }
+.fichier-cache { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+
+.frise-compte { display: block; margin: -6px 0 2px; }
+.frise { list-style: none; margin: 6px 0 0; padding: 0; }
+.frise-ligne { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; gap: 12px; align-items: center;
+               padding: 9px 0; border-top: 1px solid var(--grid); }
+.frise-quand { display: flex; flex-direction: column; }
+.frise-quand b { font-size: var(--font-sm); font-weight: 650; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.frise-quand .sub, .frise-quoi .sub { display: block; font-variant-numeric: tabular-nums; }
+.frise-quoi { min-width: 0; }
+.frise-quoi b { font-size: var(--font-md); font-weight: 600; color: var(--text-primary); }
+.frise-reste { margin-top: 4px; border-top: none; padding-top: 0; }
+.frise-reste .frise { margin-top: 4px; }
+
+.confidentialite-tete { display: flex; gap: 10px; align-items: flex-start; }
+.confidentialite-tete > span { font-size: var(--font-lg); line-height: 1.5; }
+.confidentialite-tete b { font-size: var(--font-md); font-weight: 650; color: var(--text-primary); }
+.confidentialite-tete .sub { display: block; margin-top: 2px; line-height: 1.45; }
+.confidentialite .data-view { margin-top: 10px; }
+.confidentialite-detail { margin: 10px 0 0; line-height: 1.55; }
+.diagnostic { margin-top: 0; padding: 4px 2px 0; }
+
+.zone-danger { box-shadow: var(--shadow), inset 0 0 0 1px color-mix(in oklab, var(--critical) 28%, transparent); }
+.zone-danger .card-head { margin-bottom: 6px; }
+.zone-danger .small { margin: 0; line-height: 1.5; }
+.zone-danger .btn { margin-top: 12px; }
+
+/* --- Preferences : des lignes de reglages ---------------------------------
+   Un groupe nomme en surtitre, une surface commune, des lignes separees d'un
+   filet : la forme des reglages d'un telephone. Un interrupteur pour deux etats,
+   un chevron pour plusieurs valeurs, la valeur courante lisible sur la ligne.
+   Le meme interrupteur que la cloche (`.bascule-piste`), la meme surface que
+   les cartes, sans leur remplissage : la ligne porte le sien. */
+.regl-groupe { display: flex; flex-direction: column; gap: 6px; }
+.regl-groupe > .surtitre, .regl-tete { padding: 0 4px; }
+.regl-tete { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.regl-compte { font-size: var(--font-sm); color: var(--muted); font-variant-numeric: tabular-nums; }
+.regl-liste {
+  background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden;
+}
+.regl-ligne {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px;
+  padding: 9px 14px; background: none; border: none; border-top: 1px solid var(--grid);
+  font: inherit; color: var(--text-primary); text-align: left; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: background .12s;
+}
+.regl-ligne:first-child { border-top: none; }
+.regl-ligne:active { background: var(--surface-2); }
+@media (hover: hover) { .regl-ligne:hover { background: color-mix(in oklab, var(--surface-2) 60%, transparent); } }
+.regl-ligne:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.regl-ligne[disabled] { opacity: .5; cursor: default; }
+.regl-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.regl-txt b { font-size: var(--font-base); font-weight: 550; letter-spacing: -.005em; }
+.regl-txt .sub { display: block; line-height: 1.35; }
+.regl-val {
+  flex: none; max-width: 45%; font-size: var(--font-md); color: var(--text-secondary);
+  text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.regl-chev { flex: none; margin-left: -4px; color: var(--muted); font-size: var(--font-lg); line-height: 1; }
+.regl-bascule.on .bascule-piste { background: var(--accent); border-color: color-mix(in oklab, var(--accent) 70%, transparent); }
+.regl-bascule.on .bascule-piste i { transform: translateX(17px); background: #fff; }
+.regl-bascule:active .bascule-piste i { width: 23px; }
+.regl-bascule.on:active .bascule-piste i { transform: translateX(13px); }
+.regl-note { margin: 0 4px; font-size: var(--font-sm); color: var(--muted); line-height: 1.45; }
+
+.choix-liste { display: flex; flex-direction: column; margin-top: 2px; }
+.choix-groupe { margin: 12px 6px 4px; }
+.choix-ligne {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px;
+  padding: 9px 6px; background: none; border: none; border-top: 1px solid var(--grid);
+  font: inherit; color: var(--text-primary); text-align: left; cursor: pointer; border-radius: var(--radius-xs);
+}
+.choix-ligne:first-child, .choix-groupe + .choix-ligne { border-top: none; }
+.choix-ligne:active { background: var(--surface-2); }
+@media (hover: hover) { .choix-ligne:hover { background: color-mix(in oklab, var(--surface-2) 60%, transparent); } }
+.choix-ligne:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.choix-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.choix-txt b { font-size: var(--font-base); font-weight: 550; }
+.choix-txt .sub { display: block; }
+.choix-coche { flex: none; width: 22px; text-align: center; color: var(--accent); font-weight: 700; visibility: hidden; }
+.choix-ligne.on .choix-coche { visibility: visible; }
+.card.retenir { position: relative; overflow: hidden; }
+.card.retenir::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: linear-gradient(to bottom,
+    var(--accent), color-mix(in oklab, var(--accent) 35%, transparent));
+}
+
+.card.retenir .card-head h2 {
+  font-size: var(--font-base); font-weight: 600; color: var(--text-secondary);
+}
+.card.retenir .card-head { margin-bottom: 10px; }
+.card.retenir { padding-block: 13px; }
+
+.retenir-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
+.retenir-item { position: relative; padding-left: 16px; }
+.retenir-item + .retenir-item {
+  border-top: 1px solid var(--grid); margin-top: 9px; padding-top: 9px;
+}
+.retenir-item::before {
+  content: ''; position: absolute; left: 0; top: .52em; width: 6px; height: 6px;
+  border-radius: 50%; background: var(--accent);
+}
+/* L'ETIQUETTE QUI COIFFE UNE ENTREE. Elle dit de quoi l'on parle avant de dire
+   quoi : sur une carte qui porte trois remarques sans rapport entre elles, l'oeil
+   a besoin d'un mot pour savoir s'il lit une histoire de depenses ou de dette.
+
+   En majuscules espacees et dans l'encre secondaire, comme les intitules de
+   colonnes : c'est le seul registre de l'application qui annonce sans se lire
+   comme un titre. Aucune couleur d'accent, aucune pastille — elle classe, elle
+   n'alerte pas, et une etiquette coloree sur trois entrees rendrait la carte
+   bariolee pour ne rien ajouter.
+
+   Le contraste passe par `--text-secondary` et non `--muted` : a cette taille,
+   c'est la limite sous laquelle le texte cesse d'etre lisible sur une carte.
+   Et la taille vient de l'echelle, comme les autres intitules du meme registre :
+   une valeur ecrite en pixels ici aurait cree un onzieme palier pour elle seule. */
+.retenir-oeil {
+  display: block; font-size: var(--font-xs); font-weight: 650; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-secondary); margin-bottom: 0;
+}
+.retenir-titre { display: block; font-size: var(--font-base); font-weight: 600; letter-spacing: -.01em; }
+/* LE CHIFFRE QU'ON VIENT CHERCHER SE LIT SEUL.
+
+   « Ton rythme patrimonial est d'environ 1 375 € par mois » obligeait a lire
+   une phrase entiere pour trouver un nombre. Pose devant, en gras et d'un cran
+   plus grand, il se prend d'un coup d'oeil et la phrase ne sert plus qu'a le
+   situer dans le temps.
+
+   Il ne prend pas la couleur de l'accent : celle-ci appartient deja au filet,
+   aux puces et au chevron, et un quatrieme violet dans la meme carte la
+   viderait de sa force. Un chiffre en encre pleine se voit bien assez.
+
+   `tabular-nums` parce que deux entrees voisines portant des montants doivent
+   aligner leurs chiffres ; `nowrap` parce que « +1 375 €/mois » coupe apres le
+   signe monetaire si on le laisse faire, et une unite orpheline sur la ligne
+   suivante se lit comme une faute. */
+.retenir-valeur {
+  margin: 1px 0 0; font-size: var(--font-xl); font-weight: 700; line-height: 1.15;
+  letter-spacing: -.02em; color: var(--text-primary);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+/* UNE CAPITALE SUR LA PREMIERE LETTRE, ET SUR ELLE SEULE. « janvier 2030 » est
+   une valeur autant que « 0,8 mois » : elle ouvre sa ligne et merite la majuscule
+   qu'un debut de ligne appelle. `text-transform: capitalize` aurait ecrit « 0,8
+   Mois » ; `::first-letter` ne touche qu'au premier caractere, et les valeurs qui
+   commencent par un chiffre ou un signe n'en ont pas. */
+.retenir-valeur::first-letter { text-transform: uppercase; }
+/* La rangee qui porte le chiffre et ce qu'il mesure. `baseline` et non `center` :
+   vingt pixels contre quatorze centres donneraient deux textes qui flottent,
+   alors qu'ils s'alignent naturellement sur le pied des lettres. */
+.retenir-mesure {
+  margin: 1px 0 0; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
+}
+.retenir-texte { margin: 1px 0 0; color: var(--text-secondary); max-width: 62ch; }
+.retenir-mesure .retenir-texte { margin: 0; }
+.retenir-second {
+  margin: 1px 0 0; color: var(--muted); font-size: var(--font-sm); max-width: 62ch;
+}
+.retenir-lien { display: inline-block; margin-top: 6px; font-size: var(--font-sm); font-weight: 550; }
+
+/* Deux commandes dans un en-tete de carte. Sans ce groupe, le `space-between`
+   de `.card-head` traite chaque bouton comme un element a part et les eloigne
+   l'un de l'autre autant que du titre : trois blocs repartis sur la largeur, ou
+   rien ne dit que les deux derniers vont ensemble. */
+.tete-actes { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+
+.retenir-tete { align-items: center; }
+.retenir-actes { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+.retenir-bascule {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 2px;
+  background: none; border: none; font: inherit; font-size: var(--font-sm);
+  color: var(--muted); cursor: pointer; border-radius: var(--radius-xs);
+  transition: color .15s ease;
+}
+@media (hover: hover) { .retenir-bascule:hover { color: var(--text-secondary); } }
+.retenir-bascule:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.retenir-pastille {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; flex: none; border-radius: 50%;
+  background: color-mix(in oklab, var(--accent) 14%, transparent);
+  transition: background .15s ease;
+}
+@media (hover: hover) {
+  .retenir-bascule:hover .retenir-pastille { background: color-mix(in oklab, var(--accent) 24%, transparent); }
+}
+.retenir-chevron {
+  width: 16px; height: 16px; flex: none;
+  fill: none; stroke: var(--accent); stroke-width: 2.1;
+  stroke-linecap: round; stroke-linejoin: round;
+  transition: transform .24s cubic-bezier(.16, 1, .3, 1);
+}
+.retenir-reduire .retenir-pastille .retenir-chevron { transform: rotate(180deg); }
+
+.retenir-tete-pliee { flex: 1 1 auto; min-width: 0; }
+.retenir-tete-pliee .retenir-bascule {
+  width: 100%; padding: 4px 0; font-size: var(--font-lg); font-weight: 680;
+  letter-spacing: -.015em; color: var(--text-primary);
+}
+.retenir-compte { font-size: var(--font-sm); font-weight: 400; letter-spacing: 0; color: var(--muted); }
+.retenir-tete-pliee .retenir-pastille { margin-left: auto; }
+.card.retenir.repliee .card-head { margin-bottom: 0; }
+
+.retenir-plus {
+  flex: none; background: none; border: none; font: inherit; line-height: 1;
+  color: var(--muted); cursor: pointer; padding: 6px 8px; border-radius: var(--radius-xs);
+  letter-spacing: .12em; transition: color .15s ease;
+}
+@media (hover: hover) { .retenir-plus:hover { color: var(--text-secondary); } }
+.retenir-plus:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.retenir-pli {
+  display: grid; grid-template-rows: 1fr;
+  transition: grid-template-rows .26s cubic-bezier(.16, 1, .3, 1), opacity .2s ease;
+}
+.retenir-pli > * { min-height: 0; overflow: hidden; }
+.card.retenir.repliee .retenir-pli {
+  grid-template-rows: 0fr; opacity: 0; visibility: hidden;
+  transition: grid-template-rows .22s cubic-bezier(.16, 1, .3, 1), opacity .14s ease,
+              visibility 0s .22s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .retenir-chevron, .retenir-pli, .card.retenir.repliee .retenir-pli,
+  .retenir-pastille, .retenir-bascule, .retenir-plus { transition: none; }
+}
+
+.devise-question { font-size: var(--font-lg); font-weight: 600; margin: 2px 0 14px; }
+.devise-choix { display: grid; gap: 8px; }
+.devise-carte {
+  display: flex; align-items: center; gap: 14px; width: 100%; min-height: 64px;
+  padding: 12px 14px; background: var(--surface-2); border: 1px solid var(--grid);
+  border-radius: var(--radius-sm); font: inherit; color: var(--text-primary);
+  text-align: left; cursor: pointer; transition: border-color .15s, background .15s;
+}
+.devise-carte.on { background: color-mix(in oklab, var(--accent) 12%, var(--surface-1)); border-color: var(--accent); }
+.devise-carte:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (hover: hover) { .devise-carte:hover { border-color: var(--accent); } }
+.devise-signe { flex: none; width: 34px; text-align: center; font-size: var(--font-xl); font-weight: 600; color: var(--accent); }
+.devise-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.devise-txt b { font-size: var(--font-base); font-weight: 600; letter-spacing: .02em; }
+
+.choix-grille { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-top: 6px; }
+.choix-grille .choix-ligne {
+  min-height: 44px; padding: 0; justify-content: center; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-variant-numeric: tabular-nums;
+}
+.choix-grille .choix-ligne.on { background: color-mix(in oklab, var(--accent) 12%, var(--surface-1)); border-color: var(--accent); }
+.choix-grille .choix-txt { flex: none; align-items: center; }
+.choix-grille .choix-coche { display: none; }
+.alertes { display: flex; flex-direction: column; margin-top: 2px; }
+.alerte-ligne {
+  display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 10px; align-items: center;
+  padding: 10px 0; border-top: 1px solid var(--grid);
+}
+.alerte-ligne:first-child { border-top: none; }
+.alerte-actes { display: flex; align-items: center; gap: 2px; }
+
+.checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.chk {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 11px; align-items: center;
+  padding: 11px 13px; border-radius: var(--radius-sm); font-size: var(--font-md);
+  border: 1px solid var(--border); background: var(--surface-2);
+}
+.chk-ic { font-size: 14px; text-align: center; }
+.chk-error { border-color: color-mix(in oklab, var(--critical) 45%, transparent);
+             background: color-mix(in oklab, var(--critical) 10%, var(--surface-1)); }
+.chk-warn  { border-color: color-mix(in oklab, var(--warning) 45%, transparent);
+             background: color-mix(in oklab, var(--warning) 10%, var(--surface-1)); }
+.chk-info  { border-color: var(--border); background: var(--surface-2); }
+.chk-action { border-color: color-mix(in oklab, var(--warning) 45%, transparent);
+              background: color-mix(in oklab, var(--warning) 10%, var(--surface-1)); }
+.chk .btn { flex-shrink: 0; text-decoration: none; }
+
+th.sortable { white-space: nowrap; }
+th.sortable .th-tri {
+  all: unset; cursor: pointer; font: inherit; color: inherit;
+  display: inline-flex; align-items: baseline; gap: 0;
+}
+th.sortable .th-tri:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (hover: hover) { th.sortable .th-tri:hover { color: var(--text-primary); } }
+th.sortable .th-tri::after { content: '⇅'; opacity: .3; margin-left: 5px; font-size: 10px; }
+th.sortable.asc  .th-tri::after { content: '↑'; opacity: 1; color: var(--accent); }
+th.sortable.desc .th-tri::after { content: '↓'; opacity: 1; color: var(--accent); }
+
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.row.end { justify-content: flex-end; }
+.spacer { flex: 1; }
+.muted { color: var(--muted); }
+.small { font-size: var(--font-sm); }
+.empty {
+  color: var(--text-secondary); font-size: var(--font-md); line-height: 1.55;
+  padding: 22px 20px; text-align: center;
+  background: color-mix(in oklab, var(--surface-2) 55%, transparent);
+  border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
+}
+td .empty, th .empty { background: none; border: none; }
+
+.note {
+  background: color-mix(in oklab, var(--warning) 12%, var(--surface-1));
+  border: 1px solid color-mix(in oklab, var(--warning) 38%, transparent);
+  border-radius: var(--radius-sm); padding: 11px 13px; font-size: var(--font-sm); color: var(--text-secondary);
+  display: flex; gap: 9px; align-items: flex-start;
+}
+.note b { color: var(--text-primary); }
+
+/* La colonne des intitules etait en `auto` : une legende un peu longue —
+   « croissance reelle du patrimoine » — la poussait a 250 px et il ne restait
+   que 52 px pour le montant, qui se cassait en deux lignes. C'est la valeur
+   qui doit prendre ce dont elle a besoin, et l'intitule ce qui reste : lui
+   peut se replier, pas un chiffre. */
+/* `minmax(min-content, 1fr)` et non `minmax(0, 1fr)` pour la colonne des
+   libelles, et le mot qui change est `0`.
+   Dans une grille, une piste `auto` prend son max-content AVANT que le `fr` ne
+   recoive quoi que ce soit : le `fr` n'a que le reliquat. Avec un minimum de
+   zero, une seule valeur large — « capital 644,79 EUR · interets 190,15 EUR ·
+   assurance 59,50 EUR », 301 px pour 300 disponibles — reduisait donc la colonne
+   des libelles a ZERO, et les cinq intitules de la grille s'imprimaient une
+   lettre par ligne. Quatre n'y etaient pour rien : une valeur affame toute sa
+   grille.
+   Le plancher `min-content` vaut le plus long MOT du libelle, jamais une lettre
+   (c'est `break-word` et non `anywhere` qui coupe, voir le bloc mobile). Il
+   s'adapte donc au contenu au lieu d'etre un nombre ecrit a la main. */
+.kv { display: grid; grid-template-columns: minmax(min-content, 1fr) auto; gap: 6px 14px; font-size: var(--font-md); }
+.kv dt { color: var(--text-secondary); min-width: 0; }
+.kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; font-weight: 550;
+         white-space: nowrap; }
+/* Une valeur qui est une PHRASE, et non un montant seul, a le droit de se
+   replier. Le `nowrap` ci-dessus existe pour qu'un nombre ne se coupe jamais de
+   sa devise ; applique a « capital 644,79 EUR · interets 190,15 EUR · assurance
+   59,50 EUR », il reclamait 315 px sur les 300 disponibles. La colonne des
+   libelles, en `minmax(0, 1fr)`, tombait alors a ZERO : les cinq intitulés de la
+   grille s'ecrivaient une lettre par ligne, dont quatre qui n'y etaient pour
+   rien. Une seule valeur affame toute sa grille.
+   C'est le meme defaut que `.kv-texte` corrige pour les listes entierement en
+   prose ; celle-ci est mixte, donc la permission se pose sur la valeur. */
+.kv dd.phrase { white-space: normal; }
+/* Et sur un ecran etroit, elle prend sa PROPRE ligne.
+
+   Laisser une phrase se replier ne suffisait pas : la colonne des valeurs est en
+   `auto`, elle se dimensionne donc sur ce que la phrase demande une fois pliee,
+   et c'est encore beaucoup. Mesure a 375 px sur le bloc d'un credit : 80 px pour
+   les libelles contre 221 pour les valeurs, et les CINQ intitules replies sur
+   deux lignes — dont trois qui n'ont qu'un montant en face.
+
+   Une seule valeur affamait toute la grille, comme la fois d'avant ; la
+   permission de se replier ne l'avait qu'attenue. Sortie de la colonne, elle
+   cesse de la dimensionner : les libelles passent a 252 px, plus aucun ne se
+   replie, et le bloc raccourcit de 193 a 169 px.
+
+   Le seuil est mesure et non choisi : la famine cesse quand la carte atteint
+   520 px, soit une fenetre d'environ 585. 640 laisse une marge, et au-dessus la
+   phrase reste sur la ligne de son libelle, ou elle a la place. */
+@media (max-width: 640px) {
+  .kv dd.phrase { grid-column: 1 / -1; text-align: left; }
+}
+/* Variante pour les listes qui portent du texte et non des montants : le
+   `nowrap` ci-dessus existe pour qu'un montant ne se coupe jamais entre le
+   nombre et sa devise, mais applique a une phrase il elargit la grille jusqu'a
+   la sortir de sa fenetre. Voir la carte d'identite d'une ligne de titres.
+
+   Les colonnes s'inversent du meme coup. En `1fr auto`, une valeur qui a le
+   droit de se replier reclame quand meme tout l'espace, et c'est le libelle
+   qui se retrouve ecrase — « Nom officiel » s'ecrivait une lettre par ligne.
+   Ici le libelle prend ce qu'il lui faut, la valeur prend le reste.
+
+   Le bloc mobile plus bas redeclare `.kv dt` : les regles qui doivent le
+   battre y sont reprises, meme specificite, c'est l'ordre qui tranche. */
+.kv .kv-sous, .kv .kv-sous + dd { border-top: 1px solid var(--border); padding-top: 7px; }
+
+.kv-texte { grid-template-columns: auto minmax(0, 1fr); }
+.kv-texte dd { white-space: normal; overflow-wrap: anywhere; }
+.kv-texte dt { overflow-wrap: normal; min-width: max-content; }
+
+/* La carte « Accumulation ce mois-ci » : deux lignes qui composent, une ligne
+   qui compte.
+
+   Le total porte un filet au-dessus et un corps plus grand — c'est le dessin
+   d'une addition, et il dit sans un mot que les lignes du dessus s'y ajoutent.
+   Le filet ne se pose que si quelque chose le precede : sans credit a
+   rembourser, la decomposition n'a pas lieu d'etre et le total ouvre la liste,
+   ou un trait horizontal en tete de carte ne separerait rien.
+
+   `:first-of-type` plutot qu'un drapeau passe par le gabarit : la regle se lit
+   sur la structure reelle, donc elle reste juste le jour ou une ligne s'ajoute
+   au-dessus. */
+/* La gouttiere de 14 px de `.kv` coupait le filet en deux troncons, un sous le
+   libelle et un sous le montant, avec un trou au milieu — le trait cessait de
+   se lire comme la barre d'une addition. L'ecart passe donc en remplissage du
+   libelle : meme respiration entre les deux colonnes, et un filet continu.
+   L'ecart entre les LIGNES, lui, ne change pas. */
+.kv-accumul { column-gap: 0; }
+.kv-accumul dt { padding-right: 14px; }
+/* Trois niveaux, et ils se lisent comme une addition posee.
+
+   `.somme` marque une ligne de resultat — la capacite d'epargne, puis
+   l'accumulation : un filet au-dessus, la graisse, l'encre pleine. C'est le
+   dessin d'un trait de calcul, et il dit sans un mot que ce qui precede
+   s'additionne.
+
+   `.cle` s'ajoute au second, et lui seul : le corps monte a 18 px. Il ne porte
+   pas de couleur ici — elle vient de `cls()` sur la valeur, parce que le vert ne
+   reste significatif que si UN montant le porte.
+
+   `.sobre` redescend le taux d'un cran : il commente le resultat, il n'en fait
+   pas partie. */
+.kv-accumul .somme {
+  border-top: 1px solid var(--grid); padding-top: 9px; margin-top: 3px;
+  color: var(--text-primary);
+}
+.kv-accumul dd.cle b { font-size: var(--font-xl); letter-spacing: -.015em; }
+.kv-accumul .sobre { color: var(--muted); }
+.kv-accumul dd.sobre { font-weight: 500; }
+
+/* Le filet qui separe l'equation de ce qui la confronte. Un element vide plutot
+   qu'un `<hr>` : la liste de description est une grille a deux colonnes, et un
+   `<hr>` pose dedans n'occuperait qu'une cellule. */
+.kv-filet { border-top: 1px solid var(--grid); margin: 14px 0; }
+
+.acct-card { display: flex; flex-direction: column; gap: 12px; }
+.acct-head { display: flex; align-items: center; gap: 10px; }
+.acct-head h3 { margin: 0; font-size: var(--font-base); }
+.acct-value { font-size: var(--font-xl); font-weight: var(--fw-chiffre); letter-spacing: -.02em; }
+
+.segmented { display: inline-flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 2px; }
+.segmented button {
+  font: inherit; font-size: var(--font-sm); font-weight: 550; border: none; background: transparent; color: var(--text-secondary);
+  padding: 7px 12px; border-radius: var(--radius-xs); cursor: pointer;
+}
+.segmented button.on { background: var(--surface-1); color: var(--text-primary); box-shadow: var(--shadow); }
+
+/* --- la seconde famille : les filtres de vue ---------------------------
+   Deux natures de controle segmente vivent dans cette application, et elles ne
+   demandent pas la meme presence.
+
+   La NAVIGATION — « Aujourd'hui | Historique | Projection », « Depenses |
+   Charges fixes » — porte `.sous-onglets` et garde du volume : c'est une barre
+   qu'on vise, pas un reglage qu'on effleure.
+
+   Les FILTRES DE VUE — Net / Brut, Financier / Global, les plages, le tri d'un
+   journal, un filtre de role — portent `.seg-mini`. Ils choisissent un etat dans
+   une carte, a cote d'un titre ou d'une etiquette de 11 px, et ils ne doivent pas
+   peser plus lourd que le mot qu'ils accompagnent. « Choisir un etat » n'a pas le
+   poids de « declencher une action » : c'est ce que la difference doit dire.
+
+   **La classe existait et ne faisait rien.** Elle etait declaree 2 500 lignes
+   plus haut, avant `.segmented`, a specificite egale : elle perdait. Mesure sur
+   la bascule Net / Brut, qui la porte depuis toujours : corps calcule a 12,5 px
+   et remplissage a 7px 12px, soit exactement les valeurs de `.segmented`. Seul
+   son `letter-spacing` s'appliquait, faute de concurrent — il ELARGISSAIT le
+   controle au lieu de le reduire.
+
+   Les valeurs ne sont pas celles qu'elle annonçait : 2 px de remplissage
+   auraient donne des pilules de 17 px de haut, quand la regle de la maison en
+   demande 24 au doigt. La pilule fait 25 px et le controle 31, contre 36 pour un
+   segmente ordinaire.
+
+   Et la cible du doigt est plus grande que le dessin, comme pour les
+   boutons-icones et les pastilles d'aide : quatre pixels tout autour, poses en
+   absolu, qui n'occupent aucune place et ne peignent rien. Trente-trois pixels
+   sous le pouce pour vingt-cinq a l'oeil. */
+.seg-mini { padding: 2px; }
+.seg-mini button {
+  font-size: var(--font-sm); letter-spacing: .01em; padding: 5px 12px;
+  border-radius: var(--radius-xs); position: relative;
+  /* Posee pour la meme raison que celle de la navigation : une boite de ligne
+     en `normal` depend de ce que la pilule contient. */
+  line-height: 1.25;
+}
+@media (max-width: 900px) { .seg-mini button { padding: 7px 12px; } }
+.seg-mini button::after { content: ''; position: absolute; inset: -4px; }
+
+.choix-hypothese {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px;
+  width: min(36em, 100%);
+}
+@media (max-width: 767px) {
+  .choix-hypothese { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.choix-hypothese button {
+  display: flex; flex-direction: column; gap: 1px; align-items: flex-start;
+  font: inherit; text-align: left; cursor: pointer;
+  padding: 8px 10px; border-radius: var(--radius-sm);
+  background: var(--surface-2); border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.choix-hypothese button b { font-size: var(--font-md); font-weight: 600; }
+.choix-hypothese button span { font-size: var(--font-sm); color: var(--muted); }
+.choix-hypothese button.on {
+  background: color-mix(in oklab, var(--accent) 10%, var(--surface-1));
+  border-color: var(--accent); color: var(--text-primary);
+}
+.choix-hypothese button.on span { color: var(--text-secondary); }
+@media (hover: hover) {
+  .choix-hypothese button:not(.on):hover { border-color: var(--text-secondary); }
+}
+.choix-hypothese button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.field > .hint { display: block; font-size: var(--font-sm); color: var(--muted); margin-top: 3px; }
+
+.sous-onglets {
+  display: flex; margin-bottom: 2px;
+  /* Les pastilles ne s'etirent pas a la hauteur de la bande.
+
+     La bande DECLARE sa hauteur, `--h-sous-onglets`, parce que les bandeaux
+     collants s'y accrochent — et en `align-items` par defaut, le controle
+     segmente s'etirait pour la remplir. Sa hauteur n'etait donc pas la sienne :
+     elle valait la bande moins son remplissage, quoi qu'on demande aux pilules.
+     Mesure : 47 px a 375 px pour des boutons regles a 34.
+
+     Centrees, les pilules mesurent ce qu'on leur demande et la bande garde le
+     repere dont les collants ont besoin. Les deux faits cessent d'etre le
+     meme. */
+  align-items: center;
+  position: sticky; top: 0; z-index: 6;
+  padding: 6px 0 8px;
+  background: linear-gradient(to bottom, var(--page) calc(100% - 10px), transparent);
+  min-height: var(--h-sous-onglets); box-sizing: border-box;
+}
+/* L'ENCOCHE SE PEINT QUAND LA BARRE EST PARTIE.
+
+   En application installee, la barre du haut porte l'encoche dans son
+   remplissage : retiree de toute sa hauteur, elle emporte ce fond avec elle, et
+   la bande des sous-onglets, qui ne remonte que du dessin de la barre, s'arrete
+   sous l'heure. Entre les deux, la zone de l'encoche n'a plus que la page : le
+   contenu y defilait a travers, sous la batterie et le reseau. Vu sur un
+   iPhone, pas dans un navigateur de bureau, ou cette zone mesure zero.
+
+   Le fond vient de la bande, par un pseudo-element pose juste au-dessus d'elle,
+   de la hauteur de l'encoche et plus large que l'ecran (les gouttieres
+   comprises). Barre en place, il vit derriere elle et ne se voit pas ; barre
+   partie, il ferme le trou. `env()` vaut zero hors application installee, et
+   le pseudo-element n'a alors aucune hauteur. */
+.sous-onglets::before {
+  content: ''; position: absolute; left: -50vw; right: -50vw; bottom: 100%;
+  height: env(safe-area-inset-top, 0px); background: var(--page);
+}
+/* La hauteur de ligne est POSEE, et ce n'est pas un detail de style.
+
+   En `normal`, elle depend de ce que la pilule contient : la pastille de rappel,
+   un `<i>` de 6 px cale a deux pixels de la ligne de base, gonflait la boite de
+   ligne de sept pixels. La barre grandissait donc de sept pixels le jour ou une
+   saisie devenait en attente, et retrecissait quand on la faisait — mesure a
+   375 px : 41 px de pilule avec la pastille, 34 sans. Une navigation qui change
+   de taille selon son contenu se remarque, et rien ne l'expliquait.
+
+   Posee, la boite de ligne ne depend plus que du corps. La pastille flotte
+   dedans sans la pousser. */
+.sous-onglets .segmented button {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 30px; padding: 0 16px; font-size: var(--font-md); line-height: 1.25;
+}
+
+.sous-onglets .segmented { background: var(--surface-1); position: relative; }
+
+/* Des cellules égales à toutes les largeurs, et non seulement au téléphone.
+
+   Le lavis se déplace par index : il suppose des cases identiques. Sur
+   ordinateur, `.segmented` se dimensionne sur son texte — « Cible » contre
+   « Patrimoine », presque du simple au double — et le lavis tombait donc à
+   côté de l'onglet qu'il devait souligner. Le défaut dormait derrière
+   « Objectifs | Patrimoine », deux mots de longueur voisine ; il s'est vu le
+   jour où le premier est devenu « Cible ».
+
+   Une grille de colonnes égales le rend structurel, et non plus dépendant
+   d'un `flex: 1` posé dans une seule requête média. La largeur reste celle du
+   contenu : les colonnes prennent celle du libellé le plus long. */
+.sous-onglets .segmented {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+}
+
+/* Le lavis glisse d'un sous-onglet a l'autre, comme la pastille de la barre du
+   bas. Meme raison : un fond par bouton disparait d'un cote et reapparait de
+   l'autre, et le lien entre les deux est a deviner.
+
+   L'effet est reserve aux sous-onglets, et c'est une contrainte de geometrie et
+   non un choix. Ici les cellules sont egales — leurs boutons portent `flex: 1`,
+   mesure faite : 169 et 169 a deux, 112 trois fois a trois. Les autres
+   `.segmented` de l'application, Net / Brut ou le filtre de role, se
+   dimensionnent sur leur texte : 46 et 50 pixels. Un deplacement par index y
+   tomberait a cote, et il faudrait mesurer en JavaScript a chaque rendu. Ils
+   gardent donc leur fond par bouton.
+
+   Le nombre de cellules se lit dans le DOM plutot que d'etre passe par le
+   gabarit : `:nth-child(3):last-child` veut dire « le troisieme est le dernier »,
+   donc il y en a trois. Une variable posee a la main dans les quatre gabarits
+   qui rendent ce composant aurait fini par se desaccorder de l'un d'eux. */
+.sous-onglets .segmented:has(> :nth-child(2):last-child) { --n: 2; }
+.sous-onglets .segmented:has(> :nth-child(3):last-child) { --n: 3; }
+.sous-onglets .segmented:has(> :nth-child(4):last-child) { --n: 4; }
+.sous-onglets .segmented::before {
+  content: ''; position: absolute; z-index: 0;
+  top: 2px; bottom: 2px; left: 2px;
+  width: calc((100% - 4px) / var(--n, 2));
+  border-radius: var(--radius-xs);
+  background: color-mix(in oklab, var(--accent) 16%, var(--surface-2));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 42%, transparent);
+  transform: translateX(calc(var(--onglet, 0) * 100%));
+  transition: transform .3s cubic-bezier(.32, 1.12, .5, 1);
+}
+.sous-onglets .segmented:has(> :nth-child(1).on) { --onglet: 0; }
+.sous-onglets .segmented:has(> :nth-child(2).on) { --onglet: 1; }
+.sous-onglets .segmented:has(> :nth-child(3).on) { --onglet: 2; }
+.sous-onglets .segmented:has(> :nth-child(4).on) { --onglet: 3; }
+.sous-onglets .segmented:not(:has(> .on))::before { opacity: 0; }
+
+@keyframes appui-barre {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(.978); }
+  100% { transform: scale(1); }
+}
+.sous-onglets .segmented.tape { animation: appui-barre .38s cubic-bezier(.3, 1.5, .5, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .sous-onglets .segmented::before { transition: none; }
+  .sous-onglets .segmented.tape { animation: none; }
+}
+.sous-onglets .segmented button { position: relative; z-index: 1; }
+.sous-onglets .segmented button.on {
+  background: none;
+  color: var(--text-primary);
+}
+@media (hover: hover) { .sous-onglets .segmented button:not(.on):hover {
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+  color: var(--text-primary);
+} }
+
+@media (max-width: 900px) {
+  /* Le collage reste sous la barre deployee, et ne bouge jamais : c'est la
+     translation, plus haut, qui remonte cette bande quand la barre se retire. Un
+     `top` qui suivrait l'etat de la barre ferait recalculer la contrainte de
+     collage a chaque image du mouvement. */
+  .sous-onglets { top: var(--h-barre); }
+
+  /* Le bandeau d'un etablissement se colle sous les sous-onglets, et non a la
+     meme hauteur qu'eux.
+
+     Il portait `top: calc(54px + …)`, exactement la valeur des sous-onglets : les
+     deux se disputaient la bande sous la barre du haut, et le bandeau gagnait.
+     Le point de rupture avait glisse lui aussi — la regle vivait sous 900 px
+     quand la barre du haut n'existe qu'a partir de 768 : entre les deux, le
+     bandeau se collait a 54 px sous une topbar de 72, donc derriere elle.
+
+     `:has()` plutot qu'une valeur unique : une page sans sous-onglets ne doit pas
+     laisser 53 px de vide au-dessus de son premier bandeau. La condition se lit
+     dans le DOM, elle ne se declare pas dans un gabarit. */
+  .view:has(.sous-onglets) .cpt-gtitre {
+    top: calc(var(--h-barre) + var(--h-sous-onglets));
+  }
+  .view:not(:has(.sous-onglets)) .cpt-gtitre { top: var(--h-barre); }
+  .sous-onglets .segmented { display: flex; width: 100%; }
+  .sous-onglets .segmented button { flex: 1; padding: 8px 12px; }
+}
+
+.toast {
+  position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+  background: var(--text-primary); color: var(--page); padding: 10px 18px; border-radius: var(--radius-pill);
+  font-size: var(--font-md); font-weight: 550; z-index: 100; box-shadow: var(--shadow);
+}
+.toast-action {
+  position: relative;
+  margin-left: 12px; padding: 0 0 0 12px;
+  border: 0; border-left: 1px solid color-mix(in oklab, var(--page) 28%, transparent);
+  background: none; color: var(--page);
+  font: inherit; font-weight: 650; text-decoration: underline;
+  text-underline-offset: 2px; cursor: pointer;
+}
+/* La zone tactile depasse le texte. Un pouce vise mal, et il vise ce bouton-ci
+   juste apres avoir compris qu'il s'est trompe de mois : 17 px de haut, c'est
+   la hauteur des lettres, pas celle d'un doigt.
+
+   Par un pseudo-element et non par du remplissage : `padding` grandit la boite
+   de ligne et la pilule passait de 37 a 54 px de haut. Une marge negative ne la
+   rattrape pas — elle n'agit pas sur la hauteur de la boite de ligne d'un
+   element en ligne. Ce calque-la est hors flux, donc invisible a la mise en
+   page, et les clics qu'il recoit sont ceux du bouton. */
+.toast-action::after {
+  content: ''; position: absolute;
+  top: -12px; bottom: -12px; left: 0; right: -8px;
+}
+@media (hover: hover) { .toast-action:hover { opacity: .75; } }
+
+@media (max-width: 1180px) {
+  .g-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g-hero, .g-2-1 { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 900px) {
+  body { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { position: static; height: auto; max-width: 100%; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px; }
+  .brand { padding: 0; }
+  .burger { display: none; }
+
+  .nav {
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 60;
+    max-height: min(78%, 560px);
+    flex-direction: column; gap: 4px;
+    padding: 24px 16px calc(78px + var(--zone-geste));
+    background: var(--sidebar);
+    border-radius: 20px 20px 0 0;
+    box-shadow: var(--ombre-ovale);
+    overflow-y: auto; overscroll-behavior: contain;
+    transform: translateY(100%);
+    transition: transform .24s cubic-bezier(.16, 1, .3, 1);
+    visibility: hidden;
+  }
+  body.nav-open .nav { transform: none; visibility: visible; }
+
+  .nav::after {
+    content: ''; position: absolute; left: 50%; top: 9px;
+    width: 38px; height: 4px; margin-left: -19px; border-radius: var(--radius-pill);
+    background: var(--sidebar-ink); opacity: .2; pointer-events: none;
+  }
+  body.nav-open .sidebar { z-index: 60; }
+  @media (prefers-reduced-motion: reduce) { .nav { transition: none; } }
+  .nav a { padding: 13px 14px; font-size: var(--font-lg); }
+  .nav a .ic { display: inline-block; width: 20px; font-size: 14px; }
+  .nav a svg.ic { width: 20px; height: 20px; }
+
+  /* Sous la barre latérale (z-index 40), pas au-dessus : celle-ci étant en
+     `fixed`, elle forme son propre contexte d'empilement — le z-index du
+     menu qu'elle contient ne peut pas dépasser le sien. */
+  .nav-backdrop {
+    display: block; position: fixed; inset: 0; z-index: 30;
+    background: rgba(0,0,0,.5); backdrop-filter: blur(2px);
+  }
+  .nav-backdrop[hidden] { display: none; }
+
+  .burger { position: relative; z-index: 70; }
+  .nav a { white-space: nowrap; padding: 7px 10px; }
+  .sidebar-foot { display: none; }
+  .compte-liens { padding: 16px 12px 6px; gap: 8px 18px; }
+  /* 10px : le retrait reellement applique aux liens ici — `.nav a` est
+     redeclare plus bas dans ce meme bloc, et c'est cette valeur qui gagne. */
+  .nav-outils { --nav-retrait: 10px; --oeil-marge: 10px; padding-top: 10px; padding-bottom: 4px; }
+  .nav-outils .btn-oeil { padding: var(--oeil-marge); }
+  .nav-outils .btn-oeil svg, #themeToggle .ic { width: 20px; height: 20px; font-size: 18px; line-height: 20px; }
+
+  /* La barre du haut se retire quand on descend, revient quand on remonte.
+
+     Elle etait clouee a l'ecran en permanence, pour que le burger reste
+     atteignable — un burger qui n'existe plus, remplace par le bouton profil et
+     par la barre du bas. Ce qu'elle gelait, mesure a 375 x 812 : 54 px, plus 53 de
+     sous-onglets, plus 94 pour l'ovale du bas et sa garde, soit 201 px, un quart
+     de l'ecran, et 44 de plus pour la barre de statut d'un iPhone.
+
+     Le motif est celui du marche, et il tient en une condition : ce qui part au
+     defilement descendant revient au premier geste vers le haut, sans qu'il faille
+     remonter en haut de page. C'est `enterAlways` de Material 3, et c'est ce que
+     font Instagram, X, LinkedIn et la barre d'adresse de Chrome. Une barre qui ne
+     reviendrait qu'en haut de page ne serait pas un standard, ce serait une perte.
+
+     Ce qui colle sous elle la suit par une translation de meme duree, plus bas dans
+     ce bloc : sans quoi les sous-onglets resteraient a 54 px du bord en laissant
+     une bande vide au-dessus d'eux.
+
+     `env(safe-area-inset-top)` reste dans le remplissage : en application
+     installee, le haut de la page passe sous l'encoche. */
+  .sidebar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 40;
+    height: var(--h-barre);
+    padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top, 0px));
+    gap: 8px; flex-wrap: nowrap;
+    /* Rien ne se rogne ici, et c'est un correctif.
+
+       Le défilement interne posé sur la barre latérale — pour qu'un écran court
+       ne rende pas son pied inatteignable — vaut pour le rail vertical de
+       l'ordinateur. Sur téléphone, ce même sélecteur est une bande de 54 px, et
+       `overflow: auto` en fait un conteneur qui découpe tout ce qui dépasse.
+
+       Le panneau des notifications vit dedans, en absolu, et descend à 306 px :
+       il était donc entièrement rogné. « Le bouton notifications ne marche plus
+       sur téléphone, rien ne s'affiche » — il marchait, on ne le voyait pas.
+       Mesure : boîte du panneau de 56 à 306, mais au milieu de cette boîte c'est
+       la page qui répondait au doigt.
+
+       C'est le cas qu'on ne voit jamais sur un grand écran, où la barre fait
+       toute la hauteur et n'a rien à découper. */
+    overflow: visible;
+    /* Le fond est celui de la page, et rien d'autre.
+
+       `var(--sidebar)`, #050506 contre #08090b pour la page, ferait trois
+       valeurs de rouge d'ecart, assez pour dessiner une bande noire en haut de
+       l'ecran sans qu'aucune bordure ne le demande. Rien du tout ne suffirait
+       pas non plus : la barre se retire au defilement, mais au premier geste vers
+       le haut elle revient en pleine page et y reste tant qu'on remonte, et les
+       lignes d'une carte traverseraient alors le titre et les deux icones, sur
+       toute la remontee.
+
+       La couleur de la page, opaque, tient les deux : en haut de page elle se
+       confond avec ce qui l'entoure, aucune bande ; en cours de remontee, les
+       cartes passent dessous et non a travers. Pas de bordure, pas de verre : le
+       bas de l'ecran en porte, mais le haut n'a pas a se detacher, seulement a
+       masquer. */
+    background: var(--page);
+    border-right: none; border-bottom: none;
+    /* Le mouvement du retour ne se declare pas ici : la regle de bascule de theme
+       vit plus loin dans la feuille et ecraserait cette transition, `transform`
+       compris. Il est donc pose la-bas, avec les couleurs, dans une declaration
+       que rien ne suit. Chercher « couleurs et retrait dans la meme declaration ».
+
+       Pas de `will-change: transform` ici, et ce n'est pas un oubli. Il promeut la
+       barre sur sa propre couche — ce qu'on veut — mais il cree aussi un bloc
+       conteneur pour tous ses descendants en `position: fixed`. Or le tiroir des
+       reglages est un enfant de cette barre : il se calait donc sur une boite de
+       54 px en haut de l'ecran au lieu de la fenetre, et s'ouvrait hors champ.
+       « Le menu parametres ne fonctionne plus, il apparait hors ecran sur tel. »
+
+       Le `translate3d` du retrait produit le meme effet, mais seulement pendant
+       qu'il est applique — et le bouton qui ouvre ce tiroir vit precisement dans la
+       barre retiree, donc hors d'atteinte a ce moment-la. `app.js` rend la barre
+       avant d'ouvrir le tiroir, ce qui ferme le dernier chemin. */
+  }
+  .main { padding-top: var(--h-barre); }
+  html { scroll-padding-top: calc(var(--h-barre) + 8px); }
+  html:has(.sous-onglets) { scroll-padding-top: calc(var(--h-barre) + var(--h-sous-onglets) + 8px); }
+
+  .pf-mesure { padding: 8px 0; }
+  .nav a { min-height: 40px; }
+
+  body.haut-cache .sidebar {
+    /* `translate3d` et non `translateY` : la troisieme coordonnee, meme nulle,
+       force le compositeur a prendre l'element en charge. C'est le remede des
+       animations qui accrochent sur iOS, et il ne coute rien ailleurs. */
+    transform: translate3d(0, -100%, 0);
+    transition-duration: .2s;
+    transition-timing-function: cubic-bezier(.4, 0, 1, 1);
+  }
+  /* Ce qui colle sous la barre suit le meme mouvement, aux memes durees et aux
+     memes courbes : deux vitesses feraient decrocher les sous-onglets de la barre
+     qu'ils accompagnent, et c'est exactement ce qui se lit comme un defaut.
+
+     Par `transform` et non par `top`, et c'est le correctif de fluidite. Animer
+     `top` sur un element collant fait recalculer sa contrainte de collage a chaque
+     image, sur le fil principal ; une translation vit sur le compositeur. Le
+     collage reste donc fixe, sous la barre deployee, et c'est la translation qui
+     remonte ces bandes quand elle part.
+
+     Rien ne bouge en haut de page : ces regles n'existent que dans l'etat retire,
+     lequel demande d'avoir defile au-dela du seuil. Ces bandes sont alors deja
+     collees, donc les translater ne les decale pas par-dessus un contenu.
+
+     La course vaut le dessin de la barre et jamais sa hauteur totale : l'encoche
+     reste, et elle reste par construction. C'est ce qui la met hors de portee
+     d'une distraction — j'ai perdu cette garde une fois, en ecrivant un zero, et
+     les sous-onglets sont remontes derriere l'heure de l'iPhone. */
+  .sous-onglets {
+    transition: transform .42s cubic-bezier(.3, .55, .25, 1);
+  }
+  body.haut-cache .sous-onglets {
+    transform: translate3d(0, calc(-1 * var(--h-barre-dessin)), 0);
+    transition-duration: .2s;
+    transition-timing-function: cubic-bezier(.4, 0, 1, 1);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar, .sous-onglets,
+    body.haut-cache .sidebar, body.haut-cache .sous-onglets { transition: none; }
+  }
+
+  /* Le bandeau d'etablissement ne se translate pas : il se gare plus haut.
+
+     Il etait dans la regle ci-dessus, et c'etait un contresens de nature. Les
+     sous-onglets sont une bande unique, en haut de l'ecran, toujours collee : la
+     translater, c'est la deplacer. Les bandeaux, eux, sont six, chacun dans sa
+     carte, et la plupart sont encore dans le flux de leur groupe pendant que la
+     barre se retire. Les translater tous de 54 px sortait chaque titre de sa
+     carte — et `.cpt-groupe` porte `overflow: clip`, donc il ne reapparaissait
+     meme pas au-dessus : il etait **decoupe**. La bande restait, vide, parce que
+     la place d'un element colle reste dans le flux. « Enorme bug en defilant
+     comptes vers le bas sur mobile, les titres de banque disparaissent. »
+
+     Ce qui doit suivre la barre n'est pas le bandeau, c'est l'endroit ou il se
+     gare. On deplace donc `top` et jamais l'element : hors collage, `top` ne fait
+     rien du tout, ce qui est exactement la garantie qui manquait.
+
+     Sans transition, a dessein. Animer le `top` d'un element colle fait
+     recalculer sa contrainte a chaque image, sur le fil principal — c'est
+     precisement ce que la session precedente a retire de ces bandes. Le bandeau
+     gare remonte donc d'un coup, puis les sous-onglets glissent par-dessus et le
+     decouvrent : il passe sous eux le temps du geste, ce qui se lit comme un
+     balayage plutot que comme un saut. Le reste du temps il n'y a rien a animer,
+     puisque `top` ne s'applique qu'a un element colle.
+
+     `var(--h-barre) - var(--h-barre-dessin)` vaut l'encoche, et rien d'autre :
+     la meme garde que celle des sous-onglets, obtenue par construction plutot que
+     par un zero ecrit a la main. */
+  body.haut-cache .view:has(.sous-onglets) .cpt-gtitre {
+    top: calc(var(--h-barre) - var(--h-barre-dessin) + var(--h-sous-onglets));
+  }
+  body.haut-cache .view:not(:has(.sous-onglets)) .cpt-gtitre {
+    top: calc(var(--h-barre) - var(--h-barre-dessin));
+  }
+
+  /* Une sous-page garde sa barre, et c'est l'exception que tient iOS aussi : la
+     barre qui porte « retour » ne se cache pas. Elle y porte aussi le titre de la
+     fiche regardee, que la barre du bas ne dit pas — celle-ci designe la rubrique,
+     pas l'ecran. Une commande ne part pas comme une etiquette.
+
+     Le refus vit dans `app.js`, qui ne pose pas la classe : le faire ici
+     demanderait de neutraliser en meme temps le retrait et la variable, soit deux
+     regles qui se contredisent a lire. */
+
+  .topbar { display: none; }
+
+  .brand-sous, .brand-text strong { display: none; }
+  .brand-vue {
+    display: block; font-size: var(--font-lg); font-weight: 680;
+    color: var(--sidebar-ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .view { padding: 14px 16px 48px; gap: 14px; }
+  .sous-onglets { padding: 0 0 6px; }
+  .g-2, .g-3, .g-4 { grid-template-columns: minmax(0, 1fr); }
+  /* Sauf deux champs COURTS, qui restent cote a cote.
+
+     C'est l'argument deja retenu deux lignes plus bas pour `.g-tuiles` : un
+     chiffre et son etiquette tiennent tres bien dans une demi-largeur. Une
+     surface et une part, une valeur et un prix d'achat, ne demandent pas trois
+     cent onze pixels chacun. Mesure sur la fiche d'un bien : les trois grilles
+     passent de 398 px de haut a 191, sans un pixel de debordement, avec un seul
+     libelle sur deux lignes et un champ jamais plus etroit que 148 px.
+
+     La classe se pose au cas par cas et non sur `.g-2` en general : la meme
+     mesure sur Preferences donne un champ a 76 px, ou deux colonnes ne sont
+     plus une economie mais une gene. La specificite fait le reste — deux
+     classes contre une, l'ordre ne decide de rien. */
+  .grid.g-paire { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g-tuiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .g-tuiles > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .g-tuiles .tile { padding: 12px 13px; }
+  .g-tuiles .t-value { font-size: var(--font-xl); }
+  /* Ce texte n'est pas une aide, c'est la base du chiffre au-dessus, et il
+     revient donc. Il a ete masque par `font-size: 0` pour deux raisons dont
+     aucune ne tient plus : tronque il faisait du bruit — il ne l'est plus, il se
+     replie sur deux lignes — et entier il donnait a chaque tuile sa propre
+     hauteur — `grid-auto-rows: 1fr`, deux lignes plus bas, les egalise depuis.
+
+     Ce qu'il coute : 56 px sur la grille des quatre tuiles de Budget, mesure a
+     375 px. Ce qu'il rend : « 1 404 € » n'est une moyenne que si l'on sait « sur
+     7 mois clos, hors charges fixes ». Un dividende sans son diviseur n'est pas
+     un chiffre plus court, c'est un chiffre faux — et la regle de la maison veut
+     qu'un rapport dise sur quelle base il se calcule, sur le petit ecran comme
+     sur le grand.
+
+     Dix et demi et non onze et demi : la tuile ne fait que 167 px de large. */
+  .g-tuiles .t-meta { font-size: var(--font-xs); flex-wrap: wrap; gap: 4px 6px; }
+  .g-tuiles { grid-auto-rows: 1fr; }
+  .pf-corps { gap: 14px; }
+  .pf-mesures {
+    grid-template-columns: minmax(0, 1fr);
+    flex-basis: 100%; max-width: none; margin-left: 0; gap: 7px;
+  }
+  .pf-mesure {
+    flex-direction: row; justify-content: space-between;
+    align-items: baseline; gap: 12px; width: 100%;
+  }
+  .pf-lab {
+    font-size: var(--font-md); font-weight: 500; letter-spacing: 0;
+    text-transform: none; color: var(--text-primary);
+  }
+  .pf-val { flex-direction: row; align-items: baseline; gap: 6px; }
+  .pf-pct::before { content: '· '; }
+  .pf-muet .pf-val { flex-direction: column; align-items: flex-end; gap: 1px; text-align: right; }
+  .pf-total > b { font-size: var(--font-2xl); }
+  .pf-mesure b { font-size: var(--font-lg); }
+  .view, .topbar { padding-left: 16px; padding-right: 16px; }
+
+  .view, .view > *, .grid, .grid > *, .card, .hero, .tile { min-width: 0; }
+  .table-wrap { max-width: 100%; }
+
+  .topbar { flex-wrap: wrap; align-items: flex-start; }
+  .topbar-actions { width: 100%; flex-wrap: wrap; }
+  .topbar h1 { font-size: var(--font-xl); }
+  .hero-value { font-size: var(--font-hero); }
+  .card, .hero { padding: 15px; }
+
+  .sous-onglets .segmented button { min-height: 34px; padding: 0 10px; font-size: var(--font-sm); }
+
+  /* Une seule convention pour les bascules de vue : l'intitule a gauche, SA
+     bascule en haut a droite de la carte, sur la meme ligne.
+
+     Elle a d'abord ete l'inverse — la bascule sous l'intitule, calee a gauche —
+     parce que l'en-tete du graphique s'y repliait deja et qu'il fallait bien
+     choisir un cote. Le bord droit vaut mieux : c'est la ou vivent les commandes
+     dans toute l'application, les vingt-six en-tetes de carte y posent leurs
+     boutons, et une bascule calee a gauche sous un titre se lit comme un
+     sous-titre.
+
+     Rien a declarer ici pour le grand chiffre : `margin-left: auto` sur la
+     bascule suffit, et il vaut aux deux tailles d'ecran. Ce qui suit ne concerne
+     que les commandes du graphique, qui se replient. */
+  .evo-commandes { justify-content: flex-end; }
+
+  .card-head { flex-wrap: wrap; gap: 10px; }
+  /* Un bouton seul qui passe a la ligne reste a droite. `space-between` distribue
+     ligne par ligne : seul sur la seconde, il partait a gauche, et la carte
+     voisine dont le titre est plus court gardait le sien a droite. Deux cartes
+     l'une sous l'autre avec leur action a deux endroits differents.
+
+     Une paire, elle, va a gauche, et ce n'est pas une exception de confort. Un
+     bouton seul est un accessoire du titre : il en suit le bord. Une paire de
+     commandes est un bloc a elle seule, et un en-tete qui la replie porte deja
+     d'autres blocs replies au-dessus — les plages du journal des ventes, le
+     selecteur d'annee des apports — tous cales a gauche. Alignee a droite, elle
+     etait la seule rangee de l'en-tete a ne pas partager son bord avec les
+     autres. `space-between` la laisse au depart de sa ligne, il n'y a donc rien
+     a poser. */
+  .card-head > .btn:last-child { margin-left: auto; }
+  .card-head .row { flex-wrap: wrap; }
+  .row { flex-wrap: wrap !important; }
+  .hero-deltas { gap: 12px 18px; }
+
+  /* Listes descriptives : le libelle garde sa largeur, la valeur se replie.
+
+     La regle precedente faisait l'inverse — libelle flexible, valeur
+     intouchable — et `overflow-wrap: anywhere` sur le libelle ramenait sa
+     largeur minimale a une seule lettre. Une valeur longue, comme le nom
+     officiel d'un ETF, prenait alors toute la place et le libelle
+     s'imprimait verticalement, un caractere par ligne.
+
+     `break-word` coupe un mot trop long sans autoriser cette reduction :
+     contrairement a `anywhere`, il ne compte pas dans la largeur minimale. */
+  .kv { grid-template-columns: minmax(min-content, 1fr) auto; gap: 10px; }
+  .kv dt { min-width: 0; overflow-wrap: break-word; }
+
+  .kv-texte { grid-template-columns: auto minmax(0, 1fr); }
+  .kv-texte dt { min-width: max-content; overflow-wrap: normal; }
+  /* Reprise, et pour la raison que `.kv-texte` documente juste au-dessus : le
+     `gap` de `.kv` est redeclare dans ce bloc, a la meme specificite et plus
+     bas dans le fichier, donc c'est lui qui tranche. Sans cette ligne le filet
+     du total se coupait en deux troncons a 375 px, avec dix pixels de trou au
+     milieu — mesure, et invisible sur grand ecran. */
+  .kv-accumul { column-gap: 0; }
+  .kv-accumul dt { padding-right: 10px; }
+
+  /* La colonne du pourcentage tient aussi sous 900 px : sans elle dans la
+     grille, le `.flow-pct` du panneau passerait a la ligne suivante et chaque
+     poste occuperait deux lignes.
+
+     Sans cette colonne, un grand espace vide longerait le bord droit. Il ne se
+     verrait pas sur la carte des charges fixes, qui remplit sa quatrieme
+     colonne -- donc la moitie des cartes concernees paraitrait juste. */
+  .flow-row { grid-template-columns: 88px minmax(0, 1fr) auto; }
+  .flow-row:has(.flow-pct) { grid-template-columns: 88px minmax(0, 1fr) auto 42px; }
+
+  .chk { grid-template-columns: 20px minmax(0, 1fr); }
+  .chk .btn { grid-column: 2; justify-self: start; }
+
+  /* iOS Safari zoome automatiquement sur un champ dont le texte fait moins
+     de 16px, et **ne dezoome jamais ensuite**. C'est la cause la plus probable
+     du « si on zoom ça reste zoomé » : on touche un champ, la page se recadre,
+     et rien ne la remet.
+
+     `!important` est ici une garantie de comportement, pas une commodite. La
+     regle etait deja la et deux selecteurs la battaient **par specificite**, pas
+     par ordre : `select.annee` (0,1,1) et `table.editable input.derived`
+     (0,2,2) contre `select` (0,0,1). Mesure a 375 px : sept champs sous les
+     16 px, dont les six selecteurs d'annee. Une taille decorative ne doit pas
+     pouvoir rallumer le zoom automatique, et la liste des exceptions n'a pas a
+     etre tenue a la main — elle se serait perimee au premier habillage suivant. */
+  input, select, textarea { font-size: 16px !important; }
+
+  .table-wrap { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+
+  /* Un tableau hors conteneur défilant reste un tableau : passé en `block`
+     il cessait d'occuper sa carte et ses colonnes se tassaient à gauche,
+     laissant la moitié de la largeur vide. Il garde donc sa mise en page de
+     tableau, occupe toute la carte, et c'est le texte qui se replie. */
+  .card > table, .grid > div > table, .data-view > table {
+    width: 100%; max-width: 100%; table-layout: auto;
+  }
+  .card > table td, .grid > div > table td, .data-view > table td {
+    white-space: normal; overflow-wrap: anywhere;
+  }
+  .card > table td.pct { white-space: nowrap; overflow-wrap: normal; }
+  .card > table td.montant { white-space: nowrap; overflow-wrap: normal; }
+
+  /* Tableau etroit tenu dans sa carte, sans conteneur defilant. Un champ de
+     saisie porte une largeur intrinseque — vingt caracteres par defaut — que
+     la mise en page automatique respecte : la colonne « Source » reclamait
+     154 px des 311 disponibles, le tableau debordait de la carte, et rien ne
+     pouvait le rattraper puisque `body` est en `overflow-x: clip`. La croix de
+     suppression tombait derriere le bord de l'ecran.
+     La regle suit celle du dessus, qui impose `table-layout: auto` avec la
+     meme specificite : declaree avant, la mienne perdait le depart.
+     Reservee aux tableaux qui doivent tenir — les grands tableaux de Budget
+     vivent dans un `.table-wrap` et gardent leurs colonnes lisibles. */
+  table.table-serree { table-layout: fixed; width: 100%; }
+  table.table-serree input, table.table-serree select { width: 100%; min-width: 0; }
+  table.table-serree td, table.table-serree th { padding-left: 4px; padding-right: 4px; }
+
+  table.cols-nom-chiffres th:nth-child(2) { width: 84px; }
+  table.cols-nom-chiffres th:nth-child(3) { width: 44px; }
+  table.cols-nom-chiffres td:last-child,
+  table.cols-nom-chiffres th:last-child { width: 34px; }
+
+  table.cols-nom-action, table.cols-nom-action tbody,
+  table.cols-nom-action tr, table.cols-nom-action td { display: block; width: auto; }
+  table.cols-nom-action tr {
+    padding: 10px 0; border-bottom: 1px solid var(--grid);
+  }
+  table.cols-nom-action tr:last-child { border-bottom: none; }
+  table.cols-nom-action td { border: none; padding: 0; text-align: left; white-space: normal; }
+  table.cols-nom-action td.name { overflow-wrap: anywhere; }
+  table.cols-nom-action td:last-child { margin-top: 8px; }
+  /* Un menu s'etire parce que ses options portent de longs noms et qu'il les
+     tronque sans rien dire. Un bouton de deux mots n'a rien a etirer : etendu
+     sur toute la carte, il devient un aplat clair par resultat, et six titres
+     cherches se lisent comme six boutons separes par du texte. Il garde donc sa
+     largeur naturelle ; `btn sm` fait deja plus de 24 px de haut, la cible du
+     doigt est tenue. */
+  table.cols-nom-action select { width: 100%; }
+
+  .sticky-col { position: static; }
+
+  .table-wrap table.editable { min-width: 880px; }   /* une colonne de plus : Classe + Rôle */
+  table.editable th, table.editable td { white-space: nowrap; }
+  /* Sauf la prose : cette regle-ci empeche un montant de se couper en deux, ce
+     qui est juste, mais elle est plus specifique que `td.prose` et lui reprenait
+     son repli. Une phrase se replie a toutes les largeurs, et d'autant plus sur
+     un ecran etroit. */
+  table.editable td.prose { white-space: normal; }
+  table.editable input, table.editable select { min-width: 4.5em; }
+  table.editable td.name input { min-width: 9em; }
+  table.editable select[data-path$=".account"] { min-width: 9.5em; }
+  table.editable select[data-path$=".category"] { min-width: 7em; }
+  .sym-cell input { min-width: 6em; }
+}
+
+@media (max-width: 900px), (pointer: coarse) {
+  /* CIBLES TACTILES : 44 PX SOUS LE DOIGT, SANS GROSSIR CE QU'ON VOIT.
+
+     Le pouce ne lit pas le dessin. La zone tactile deborde du dessin par un
+     pseudo-element transparent, calcule pour atteindre 44 px quelle que soit
+     la taille de l'element : `calc(50% - 22px)` vaut la moitie de ce qui
+     manque, et `min(0px, ...)` n'en retire jamais a ce qui mesure deja plus.
+
+     Deux familles. Les commandes qui vont par rangees contigues (boutons,
+     segments, sous-onglets, puces) ne debordent qu'en hauteur : un halo
+     lateral mordrait sur le voisin. Les petites commandes isolees (icones,
+     "?", liens de carte) debordent des deux cotes. Les icones rondes de la
+     barre ont 38 px de dessin et 3 px de halo ; le retour est une vraie boite
+     de 44, sans halo, pour ne rien prendre au lien de la marque qui le suit.
+
+     Un "?" dans une carte cliquable garde sa zone entiere : la carte lui
+     cede ce rectangle, dans le coin de son intitule, et reste cliquable
+     partout ailleurs. Son halo passe au-dessus du bouton couvrant, qui vient
+     avant lui dans la carte. */
+  .btn, .segmented button, .lien-vue, .lien-nu, .mois-lien, .ptf-compo-lien,
+  .data-view summary, .retenir-bascule, .retenir-plus, .rp-famille, .etat-cours,
+  .col-aide { position: relative; }
+  .btn, .segmented button, .rp-famille, .etat-cours, .retenir-plus { min-height: 36px; }
+  .btn.icon { min-width: 36px; }
+  .retenir-plus { min-width: 40px; }
+  .btn::after, .segmented button::after, .data-view summary::after,
+  .retenir-bascule::after, .retenir-plus::after, .rp-famille::after, .etat-cours::after {
+    content: ''; position: absolute; left: 0; right: 0;
+    top: min(0px, calc(50% - 22px)); bottom: min(0px, calc(50% - 22px));
+  }
+  .btn.icon::after, .col-aide::after,
+  .lien-vue::after, .lien-nu::after, .mois-lien::after, .ptf-compo-lien::after {
+    content: ''; position: absolute; inset: min(0px, calc(50% - 22px));
+  }
+  .aide::after { inset: -6px min(0px, calc(50% - 22px)); }
+  .btn-rond::after { content: ''; position: absolute; inset: -3px; border-radius: inherit; }
+  /* Le bouton d'un en-tete deborde deja de 4 px dans l'espace qui l'entoure
+     (styles-01, `.card-head > .btn.sm`) : son halo s'arrete a 2 px de son bord,
+     soit 40. Les halos se posent sur la boite interieure, bordure exclue :
+     un halo de 3 px deborde de 2 px de la bordure. */
+  .card-head > .btn::after { top: -3px; bottom: -3px; }
+  .frise-compte { margin-top: 0; }
+  .card-head .lien-vue::after { bottom: -7px; }
+  .apercu-pied .lien-vue::after { top: -7px; }
+  .ptf-compo-lien { min-height: 35px; }
+  .ptf-compo-lien::after { top: -3px; bottom: -3px; }
+  .lien-nu[data-action="add-position"]::after { top: -6px; bottom: -6px; }
+  .cat-actions { gap: 8px; }
+  .cat-actions .btn::after { top: -4px; bottom: -4px; }
+  .rappel-sorties { gap: 12px; }
+  .rappel-sorties > .btn:not(:last-child)::after { right: -7px; }
+  .rappel-sorties > .btn:not(:first-child)::after { left: -7px; }
+  .rappel-sorties > .btn.icon.xs:last-child::after { right: min(0px, calc(100% - 37px)); }
+  select.annee { min-height: 44px; }
+  .plage select.annee { min-height: 36px; }
+}
+
+.segmented.alloc-angles { margin: 0 0 14px; }
+/* Un nom de ligne est du texte, et il passe a la ligne : `td` est en `nowrap`
+   pour qu'un montant ne se coupe pas, mais un libelle long, en `nowrap`, pousse
+   la colonne des parts hors de la carte a 375 px. Les montants et les parts
+   gardent leur ligne. */
+.alloc-angle td.name { white-space: normal; }
+@media (max-width: 560px) {
+  .segmented.alloc-angles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

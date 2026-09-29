@@ -1,0 +1,29 @@
+# CE QUI N'EST PAS LE SITE NE SE SERT PAS.
+#
+# `wrangler.json` declare `"directory": "./"` : la racine du depot EST ce que
+# Cloudflare met en ligne, fichier par fichier. Sans cette liste, le mode
+# d'emploi de l'authentification, le schema de la base et les scripts Python
+# partent avec l'application et se telechargent a l'adresse qui porte leur nom.
+#
+# La porte du worker les protege — il faut une session pour les obtenir — mais
+# l'inscription est libre : toute personne qui cree un compte les lit. Une
+# protection qui ne tient que par la connexion ne tient pas contre un inscrit.
+#
+# Ce qui reste servi : les pages, les assets, les icones, le manifeste,
+# `robots.txt`, `_headers` et `sw.js`. Rien d'autre n'a d'adresse.
+
+*.md
+*.py
+*.sql
+*.toml
+wrangler.json
+.assetsignore
+.gitignore
+__pycache__/
+docs/
+
+# La page de tests et sa suite servent en local, ou `serve.py` les expose
+# depuis le dossier. En ligne elles n'ont pas d'usage, et elles decrivent le
+# modele de donnees dans le detail.
+tests.html
+tests/
