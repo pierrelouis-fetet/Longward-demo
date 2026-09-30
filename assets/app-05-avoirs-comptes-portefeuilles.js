@@ -125,13 +125,14 @@ function phraseDateValeur(x) {
   if (x.genre === 'vl') return d ? trad('VL du {d}').replace('{d}', d) : trad('sans date de VL');
   if (x.genre === 'cours') return d ? trad('cours du {d}').replace('{d}', d) : trad('cours jamais actualisés');
   if (x.genre === 'releve') return d ? trad('supports au {d}').replace('{d}', d) : trad('supports sans date');
+  if (x.genre === 'retrait') return d ? trad('valeur au {d}').replace('{d}', d) : trad('valeur sans date');
   return '';
 }
 
 function ligneCompte(c, avecEtab = true, nomRepete = false) {
-  const estimee = estValeurEstimee(typeCompte(c.type));
+  const estimee = estValeurEstimee(typeCompte(c.type)) || valeurAuPrixDeRetrait(typeCompte(c.type));
   const dateEstimee = estimee
-    ? phraseDateValeur(datesDuCompte(c).find(x => x.genre === 'estimation') || { genre: '' }) : '';
+    ? phraseDateValeur(datesDuCompte(c).find(x => x.genre === 'estimation' || x.genre === 'retrait') || { genre: '' }) : '';
   const v = estimee ? null : variationCompte(c.id);
   /* « +0 € depuis aout » : un changement nul n'apprend rien, et il prenait la
      place d'une information sur chaque ligne d'un compte qui n'a pas bouge —

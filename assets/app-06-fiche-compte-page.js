@@ -348,6 +348,10 @@ function espaceBien(c, idx, t) {
   const achat = coutConnu ? acq.detenu : 0;
   const partagee = Math.abs(entiere - valeur) > 0.005;
   const gain = achat ? valeur - achat : null;
+  /* Une SCPI passe par cette fiche comme un bien, sans en etre un : elle a des
+     parts, un prix que publie sa societe de gestion, et ni notaire, ni
+     indivision, ni annonces. `pierre` choisit ses mots. */
+  const pierre = !estBienEnDirect(c);
 
   return `
   <div class="card" data-anchor="estimation">
@@ -379,17 +383,27 @@ function espaceBien(c, idx, t) {
     })()}
     <div class="card-head"><h2>${trad('Mettre à jour')}</h2>
       <span class="hint">${trad('ce qui vieillit')}</span></div>
-    <p class="hint" style="margin:0 0 8px">${trad('Les deux chiffres qui bougent : ce que vaut le bien, et ce qu’il reste à rembourser. « Enregistrer » les date du jour, même inchangés.')}</p>
+    <p class="hint" style="margin:0 0 8px">${pierre
+      ? trad('Les deux chiffres qui bougent : ce que valent tes parts, et ce qu’il reste à rembourser. « Enregistrer » les date du jour, même inchangés.')
+      : trad('Les deux chiffres qui bougent : ce que vaut le bien, et ce qu’il reste à rembourser. « Enregistrer » les date du jour, même inchangés.')}</p>
     ${biens.map(({ l, i }, k) => `
       <div class="grid g-2 g-paire">
-        <div class="field"><label>${trad('Valeur estimée ({dev})')}${biens.length > 1 && l.libelle ? ` · ${esc(l.libelle)}` : ''}${aide(trad("Ce qu'un acheteur te paierait aujourd'hui, frais de notaire exclus : ceux-là sont partis en taxes le jour de l'achat et ne se revendent pas. C'est pour ça qu'un achat récent financé à crédit peut afficher un patrimoine net négatif, sans que rien ne soit faux."))}</label>
+        <div class="field"><label>${pierre ? trad('Valeur des parts ({dev})') : trad('Valeur estimée ({dev})')}${biens.length > 1 && l.libelle ? ` · ${esc(l.libelle)}` : ''}${aide(pierre ? trad(AIDE_VALEUR_PARTS) : trad("Ce qu'un acheteur te paierait aujourd'hui, frais de notaire exclus : ceux-là sont partis en taxes le jour de l'achat et ne se revendent pas. C'est pour ça qu'un achat récent financé à crédit peut afficher un patrimoine net négatif, sans que rien ne soit faux."))}</label>
           <input type="number" step="any" class="champ-large"
-                 data-path="comptes.${idx}.lignes.${i}.valeur" value="${num(l.valeur)}"${k ? '' : ' data-anchor-focus'}></div>
-        <div class="field"><label>${trad('Estimée le')}${aide(trad('le jour où tu as établi ce chiffre'))}</label>
+                 data-path="comptes.${idx}.lignes.${i}.valeur" value="${num(l.valeur)}"${k ? '' : ' data-anchor-focus'}>
+          ${!pierre ? '' : `<p class="hint" style="margin:4px 0 0">${(u => !u
+            ? trad('Indique ton nombre de parts pour pouvoir en céder une partie.')
+            : u.valeur != null ? `${fmtNombre(u.parts)} ${trad('parts')} · ${fmtPart(u.valeur)} ${trad('la part')}`
+            : `${fmtNombre(u.parts)} ${trad('parts')}`)(prixParPart(l))}</p>`}</div>
+        <div class="field"><label>${trad(pierre ? 'Valeur au' : 'Estimée le')}${aide(trad(pierre ? 'le jour où tu as lu ce prix' : 'le jour où tu as établi ce chiffre'))}</label>
           <input type="date" data-path="comptes.${idx}.lignes.${i}.estimeLe"
                  value="${esc(l.estimeLe || '')}">
-          ${l.estimeLe ? '' : `<p class="hint" style="margin:4px 0 0">${trad('estimation sans date')}</p>`}</div>
-      </div>`).join('')}
+          ${l.estimeLe ? '' : `<p class="hint" style="margin:4px 0 0">${trad(pierre ? 'valeur sans date' : 'estimation sans date')}</p>`}</div>
+      </div>
+      ${!pierre ? '' : `<div class="row" style="gap:8px;margin:0 0 12px">
+        <button type="button" class="btn sm ghost" data-action="editer-placement" data-id="${esc(c.id)}" data-i="${i}">${trad('Parts et prix de la part')}</button>
+        <button type="button" class="btn sm ghost" data-action="ceder-placement" data-id="${esc(c.id)}" data-i="${i}">${trad('Céder des parts')}</button>
+      </div>`}`).join('')}
     ${dettes.map(({ d, i }) => `
       <div class="grid g-2 g-paire" data-anchor="credit">
         <div class="field"><label>${trad('Capital restant dû ({dev})')} · ${esc(d.libelle || trad('Crédit'))}</label>
@@ -401,30 +415,30 @@ function espaceBien(c, idx, t) {
           ${d.verifieLe ? '' : `<p class="hint" style="margin:4px 0 0">${trad('capital restant dû jamais vérifié')}</p>`}</div>
       </div>`).join('')}
     ${!credit ? '' : `<dl class="kv" style="margin-top:4px">
-      <dt><b>${trad('Valeur nette')}</b>${aide(trad("La valeur du bien moins ce qu'il reste à rembourser. C'est ce montant qui compte dans ton patrimoine net."))}</dt>
+      <dt><b>${trad('Valeur nette')}</b>${aide(pierre ? trad("La valeur de tes parts moins ce qu'il reste à rembourser. C'est ce montant qui compte dans ton patrimoine net.") : trad("La valeur du bien moins ce qu'il reste à rembourser. C'est ce montant qui compte dans ton patrimoine net."))}</dt>
       <dd><b>${fmtEUR(valeur - credit)}</b></dd></dl>`}
     ${barreValiderFiche('accounts', 'bien', { credits: dettes.length })}
   </div>
 
   <div class="card">
-    <div class="card-head"><h2>${trad('Le bien')}</h2>
+    <div class="card-head"><h2>${pierre ? trad('Le placement') : trad('Le bien')}</h2>
       <span class="hint">${biens.length > 1
-        ? `${biens.length} ${trad('lots')}` : esc(trad(t.label))}</span></div>
+        ? `${biens.length} ${trad(pierre ? 'lignes' : 'lots')}` : esc(trad(t.label))}</span></div>
     ${biens.map(({ l, i }) => `
       <div class="modal-champs">
-        <div class="field"><label>${trad('Nom du bien')}</label>
-          <input data-action-change="renommer-bien" data-compte="${esc(c.id)}"
-                 value="${esc(l.libelle || '')}" placeholder="${trad('ex. Studio Lyon 3e')}"></div>
+        <div class="field"><label>${trad(pierre ? 'Nom du placement' : 'Nom du bien')}</label>
+          <input data-action-change="renommer-bien" data-compte="${esc(c.id)}" data-i="${i}"
+                 value="${esc(l.libelle || '')}" placeholder="${trad(pierre ? 'ex. Ma SCPI' : 'ex. Studio Lyon 3e')}"></div>
         <div class="grid g-2 g-paire">
           <div class="field"><label>${trad('Date d\'acquisition')}</label>
             <input type="date" data-path="comptes.${idx}.lignes.${i}.dateAcquisition"
                    value="${esc(l.dateAcquisition || '')}"></div>
-          <div class="field"><label>${trad('Ta part (%)')}${aide(trad("À remplir seulement si tu détiens ce bien à plusieurs : indivision, SCI, achat en couple sur deux tableaux de bord. Ton patrimoine ne compte alors que ta part. La valeur ci-dessus reste celle du bien entier, c'est elle que tu compares aux annonces. Elle ne répartit rien d'autre : le crédit se saisit tel que tu le dois, les loyers et les charges tels que tu les reçois et les paies. Si la mensualité d'un prêt commun est facturée pour deux, indique ta part dans la fenêtre du crédit."))}</label>
+          ${pierre && !estDeclare(l.part) ? '' : `<div class="field"><label>${trad('Ta part (%)')}${aide(pierre ? trad('Une ancienne quote-part : ton patrimoine ne compte que cette fraction de la valeur ci-dessus. Pour une SCPI, inscris plutôt tes seules parts, et vide ce champ.') : trad("À remplir seulement si tu détiens ce bien à plusieurs : indivision, SCI, achat en couple sur deux tableaux de bord. Ton patrimoine ne compte alors que ta part. La valeur ci-dessus reste celle du bien entier, c'est elle que tu compares aux annonces. Elle ne répartit rien d'autre : le crédit se saisit tel que tu le dois, les loyers et les charges tels que tu les reçois et les paies. Si la mensualité d'un prêt commun est facturée pour deux, indique ta part dans la fenêtre du crédit."))}</label>
             <input type="number" step="any" min="0" max="100" class="champ-large"
                    data-path="comptes.${idx}.lignes.${i}.part" value="${estDeclare(l.part) ? num(l.part) : ''}"
                    placeholder="100">
             ${partEstValide(l.part) ? '' : `<p class="hint" style="margin:4px 0 0">${
-              trad('La quote-part doit être comprise entre 0 et 100 %.')}</p>`}</div>
+              trad('La quote-part doit être comprise entre 0 et 100 %.')}</p>`}</div>`}
         </div>
         <div class="grid g-2 g-paire">
           ${!estBienEnDirect(c) ? '' : `<div class="field"><label>${trad('Usage')}${aide(trad("Il décide de ce que la fiche te montre : un logement mis en location a un rendement, celui que tu habites a un coût. Ta résidence principale sort aussi des avoirs mobilisables en quelques mois, parce que la vendre veut dire te reloger."))}</label>
@@ -454,13 +468,13 @@ function espaceBien(c, idx, t) {
     })()}
     <dl class="kv" style="margin-top:12px">
       <dt>${trad('Valeur actuelle')}</dt><dd><b>${fmtEUR(entiere)}</b></dd>
-      ${!partagee ? '' : `<dt>${trad('Ta part')}${aide(trad("Ton patrimoine ne compte que cette fraction. La ligne au-dessus reste la valeur du bien entier."))}
+      ${!partagee ? '' : `<dt>${trad('Ta part')}${aide(pierre ? trad('Ton patrimoine ne compte que cette fraction de la valeur des parts inscrites.') : trad("Ton patrimoine ne compte que cette fraction. La ligne au-dessus reste la valeur du bien entier."))}
         <span class="sub">${biens.map(({ l }) => partDetention(l) == null
           ? trad('à corriger') : fmtPct(partDetention(l) * 100, 0)).join(', ')}</span></dt>
         <dd><b>${fmtEUR(valeur)}</b></dd>`}
       ${!credit ? '' : `<dt>${trad('Capital restant dû')}</dt>
         <dd class="dette">−${fmtEUR(credit)}</dd>`}
-      ${!credit && !estBienEnDirect(c) ? '' : `<dt><b>${trad('Valeur nette')}</b>${aide(trad("La valeur du bien moins ce qu'il reste à rembourser. C'est ce montant qui compte dans ton patrimoine net."))}</dt>
+      ${!credit && !estBienEnDirect(c) ? '' : `<dt><b>${trad('Valeur nette')}</b>${aide(pierre ? trad("La valeur de tes parts moins ce qu'il reste à rembourser. C'est ce montant qui compte dans ton patrimoine net.") : trad("La valeur du bien moins ce qu'il reste à rembourser. C'est ce montant qui compte dans ton patrimoine net."))}</dt>
         <dd><b>${fmtEUR(valeur - credit)}</b></dd>`}
       ${(() => {
         const u = usageEffectifBien(c);
@@ -485,16 +499,19 @@ function espaceBien(c, idx, t) {
       <button class="btn sm ghost" data-action="ajouter-credit" data-id="${esc(c.etabId)}">${trad('+ Crédit')}</button></div>
     ${!dettes.length ? `
       <div class="empty">
-        <p style="margin:0 0 12px">${trad('Aucun crédit déclaré : le bien est compté '
+        <p style="margin:0 0 12px">${pierre
+          ? trad('Aucun crédit déclaré : le placement est compté en entier dans ton patrimoine, et sa valeur nette est donc sa valeur tout court.')
+          : trad('Aucun crédit déclaré : le bien est compté '
           + 'en entier dans ton patrimoine, et sa valeur nette est donc sa valeur tout '
           + 'court.')}</p>
         <button class="btn sm" data-action="ajouter-credit" data-id="${esc(c.etabId)}">
-          ${trad('+ Déclarer un crédit sur ce bien')}</button>
+          ${pierre ? trad('+ Déclarer un crédit sur ce placement') : trad('+ Déclarer un crédit sur ce bien')}</button>
       </div>` : dettes.map(({ d, i }) => carteCredit(c, d, i, idxEtab)).join('')}
     ${credit ? `<p class="small muted" style="margin:12px 0 0">${
-      trad('Après chaque mensualité, baisse le capital restant dû : ton patrimoine net '
+      (pierre ? trad('Après chaque mensualité, baisse le capital restant dû : ton patrimoine net monte d’autant, sans que la valeur de tes parts change. Le crédit est porté par {e}, il se retrouve aussi sur sa fiche.')
+      : trad('Après chaque mensualité, baisse le capital restant dû : ton patrimoine net '
       + 'monte d’autant, sans que la valeur du bien change. Le crédit est porté par {e}, '
-      + 'il se retrouve aussi sur sa fiche.').replace('{e}', esc(nomEtabDe(c)))}
+      + 'il se retrouve aussi sur sa fiche.')).replace('{e}', esc(nomEtabDe(c)))}
     </p>` : ''}
   </div>`;
 }

@@ -232,7 +232,7 @@ suite('Mettre à jour sans hésiter : le geste et sa validation, ensemble', () =
     const s = app();
     const espace = s.slice(s.indexOf('function espaceBien'), s.indexOf('function barreValiderFiche'));
     const iMaj = espace.indexOf("<h2>${trad('Mettre à jour')}</h2>");
-    const iBien = espace.indexOf("<h2>${trad('Le bien')}</h2>");
+    const iBien = espace.indexOf("<h2>${pierre ? trad('Le placement') : trad('Le bien')}</h2>");
     vrai(iMaj > 0 && iBien > iMaj, 'la carte « Mettre à jour » précède « Le bien »');
     eq((espace.match(/data-path="comptes\.\$\{idx\}\.lignes\.\$\{i\}\.valeur"/g) || []).length, 1,
       'la valeur estimée ne s’écrit qu’une fois');

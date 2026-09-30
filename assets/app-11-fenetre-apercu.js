@@ -1249,15 +1249,16 @@ function bindGlobal() {
     if (fn) fn({ dataset: { year: sel.value, type: sel.value } });
   });
 
+  /* Renommer un bien renomme son contenant du même coup : ils ne désignent
+     qu'une chose, ils ne doivent porter qu'un nom. Une SCPI, non : voir
+     `nommerPlacementImmo`. */
   document.addEventListener('change', e => {
     const champ = e.target.closest('[data-action-change="renommer-bien"]');
     if (!champ) return;
     const nom = champ.value.trim();
     const c = compteById(champ.dataset.compte);
     if (!c || !nom) { render(); return; }
-    for (const l of (c.lignes || [])) if ((l.classe || 'immobilier') === 'immobilier') l.libelle = nom;
-    const etab = ETABS().find(x => x.id === c.etabId);
-    if (etab && COMPTES().filter(x => x.etabId === etab.id).length === 1) etab.nom = nom;
+    nommerPlacementImmo(c, nom, champ.dataset.i === undefined ? null : +champ.dataset.i);
     Store.save(); render();
     toast(`${trad('Renommé en')} ${guill(nom)}`);
   });

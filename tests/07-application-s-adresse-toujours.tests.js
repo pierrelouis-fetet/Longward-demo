@@ -1578,7 +1578,7 @@ suite('La fiche d’un bien se lit dans l’ordre où l’argent sort', () => {
        341 et faisait defiler la fiche horizontalement a 375 px. */
     const src = app();
     const i = src.indexOf('const DEMANDES = {');
-    const f = src.slice(i, src.indexOf("<h2>${trad('Le bien')}</h2>", i));
+    const f = src.slice(i, src.indexOf("<h2>${pierre ? trad('Le placement') : trad('Le bien')}</h2>", i));
     vrai(f.length > 300, 'le bloc des demandes doit être trouvable');
     vrai(!/sans-veuve/.test(f), 'la phrase revient à la ligne comme n’importe quel texte');
     vrai(/\$\{trad\(q\.quoi\)\}/.test(f), 'et elle est toujours affichée');

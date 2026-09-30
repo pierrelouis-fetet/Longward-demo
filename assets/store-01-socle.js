@@ -494,7 +494,11 @@ const TYPES_COMPTE = [
      cotes », trouve par le test qui interdisait le premier. */
   { id: 'immo',    label: 'Bien immobilier', classes: ['immobilier'], defaut: 'investir',
     groupe: 'pe', direct: true, bienImmo: true },
-  { id: 'scpi',    label: 'SCPI',           classes: ['immobilier'], defaut: 'investir', groupe: 'pe', bienImmo: true, pays: 'fr' },
+  /* Une SCPI se tient en parts, chez sa societe de gestion, et vaut ses parts
+     au prix que celle-ci publie (`prixRetrait`). Ni `vl` (sa date est celle
+     d'une verification, comme une estimation) ni `terminal`. */
+  { id: 'scpi',    label: 'SCPI',           classes: ['immobilier'], defaut: 'investir', groupe: 'pe', bienImmo: true, pays: 'fr',
+    parts: true, prixRetrait: true, contenant: 'societe' },
   /* Les billets dans un portefeuille. C'est le seul argent que personne ne
      tient pour vous : pour le noter, il fallait inventer une banque appelee
      « Espèces », et se demander pourquoi l'application reclamait un
@@ -648,6 +652,8 @@ const estDetenuEnDirect = t => !!t && !!t.direct;
    comparer deux estimations. */
 const estValeurEstimee = t => !!t && (!!t.direct || !!t.estimee);
 const valeurDeReleve = t => !!t && !!t.melange;
+const valeurAuPrixDeRetrait = t => !!t && !!t.prixRetrait;
+const compteEstUnPlacement = t => estActifTerminal(t) || valeurAuPrixDeRetrait(t);
 /* Un actif terminal : le contenant EST la chose, il ne porte pas de sous-lignes.
 
    Deux facons de l'etre, et une seule question : ce qu'on detient soi-meme
@@ -1506,7 +1512,7 @@ function dateQuiSuit(chemin) {
   m = String(chemin).match(/^comptes\.(\d+)\.lignes\.(\d+)\.valeur$/);
   if (m) {
     const t = typeCompte((COMPTES()[+m[1]] || {}).type);
-    if (estValeurEstimee(t)) return { chemin: `comptes.${m[1]}.lignes.${m[2]}.estimeLe`, genre: 'estimation' };
+    if (estValeurEstimee(t) || valeurAuPrixDeRetrait(t)) return { chemin: `comptes.${m[1]}.lignes.${m[2]}.estimeLe`, genre: 'estimation' };
     if ((t && t.vl) || valeurDeReleve(t)) return { chemin: `comptes.${m[1]}.lignes.${m[2]}.estimeLe`, genre: 'vl' };
   }
   return null;
@@ -1570,6 +1576,9 @@ function datesDuCompte(c) {
   }
   if (lignes.length && valeurDeReleve(t)) {
     out.push({ genre: 'releve', date: plusAncienne(lignes.map(l => l.estimeLe || null)) });
+  }
+  if (lignes.length && valeurAuPrixDeRetrait(t)) {
+    out.push({ genre: 'retrait', date: plusAncienne(lignes.map(l => l.estimeLe || null)) });
   }
   return out;
 }

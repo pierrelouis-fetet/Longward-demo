@@ -1331,8 +1331,8 @@ suite('La plus-value ne dit que ce qu’elle peut prouver', () => {
       'le prix de revient se dérive : trois champs pour deux libertés se contrediraient');
 
     vrai(/function fermerApercuSi\(cle\)/.test(src), 'la fermeture existe');
-    eq((src.match(/fermerApercuSi\('vente'\)/g) || []).length, 3,
-      'et elle est appelée par chaque annulation : déclarée, de titres, d’un bien');
+    eq((src.match(/fermerApercuSi\('vente'\)/g) || []).length, 4,
+      'et elle est appelée par chaque annulation : déclarée, de titres, d’un bien, d’une cession');
   });
 
   

@@ -1581,6 +1581,21 @@ function delierDuBien(compteId) {
   return n;
 }
 
+function nommerPlacementImmo(c, nom, i = null) {
+  if (!c || !nom) return;
+  const lots = (c.lignes || []).filter(l => (l.classe || 'immobilier') === 'immobilier');
+  if (!estBienEnDirect(c)) {
+    if (lots.length === 1 && (c.lignes || []).length === 1 && !(c.cash || []).length) {
+      lots[0].libelle = nom; c.libelle = nom;
+    } else if (lots.length === 1) lots[0].libelle = nom;
+    else if (i != null && (c.lignes || [])[i]) c.lignes[i].libelle = nom;
+    return;
+  }
+  for (const l of lots) l.libelle = nom;
+  const etab = etabById(c.etabId);
+  if (etab && COMPTES().filter(x => x.etabId === etab.id).length === 1) etab.nom = nom;
+}
+
 function rattacherCredit(d, bienId) {
   if (!d) return;
   d.bienId = bienId || null;

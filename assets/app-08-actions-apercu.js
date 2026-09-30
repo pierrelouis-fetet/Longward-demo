@@ -5,7 +5,7 @@
  *  Distributed WITHOUT ANY WARRANTY. See the LICENSE file for the full terms.
  */
 function litPlacement(v, base, t) {
-  const genre = estValeurEstimee(t) ? 'estimation' : 'vl';
+  const genre = estValeurEstimee(t) || valeurAuPrixDeRetrait(t) ? 'estimation' : 'vl';
   const ligne = {
     ...base,
     libelle: v.libelle,

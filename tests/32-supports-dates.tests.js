@@ -68,7 +68,8 @@ suite('Supports datés d’un contrat', () => {
     const i = COMPTES().findIndex(c => c.id === 'c_av');
     eq(JSON.stringify(dateQuiSuit(`comptes.${i}.lignes.0.valeur`)),
       JSON.stringify({ chemin: `comptes.${i}.lignes.0.estimeLe`, genre: 'vl' }), 'la frappe suit la même règle');
-    vrai(/const genre = estValeurEstimee\(t\) \? 'estimation' : 'vl';/.test(app()),
+    vrai(/const genre = estValeurEstimee\(t\) \|\| valeurAuPrixDeRetrait\(t\) \? 'estimation' : 'vl';/.test(app())
+      && !valeurAuPrixDeRetrait(typeCompte('av')),
       'la fenêtre du support la range avec les VL');
   });
 

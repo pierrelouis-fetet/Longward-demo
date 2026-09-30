@@ -1803,7 +1803,9 @@ suite('Une application vide dit quoi faire', () => {
        la valeur du jour : deux declarations, la fiche et la creation. */
     eq((src.match(/parPartDeduitParts: true/g) || []).length, 2,
       'le montant investi le porte, à la fiche comme à la création');
-    const dujour = "parPartLabel: 'Prix de la part aujourd’hui ({dev})'";
+    /* Le libelle se choisit selon le type (une SCPI dit « Valeur retenue par
+       part ») : c'est le libelle du prix du jour qui se cherche. */
+    const dujour = "'Prix de la part aujourd’hui ({dev})'";
     let vus = 0;
     for (let i = src.indexOf(dujour); i >= 0; i = src.indexOf(dujour, i + 1)) {
       vus++;

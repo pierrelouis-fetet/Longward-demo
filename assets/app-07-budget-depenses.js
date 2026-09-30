@@ -668,6 +668,8 @@ const EXEMPLE_PLACEMENT = {
   crypto:      'ex. Bitcoin',
 };
 
+const AIDE_VALEUR_PARTS = 'Tes parts au prix que publie la société de gestion : le prix de retrait pour une SCPI à capital variable, le dernier prix d’exécution pour une SCPI à capital fixe. Une valeur indicative : le prix et le délai d’une vraie sortie peuvent différer. À capital variable, le prix de retrait est plus bas que le prix de souscription, qui comprend les frais d’entrée : un achat récent affiche donc un écart négatif, sans que rien ne soit faux.';
+
 function champsPlacement(classe, l = null, prete = false, type = null) {
   const echeancier = !!prete;
   /* Quatre notions voisines, et les confondre s'est deja paye : une valeur
@@ -701,7 +703,10 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
      le releve de l'assureur ou du teneur de compte. Elle se date comme une VL,
      du jour du document. */
   const releve = valeurDeReleve(type);
-  const datee = estime || publiee || releve;
+  /* `retrait` : les parts d'une SCPI, au prix que publie sa societe de
+     gestion ; leur date est celle d'une verification. */
+  const retrait = valeurAuPrixDeRetrait(type);
+  const datee = estime || publiee || releve || retrait;
   return [
     { cle: 'libelle', label: 'Intitulé', type: 'texte', requis: true, max: NOM_LIGNE_MAX,
       valeur: l ? (l.libelle || '') : '',
@@ -711,16 +716,17 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
       aide: trad('il se déduit du montant investi, et commande la valeur du jour') }] : []),
     ...(type && type.parts ? [{ cle: 'section_valeur', label: estime ? 'Valeur estimée' : 'Valeur actuelle', type: 'section' }] : []),
     { cle: 'valeur',
-      label: `${estime ? 'Valeur estimée' : releve ? 'Dernière valeur connue' : 'Valeur aujourd’hui'} ({dev})`, type: 'nombre',
+      label: `${estime ? 'Valeur estimée' : releve ? 'Dernière valeur connue' : retrait ? 'Valeur des parts' : 'Valeur aujourd’hui'} ({dev})`, type: 'nombre',
       valeur: l ? num(l.valeur) : '', exemple: '0',
       aide: estime ? 'ton estimation du jour : ce n’est pas un prix de vente, le produit réel se saisit à la cession'
           : publiee ? 'la dernière valeur liquidative publiée, pour les parts que tu détiens'
           : releve ? 'celle que donne ton dernier relevé de l’assureur ou du teneur de compte : elle date du jour de ce relevé'
+          : retrait ? AIDE_VALEUR_PARTS
                     : 'ce que la ligne vaut, capital et intérêts courus compris',
       /* Le TOTAL reste la donnee stockee, le prix par part n'est qu'une autre
          facon de l'ecrire. Voir le cablage dans `askForm`. */
       ...(type && type.parts
-        ? { parPart: 'parts', parPartLabel: 'Prix de la part aujourd’hui ({dev})' } : {}) },
+        ? { parPart: 'parts', parPartLabel: retrait ? 'Valeur retenue par part ({dev})' : 'Prix de la part aujourd’hui ({dev})' } : {}) },
     ...(type && type.parts ? [{ cle: 'section_invest', label: 'Coût d’achat', type: 'section' }] : []),
     { cle: 'prixDeRevient', label: trad('Montant investi ({dev})'), type: 'nombre',
       /* Le COUT EFFECTIF, et non le seul champ legacy : une ligne creee avec
@@ -730,13 +736,13 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
       valeur: l && coutAcquisition(l) !== null ? coutAcquisition(l) : '', exemple: '0',
       aide: trad('facultatif, il donne la plus-value'),
       ...(type && type.parts
-        ? { parPart: 'parts', parPartLabel: 'Prix d’achat de la part ({dev})',
+        ? { parPart: 'parts', parPartLabel: retrait ? 'Coût moyen payé par part ({dev})' : 'Prix d’achat de la part ({dev})',
             parPartSous: 'il donne le nombre de parts',
             parPartDeduitParts: true } : {}) },
     { cle: 'dateAcquisition', label: trad('Date d’entrée'), type: 'date',
       valeur: l ? (l.dateAcquisition || '') : todayISO() },
     ...(datee ? [{ cle: 'estimeLe',
-      label: trad(publiee ? 'VL du' : releve ? 'Valeur au' : 'Estimée le'), type: 'date',
+      label: trad(publiee ? 'VL du' : releve || retrait ? 'Valeur au' : 'Estimée le'), type: 'date',
       valeur: l ? (l.estimeLe || '') : todayISO(),
       /* ELLE NE PROMET PAS LA CLOCHE. Une valeur perimee (`valeurPerimee()`)
          se rappelle dans la carte "A mettre a jour" d'Actifs et avant un
@@ -746,6 +752,7 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
          ou celui du document qui le donne. */
       aide: trad(publiee ? 'la date de la dernière valeur liquidative publiée'
                  : releve ? 'la date de ce relevé : corrige-la s’il est plus ancien qu’aujourd’hui'
+                 : retrait ? 'le jour où tu as lu ce prix'
                  : 'le jour où tu as établi ce chiffre') }] : []),
     ...(publiee ? [{ cle: 'vlPeriode', label: trad('Publiée'), type: 'liste',
       options: VL_PERIODES, valeur: l ? (l.vlPeriode || 'trimestre') : 'trimestre',

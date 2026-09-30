@@ -32,6 +32,7 @@ Object.assign(ACTIONS, {
     const refus = verifierAnnulation(i);
     if (refus) { toast(refus); return; }
     if (v.typeActif === 'bien') { await annulerVenteDeBien(i, v); return; }
+    if (v.cession) { await annulerCessionDePlacement(i, v); return; }
     const ou = v.cashAccount ? ACC[v.cashAccount]?.label || compteById(v.cashAccount)
       && nomCompteV2(compteById(v.cashAccount)) || 'le cash' : null;
     if (!await askConfirm(trad('Annuler cette vente ?') + '\n'
@@ -428,6 +429,30 @@ async function annulerVenteDeBien(i, v) {
   refreshAccounts();
   Store.save(); render();
   toast(trad('Vente annulée, le bien revient dans tes actifs'));
+}
+
+async function annulerCessionDePlacement(i, v) {
+  const ou = v.cashAccount && round2(num(v.gross))
+    ? (compteById(v.cashAccount) && nomCompteV2(compteById(v.cashAccount))) || trad('le cash') : null;
+  const morceaux = [
+    num(v.qty) ? trad('Les {n} parts reviennent sur leur ligne').replace('{n}', fmtNombre(num(v.qty)))
+               : trad('Le placement revient dans tes actifs'),
+    ou ? trad('{m} repartent de {ou}').replace('{m}', fmtEUR(num(v.gross))).replace('{ou}', ou) : '',
+    (v.fluxRetires || []).length || (v.fluxDelies || []).length
+      ? trad('ses distributions et frais reprennent leur place dans le budget') : '',
+  ].filter(Boolean);
+  if (!await askConfirm(`${trad('Annuler cette vente ?')}\n${v.name}, ${fmtDate(v.date)}, ${fmtEUR(num(v.gross))}.\n\n`
+    + `${morceaux.join(', ')}, ${trad('et la vente quitte le journal.')}\n\n`
+    + trad('L’annulation défait cette vente, et elle seule. Réversible avec Ctrl+Z.'),
+    { ok: 'Annuler la vente', danger: true })) return;
+  const avant = structuredClone(Store.state);
+  const r = annulerVente(i);
+  if (!r || r.erreur) { toast((r && r.erreur) || trad('Rien n’a été modifié.')); return; }
+  Store.addBackup('avant annulation d’une cession', avant);
+  fermerApercuSi('vente');
+  refreshAccounts();
+  Store.save(); render();
+  toast(trad('Cession annulée, le placement revient dans tes actifs'));
 }
 
 partieChargee('assets/app-08-actions-marches.js');

@@ -479,6 +479,11 @@ function verifierAnnulation(i) {
   if (v.cession) {
     if (!src) return trad('Le compte de ce placement n’existe plus : la cession ne peut pas s’annuler.');
     if (src.statut === 'archive' && !v.compteArchive) return trad('Le compte de ce placement est archivé : restaure-le d’abord.');
+    if (v.photo && photoCompteCede(src) !== v.photo) return trad('Le placement a changé depuis la cession : elle ne peut plus s’annuler.');
+    const f = verifierFluxRendus(v, {
+      doublon: trad('Une distribution ou des frais de ce placement sont de nouveau au budget : la cession ne peut pas s’annuler.'),
+      change: trad('Une distribution ou des frais de ce placement ont changé depuis la cession : elle ne peut plus s’annuler.') });
+    if (f) return f;
     if (!v.ligne) {
       const l = (src.lignes || [])[num(v.ligneIndex)];
       if (!l || (v.actifId && l.id !== v.actifId) || (v.ligneApres && ligneAChange(l, v.ligneApres)))
@@ -632,6 +637,9 @@ function apercuCession(l, t, { parts, produit, capital } = {}) {
   if (aParts) fraction = num(parts) / partsTotal;
   else if (capital != null && valeurEntiere > 0) fraction = num(capital) / valeurEntiere;
   fraction = Math.min(1, Math.max(0, fraction));
+  const partsRestantes = aParts ? roundQty(partsTotal - num(parts)) : null;
+  const totale = aParts ? partsRestantes <= 0 : fraction >= 0.9999;
+  if (aParts && totale) fraction = 1;
 
   const g = round2(num(produit));
   const investi = coutEntier === null ? null : partOk ? round2(coutEntier * q * fraction) : 0;
@@ -639,13 +647,13 @@ function apercuCession(l, t, { parts, produit, capital } = {}) {
   return {
     fraction, partOk,
     parts: aParts ? num(parts) : null,
-    partsRestantes: aParts ? roundQty(partsTotal - num(parts)) : null,
+    partsRestantes,
     produit: g,
     investi,
     sortie,
     realised: investi === null ? null : round2(g - investi),
     pct: investi > 0 ? (g / investi - 1) * 100 : null,
-    totale: fraction >= 0.9999,
+    totale,
   };
 }
 
@@ -657,72 +665,93 @@ function apercuCession(l, t, { parts, produit, capital } = {}) {
    revient : un enregistrement qui ne porte pas de quoi s'annuler oblige a
    deviner, et deviner un patrimoine ne se fait pas. */
 function cederPlacement({ compteId, index, nature = 'vente', parts, produit,
-                          capital, cashAccount, cashPart, date, note } = {}) {
-  const c = compteById(compteId);
-  if (!c) return null;
-  const l = (c.lignes || [])[index];
-  if (!l) return null;
-  const t = typeCompte(c.type);
-  const a = apercuCession(l, t, { parts, produit, capital });
-  if (!a.partOk) return null;
-  if (!(a.fraction > 0)) return null;
+                          capital, cashAccount, cashPart, date, note, retirerFlux = true } = {}) {
+  const c0 = compteById(compteId);
+  const l0 = c0 && (c0.lignes || [])[index];
+  if (!l0) return null;
+  const a0 = apercuCession(l0, typeCompte(c0.type), { parts, produit, capital });
+  if (!a0.partOk) return null;
+  if (!(a0.fraction > 0)) return null;
   const erreur = verifierCession({ compteId, index, parts, produit, capital, cashAccount, cashPart, date });
   if (erreur) return { erreur };
 
-  const credite = mouvementCash(cashAccount, a.produit, cashPart);
-  if (cashAccount && round2(a.produit) !== 0 && !credite) return { erreur: trad('Rien n’a été modifié.') };
+  let rendu = null;
+  const tx = enTransaction(() => {
+    const c = compteById(compteId);
+    const l = (c.lignes || [])[index];
+    const t = typeCompte(c.type);
+    const a = apercuCession(l, t, { parts, produit, capital });
+    rendu = a;
 
-  Store.state.sales = Store.state.sales || [];
-  Store.state.sales.unshift({
-    id: 's' + Date.now(),
-    date,
-    name: l.libelle || nomCompteV2(c),
-    isin: '', symbol: '',
-    assetClass: l.classe || 'nonCote', role: '',
-    account: c.id, cashAccount: cashAccount || '',
-    ...(cashAccount ? { cashPart: String(cashPart || '').replace(/\+$/, '') } : {}),
-    /* Les parts tiennent lieu de quantite, et les deux prix unitaires s'en
-       derivent : le journal les affiche deja, et une cession de parts est une
-       vente de quantite comme une autre. Sans parts, les trois restent nuls —
-       `declarerVente()` a ouvert cette voie, le journal sait la lire. */
-    qty: a.parts, currency: 'EUR', fxSell: 1, fxBuy: 1,
-    price: a.parts ? round2(a.produit / a.parts) : null,
-    buyPrice: a.parts && a.investi !== null ? round2(a.investi / a.parts) : null,
-    gross: round2(a.produit), invested: a.investi,
-    realised: a.realised === null ? null : round2(round2(a.produit) - a.investi),
-    note: note || '',
-    /* Ce qui distingue cette ligne d'une vente de titres, et ce qu'il faut pour
-       la defaire. `sortie` n'est pas `gross` : c'est la valeur retiree du
-       patrimoine, et l'annulation la rend telle quelle. */
-    cession: nature, ligneIndex: index,
-    ...champsCession({ actifId: l.id, typeActif: 'placement', source: c.id,
-                       destination: cashAccount, credite, produit: a.produit, sortie: a.sortie }),
-    ...(a.totale ? { ligne: structuredClone(l) } : {}),
+    const credite = mouvementCash(cashAccount, a.produit, cashPart);
+    if (cashAccount && round2(a.produit) !== 0 && !credite) return false;
+
+    Store.state.sales = Store.state.sales || [];
+    Store.state.sales.unshift({
+      id: 's' + Date.now(),
+      date,
+      name: l.libelle || nomCompteV2(c),
+      isin: '', symbol: '',
+      assetClass: l.classe || 'nonCote', role: '',
+      account: c.id, cashAccount: cashAccount || '',
+      ...(cashAccount ? { cashPart: String(cashPart || '').replace(/\+$/, '') } : {}),
+      /* Les parts tiennent lieu de quantite, et les deux prix unitaires s'en
+         derivent : le journal les affiche deja, et une cession de parts est une
+         vente de quantite comme une autre. Sans parts, les trois restent nuls :
+         `declarerVente()` a ouvert cette voie, le journal sait la lire. */
+      qty: a.parts, currency: 'EUR', fxSell: 1, fxBuy: 1,
+      price: a.parts ? round2(a.produit / a.parts) : null,
+      buyPrice: a.parts && a.investi !== null ? round2(a.investi / a.parts) : null,
+      gross: round2(a.produit), invested: a.investi,
+      realised: a.realised === null ? null : round2(round2(a.produit) - a.investi),
+      note: note || '',
+      /* Ce qui distingue cette ligne d'une vente de titres, et ce qu'il faut pour
+         la defaire. `sortie` n'est pas `gross` : c'est la valeur retiree du
+         patrimoine, et l'annulation la rend telle quelle. */
+      cession: nature, ligneIndex: index,
+      ...champsCession({ actifId: l.id, typeActif: 'placement', source: c.id,
+                         destination: cashAccount, credite, produit: a.produit, sortie: a.sortie }),
+      ...(a.totale ? { ligne: structuredClone(l) } : {}),
+    });
+
+    if (a.totale) {
+      c.lignes.splice(index, 1);
+      const vide = !(c.lignes || []).length
+        && !(c.cash || []).some(e => num(e.montant));
+      if ((estActifTerminal(t) || t.bienImmo) && vide) {
+        /* Ses distributions et frais quittent le budget, ou s'en detachent :
+           jamais la charge d'un credit, que `fluxDuBien` ne rend pas. */
+        if (t.bienImmo) {
+          const flux = fluxDuBien(c.id).map(x => ({ ...x, objet: structuredClone(B()[x.liste][x.index]) }));
+          if (retirerFlux) {
+            for (const x of [...flux].sort((p, q) => q.index - p.index)) B()[x.liste].splice(x.index, 1);
+            Store.state.sales[0].fluxRetires = flux;
+          } else {
+            for (const x of flux) delete B()[x.liste][x.index].bienId;
+            Store.state.sales[0].fluxDelies = flux.map(x => ({ ...x, indexApres: x.index }));
+          }
+          Store.state.sales[0].retirerFlux = !!retirerFlux;
+        }
+        c.statut = 'archive';
+        c.clotureLe = date;
+        Store.state.sales[0].compteArchive = true;
+        if (t.bienImmo) Store.state.sales[0].photo = photoCompteCede(c);
+      }
+    } else {
+      const avantCession = photoLigne(l);
+      const reste = 1 - a.fraction;
+      l.valeur = round2(num(l.valeur) * reste);
+      if (estDeclare(l.prixDeRevient)) l.prixDeRevient = round2(num(l.prixDeRevient) * reste);
+      for (const cle of ['prixAchat', 'fraisAcquisition', 'travauxInitiaux']) {
+        if (estDeclare(l[cle])) l[cle] = round2(num(l[cle]) * reste);
+      }
+      if (a.parts != null) l.parts = roundQty(num(l.parts) - a.parts);
+      Store.state.sales[0].ligneAvant = avantCession;
+      Store.state.sales[0].ligneApres = photoLigne(l);
+    }
+    return true;
   });
-
-  if (a.totale) {
-    c.lignes.splice(index, 1);
-    const vide = !(c.lignes || []).length
-      && !(c.cash || []).some(e => num(e.montant));
-    if (estActifTerminal(t) && vide) {
-      c.statut = 'archive';
-      c.clotureLe = date;
-      Store.state.sales[0].compteArchive = true;
-    }
-  } else {
-    const avantCession = photoLigne(l);
-    const reste = 1 - a.fraction;
-    l.valeur = round2(num(l.valeur) * reste);
-    if (estDeclare(l.prixDeRevient)) l.prixDeRevient = round2(num(l.prixDeRevient) * reste);
-    for (const cle of ['prixAchat', 'fraisAcquisition', 'travauxInitiaux']) {
-      if (estDeclare(l[cle])) l[cle] = round2(num(l[cle]) * reste);
-    }
-    if (a.parts != null) l.parts = roundQty(num(l.parts) - a.parts);
-    Store.state.sales[0].ligneAvant = avantCession;
-    Store.state.sales[0].ligneApres = photoLigne(l);
-  }
-
-  return a;
+  return tx.ok ? rendu : { erreur: trad('Rien n’a été modifié.') };
 }
 
 /* --- VENDRE UN BIEN IMMOBILIER DETENU EN DIRECT ---------------------------
@@ -924,6 +953,52 @@ function vendreBien(args = {}) {
   return t.ok ? apercu : { erreur: trad('Rien n’a été modifié.') };
 }
 
+/* LES FLUX QU'UNE SORTIE A RETIRES OU DETACHES, ET LEUR RETOUR.
+
+   La vente d'un bien et la cession totale d'une SCPI font la meme chose au
+   budget : les lignes rattachees a l'actif (loyers, distributions, charges,
+   frais) en sont retirees, ou restent detachees de lui. L'enregistrement garde
+   `fluxRetires` (l'objet et son rang d'avant) et `fluxDelies` (l'objet et son
+   rang APRES la sortie, `indexApres`). Une seule verification, un seul retour,
+   pour les deux gestes. */
+/* Pourquoi ces flux ne peuvent pas revenir, ou `null`. Un flux retire ne
+   revient pas en double : ni une charge du meme credit, ni une ligne identique
+   deja remise au budget. Un flux detache doit etre a son rang, tel que la
+   sortie l'a laisse : sinon on rattacherait une autre ligne, ou aucune. */
+function verifierFluxRendus(v, { doublon, change }) {
+  for (const x of (v.fluxRetires || [])) {
+    const liste = B()[x.liste] || [];
+    const meme = JSON.stringify(x.objet);
+    if (liste.some(o => (x.objet.creditId && o.creditId === x.objet.creditId) || JSON.stringify(o) === meme))
+      return doublon;
+  }
+  for (const x of (v.fluxDelies || [])) {
+    const { bienId, ...sans } = x.objet;
+    const o = (B()[x.liste] || [])[x.indexApres];
+    if (!o || o.bienId || JSON.stringify(o) !== JSON.stringify(sans)) return change;
+  }
+  return null;
+}
+function rendreFlux(v) {
+  const aRattacher = (v.fluxDelies || []).map(x => B()[x.liste][x.indexApres]);
+  for (const x of [...(v.fluxRetires || [])].sort((p, q) => p.index - q.index)) {
+    const liste = B()[x.liste];
+    liste.splice(Math.min(x.index, liste.length), 0, structuredClone(x.objet));
+  }
+  for (const o of aRattacher) o.bienId = v.account;
+}
+
+/* La photo d'un compte que sa cession a archive : ce que l'annulation rendra
+   aux totaux, et son nom. Un compte restaure, renomme ou modifie depuis ne se
+   voit pas rouvrir sous une identite qui n'est plus la sienne. Declaree par
+   `function` : un test la remplace le temps d'un appel, pour faire echouer la
+   transaction apres ses premieres ecritures. */
+function photoCompteCede(c) {
+  return JSON.stringify({ etabId: c.etabId, type: c.type, libelle: c.libelle || '', court: c.court || '',
+    notes: c.notes || '', lignes: c.lignes || [], cash: c.cash || [], statut: c.statut,
+    clotureLe: c.clotureLe || '' });
+}
+
 /* Pourquoi la vente d'un bien ne peut pas s'annuler, ou `null`. */
 function verifierAnnulationVenteBien(v) {
   const c = compteById(v.account);
@@ -935,18 +1010,10 @@ function verifierAnnulationVenteBien(v) {
     if (!e) return trad('L’établissement qui portait son crédit n’existe plus : la vente ne peut pas s’annuler.');
     if ((e.dettes || []).some(d => d.id === x.dette.id)) return trad('Un crédit de ce bien existe de nouveau : la vente ne peut pas s’annuler.');
   }
-  for (const x of (v.fluxRetires || [])) {
-    const liste = B()[x.liste] || [];
-    const meme = JSON.stringify(x.objet);
-    if (liste.some(o => (x.objet.creditId && o.creditId === x.objet.creditId) || JSON.stringify(o) === meme))
-      return trad('Un loyer ou une charge de ce bien est de nouveau au budget : la vente ne peut pas s’annuler.');
-  }
-  for (const x of (v.fluxDelies || [])) {
-    const { bienId, ...sans } = x.objet;
-    const o = (B()[x.liste] || [])[x.indexApres];
-    if (!o || o.bienId || JSON.stringify(o) !== JSON.stringify(sans))
-      return trad('Un loyer ou une charge de ce bien a changé depuis la vente : elle ne peut plus s’annuler.');
-  }
+  const f = verifierFluxRendus(v, {
+    doublon: trad('Un loyer ou une charge de ce bien est de nouveau au budget : la vente ne peut pas s’annuler.'),
+    change: trad('Un loyer ou une charge de ce bien a changé depuis la vente : elle ne peut plus s’annuler.') });
+  if (f) return f;
   if (v.cashAccount && Math.abs(num(v.encaisse)) >= 0.005) {
     const e = verifierMouvement(v.cashAccount, -round2(num(v.encaisse)), partieDeVente(v));
     if (e) return e;
@@ -966,17 +1033,12 @@ function annulerVenteBienSansVerifier(i, v) {
     if (e && Math.abs(num(e.montant)) < 0.005 && Object.keys(e).every(x => x === 'montant' || x === 'affectation'))
       c.cash.splice(k, 1);
   }
-  const aRattacher = (v.fluxDelies || []).map(x => B()[x.liste][x.indexApres]);
   for (const x of [...(v.dettesSoldees || [])].sort((p, q) => p.index - q.index)) {
     const e = etabById(x.etabId);
     e.dettes = e.dettes || [];
     e.dettes.splice(Math.min(x.index, e.dettes.length), 0, structuredClone(x.dette));
   }
-  for (const x of [...(v.fluxRetires || [])].sort((p, q) => p.index - q.index)) {
-    const liste = B()[x.liste];
-    liste.splice(Math.min(x.index, liste.length), 0, structuredClone(x.objet));
-  }
-  for (const o of aRattacher) o.bienId = v.account;
+  rendreFlux(v);
   const c = compteById(v.account);
   c.statut = 'ouvert';
   delete c.clotureLe;
@@ -1120,6 +1182,7 @@ function annulerCessionSansVerifier(i, v) {
     }
     if (v.compteArchive) { c.statut = 'ouvert'; delete c.clotureLe; }
   }
+  rendreFlux(v);
 
   Store.state.sales.splice(i, 1);
   return v;
@@ -2251,10 +2314,11 @@ function valeursARevoir() {
                  route: routeCompte(c), ancre: 'solde' });
     }
     const releve = valeurDeReleve(t);
-    if (!(estValeurEstimee(t) || (t && t.vl) || releve)) continue;
+    const retrait = valeurAuPrixDeRetrait(t);
+    if (!(estValeurEstimee(t) || (t && t.vl) || releve || retrait)) continue;
     for (const [i, l] of (c.lignes || []).entries()) {
       if (!estDeclare(l.valeur)) continue;
-      if (releve && !num(l.valeur)) continue;
+      if ((releve || retrait) && !num(l.valeur)) continue;
       if (!valeurPerimee(l, t)) continue;
       /* `publiee` : une VL se date du jour de sa publication, une estimation du
          jour ou on l'a etablie, et la phrase ne les nomme pas pareil. Un
@@ -2262,7 +2326,7 @@ function valeursARevoir() {
          qui en porte plusieurs, l'ancre seule ne dirait pas lequel a vieilli. */
       out.push({ genre: 'estimation', nom: nomLignePlacement(l, c), compteId: c.id,
                  date: l.estimeLe || null, publiee: !!(t && t.vl),
-                 ...(releve ? { releve: true, ouvre: { action: 'editer-placement', id: c.id, i } } : {}),
+                 ...(releve || retrait ? { releve: true, ouvre: { action: 'editer-placement', id: c.id, i } } : {}),
                  route: routeCompte(c), ancre: 'estimation' });
     }
   }

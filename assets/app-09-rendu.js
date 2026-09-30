@@ -894,6 +894,10 @@ function askCession(compteId, index) {
     const aParts = !!t.parts && num(l.parts) > 0;
     const prete = !!t.prete;
     const valeur = num(l.valeur) * (partDetention(l) || 1);
+    const pierre = !!t.bienImmo;
+    const fluxLies = pierre ? fluxDuBien(c.id) : [];
+    const aCredit = pierre && creditsDuBien(c).some(d => num(d.montant) > 0);
+    const videraLeCompte = (c.lignes || []).length === 1 && !(c.cash || []).some(e => num(e.montant));
 
     $('#modalTitle').textContent = trad(prete ? 'Remboursement ou défaut'
       : aParts ? 'Céder des parts' : 'Vendre ce placement');
@@ -909,6 +913,8 @@ function askCession(compteId, index) {
             <option value="remboursement">${trad('Remboursé, en tout ou en partie')}</option>
             <option value="defaut">${trad('En défaut : ce qui rentre est perdu')}</option>
           </select></div>`}
+        ${!(valeurAuPrixDeRetrait(t) && !aParts) ? '' : `
+        <p class="hint">${trad('Sans nombre de parts, la cession porte sur la totalité : indique tes parts sur la fiche pour en céder une partie.')}</p>`}
         ${!aParts ? '' : `
         <div class="field"><label>${trad('Parts cédées')}</label>
           <input type="number" step="any" id="ceParts" value="${num(l.parts)}" autocomplete="off">
@@ -926,6 +932,14 @@ function askCession(compteId, index) {
         <div class="field"><label>${trad('Date')}</label>
           <input type="date" id="ceDate" value="${todayISO()}"></div>
         ${champDestination('ce', c.id)}
+        ${!fluxLies.length ? '' : `
+        <div id="ceFluxChamp" hidden>
+          <label class="field-case">
+            <input type="checkbox" id="ceFlux" checked>
+            <span>${trad('Retirer ses distributions et frais du budget')}</span>
+          </label>
+          <p class="hint">${trad('les lignes du budget qui visent ce placement : décochée, elles restent au budget, détachées de lui')}</p>
+        </div>`}
         <div class="field"><label>${trad('Note')}</label>
           <input id="ceNote" placeholder="${trad('Pourquoi cette cession ?')}" autocomplete="off"></div>
       </div>
@@ -971,6 +985,7 @@ function askCession(compteId, index) {
       const bon = inconnu || gain >= 0;
       const mot = trad(inconnu ? 'Produit encaissé' : prete && nature() === 'defaut' ? 'Perte'
         : bon ? 'Plus-value réalisée' : 'Moins-value réalisée');
+      if ($('#ceFluxChamp')) $('#ceFluxChamp').hidden = !(a.totale && videraLeCompte);
       const reste = a.totale ? trad('Le placement sort du patrimoine.')
         : trad('Il reste {r}.').replace('{r}',
             (aParts ? `${fmtNombre(a.partsRestantes)} ${trad('parts')}, ` : '')
@@ -983,7 +998,8 @@ function askCession(compteId, index) {
             a.pct == null ? '' : ` · ${fmtSignedPct(a.pct)}`}</b><br>
           ${inconnu ? trad('Prix de revient non renseigné : aucune plus-value n’est calculée.')
             : trad('Sur {m} investis.').replace('{m}', fmtEUR(a.investi))} ${esc(reste)}<br>
-          ${esc(phraseEffetCession({ credite: !!lireDestination('ce'), produit: a.produit, sortie: a.sortie }))}</span>
+          ${esc(phraseEffetCession({ credite: !!lireDestination('ce'), produit: a.produit, sortie: a.sortie }))}${
+            aCredit && a.totale ? `<br>${esc(trad('Son crédit reste à rembourser : il compte dans ton patrimoine net tant que tu ne l’as pas soldé.'))}` : ''}</span>
         </div>`;
     };
     cablerDestination('ce', () => majApercu());
@@ -1000,7 +1016,8 @@ function askCession(compteId, index) {
       const a = apercuCession(l, t, s);
       if (!(a.fraction > 0)) return;
       const v = { ...s, produit: $('#ceProduit').value, nature: nature(), ...destinationDe(lireDestination('ce')),
-                  date: $('#ceDate').value, note: $('#ceNote').value.trim() };
+                  date: $('#ceDate').value, note: $('#ceNote').value.trim(),
+                  retirerFlux: $('#ceFlux') ? $('#ceFlux').checked : true };
       if (lireDestination('ce') === PART_A_CHOISIR) { erreurDeFenetre(trad('Choisis la part qui reçoit le produit.')); return; }
       const erreur = verifierCession({ compteId, index, ...v });
       if (erreur) { erreurDeFenetre(erreur); return; }

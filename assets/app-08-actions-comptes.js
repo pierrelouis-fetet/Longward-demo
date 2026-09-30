@@ -154,7 +154,8 @@ Object.assign(ACTIONS, {
         if (!verdict.ok) { toast(verdict.raison); saisi = v; continue; }
       }
       const etabFinal = 'etab' in v ? v.etab : c.etabId;
-      if (etabFinal && etabFinal !== '__nouveau'
+      const bouge = etabFinal !== c.etabId || (v.type && v.type !== c.type);
+      if (etabFinal && etabFinal !== '__nouveau' && bouge
           && !etablissementAccepte(etabFinal, v.type || c.type, c.id)) {
         toast(trad('{t} ne se tient pas chez {e}, qui porte des comptes d’une autre nature : choisis un autre établissement.')
           .replace('{t}', trad(typeCompte(v.type || c.type).label)).replace('{e}', etabById(etabFinal)?.nom || ''));
@@ -204,7 +205,7 @@ Object.assign(ACTIONS, {
          la meme facon. Restreinte au direct, la regle laissait une part de
          societe porter deux noms qui divergeaient en silence. Des qu'un compte
          porte deux placements, chacun a son nom propre et rien ne l'ecrase. */
-      if (estActifTerminal(typeCompte(c.type))
+      if (compteEstUnPlacement(typeCompte(c.type))
           && (c.lignes || []).length === 1 && !(c.cash || []).length
           && String(v.libelle || '').trim()) {
         c.lignes[0].libelle = String(v.libelle).trim();
@@ -223,7 +224,7 @@ Object.assign(ACTIONS, {
       if (v.type) c.type = v.type;
       if ('plafond' in v) pose('plafond', num(v.plafond) || 0);
       if ('ouvertLe' in v) pose('ouvertLe', v.ouvertLe);
-      if ('ouvertLe' in v && estActifTerminal(typeCompte(c.type))
+      if ('ouvertLe' in v && compteEstUnPlacement(typeCompte(c.type))
           && (c.lignes || []).length === 1 && !(c.cash || []).length) {
         c.lignes[0].dateAcquisition = v.ouvertLe || '';
       }
@@ -437,7 +438,8 @@ Object.assign(ACTIONS, {
     const e3 = await askForm({
       titre: placementTiers ? trad(t.prete ? 'Le prêt' : 'Le placement')
            : bien ? (estDetenuEnDirect(t) ? 'Valeur estimée'
-                  : trad(t.classes.includes('nonCote') ? 'Valeur de la participation' : 'Valeur du bien'))
+                  : trad(valeurAuPrixDeRetrait(t) ? 'Tes parts et leur valeur'
+                         : t.classes.includes('nonCote') ? 'Valeur de la participation' : 'Valeur du bien'))
                   : t.sansCash ? trad(enContrat(t) ? 'Nommer le contrat' : 'Nommer le plan')
                   : `${BASES.liquidites.nom} ${trad('sur ce compte')}`,
       sous: (suite => etapes > 1
@@ -482,29 +484,36 @@ Object.assign(ACTIONS, {
         }
         if (!partEstValide(v.part))
           return { cle: 'part', message: trad('La quote-part doit être comprise entre 0 et 100 %.') };
+        if (valeurAuPrixDeRetrait(t) && !(num(v.parts) > 0))
+          return { cle: 'parts', message: trad('Indique ton nombre de parts.') };
         return null;
       },
       champs: placementTiers ? champsTiers : bien ? [
         ...(t.sansEtab ? [{ cle: 'nom', label: trad('Nom du bien'), type: 'texte', requis: true,
           max: NOM_LIGNE_MAX, exemple: 'ex. Rolex Submariner',
           aide: trad('une montre, une voiture, un tableau : ce nom s’affichera partout') }] : []),
+        ...(valeurAuPrixDeRetrait(t) ? [{ cle: 'nom', label: trad('Nom de la SCPI'), type: 'texte', requis: true,
+          max: NOM_LIGNE_MAX, exemple: 'ex. Ma SCPI' }] : []),
         /* La valeur est OBLIGATOIRE, et `vide()` compte un zero comme vide sur un
            champ nombre : un appartement a zero euro n'existe pas, et il entrait
            pourtant au patrimoine sans un mot, faussant le brut, le net et toutes
            les repartitions. Il n'y a rien a inventer pour la remplir — c'est la
            seule chose qu'on sache a coup sur en creant un bien. */
         ...(t.parts ? [{ cle: 'parts', label: trad('Nombre de parts'),
-          type: 'nombre', exemple: '0',
+          type: 'nombre', exemple: '0', requis: valeurAuPrixDeRetrait(t),
           aide: trad('il se déduit du montant investi, et commande la valeur du jour') }] : []),
         ...(t.parts ? [{ cle: 'section_valeur', label: estValeurEstimee(t) ? 'Valeur estimée' : 'Valeur actuelle', type: 'section' }] : []),
         { cle: 'valeur', requis: true,
           label: estDetenuEnDirect(t) ? trad('Valeur estimée du bien entier ({dev})')
+               : valeurAuPrixDeRetrait(t) ? trad('Valeur des parts ({dev})')
                                       : trad('Valeur actuelle ({dev})'),
           type: 'nombre', exemple: '0',
           aide: immoDirect
               ? trad('Sa valeur totale aujourd’hui. Si tu n’en détiens qu’une part, renseigne ta quote-part séparément.')
+              : valeurAuPrixDeRetrait(t) ? trad(AIDE_VALEUR_PARTS)
               : trad('ce que cela vaut aujourd’hui'),
-          ...(t.parts ? { parPart: 'parts', parPartLabel: 'Prix de la part aujourd’hui ({dev})' } : {}) },
+          ...(t.parts ? { parPart: 'parts', parPartLabel: valeurAuPrixDeRetrait(t) ? 'Valeur retenue par part ({dev})'
+                                                                     : 'Prix de la part aujourd’hui ({dev})' } : {}) },
         ...(immoDirect ? [
         { cle: 'section_acq', label: 'Acquisition', type: 'section' },
         { cle: 'prixAchat', label: trad('Prix d’achat ({dev})'), type: 'nombre', exemple: '0',
@@ -516,8 +525,10 @@ Object.assign(ACTIONS, {
         ] : [
         ...(t.parts ? [{ cle: 'section_invest', label: 'Coût d’achat', type: 'section' }] : []),
         { cle: 'revient', label: trad('Montant investi ({dev})'), type: 'nombre', exemple: '0',
-          aide: trad('prix d’acquisition, frais compris'),
-          ...(t.parts ? { parPart: 'parts', parPartLabel: 'Prix d’achat de la part ({dev})',
+          aide: trad(valeurAuPrixDeRetrait(t) ? 'prix de souscription de tes parts, frais d’entrée compris'
+                                              : 'prix d’acquisition, frais compris'),
+          ...(t.parts ? { parPart: 'parts', parPartLabel: valeurAuPrixDeRetrait(t) ? 'Coût moyen payé par part ({dev})'
+                                                                     : 'Prix d’achat de la part ({dev})',
             parPartSous: 'il donne le nombre de parts',
             parPartDeduitParts: true } : {}) },
         ]),
@@ -531,11 +542,11 @@ Object.assign(ACTIONS, {
            credit, et meme regle : c'est le geste de quelqu'un qui a regarde,
            jamais une supposition. Pre-remplie au jour de la saisie, parce qu'on
            saisit ce qu'on vient d'estimer. */
-        { cle: 'estimeLe', label: trad('Estimée le'), type: 'date', valeur: todayISO(),
+        { cle: 'estimeLe', label: trad(valeurAuPrixDeRetrait(t) ? 'Valeur au' : 'Estimée le'), type: 'date', valeur: todayISO(),
           /* Elle ne promet plus de rappel : voir la note de `champsPlacement`.
              La meme phrase vivait ici, et une promesse fausse recopiee est
              deux fois fausse. */
-          aide: trad('le jour où tu as établi ce chiffre') },
+          aide: trad(valeurAuPrixDeRetrait(t) ? 'le jour où tu as lu ce prix' : 'le jour où tu as établi ce chiffre') },
         /* Au bien DETENU EN DIRECT, et a lui seul : la classe `immobilier`
            couvre aussi la SCPI, a qui l'on demandait donc si elle etait une
            residence principale. Le drapeau `direct` du type tranche.
@@ -567,7 +578,7 @@ Object.assign(ACTIONS, {
         const avecCredit = v => v.aCredit === 'oui';
         return [
         { cle: 'section_fin', label: 'Financement', type: 'section' },
-        { cle: 'aCredit', label: trad('As-tu encore un crédit sur ce bien ?'), type: 'liste',
+        { cle: 'aCredit', label: trad(valeurAuPrixDeRetrait(t) ? 'As-tu encore un crédit sur ce placement ?' : 'As-tu encore un crédit sur ce bien ?'), type: 'liste',
           valeur: 'non', options: [['non', trad('Non')], ['oui', trad('Oui')]] },
         { cle: 'credit', label: trad('Capital restant dû ({dev})'), type: 'nombre', exemple: '0',
           montreSi: avecCredit,
@@ -663,7 +674,7 @@ Object.assign(ACTIONS, {
         const et = etabById(etabId);
         et.dettes = et.dettes || [];
         et.dettes.push({ id: 'd' + Date.now().toString(36),
-          libelle: `${trad('Crédit')} ${nomContenant()}`.trim(),
+          libelle: `${trad('Crédit')} ${valeurAuPrixDeRetrait(t) && String(e3.nom || '').trim() || nomContenant()}`.trim(),
           montant: num(e3.credit), preteur: e3.preteur || '', note: '',
           /* Le capital emprunte au depart survit a la creation quand il est
              declare, et reste absent sinon. Le `&& > 0` qui trainait ici rangeait
@@ -1215,7 +1226,9 @@ Object.assign(ACTIONS, {
     if (!a) { toast(trad('Rien à enregistrer')); return; }
     if (a.erreur) { toast(a.erreur); return; }
     refreshAccounts(); Store.save();
-    if (c.statut === 'archive') ACTIONS.goto({ dataset: { view: 'accounts', anchor: '' } });
+    /* Relu apres coup : la transaction a remplace l'etat, et `c` est l'objet
+       d'avant l'appel. */
+    if (compteById(c.id)?.statut === 'archive') ACTIONS.goto({ dataset: { view: 'accounts', anchor: '' } });
     else render();
     const mot = v.nature === 'defaut' ? trad('Défaut enregistré')
       : v.nature === 'remboursement' ? trad('Remboursement enregistré')
@@ -1252,9 +1265,9 @@ Object.assign(ACTIONS, {
       ok: 'Enregistrer',
       champs: [...champsPlacement(l.classe, l, typeCompte(c.type).prete, typeCompte(c.type)),
         ...champsSociete(c, l),
-        { cle: 'supprimer', label: trad('Retirer ce placement'), type: 'case',
+        ...(typeCompte(c.type).bienImmo ? [] : [{ cle: 'supprimer', label: trad('Retirer ce placement'), type: 'case',
           aide: trad('La ligne disparaît en validant, et son montant quitte ton patrimoine. ')
-              + 'Réversible avec Ctrl+Z' }],
+              + 'Réversible avec Ctrl+Z' }])],
     });
     if (!v) return;
     if (v.supprimer) {
@@ -1273,7 +1286,7 @@ Object.assign(ACTIONS, {
        gardait l'ancien nom au-dessus du nouveau, et rien a l'ecran ne disait
        lequel comptait ni ou le corriger. Meme garde qu'au retour, et meme refus
        d'ecrire une chaine vide. */
-    if (estActifTerminal(typeCompte(c.type))
+    if (compteEstUnPlacement(typeCompte(c.type))
         && (c.lignes || []).length === 1 && !(c.cash || []).length) {
       if (String(v.libelle || '').trim()) c.libelle = String(v.libelle).trim();
       /* La date fait le meme chemin que le nom, pour la meme raison : la fiche

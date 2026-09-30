@@ -557,13 +557,13 @@ suite('Une valeur estimée ne se compare pas au relevé du mois dernier', () => 
     const src = app();
     const ligne = src.slice(src.indexOf('function ligneCompte('),
                             src.indexOf('function ', src.indexOf('function ligneCompte(') + 10));
-    vrai(/const estimee = estValeurEstimee\(typeCompte\(c\.type\)\);/.test(ligne),
-      'la ligne sait si son montant est une estimation');
+    vrai(/const estimee = estValeurEstimee\(typeCompte\(c\.type\)\) \|\| valeurAuPrixDeRetrait\(typeCompte\(c\.type\)\);/.test(ligne),
+      'la ligne sait si son montant est une estimation, ou un prix publié qu’on vérifie');
     vrai(/const v = estimee \? null : variationCompte\(c\.id\);/.test(ligne),
       'et l’écart ne se calcule alors pas');
     vrai(/estimee \? `<span class="sub">\$\{dateEstimee \|\| '&nbsp;'\}<\/span>`/.test(ligne),
       'la place sous le montant dit de quand date l’estimation');
-    vrai(/datesDuCompte\(c\)\.find\(x => x\.genre === 'estimation'\)/.test(ligne),
+    vrai(/datesDuCompte\(c\)\.find\(x => x\.genre === 'estimation' \|\| x\.genre === 'retrait'\)/.test(ligne),
       'et cette date vient du modèle, pas de la ligne');
     /* La phrase remplace l'ecart, elle ne s'y ajoute pas : deux sous-titres sous
        un meme montant se disputeraient la meme ligne. */
@@ -587,13 +587,13 @@ suite('Une valeur estimée ne se compare pas au relevé du mois dernier', () => 
     const src = app();
     const dc = src.indexOf("async 'modifier-compte'(btn)");
     const compte = src.slice(dc, src.indexOf("if (v.type) c.type = v.type;", dc));
-    vrai(/if \(estActifTerminal\(typeCompte\(c\.type\)\)\n\s*&& \(c\.lignes \|\| \[\]\)\.length === 1 && !\(c\.cash \|\| \[\]\)\.length/
+    vrai(/if \(compteEstUnPlacement\(typeCompte\(c\.type\)\)\n\s*&& \(c\.lignes \|\| \[\]\)\.length === 1 && !\(c\.cash \|\| \[\]\)\.length/
       .test(compte), 'renommer le compte renomme sa ligne unique');
     vrai(/c\.lignes\[0\]\.libelle = String\(v\.libelle\)\.trim\(\);/.test(compte),
       'et c’est bien le nom saisi qui descend');
     const place = src.slice(src.indexOf("async 'editer-placement'(btn)"),
                             src.indexOf("async 'editer-placement'(btn)") + 3000);
-    vrai(/if \(estActifTerminal\(typeCompte\(c\.type\)\)[\s\S]{0,160}c\.libelle = String\(v\.libelle\)\.trim\(\);/
+    vrai(/if \(compteEstUnPlacement\(typeCompte\(c\.type\)\)[\s\S]{0,160}c\.libelle = String\(v\.libelle\)\.trim\(\);/
       .test(place), 'et renommer la ligne renomme le compte');
     /* CE QUI NE REMONTE PAS : le nom de l'etablissement. Un bien detenu en
        direct EST son contenant, une participation est tenue par un courtier qui
@@ -642,7 +642,7 @@ suite('Une valeur estimée ne se compare pas au relevé du mois dernier', () => 
 
     const dc2 = src.indexOf("async 'modifier-compte'(btn)");
     const compte2 = src.slice(dc2, src.indexOf("async 'ajouter-compte'", dc2));
-    vrai(/if \('ouvertLe' in v && estActifTerminal\(typeCompte\(c\.type\)\)/.test(compte2)
+    vrai(/if \('ouvertLe' in v && compteEstUnPlacement\(typeCompte\(c\.type\)\)/.test(compte2)
       && /c\.lignes\[0\]\.dateAcquisition = v\.ouvertLe \|\| '';/.test(compte2),
       'et dater le compte date sa ligne unique');
   });
@@ -783,7 +783,7 @@ suite('Formulaire de placement : les intitulés composés sont traduits aussi', 
     /* Une clef recopiee de travers ne casse rien de visible : elle rend juste
        le francais en anglais. Le test relit donc la vue plutot que sa memoire. */
     const app = lireSource('assets/app.js');
-    vrai(app.includes("${estime ? 'Valeur estimée' : releve ? 'Dernière valeur connue' : 'Valeur aujourd’hui'} ({dev})"),
+    vrai(app.includes("${estime ? 'Valeur estimée' : releve ? 'Dernière valeur connue' : retrait ? 'Valeur des parts' : 'Valeur aujourd’hui'} ({dev})"),
       'le gabarit du montant n’a pas changé de forme');
   });
 });
@@ -1037,7 +1037,7 @@ suite('Fiche d’une participation : la valeur d’un côté, l’identité de l
   test('le type décide, pas un identifiant écrit dans la vue', () => {
     /* Deux types portent le drapeau, et la carte les sert tous les deux. */
     const avecParts = TYPES_COMPTE.filter(t => t.parts).map(t => t.id).sort();
-    eq(avecParts.join(','), 'fondsNonCote,pe', 'les deux types qui se divisent en parts');
+    eq(avecParts.join(','), 'fondsNonCote,pe,scpi', 'les trois types qui se divisent en parts');
     /* IL N'Y A PLUS D'AIGUILLAGE : les quatre actifs terminaux rendent la meme
        carte, et c'est la LIGNE qui s'efface quand elle n'a pas d'objet. Un
        branchement sur `t.parts` avait donne deux presentations a la meme

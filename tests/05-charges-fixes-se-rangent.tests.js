@@ -236,7 +236,7 @@ suite('Fonds non coté : une valeur publiée, pas estimée', () => {
       'et une VL publiée n’est pas une opinion');
     vrai(/const publiee = !!\(type && type\.vl\);/.test(app),
       'et « publié » est une autre question');
-    vrai(/const datee = estime \|\| publiee \|\| releve;/.test(app),
+    vrai(/const datee = estime \|\| publiee \|\| releve \|\| retrait;/.test(app),
       'la date, elle, vaut pour les deux, et pour le support d’un contrat relevé');
     vrai(/publiee \? 'la dernière valeur liquidative publiée/.test(app),
       'l’aide du montant nomme la VL quand c’en est une');
@@ -244,7 +244,7 @@ suite('Fonds non coté : une valeur publiée, pas estimée', () => {
 
   test('le champ de date porte le nom de ce qu’il date', () => {
     const app = lireSource('assets/app.js');
-    vrai(/label: trad\(publiee \? 'VL du' : releve \? 'Valeur au' : 'Estimée le'\)/.test(app),
+    vrai(/label: trad\(publiee \? 'VL du' : releve \|\| retrait \? 'Valeur au' : 'Estimée le'\)/.test(app),
       'le champ porte le nom de ce qu’il date');
     /* Il ne parait que sur ce qui porte une valeur datee : un pret n'en a pas,
        son nominal ne bouge pas. */

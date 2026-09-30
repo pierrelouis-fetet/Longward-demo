@@ -43,6 +43,7 @@ const PARTIES_DE_TESTS = [
   'tests/30-arbitrages.tests.js',
   'tests/31-vente-bien.tests.js',
   'tests/32-supports-dates.tests.js',
+  'tests/33-scpi.tests.js',
 ];
 const PARTIES_DE_TESTS_CHARGEES = new Set();
 let PARTIE_DE_TESTS_COURANTE = null;

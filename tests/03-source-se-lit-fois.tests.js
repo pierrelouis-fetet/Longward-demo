@@ -973,7 +973,7 @@ suite('Les champs prennent la place de ce qu’ils portent', () => {
     /* Et elle est posee la ou la mesure l'a justifiee : les trois grilles de la
        fiche d'un bien, qui ne portent que des nombres et un menu. */
     const t = app();
-    const bloc = t.slice(t.indexOf("<div class=\"field\"><label>${trad('Nom du bien')}</label>"),
+    const bloc = t.slice(t.indexOf("<div class=\"field\"><label>${trad(pierre ? 'Nom du placement' : 'Nom du bien')}</label>"),
                          t.indexOf('<div class="field"><label>${trad(\'Adresse\')}</label>'));
     vrai(bloc.length > 500, 'le bloc du bien doit être trouvable');
     /* Deux ici, depuis que la valeur estimee et sa date vivent dans la carte
@@ -983,7 +983,7 @@ suite('Les champs prennent la place de ce qu’ils portent', () => {
     vrai(!/<div class="grid g-2">/.test(bloc),
       'et aucune n’est restée en arrière');
     const maj = t.slice(t.indexOf("<h2>${trad('Mettre à jour')}</h2>"),
-                        t.indexOf("<div class=\"field\"><label>${trad('Nom du bien')}</label>"));
+                        t.indexOf("<div class=\"field\"><label>${trad(pierre ? 'Nom du placement' : 'Nom du bien')}</label>"));
     vrai(maj.length > 500, 'la carte « Mettre à jour » doit être trouvable, avant le bien');
     eq((maj.match(/<div class="grid g-2 g-paire(?: |")/g) || []).length, 2,
       'la valeur et sa date, le capital et sa date : deux paires serrées');

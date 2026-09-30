@@ -1297,8 +1297,8 @@ suite('Un bien se crée seul, s’estime, et se modifie par un bouton', () => {
        qu'on releve sur le document d'un assureur. `datee` contient `estime` par
        construction, ce que la ligne suivante exige. Un chiffre estime porte donc
        toujours sa date, comme avant. */
-    vrai(/const datee = estime \|\| publiee \|\| releve;/.test(src),
-      'une valeur datée, c’est une valeur estimée, publiée ou relevée');
+    vrai(/const datee = estime \|\| publiee \|\| releve \|\| retrait;/.test(src),
+      'une valeur datée, c’est une valeur estimée, publiée, relevée, ou le prix d’une part de SCPI');
     vrai(/\.\.\.\(datee \? \[\{ cle: 'estimeLe'/.test(src),
       'la date accompagne toujours la valeur estimée');
   });
@@ -1514,7 +1514,7 @@ suite('Un bien change de contenant, et garde un seul nom', () => {
        cotee est tenue par un tiers et n'est pas davantage divisible qu'un
        appartement. Restreinte au direct, elle laissait une part de societe
        porter deux noms qui divergeaient en silence. */
-    vrai(/estActifTerminal\(typeCompte\(c\.type\)\)\s*\n?\s*&& \(c\.lignes \|\| \[\]\)\.length === 1/
+    vrai(/compteEstUnPlacement\(typeCompte\(c\.type\)\)\s*\n?\s*&& \(c\.lignes \|\| \[\]\)\.length === 1/
       .test(handler), 'le renommage suit, sous garde');
     vrai(/&& !\(c\.cash \|\| \[\]\)\.length/.test(handler),
       'et jamais sur un compte qui porte aussi des espèces');
