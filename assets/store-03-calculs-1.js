@@ -285,7 +285,11 @@ function nowValue(accountId) {
 function nowByGroup() {
   const p = patrimoine();
   return {
-    cash: p.courant + p.precaution + p.projet + p.investir,
+    /* La classe entiere, et non les quatre affectations : un support monetaire
+       (un ETF de tresorerie) est une ligne de classe `liquidites`, sans
+       affectation. Les quatre seules le laisseraient hors de toute poche, et les
+       poches ne referaient plus le brut. Les releves le rangent deja ici. */
+    cash: p.classes.liquidites,
     bourse: p.classes.actions + p.classes.obligations,
     crypto: p.classes.crypto,
     pe: p.classes.nonCote,

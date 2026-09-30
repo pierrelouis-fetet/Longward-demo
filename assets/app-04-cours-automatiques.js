@@ -244,7 +244,8 @@ function mountSymbolSearch() {
             lie: [
               ...(deduite ? [] : [{ de: 'assetClass', vers: 'account', options: comptesPourListe,
                                     vide: 'aucun compte ne peut porter cette classe' }]),
-              { de: 'account', vers: 'partie', options: id => listeDeParts([compteById(id)], id).options,
+              { de: 'account', vers: 'debiter', coche: id => !contratSansCash(id), aide: aideDebitAjout },
+              { de: 'account', vers: 'partie', options: id => listeDeParts(comptesQuiPaient(id), id).options,
                 vide: trad('ce compte ne porte pas d’espèces') },
             ],
             champs: [
@@ -271,12 +272,12 @@ function mountSymbolSearch() {
                   ? fmtCur(num(v.qty) * num(v.buyPrice), (cote && cote.currency) || deviseBase())
                   : '…' },
               ...(cashTargets().length ? [{
-                cle: 'debiter', type: 'case', valeur: true,
-                label: trad('Soustraire le cash du compte choisi'),
-                aide: trad('décoche si tu déclares une ligne que tu détiens déjà') },
+                cle: 'debiter', type: 'case', valeur: !contratSansCash(compteVisePourAjout || defaultHoldingAccount()),
+                label: trad('Débiter le paiement d’une part d’espèces'),
+                aide: aideDebitAjout(compteVisePourAjout || defaultHoldingAccount()) },
               { cle: 'partie', label: trad('Payé depuis'), type: 'liste',
                 ...(({ options, valeur }) => ({ options, valeur }))(listeDeParts(
-                  [compteById(compteVisePourAjout || defaultHoldingAccount())], compteVisePourAjout || defaultHoldingAccount())),
+                  comptesQuiPaient(compteVisePourAjout || defaultHoldingAccount()), compteVisePourAjout || defaultHoldingAccount())),
                 montreSi: x => x.debiter }] : []),
               deduite
                 ? { cle: 'assetClass', label: trad('Classe d’actif'), lecture: true,
@@ -530,6 +531,11 @@ function viewAllocation() {
     ...pochesLiquidites().map(p => ({
       label: p.nom, value: p.value, couleur: teintesPoche[p.cle] || 'var(--series-1)',
     })),
+    /* `t.invested` laisse dehors toute la classe liquidites, supports
+       monetaires compris : ils reviennent ici sous leur nom, sinon la carte
+       ne refait plus sa base. */
+    { label: LIBELLE_LIQUIDITES_EN_LIGNES, value: liquiditesEnLignes(),
+      couleur: 'var(--series-6)' },
   ].filter(x => Math.abs(num(x.value)) > 0.005)
    /* `null` et non zero quand la base ne se divise pas : un patrimoine net
       negatif retournerait tous les signes, et « 0,0 % » sous chaque ligne se

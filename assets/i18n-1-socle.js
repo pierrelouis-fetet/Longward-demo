@@ -906,7 +906,7 @@ const I18N = {
     "Core et satellite": "Core and satellite",
     "les trois premières": "top three",
     "le débit se convertit au taux du jour": "the debit converts at today's rate",
-    "Soustraire le cash du compte choisi": "Subtract the cash from the chosen account",
+    "Débiter le paiement d’une part d’espèces": "Debit the payment from a cash pocket",
     "décoche si tu déclares une ligne que tu détiens déjà":
       "untick if you are declaring a holding you already own",
     "Ce compte ne porte pas d’espèces, rien n’a été débité":
@@ -986,8 +986,8 @@ const I18N = {
       "Before 5 years, a withdrawal closes the plan, except in cases set by law; after 5 years, you can withdraw without closing it. Selling a holding inside the plan happens within the session.",
     "Un rachat est possible à tout moment et arrive en quelques jours à quelques semaines ; le seuil des 8 ans ne change que l’impôt sur les gains.":
       "A withdrawal is possible at any time and arrives within days to a few weeks; the 8-year threshold only changes the tax on gains.",
-    "Bloqué jusqu’à la retraite, sauf cas de déblocage anticipé prévus par la loi, comme l’achat de ta résidence principale.":
-      "Locked until retirement, except for early-release cases set by law, such as buying your main home.",
+    "Bloqué jusqu’à la retraite, sauf cas de déblocage anticipé prévus par la loi, comme l’achat de ta résidence principale. Sa valeur s’entend avant l’impôt éventuel dû à la sortie.":
+      "Locked until retirement, except for early-release cases set by law, such as buying your main home. Its value is before any tax due on exit.",
     "Ce que cet établissement te prête. Le montant se retranche de ton patrimoine net ; le crédit appartient à l’établissement, pas à ce compte : s’il en tient plusieurs, il n’est déduit qu’une fois.":
       "What this institution lends you. The amount is subtracted from your net worth; the loan belongs to the institution, not to this account: if it holds several, it is deducted only once.",
     "Écart entre la valeur de ce compte aujourd’hui et celle de ton dernier relevé, {m}. Versements et retraits compris : ce n’est pas une plus-value.":

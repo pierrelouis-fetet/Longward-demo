@@ -65,7 +65,7 @@ function dettesTotal() {
    Ce qui existe deja dans les fichiers ne s'efface pas pour autant : une regle
    neuve ne repare pas un etat deja ecrit, et un controle de sante le signale. */
 const CLES_CREDIT = { montant: 'montant', initial: 'initial', mensualite: 'mensualite',
-                      taux: 'taux', tauxAssurance: 'tauxAssurance' };
+                      taux: 'taux', tauxAssurance: 'tauxAssurance', part: 'partCredit' };
 
 function validerCreditSaisi(v, cles) {
   const c = { ...CLES_CREDIT, ...(cles || {}) };
@@ -83,8 +83,42 @@ function validerCreditSaisi(v, cles) {
     return { cle: c.initial, message: trad('Le capital emprunté au départ doit être '
       + 'supérieur à 0 lorsqu’un capital restant dû est renseigné.') };
   }
+  if (estDeclare(lu('part')) && !(num(lu('part')) > 0 && num(lu('part')) <= 100)) {
+    return { cle: c.part, message: trad('Ta part de la mensualité doit être supérieure à 0 et au plus de 100 %.') };
+  }
   return null;
 }
+
+/* --- la part d'une mensualite commune -------------------------------------
+
+   Un pret a deux : la banque facture une mensualite pour les deux emprunteurs,
+   et chacun doit sa moitie du capital. Longward saisit la dette PERSONNELLE
+   (ce que tu dois), et la mensualite FACTUREE (ce qui sort du compte, c'est ce
+   que le budget compte). Amortir la premiere avec la seconde rembourserait la
+   dette deux fois trop vite : capital du mois, date de fin et projection
+   seraient faux du meme cote, le flatteur.
+
+   `d.part` est la part de la mensualite qui rembourse ta dette, en pourcentage.
+   Elle se DECLARE, et son absence vaut cent : rien ne la deduit de la
+   quote-part du bien, parce qu'une banque peut aussi facturer a chacun sa
+   propre mensualite, et diviser celle-la par deux serait faux dans l'autre
+   sens. Une valeur hors de ]0, 100] ne se lit pas : la saisie la refuse. */
+function partCredit(d) {
+  const p = estDeclare(d?.part) ? num(d.part) : null;
+  return p !== null && p > 0 && p <= 100 ? p / 100 : 1;
+}
+const creditPartage = d => partCredit(d) < 1;
+function lirePartCredit(v) {
+  if (!estDeclare(v)) return null;
+  const p = num(v);
+  return p > 0 && p < 100 ? p : null;
+}
+const champPartCredit = (valeur = '', montreSi) => ({
+  cle: 'partCredit', label: trad('Ta part de la mensualité (%)'), type: 'nombre',
+  genre: 'pct', valeur, exemple: '100', ...(montreSi ? { montreSi } : {}),
+  aide: trad('Si la mensualité facturée rembourse aussi la part de quelqu’un d’autre, par exemple un prêt commun à deux, indique la tienne. Vide : toute la mensualité rembourse ta dette.'),
+});
+const mensualiteAmortissante = d => mensualiteCredit(d) * partCredit(d);
 
 /* --- la charge fixe qui rembourse un credit ------------------------------
    Une mensualite de pret etait saisie deux fois : en charge fixe, parce que
@@ -107,6 +141,19 @@ function chargeDuCredit(id) {
   return i < 0 ? null : { charge: B().fixedCharges[i], index: i };
 }
 
+/* Ce que le credit fait SORTIR du compte chaque mois : la mensualite facturee.
+
+   C'est ce que le budget compte, et ce que lisent le cout du logement et le
+   cash-flow d'un locatif. Une repartition de la charge avec quelqu'un d'autre
+   n'en retranche rien : ce qu'il reverse entre par les revenus.
+
+   LA DETTE, ELLE, NE SE PARTAGE PAS. Un credit dans Longward est la dette
+   PERSONNELLE : le capital restant du et le capital emprunte se saisissent deja
+   au niveau du detenteur, et les multiplier par une part de depense — ou par la
+   quote-part du bien — les compterait deux fois. Ce qui rembourse cette dette
+   est `mensualiteAmortissante`, la part declaree de la facture.
+
+   Sans charge liee, la mensualite notee sur le credit fait foi, comme avant. */
 function mensualiteCredit(d) {
   const lien = chargeDuCredit(d.id);
   return lien ? chargeMensuelle(lien.charge) : num(d.mensualite) || 0;
@@ -164,7 +211,7 @@ const apportDeclare = compte => estDeclare(compte?.apport) ? num(compte.apport) 
    une precision qui n'existe pas. */
 function projectionCredit(d) {
   const reste = num(d.montant);
-  const mens = mensualiteCredit(d);
+  const mens = mensualiteAmortissante(d);
   const tauxAn = tauxCreditDeclare(d);
   const taux = (tauxAn || 0) / 100 / 12;
   const depuis = d.verifieLe || null;
@@ -227,11 +274,21 @@ function assuranceMensuelleCredit(d) {
 
    `amortissable: false` quand ce qui reste apres l'assurance ne couvre pas les
    interets du mois : la dette ne s'eteint jamais, et annoncer une date de fin
-   serait mentir. La decomposition du mois reste rendue -- elle est vraie, elle. */
+   serait mentir. La decomposition du mois reste rendue -- elle est vraie, elle.
+
+   IL PART D'AUJOURD'HUI, DONC DU SOLDE D'AUJOURD'HUI. Le solde declare date de
+   sa verification ; l'amortir a partir d'aujourd'hui daterait la fin trop tard
+   d'autant de mois qu'il en est passe, et compterait des interets deja payes.
+   Quand `projectionCredit` sait rejouer ces mois, l'echeancier part du solde
+   projete et le dit (`depuisProjection`) : ses chiffres sont alors des
+   estimations, et la fiche l'ecrit. Rien n'est ecrit dans les donnees, et le
+   patrimoine net garde le solde declare. */
 function echeancierCredit(d) {
-  const reste = num(d.montant);
+  const pr = projectionCredit(d);
+  const depuisProjection = pr.projete != null;
+  const reste = depuisProjection ? pr.projete : num(d.montant);
   if (!(reste > 0)) return null;
-  const mens = mensualiteCredit(d);
+  const mens = mensualiteAmortissante(d);
   const assurance = assuranceMensuelleCredit(d);
   /* Un taux ABSENT n'est pas un taux nul. Sans taux on ne sait pas departager le
      capital des interets, et annoncer « zero de capital » sur une mensualite de
@@ -253,6 +310,7 @@ function echeancierCredit(d) {
     amortissable: false,
     mois: null, fin: null, finLe: null, interets: null,
     assurance: null, derniere: null,
+    depuisProjection, moisDepuis: pr.moisDepuis,
   };
   if (!declare || !(mens > 0) || dispo <= interetsDuMois) return mois0;
 
@@ -348,6 +406,9 @@ function creditsEnCours() {
         verifieLe: d.verifieLe || null,
         ...projectionCredit(d),
         fin: finCredit(d),
+        /* La fin se calcule depuis le solde projete d'aujourd'hui quand il
+           existe, et non depuis `reste` : le panneau le dit a cote. */
+        depuisProjection: !!echeancierCredit(d)?.depuisProjection,
       });
     });
   }

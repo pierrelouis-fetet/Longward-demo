@@ -401,6 +401,13 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
       const source = $(`#f_${l.de}`), cible = $(`#f_${l.vers}`);
       if (!source || !cible) return null;
       const majCible = () => {
+        if (l.coche) {
+          cible.checked = !!l.coche(source.value);
+          const sub = l.aide && cible.closest('.field-case')?.querySelector('.sub');
+          if (sub) sub.textContent = trad(l.aide(source.value));
+          cible.dispatchEvent(new Event('change', { bubbles: true }));
+          return;
+        }
         const opts = l.options(source.value);
         const garde = cible.value;
         cible.innerHTML = opts.length
@@ -596,7 +603,10 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
       if (absurde) {
         const el = $(`#f_${absurde.cle}`);
         el.focus(); el.setAttribute('aria-invalid', 'true');
-        toast(`${trad(absurde.label)}${deuxPoints()} ${trad('cette valeur semble anormalement élevée, vérifie le montant saisi')}`);
+        const n = lireNombre(el.value);
+        toast(`${trad(absurde.label)}${deuxPoints()} ${n !== null && n < 0
+          ? trad('un montant négatif ne peut pas être enregistré')
+          : trad('cette valeur semble anormalement élevée, vérifie le montant saisi')}`);
         return;
       }
       /* Une regle qui porte sur DEUX champs ne peut pas vivre dans l'un des
@@ -803,6 +813,19 @@ function erreurDeFenetre(message) {
   }
   e.textContent = message;
   e.scrollIntoView({ block: 'nearest' });
+}
+
+function messageChampInvalide(el) {
+  const chemin = el?.dataset?.path || '';
+  if (el?.tagName === 'SELECT') return trad('Une autre part de ce compte porte déjà cette affectation.');
+  if (/\.part$/.test(chemin)) return trad('La quote-part doit être comprise entre 0 et 100 %.');
+  const n = lireNombre(el?.value);
+  if (n !== null && n < 0) {
+    return /\.cash\.\d+\.montant$/.test(chemin)
+      ? trad('Un solde ne peut pas être négatif : un découvert se déclare en crédit chez la banque.')
+      : trad('Un montant négatif ne peut pas être enregistré.');
+  }
+  return trad('Cette valeur semble anormalement élevée, vérifie le montant saisi.');
 }
 
 function champDestination(prefixe, sourceId) {

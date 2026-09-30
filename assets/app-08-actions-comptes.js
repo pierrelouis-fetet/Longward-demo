@@ -115,14 +115,20 @@ Object.assign(ACTIONS, {
           aide: trad('un crédit se pose sur ce niveau : deux biens rattachés au même le partagent') });
       }
 
+      /* Un montant et non un pourcentage : la clef `plafond` se lit `pct` par
+         defaut, et 22 950 depassait la borne de cent. */
       if (t.id === 'livret') champs.push({ cle: 'plafond', label: trad('Plafond de versement ({dev})'),
-        type: 'nombre', valeur: valeur('plafond', num(c.plafond) || ''), exemple: 'ex. 22950',
+        type: 'nombre', genre: 'montant', valeur: valeur('plafond', num(c.plafond) || ''), exemple: 'ex. 22950',
         aide: trad('facultatif') });
 
       if (!t.interne) champs.push(
         { cle: 'ouvertLe', label: motDateCompte(typeCompte(c.type)), type: 'date',
           valeur: valeur('ouvertLe', c.ouvertLe || ''),
-          aide: t.dateSensible ? 'elle commande la disponibilité de ce compte' : 'facultatif' },
+          aide: t.dateSensible ? trad('elle donne l’ancienneté, que la fiche affiche : cinq ans pour un PEA, huit pour une assurance-vie')
+                               : trad('facultatif') },
+        ...(t.disponibilite === 'bloque' ? [{ cle: 'debloqueLe', label: trad('Déblocage prévu'), type: 'date',
+          valeur: valeur('debloqueLe', c.debloqueLe || ''),
+          aide: trad('facultatif : la date à laquelle tu prévois de récupérer cet argent, ta retraite en général') }] : []),
         { cle: 'notes', label: 'Notes', type: 'texte',
           valeur: valeur('notes', c.notes || ''),
           exemple: trad('facultatif') },
@@ -216,6 +222,7 @@ Object.assign(ACTIONS, {
         c.lignes[0].dateAcquisition = v.ouvertLe || '';
       }
       if ('clotureLe' in v) pose('clotureLe', v.clotureLe);
+      if ('debloqueLe' in v) pose('debloqueLe', v.debloqueLe);
       if ('numero' in v) pose('numero', String(v.numero || '').trim());
       if ('notes' in v) pose('notes', String(v.notes || '').trim());
 
@@ -410,7 +417,7 @@ Object.assign(ACTIONS, {
 
     const e3 = await askForm({
       titre: bien ? (estDetenuEnDirect(t) ? 'Valeur estimée'
-                  : `Valeur ${t.classes.includes('nonCote') ? 'de la participation' : 'du bien'}`)
+                  : trad(t.classes.includes('nonCote') ? 'Valeur de la participation' : 'Valeur du bien'))
                   : t.sansCash ? trad(enContrat(t) ? 'Nommer le contrat' : 'Nommer le plan')
                   : `${BASES.liquidites.nom} ${trad('sur ce compte')}`,
       sous: `${trad('Étape')} ${etapes} ${trad('sur.etape', 'sur')} ${etapes}${bien
@@ -474,7 +481,7 @@ Object.assign(ACTIONS, {
           type: 'nombre', exemple: '0',
           aide: immoDirect
               ? trad('Sa valeur totale aujourd’hui. Si tu n’en détiens qu’une part, renseigne ta quote-part séparément.')
-              : 'ce que cela vaut aujourd’hui',
+              : trad('ce que cela vaut aujourd’hui'),
           ...(t.parts ? { parPart: 'parts', parPartLabel: 'Prix de la part aujourd’hui ({dev})' } : {}) },
         ...(immoDirect ? [
         { cle: 'section_acq', label: 'Acquisition', type: 'section' },
@@ -557,11 +564,11 @@ Object.assign(ACTIONS, {
           aide: trad('facultatif, il sert à suivre le capital qui reste') },
         { cle: 'tauxAssurance', label: trad('Taux d’assurance (%)'), type: 'nombre', exemple: '0',
           montreSi: avecCredit,
-          aide: trad('facultatif, environ 0,3 % du capital emprunte : elle sort de la mensualite sans rembourser') },
+          aide: trad('facultatif, environ 0,3 % du capital emprunté : elle sort de la mensualité sans rembourser') },
+        champPartCredit('', x => avecCredit(x) && estDeclare(x.part) && num(x.part) < 100),
         { cle: 'charge', label: trad('Ajouter une charge mensuelle fixe'), type: 'case', valeur: true,
           montreSi: avecCredit,
-          aide: trad('seulement si tu renseignes une mensualité : elle entrera dans ton ')
-              + 'budget sous ce nom' },
+          aide: trad('seulement si tu renseignes une mensualité : elle entrera dans ton budget sous ce nom') },
         ...(!immoDirect ? [] : [
         { cle: 'apport', label: trad('Apport initial ({dev})'), type: 'nombre', exemple: '0',
           aide: trad('facultatif, ce que tu as sorti de ta poche le jour de l’achat') },
@@ -583,7 +590,11 @@ Object.assign(ACTIONS, {
           aide: trad('deux usages sur le même compte, sans le dupliquer') },
         ]),
         ...(t.dateSensible ? [{ cle: 'ouvertLe', label: trad('Date d’ouverture'), type: 'date',
-          aide: trad('elle donne l’ancienneté, que la fiche affiche : cinq ans pour un PEA, huit pour une assurance-vie') }] : []),
+          aide: trad('elle donne l’ancienneté, que la fiche affiche : cinq ans pour un PEA, huit pour une assurance-vie') }]
+          : t.disponibilite === 'bloque' ? [
+          { cle: 'ouvertLe', label: trad('Date d’ouverture'), type: 'date', aide: trad('facultatif') },
+          { cle: 'debloqueLe', label: trad('Déblocage prévu'), type: 'date',
+            aide: trad('facultatif : la date à laquelle tu prévois de récupérer cet argent, ta retraite en général') }] : []),
       ],
     });
     if (!e3) return;
@@ -641,6 +652,7 @@ Object.assign(ACTIONS, {
              aussitot parmi les taux inconnus. */
           taux: estDeclare(e3.taux) ? num(e3.taux) : null,
           tauxAssurance: estDeclare(e3.tauxAssurance) ? num(e3.tauxAssurance) : null,
+          part: lirePartCredit(e3.partCredit),
           bienId: id,
           verifieLe: todayISO() });
         /* La charge fixe dans le meme geste : c'est le seul moment ou l'on a la
@@ -677,12 +689,14 @@ Object.assign(ACTIONS, {
       id, etabId, type: t.id, statut: 'ouvert',
       libelle: String(e3.libelle || e3.nom || '').trim(),
       ouvertLe: e3.ouvertLe || '', numero: '', notes: '',
+      ...(e3.debloqueLe ? { debloqueLe: e3.debloqueLe } : {}),
       ...(apportDit === null ? {} : { apport: apportDit }),
       cash, lignes,
     });
     refreshAccounts(); Store.save(); render();
     toast([t.label, nomContenant() || String(e3.nom || '').trim()].filter(Boolean).join(' · ')
-      + (t.titres ? trad(', les placements s’ajoutent dans Marchés')
+      + (t.melange ? trad(', ajoute ses supports sur sa fiche')
+         : t.titres ? trad(', les placements s’ajoutent dans Marchés')
                   : bien ? (num(e3.credit)
                       ? ` · ${trad('{v} moins {c} de crédit')
                           .replace('{v}', fmtEUR0(num(e3.valeur)))
@@ -742,6 +756,14 @@ Object.assign(ACTIONS, {
   },
   async 'archiver-compte'(btn) {
     const c = compteById(btn.dataset.id);
+    if (c && typeCompte(c.type).interne) {
+      await askConfirm(trad('Les espèces ne s’archivent pas') + '\n'
+        + trad('Ce compte existe pour tout le monde, sans établissement. S’il n’y a '
+        + 'plus de billets, mets son montant à 0 : il sort alors de tous les '
+        + 'totaux, et les relevés passés restent lisibles.'),
+        { ok: 'Compris', danger: false });
+      return;
+    }
     const imp = c && impactArchivage(c.id);
     if (!imp) return;
     const nom = nomCompteV2(c);
@@ -902,7 +924,7 @@ Object.assign(ACTIONS, {
     if (invalide) {
       invalide.focus();
       invalide.select?.();
-      toast(trad('La quote-part doit être comprise entre 0 et 100 %.'));
+      toast(messageChampInvalide(invalide));
       return;
     }
     /* LA TRANSITION SUIT LE GESTE, pas le rendu. La fiche porte un select qui
@@ -1033,7 +1055,7 @@ Object.assign(ACTIONS, {
     }
     const delies = B().income.filter(r => r.bienId === c.id).length
                  + B().fixedCharges.filter(x => x.bienId === c.id).length;
-    if (!await askConfirm(`${trad('Clôturer et supprimer')} ${guill(nomCompteV2(c))} ?\n\n`
+    if (!await askConfirm(`${trad('Supprimer')} ${guill(nomCompteV2(c))} ?\n\n`
       + (v ? trad('Sa valeur de {v} sortira du patrimoine.').replace('{v}', fmtEUR(v)) + '\n' : '')
       + (duCredit ? trad('Le crédit qui le finance, {c} de capital restant dû, sera supprimé en '
                        + 'même temps : il ne peut pas rester seul.').replace('{c}', fmtEUR(duCredit)) + '\n' : '')
@@ -1123,7 +1145,7 @@ Object.assign(ACTIONS, {
     const parDefaut = possibles[0] || 'nonCote';
     const demandeSupport = possibles.length > 1;
     const v = await askForm({
-      titre: `Placement dans ${nomCompteV2(c)}`,
+      titre: trad('Placement dans {v}').replace('{v}', nomCompteV2(c)),
       sous: demandeSupport
         ? trad('c’est toi qui en donnes la valeur')
         : `${CLASSES_ACTIFS[parDefaut] || parDefaut} · ${trad('c’est toi qui en donnes la valeur')}`,
@@ -1223,7 +1245,7 @@ Object.assign(ACTIONS, {
     if (!c) return;
     const direct = estBienEnDirect(c);
     const v = await askForm({
-      titre: direct ? `Loyer de ${nomCompteV2(c)}`
+      titre: direct ? trad('Loyer de {v}').replace('{v}', nomCompteV2(c))
                     : trad('Revenu de {v}').replace('{v}', nomCompteV2(c)),
       /* La convention du loyer, et il n'y en a qu'une : le loyer du logement
          AVANT les depenses du proprietaire. Une aide qui dirait charges deduites
@@ -1324,11 +1346,12 @@ Object.assign(ACTIONS, {
           aide: trad('facultatif, sert à mesurer ce qui est déjà remboursé') },
         { cle: 'mensualite', label: trad('Mensualité ({dev})'), type: 'nombre', exemple: '0', aide: trad('facultatif') },
         { cle: 'taux', label: trad('Taux annuel (%)'), type: 'nombre', exemple: '0',
-          aide: trad('facultatif, noté pour mémoire') },
+          aide: trad('facultatif, il sert à suivre le capital qui reste') },
         { cle: 'tauxAssurance', label: trad('Taux d’assurance (%)'), type: 'nombre', exemple: '0',
-          aide: trad('facultatif, environ 0,3 % du capital emprunte : elle sort de la mensualite sans rembourser') },
+          aide: trad('facultatif, environ 0,3 % du capital emprunté : elle sort de la mensualité sans rembourser') },
         { cle: 'preteur', label: 'Prêteur', type: 'texte', exemple: 'ex. Ma banque',
           suggestions: valeursConnues('preteur') },
+        champPartCredit(),
         ...comptesDuPreteur(e.id).length > 1 ? [{ cle: 'bienId',
           label: trad('Ce crédit finance'), type: 'liste',
           options: [['', trad('à préciser')], ...comptesDuPreteur(e.id)],
@@ -1354,6 +1377,7 @@ Object.assign(ACTIONS, {
          Le defaut n'etait pas seulement a la lecture. */
       taux: estDeclare(v.taux) ? num(v.taux) : null,
       tauxAssurance: estDeclare(v.tauxAssurance) ? num(v.tauxAssurance) : null,
+      part: lirePartCredit(v.partCredit),
       bienId: v.bienId || seul,
       preteur: v.preteur || '', note: '', verifieLe: todayISO() });
     Store.save(); render();
@@ -1404,16 +1428,16 @@ Object.assign(ACTIONS, {
           aide: trad('facultatif, sert à mesurer ce qui est déjà remboursé') },
         ...(lien ? [] : [{ cle: 'mensualite', label: trad('Mensualité ({dev})'), type: 'nombre',
           valeur: estDeclare(d.mensualite) ? num(d.mensualite) : '',
-          aide: trad('facultatif. Mieux : rattache-le à une charge fixe, le montant ')
-              + 'ne sera alors saisi qu’une fois' }]),
+          aide: trad('facultatif. Mieux : rattache-le à une charge fixe, le montant ne sera alors saisi qu’une fois') }]),
         { cle: 'taux', label: trad('Taux annuel (%)'), type: 'nombre',
           /* `estDeclare` : rouvrir la fenetre d'un pret a 0 % affichait un champ
              vide, et l'enregistrer sans y toucher effaçait donc le taux. */
           valeur: estDeclare(d.taux) ? num(d.taux) : '',
-          aide: trad('facultatif, noté pour mémoire') },
+          aide: trad('facultatif, il sert à suivre le capital qui reste') },
         { cle: 'tauxAssurance', label: trad('Taux d’assurance (%)'), type: 'nombre',
           valeur: estDeclare(d.tauxAssurance) ? num(d.tauxAssurance) : '',
-          aide: trad('facultatif, environ 0,3 % du capital emprunte : elle sort de la mensualite sans rembourser') },
+          aide: trad('facultatif, environ 0,3 % du capital emprunté : elle sort de la mensualité sans rembourser') },
+        champPartCredit(estDeclare(d.part) ? num(d.part) : ''),
         ...comptesDuPreteur(e.id).length > 1 ? [{ cle: 'bienId',
           label: trad('Ce crédit finance'), type: 'liste', valeur: d.bienId || '',
           options: [['', trad('à préciser')], ...comptesDuPreteur(e.id)],
@@ -1463,6 +1487,7 @@ Object.assign(ACTIONS, {
        « taux inconnu » a chaque enregistrement. */
     d.taux = estDeclare(v.taux) ? num(v.taux) : null;
     d.tauxAssurance = estDeclare(v.tauxAssurance) ? num(v.tauxAssurance) : null;
+    if (v.partCredit !== undefined) d.part = lirePartCredit(v.partCredit);
     /* `rattacherCredit` et non une affectation nue : la charge qui rembourse ce
        credit doit suivre, sans quoi sa mensualite resterait comptee dans le
        cash-flow d'un bien qui ne la paie plus. */

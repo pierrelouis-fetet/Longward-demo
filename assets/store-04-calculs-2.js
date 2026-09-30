@@ -34,7 +34,7 @@ function teinteDominante(comptes) {
 }
 
 function changementDeTypePossible(compte, cibleId) {
-  const cible = TYPES_COMPTE.find(t => t.id === cibleId);
+  const cible = typesCompteChoix().find(t => t.id === cibleId);
   if (!cible) return { ok: false, raison: 'Ce type de compte n’existe pas.' };
   if (!compte) return { ok: false, raison: 'Ce compte n’existe plus.' };
   if (compte.type === cibleId) return { ok: true, sansChangement: true };
@@ -45,6 +45,15 @@ function changementDeTypePossible(compte, cibleId) {
     return { ok: false, raison: `${cible.label} ne peut pas porter d’espèces. `
       + `Ce compte en déclare ${cash > 1 ? `${cash} parts` : 'une part'} : `
       + `remets-la à zéro, ou choisis un type qui accepte des liquidités.` };
+  }
+  /* Un contrat sans poche de cash (`sansCash`) accepte des supports
+     monetaires, pas des especes : celles d'un livret retype en PER resteraient
+     comptees dans la reserve de securite, alors que le plan les bloque. */
+  const especes = (compte.cash || []).reduce((s, e) => s + num(e.montant), 0);
+  if (cash && cible.sansCash) {
+    return { ok: false, raison: trad('{t} ne tient pas d’espèces : l’argent y est toujours sur un support. '
+      + 'Ce compte en déclare {v} : remets-les à zéro ou déplace-les d’abord.')
+      .replace('{t}', trad(cible.label)).replace('{v}', fmtEUR0Texte(especes)) };
   }
 
   const bloquantes = lignesDe(compte).filter(l => !permises.has(l.classe));
@@ -73,6 +82,7 @@ function changementDeTypePossible(compte, cibleId) {
    des interets, c'est legal, et annoncer « il reste −40 EUR a verser » serait
    une facon absurde de dire qu'il est plein. */
 function resteAVerser(compte) {
+  if (typeCompte(compte?.type).id !== 'livret') return null;
   const plafond = num(compte?.plafond);
   if (!plafond) return null;
   const verse = (compte.cash || []).reduce((s, e) => s + num(e.montant), 0);
@@ -1278,6 +1288,18 @@ function capitalRembourseParMois() {
   }, 0), 0);
 }
 
+const assuranceDeclaree = d => estDeclare(d?.tauxAssurance);
+
+const capitalSansAssurance = () => ETABS().some(e => (e.dettes || []).some(d => {
+  const e2 = echeancierCredit(d);
+  return !!(e2 && e2.capitalDuMois != null && mensualiteCredit(d) > 0 && !assuranceDeclaree(d));
+}));
+
+const capitalDuMoisEstime = () => ETABS().some(e => (e.dettes || []).some(d => {
+  const e2 = echeancierCredit(d);
+  return !!(e2 && e2.capitalDuMois != null && e2.depuisProjection);
+}));
+
 /* Ce qu'il reste a payer, deduit et jamais saisi.
 
    Un tableau d'amortissement de banque tient en quatre grandeurs : capital
@@ -1459,6 +1481,37 @@ function creditsDuBien(compte) {
                                      : etabSansAmbiguite(compte.etabId, compte.id));
 }
 
+/* L'immobilier compte par compte : ses lots, ses credits, ce qu'il en reste.
+
+   UN CREDIT FINANCE UN COMPTE, PAS UN LOT. Attache a chacun des lots d'un
+   compte, il se retrancherait autant de fois qu'il y a de lots : un
+   appartement et son parking finances par un seul pret verraient ce pret
+   compte deux fois, et le parking afficherait une valeur nette negative.
+
+   Seul un compte qui EST de l'immobilier (`bienImmo` : un bien, une SCPI en
+   direct) porte ses credits ici. Une assurance-vie qui detient une SCPI n'est
+   pas financee par l'avance consentie sur le contrat, et la ranger sous la
+   ligne SCPI l'aurait fait croire.
+
+   `dettes` porte le rang de chaque credit dans `etab.dettes`, retrouve par
+   identite : c'est par ce rang qu'on ecrit, et celui d'une liste filtree
+   corrigerait le credit du voisin. */
+function biensImmobiliersParCompte() {
+  const out = [];
+  for (const c of comptesOuverts()) {
+    const lots = lignesDe(c).filter(l => l.classe === 'immobilier');
+    if (!lots.length) continue;
+    const idxEtab = ETABS().findIndex(e => e.id === c.etabId);
+    const etab = idxEtab >= 0 ? ETABS()[idxEtab] : null;
+    const miens = etab && typeCompte(c.type).bienImmo ? new Set(creditsDuBien(c)) : new Set();
+    const dettes = etab ? (etab.dettes || []).map((d, i) => ({ d, i })).filter(x => miens.has(x.d)) : [];
+    const valeur = lots.reduce((s, l) => s + num(l.valeur), 0);
+    const du = dettes.reduce((s, x) => s + num(x.d.montant), 0);
+    out.push({ compte: c, lots, valeur, idxEtab, dettes, du, net: valeur - du });
+  }
+  return out.sort((a, b) => b.valeur - a.valeur);
+}
+
 /* L'etablissement ne tient-il qu'un seul compte, et est-ce celui-la ?
 
    La question ne passe PAS par le type du compte. `typeCompte(id).bienImmo`
@@ -1537,16 +1590,57 @@ function rattacherCredit(d, bienId) {
   else delete lien.charge.bienId;
 }
 
+/* Ce qu'un credit finance, dit par son seul lien etabli.
+
+     `ouvert`     son `bienId` vise un compte ouvert de cet etablissement, ou,
+                  sans lien, l'etablissement n'a qu'un compte et il est ouvert ;
+     `archive`    la meme chose, vers un compte archive. Le repli du compte
+                  unique compte ici comme un lien : c'est la regle de
+                  `creditsDuBien`, qui montre ce credit sur la fiche archivee ;
+     `mort`       son `bienId` vise un compte qui n'existe plus ;
+     `ailleurs`   son `bienId` vise le compte d'un autre etablissement ;
+     `ambigu`     aucun lien, et l'etablissement tient plusieurs comptes ;
+     `seul`       aucun lien, et l'etablissement ne tient aucun compte.
+
+   Aucune de ces valeurs ne se devine : un credit sans lien et sans compte a pu
+   etre declare seul, rien ne dit qu'un bien a ete supprime. */
+function lienDette(d, e) {
+  const miens = (Store.state.comptes || []).filter(c => c.etabId === e.id);
+  if (d.bienId) {
+    const cible = compteById(d.bienId);
+    if (!cible) return { quoi: 'mort', compte: null };
+    if (cible.etabId !== e.id) return { quoi: 'ailleurs', compte: cible };
+    return { quoi: cible.statut === 'archive' ? 'archive' : 'ouvert', compte: cible };
+  }
+  if (miens.length > 1) return { quoi: 'ambigu', compte: null };
+  if (!miens.length) return { quoi: 'seul', compte: null };
+  return { quoi: miens[0].statut === 'archive' ? 'archive' : 'ouvert', compte: miens[0] };
+}
+
+/* Pourquoi un etablissement sans compte ouvert doit encore de l'argent, en un
+   mot pour la page Actifs : `archive`, `mort` ou `ailleurs` quand toutes ses
+   dettes disent la meme chose, `autre` sinon (pas de lien, ou des liens qui ne
+   s'accordent pas). `pluriel` dit qu'il y a plusieurs dettes, que le montant
+   additionne. `compte` n'est rendu que si toutes visent le meme compte : il
+   donne alors son mot, et plusieurs comptes ne se resument pas a un seul. */
+function motifOrphelin(e) {
+  const liens = (e?.dettes || []).filter(d => num(d.montant)).map(d => lienDette(d, e));
+  const pluriel = liens.length > 1;
+  const tous = quoi => liens.length > 0 && liens.every(l => l.quoi === quoi);
+  const motif = tous('archive') ? 'archive' : tous('mort') ? 'mort'
+              : tous('ailleurs') ? 'ailleurs' : 'autre';
+  const vises = new Set(liens.map(l => l.compte).filter(Boolean));
+  return { motif, pluriel, compte: vises.size === 1 ? [...vises][0] : null };
+}
+
+const LIENS_A_CLARIFIER = new Set(['ambigu', 'mort', 'ailleurs']);
 function creditsAClarifier() {
   const dehors = [];
   for (const e of ETABS()) {
     const miens = (Store.state.comptes || []).filter(c => c.etabId === e.id);
     for (const d of (e.dettes || [])) {
-      const cible = d.bienId ? compteById(d.bienId) : null;
-      const quoi = !d.bienId ? (miens.length > 1 ? 'ambigu' : null)
-                 : !cible ? 'mort'
-                 : cible.etabId !== e.id ? 'ailleurs' : null;
-      if (!quoi) continue;
+      const { quoi } = lienDette(d, e);
+      if (!LIENS_A_CLARIFIER.has(quoi)) continue;
       dehors.push({ etabId: e.id, etabNom: e.nom, id: d.id, quoi,
                     libelle: d.libelle || 'Crédit',
                     montant: num(d.montant), comptes: miens });
@@ -1666,7 +1760,8 @@ function cashFlowBien(compte) {
     : amortis.length ? 'partielle' : 'aucune';
 
   const valeur = valeurCompte(compte);
-  const achat = lignesDe(compte).reduce((s, l) => s + num(l.prixDeRevient), 0);
+  const acq = acquisitionCompte(compte);
+  const achat = acq.total != null && !acq.partInvalide ? acq.detenu : 0;
   const base = achat || valeur;
   const surAchat = achat > 0;
 
@@ -1782,7 +1877,8 @@ function financementIndicatif(compte) {
 function planFinancement(compte) {
   if (!compte) return null;
   const acq = acquisitionCompte(compte);
-  if (acq.total == null) return null;
+  if (acq.total == null || acq.partInvalide) return null;
+  const cout = acq.detenu;
   const apport = apportDeclare(compte);
   const credits = creditsDuBien(compte);
   /* `> 0` et non le seul `estDeclare` : zero est une declaration valide partout
@@ -1793,13 +1889,13 @@ function planFinancement(compte) {
   const dits = credits.filter(d => estDeclare(d.initial) && num(d.initial) > 0);
   const emprunte = dits.reduce((s, d) => s + num(d.initial), 0);
   if (apport === null || !credits.length || dits.length !== credits.length) {
-    return { cout: acq.total, apport, emprunte: dits.length ? round2(emprunte) : null,
+    return { cout, apport, emprunte: dits.length ? round2(emprunte) : null,
              finance: null, ecart: null, complet: false,
              manque: apport === null ? 'apport' : 'capital' };
   }
   const finance = apport + emprunte;
-  return { cout: acq.total, apport, emprunte: round2(emprunte),
-           finance: round2(finance), ecart: round2(finance - acq.total),
+  return { cout, apport, emprunte: round2(emprunte),
+           finance: round2(finance), ecart: round2(finance - cout),
            complet: true, manque: null };
 }
 

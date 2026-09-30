@@ -734,9 +734,16 @@ const APERCUS = {
         });
         return { aff, label, entrees };
       }).filter(g => g.entrees.length);
+      /* Le seuil porte sur leur somme, comme `liquiditesEnLignes` : deux
+         lignes de quelques millimes font un total que le groupe doit refaire. */
+      const supports = liquiditesEnLignes() === 0 ? [] : comptesOuverts().flatMap(c => lignesDe(c)
+        .filter(l => l.classe === 'liquidites').map(l => ({ c, l })));
+      const nbGroupes = groupes.length + (supports.length ? 1 : 0);
 
-      const sommes = () => Object.fromEntries(groupes.map(g =>
-        [g.aff, fmtEUR(g.entrees.reduce((s, x) => s + num(x.e.montant), 0))]));
+      const sommes = () => Object.fromEntries([
+        ...groupes.map(g => [g.aff, fmtEUR(g.entrees.reduce((s, x) => s + num(x.e.montant), 0))]),
+        ...(supports.length ? [['monetaire', fmtEUR(supports.reduce((s, x) => s + num(x.l.valeur), 0))]] : []),
+      ]);
 
       return {
         titre: CLASSES_ACTIFS[classe],
@@ -750,7 +757,7 @@ const APERCUS = {
            et ne s'anime pas — et surtout il n'offrait aucune prise pour un geste
            collectif, alors que c'est precisement ce qu'on vient faire ici :
            replier les usages pour comparer leurs totaux d'un coup d'oeil. */
-        sousAction: groupes.length > 1
+        sousAction: nbGroupes > 1
           ? `<button type="button" class="btn sm ghost" data-action="liq-plier-tout"
                      aria-expanded="true">${trad('Tout replier')}</button>`
           : '',
@@ -773,28 +780,65 @@ const APERCUS = {
                          aria-label="${esc(trad('Solde, {c}').replace('{c}', nomCompteV2(x.c)))}">
                 </div>`; }).join('')}
             </div></div>
-          </section>`).join('')}`,
+          </section>`).join('')}
+          ${!supports.length ? '' : `
+          <section class="liq-groupe">
+            <button type="button" class="liq-sommaire" data-action="liq-plier"
+                    data-cle="${esc(cleLiqPli('monetaire'))}"
+                    aria-expanded="${compteReplies.has(cleLiqPli('monetaire')) ? 'false' : 'true'}">
+              <span>${esc(trad(LIBELLE_LIQUIDITES_EN_LIGNES))}</span>
+              <b data-live="monetaire">${sommes().monetaire}</b><span class="cpt-chev">⌄</span></button>
+            <div class="cpt-pli ${compteReplies.has(cleLiqPli('monetaire')) ? '' : 'ouvert'}"><div class="liq-corps">
+              ${supports.map(({ c, l }) => `
+                <div class="liq-ligne">
+                  <span class="cpt-nom">${esc(l.libelle || nomCompteV2(c))}<span class="sub">${
+                    esc(sousNom('', nomCompteV2(c), nomEtabDe(c)))}</span></span>
+                  <b>${fmtEUR(l.valeur)}</b>
+                </div>`).join('')}
+              <p class="hint" style="margin:8px 0 0">${trad('Leur valeur vient de leur cours ou de leur fiche, pas d’une saisie ici.')}</p>
+            </div></div>
+          </section>`}`,
         avant: blocMiseAJour('compte', trad('Corrige le solde d’un compte ci-dessous, puis enregistre.')),
         calcule: true,
         vue: 'accounts', ancre: '', cta: trad('Ouvrir Actifs'),
       };
     }
     if (classe === 'immobilier') {
-      const biens = [];
-      for (const c of comptesOuverts()) {
-        for (const l of lignesDe(c)) {
-          if (l.classe !== 'immobilier') continue;
-          const cr = creditsDuCompte(c);
-          biens.push({ l, c, idxEtab: cr.idxEtab, dettes: cr.dettes, credits: cr.total });
-        }
-      }
-      biens.sort((a, b) => b.l.valeur - a.l.valeur);
-      const creditTotal = biens.reduce((s, b) => s + b.credits, 0);
-      const netDe = b => num(b.l.valeur) - b.dettes.reduce((s, x) => s + num(x.d.montant), 0);
+      /* Par compte, et non par lot : un credit finance un compte, il se lit et
+         se retranche une fois. Voir `biensImmobiliersParCompte`. */
+      const biens = biensImmobiliersParCompte();
+      const creditTotal = biens.reduce((s, b) => s + b.du, 0);
+      const duDe = b => b.dettes.reduce((s, x) => s + num(x.d.montant), 0);
       const vivants = () => Object.fromEntries(biens.flatMap((b, k) => [
-        [`net-${k}`, fmtEUR(netDe(b))],
-        [`credit-${k}`, `−${fmtEUR(b.dettes.reduce((s, x) => s + num(x.d.montant), 0))}`],
+        [`net-${k}`, fmtEUR(b.valeur - duDe(b))],
+        [`credit-${k}`, `−${fmtEUR(duDe(b))}`],
       ]));
+      const lot = (l, c) => {
+        const gain = l.prixDeRevient ? l.valeur - l.prixDeRevient : null;
+        const pct = l.prixDeRevient ? (l.valeur / l.prixDeRevient - 1) * 100 : null;
+        const meta = sousNom(l.libelle, nomCompteV2(c), nomEtabDe(c));
+        return `
+            <div class="bien-tete">
+              <span class="cpt-nom">${esc(l.libelle)}
+                ${meta ? `<span class="sub">${esc(meta)}</span>` : ''}</span>
+              <b>${fmtEUR(l.valeur)}</b>
+            </div>
+            <dl class="kv">
+              ${l.part ? `
+                <dt>${trad('Ta part')}</dt>
+                  <dd>${fmtPct(l.part, 0)} ${trad('de')} ${fmtEUR0(l.valeurEntiere)}</dd>` : ''}
+              ${gain != null ? `
+                <dt>${trad('Prix d\'acquisition')}</dt><dd>${fmtEUR0(l.prixDeRevient)}</dd>
+                <dt>${trad('Écart vs coût d’acquisition')}</dt>
+                  <dd class="${cls(gain)}">${fmtSigned(gain)} <span class="muted">${fmtSignedPct(pct, 1)}</span></dd>`
+                : `<dt>${trad('Prix d\'acquisition')}</dt><dd class="muted">${trad('non renseigné')}</dd>`}
+              ${l.dateAcquisition ? `<dt>${trad('Acquis le')}</dt><dd>${fmtDate(l.dateAcquisition)}</dd>` : ''}
+              ${usageLigne(l) ? `<dt>${trad('Usage')}</dt>
+                <dd>${trad(USAGE_BIEN_LABEL[usageLigne(l)])}</dd>` : ''}
+              <dt>${trad('Disponibilité')}</dt>
+                <dd>${esc(trad(MOBILISABLE_LABEL[mobiliteLigne(l, c)]))}</dd>
+            </dl>`;
+      };
       return {
         titre: CLASSES_ACTIFS.immobilier,
         sous: (biens.length > 1 ? trad('{n} biens') : trad('{n} bien'))
@@ -803,32 +847,9 @@ const APERCUS = {
             ? ` · ${trad('{v} net de crédits').replace('{v}', fmtEUR0(total - creditTotal))}`
             : ` · ${trad('sans crédit')}`),
         total, lignes: [], live: vivants,
-        html: biens.map((b, k) => {
-          const gain = b.l.prixDeRevient ? b.l.valeur - b.l.prixDeRevient : null;
-          const pct = b.l.prixDeRevient ? (b.l.valeur / b.l.prixDeRevient - 1) * 100 : null;
-          const meta = sousNom(b.l.libelle, nomCompteV2(b.c), nomEtabDe(b.c));
-          return `
+        html: biens.map((b, k) => `
           <div class="bien">
-            <div class="bien-tete">
-              <span class="cpt-nom">${esc(b.l.libelle)}
-                ${meta ? `<span class="sub">${esc(meta)}</span>` : ''}</span>
-              <b>${fmtEUR(b.l.valeur)}</b>
-            </div>
-            <dl class="kv">
-              ${b.l.part ? `
-                <dt>${trad('Ta part')}</dt>
-                  <dd>${fmtPct(b.l.part, 0)} ${trad('de')} ${fmtEUR0(b.l.valeurEntiere)}</dd>` : ''}
-              ${gain != null ? `
-                <dt>${trad('Prix d\'acquisition')}</dt><dd>${fmtEUR0(b.l.prixDeRevient)}</dd>
-                <dt>${trad('Plus-value latente')}</dt>
-                  <dd class="${cls(gain)}">${fmtSigned(gain)} <span class="muted">${fmtSignedPct(pct, 1)}</span></dd>`
-                : `<dt>${trad('Prix d\'acquisition')}</dt><dd class="muted">${trad('non renseigné')}</dd>`}
-              ${b.l.dateAcquisition ? `<dt>${trad('Acquis le')}</dt><dd>${fmtDate(b.l.dateAcquisition)}</dd>` : ''}
-              ${usageLigne(b.l) ? `<dt>${trad('Usage')}</dt>
-                <dd>${trad(USAGE_BIEN_LABEL[usageLigne(b.l)])}</dd>` : ''}
-              <dt>${trad('Disponibilité')}</dt>
-                <dd>${esc(trad(MOBILISABLE_LABEL[mobiliteLigne(b.l, b.c)]))}</dd>
-            </dl>
+            ${b.lots.map(l => lot(l, b.compte)).join('')}
             ${b.dettes.length ? `
               <div class="pret-vif">
                 ${b.dettes.map(({ d, i }) => `
@@ -841,17 +862,16 @@ const APERCUS = {
                              .replace('{l}', d.libelle))}">
                   </div>`).join('')}
                 <dl class="kv">
-                  <dt>${trad('Crédits en cours')}</dt><dd class="dette" data-live="credit-${k}">−${fmtEUR(b.credits)}</dd>
+                  <dt>${trad('Crédits en cours')}</dt><dd class="dette" data-live="credit-${k}">−${fmtEUR(b.du)}</dd>
                   <dt><b>${trad('Ce que tu possèdes')}</b></dt>
-                    <dd><b data-live="net-${k}">${fmtEUR(b.l.valeur - b.credits)}</b></dd>
+                    <dd><b data-live="net-${k}">${fmtEUR(b.net)}</b></dd>
                 </dl>
               </div>` : ''}
             <button class="btn sm ghost" data-action="aller-fiche"
-                    data-route="#/compte/${encodeURIComponent(b.c.id)}"
-                    aria-label="${esc(trad('Mettre à jour {n}').replace('{n}', b.l.libelle || nomCompteV2(b.c)))}"
+                    data-route="#/compte/${encodeURIComponent(b.compte.id)}"
+                    aria-label="${esc(trad('Mettre à jour {n}').replace('{n}', nomCompteV2(b.compte)))}"
                     >${trad('Mettre à jour ce bien')} →</button>
-          </div>`;
-        }).join('') || `<p class="empty">${trad('Aucun bien immobilier.')}</p>`,
+          </div>`).join('') || `<p class="empty">${trad('Aucun bien immobilier.')}</p>`,
         avant: blocMiseAJour('actif', trad('Ouvre la fiche d’un bien pour corriger sa valeur.')
           + (creditTotal ? ` ${trad('Le capital restant dû se corrige ici même.')}` : '')),
         calcule: true,
@@ -923,12 +943,25 @@ const APERCUS = {
           valeur: num(e.montant), champ: `comptes.${idxCompte}.cash.${idxCash}.montant` });
       });
     });
+    const avecSupports = !cle && liquiditesEnLignes() !== 0;
+    if (avecSupports) {
+      for (const c of comptesOuverts()) {
+        for (const l of lignesDe(c)) {
+          if (l.classe !== 'liquidites') continue;
+          lignes.push({ label: l.libelle || nomCompteV2(c),
+            meta: [nomCompteV2(c), trad(LIBELLE_LIQUIDITES_EN_LIGNES)].filter(Boolean).join(' · '),
+            valeur: num(l.valeur) });
+        }
+      }
+    }
     return {
       titre: cle ? AFFECTATION_LABEL[cle] : BASES.liquidites.nom,
       sous: cle
         ? `${trad('Les comptes qui portent cette poche.')} ${
             lignes.length ? trad('Modifiable directement ici') : trad('Aucun compte ne la porte pour l’instant')}`
-        : trad('Modifiable directement, ces montants se saisissent à la main'),
+        : avecSupports
+          ? trad('Les espèces se corrigent ici ; les supports monétaires suivent leur cours ou leur fiche.')
+          : trad('Modifiable directement, ces montants se saisissent à la main'),
       total: lignes.reduce((s, l) => s + l.valeur, 0), lignes,
       vue: 'accounts', ancre: '', cta: trad('Ouvrir Actifs'),
     };
@@ -1626,7 +1659,9 @@ const APERCUS = {
         ouvre: { action: 'editer-credit', donnees: { etab: c.etabId, i: c.index } },
         meta: [c.etabNom, c.preteur, c.taux ? `${fmtNombre(c.taux)} % ${trad('l’an')}` : '',
                c.mensualite ? `${fmtEUR0(c.mensualite)} ${trad('par mois')}` : '',
-               c.fin ? `${trad('soldé')} ${fmtMoisAn(c.fin.finLe)}` : ''].filter(Boolean).join(' · '),
+               c.fin ? `${trad('soldé')} ${fmtMoisAn(c.fin.finLe)}` : '',
+               c.fin && c.depuisProjection ? trad('fin calculée sur le solde estimé d’aujourd’hui') : '']
+              .filter(Boolean).join(' · '),
         champ: `etabs.${etabs.findIndex(e => e.id === c.etabId)}.dettes.${c.index}.montant`,
         valeur: c.reste,
       })),

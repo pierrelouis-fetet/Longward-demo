@@ -79,7 +79,7 @@ suite('Chaque catégorie de la répartition s’ouvre, et dit comment la mettre 
     const p = panneau();
     vrai(/aria-label="\$\{esc\(trad\('Solde, \{c\}'\)\.replace\('\{c\}', nomCompteV2\(x\.c\)\)\)\}"/.test(p),
       'le solde de chaque compte se nomme');
-    vrai(/aria-label="\$\{esc\(trad\('Mettre à jour \{n\}'\)\.replace\('\{n\}', b\.l\.libelle \|\| nomCompteV2\(b\.c\)\)\)\}"/.test(p),
+    vrai(/aria-label="\$\{esc\(trad\('Mettre à jour \{n\}'\)\.replace\('\{n\}', nomCompteV2\(b\.compte\)\)\)\}"/.test(p),
       'le bouton de chaque bien aussi, et il se traduit');
     vrai(/>\$\{trad\('Mettre à jour ce bien'\)\} →<\/button>/.test(p), 'et dit ce qu’il fait');
     vrai(!/aria-label="Ouvrir la fiche de/.test(app()), 'plus de libellé français en dur');

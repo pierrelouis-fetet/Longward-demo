@@ -195,6 +195,15 @@ function peutPorterCash(c) {
   return (t.classes || []).includes('liquidites') || (c.cash || []).length > 0;
 }
 
+/* Les comptes qui paient un achat pose sur `id` : lui-meme s'il tient du cash,
+   sinon -- un contrat sans poche de liquidites -- les comptes suivis qui en
+   tiennent, d'ou part le versement. */
+const contratSansCash = id => !!(typeCompte(compteById(id)?.type) || {}).sansCash;
+const comptesQuiPaient = id => contratSansCash(id) ? cashTargets() : [compteById(id)];
+const aideDebitAjout = id => contratSansCash(id)
+  ? trad('coche si tu viens de verser cet argent depuis un compte suivi')
+  : trad('décoche si tu déclares une ligne que tu détiens déjà');
+
 function cashTargets() {
   const ouverts = comptesOuverts().filter(peutPorterCash);
   return [
@@ -1649,7 +1658,7 @@ function dettesAmortissables() {
       const reste = num(d.montant);
       const tauxAn = tauxCreditDeclare(d);
       const taux = (tauxAn || 0) / 100 / 12;
-      const mens = mensualiteCredit(d);
+      const mens = mensualiteAmortissante(d);
       if (!reste || tauxAn === null || !mens) continue;
       const assurance = assuranceMensuelleCredit(d);
       if (mens - assurance <= reste * taux) continue;

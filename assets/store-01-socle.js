@@ -271,7 +271,7 @@ const BASES = {
   place:       { nom: trad('Placements'),         de: trad('de tes placements') },  // nowTotals().invested
   placeBourse: { nom: trad('Placé en bourse'),    de: trad('de ce qui est placé en bourse') },
   baseCibles:  { nom: trad('Base de tes cibles'), de: trad('de la base de tes cibles') },
-  liquidites:  { nom: trad('Liquidités'),         de: trad('de tes liquidités') },      // les quatre poches
+  liquidites:  { nom: trad('Liquidités'),         de: trad('de tes liquidités') },      // la classe : quatre poches et supports monetaires
   cashDispo:   { nom: AFFECTATION_LABEL.courant,    de: trad('du cash disponible') },
   precaution:  { nom: AFFECTATION_LABEL.precaution, de: trad('de l’épargne de précaution') },
   projet:      { nom: AFFECTATION_LABEL.projet,     de: trad('du cash de projet') },
@@ -281,11 +281,24 @@ const BASES = {
 const mentionBase = (base, montant) => `${trad('en %')} ${base.de} · ${fmtEUR0(montant)}`;
 
 /* Les quatre poches de liquidites, dans l'ordre d'AFFECTATIONS, avec leur
-   montant. Une seule fonction pour les trois ecrans qui les affichent, et la
-   somme fait `nowByGroup().cash` par construction — c'est teste. */
+   montant. Une seule fonction pour les trois ecrans qui les affichent. Leur
+   somme plus `liquiditesEnLignes()` fait `nowByGroup().cash` — c'est teste. */
 function pochesLiquidites() {
   const p = patrimoine();
   return AFFECTATIONS.map(([cle, nom]) => ({ cle, nom, value: num(p[cle]) }));
+}
+
+/* Les liquidites qui ne sont pas des especes : les lignes de classe
+   `liquidites`, un ETF monetaire ou un support de tresorerie. Elles n'ont pas
+   d'affectation, donc aucune des quatre poches ne les porte ; la classe, si.
+   Ce qui separe les deux est ce nombre, et un ecran qui detaille "Liquidites"
+   par ses poches l'ajoute comme une ligne a part, sinon ses parts ne refont
+   pas son total. */
+const LIBELLE_LIQUIDITES_EN_LIGNES = 'Supports monétaires';
+function liquiditesEnLignes(p = patrimoine()) {
+  const reste = num(p.classes.liquidites)
+    - AFFECTATIONS.reduce((s, [cle]) => s + num(p[cle]), 0);
+  return Math.abs(reste) > 0.005 ? round2(reste) : 0;
 }
 
 const CLASSES_ACTIFS = {
@@ -352,8 +365,8 @@ const TYPES_COMPTE = [
      Deux choses sous un seul mot, d'ou deux reglages. */
   { id: 'av',      label: 'Assurance-vie',  classes: ['liquidites', 'garanti', 'actions', 'obligations', 'immobilier', 'nonCote'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, dateSensible: true, pays: 'fr',
     retrait: 'Un rachat est possible à tout moment et arrive en quelques jours à quelques semaines ; le seuil des 8 ans ne change que l’impôt sur les gains.' },
-  { id: 'per',     label: 'Plan d’épargne retraite (PER)', classes: ['liquidites', 'garanti', 'actions', 'obligations', 'immobilier', 'nonCote'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, dateSensible: true, disponibilite: 'bloque', rubrique: 'retraite', pays: 'fr',
-    retrait: 'Bloqué jusqu’à la retraite, sauf cas de déblocage anticipé prévus par la loi, comme l’achat de ta résidence principale.' },
+  { id: 'per',     label: 'Plan d’épargne retraite (PER)', classes: ['liquidites', 'garanti', 'actions', 'obligations', 'immobilier', 'nonCote'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, disponibilite: 'bloque', rubrique: 'retraite', pays: 'fr',
+    retrait: 'Bloqué jusqu’à la retraite, sauf cas de déblocage anticipé prévus par la loi, comme l’achat de ta résidence principale. Sa valeur s’entend avant l’impôt éventuel dû à la sortie.' },
   /* ENVELOPPES AMERICAINES. Quatre contenants, pas une fiscalite : aucun seuil
      d'age, aucun plafond, aucune penalite, aucun abondement n'entre ici. Ce
      sont des enveloppes de placement comme celles qui existent, et elles
@@ -622,12 +635,14 @@ const estValeurEstimee = t => !!t && (!!t.direct || !!t.estimee);
 const estActifTerminal = t => !!t && (!!t.direct || !!t.terminal);
 const motDateCompte = t => trad(estUnBien(t) ? 'Date d’achat' : 'Date d’ouverture');
 
-/* « compte » ou « bien », selon ce dont on parle.
+/* Le mot de ce dont on parle : bien, placement, compte, contrat ou plan.
 
-   Le mot se derive du meme drapeau `direct` que tout le reste, pour qu'un type
-   ajoute demain n'ait qu'une chose a declarer. */
+   Il se derive des drapeaux du type (`direct`, `terminal`, `melange`) et
+   de son contenant, pour qu'un type ajoute demain n'ait qu'une chose a
+   declarer. */
 const motCompte = t => trad(estDetenuEnDirect(t) ? 'bien'
-  : estActifTerminal(t) ? 'placement' : 'compte');
+  : estActifTerminal(t) ? 'placement'
+  : t && t.melange ? (enContrat(t) ? 'contrat' : 'plan') : 'compte');
 
 const titreActif = t => estDetenuEnDirect(t) ? 'Le bien' : 'Le placement';
 

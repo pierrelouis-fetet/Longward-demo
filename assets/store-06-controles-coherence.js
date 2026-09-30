@@ -167,8 +167,8 @@ function healthChecks() {
     if (e.depassee) {
       add('action', trad('{l} a passé son échéance').replace('{l}', guill(e.libelle)),
         trad('Échéance au {d}, il y a {n} jours, et la ligne est toujours en cours pour '
-          + '{v}. Si l’argent est rentré, passe-la en « Remboursé » et baisse son '
-          + 'montant ; sinon marque-la en retard.')
+          + '{v}. Si l’argent est rentré, enregistre-le avec « Remboursement » sur sa fiche ; '
+          + 'sinon marque-la en retard.')
           .replace('{d}', fmtDate(e.echeance)).replace('{n}', Math.abs(e.jours))
           .replace('{v}', fmtEUR0(e.valeur)),
         'accounts');

@@ -144,7 +144,7 @@ function ligneCompte(c, avecEtab = true, nomRepete = false) {
   <div class="cpt-swipe" data-compte="${esc(c.id)}">
     <div class="cpt-actions" aria-hidden="true">
       <button class="btn sm" data-action="fiche-compte" data-id="${esc(c.id)}">${trad('Modifier')}</button>
-      <button class="btn sm ghost" data-action="archiver-compte" data-id="${esc(c.id)}">${trad('Archiver')}</button>
+      ${typeCompte(c.type).interne ? '' : `<button class="btn sm ghost" data-action="archiver-compte" data-id="${esc(c.id)}">${trad('Archiver')}</button>`}
     </div>
     <button type="button" class="cpt-ligne" data-action="fiche-compte" data-id="${esc(c.id)}">
       <span class="cpt-nom">${esc(nomRepete ? trad(typeCompte(c.type).label) : nomCompteV2(c))}
@@ -522,11 +522,12 @@ function viewAccounts() {
     const groupeEtab = e => {
       const siens = ouverts.filter(c => c.etabId === e.id);
       const doitEncore = (e.dettes || []).reduce((s, x) => s + num(x.montant), 0);
+      if (filtre && !siens.length) return '';
       if (!siens.length && !doitEncore) return '';
       const totalE = siens.reduce((s, c) => s + valeurCompte(c), 0);
       const credits = (e.dettes || []).reduce((s, x) => s + num(x.montant), 0);
       const lignes = siens.map(c => ligneCompte(c, false, siens.length === 1 && nomCompteV2(c) === e.nom)).join('');
-      const dette = credits ? `
+      const dette = credits && !filtre ? `
         <div class="plc-ligne">
           <span class="cpt-nom">${trad('Crédits en cours')}
             <span class="sub">${esc((e.dettes || []).map(x => x.libelle).join(', '))}</span></span>
@@ -536,11 +537,22 @@ function viewAccounts() {
           <span class="cpt-nom"><b>${trad('Valeur nette')}</b></span>
           <span class="cpt-val"><b>${fmtEUR(totalE - credits)}</b></span>
         </div>` : '';
+      const titreOrphelin = (() => {
+        const { motif, pluriel, compte } = motifOrphelin(e);
+        if (motif === 'archive') return !compte
+          ? trad('Ces crédits financent des comptes archivés.')
+          : trad(pluriel ? 'Ces crédits financent un {mot} archivé.' : 'Ce crédit finance un {mot} archivé.')
+            .replace('{mot}', motCompte(typeCompte(compte.type)));
+        if (motif === 'mort') return trad(pluriel ? 'Ces crédits ne financent plus rien.' : 'Ce crédit ne finance plus rien.');
+        if (motif === 'ailleurs') return trad(pluriel ? 'Ces crédits désignent un ou plusieurs comptes d’autres établissements.'
+                                                      : 'Ce crédit désigne un compte d’un autre établissement.');
+        return trad(pluriel ? 'Ces crédits n’accompagnent aucun compte ouvert ici.'
+                            : 'Ce crédit n’accompagne aucun compte ouvert ici.');
+      })();
       const orphelin = !siens.length && doitEncore ? `
         <div class="note note-relance" style="margin:0">⚠ <span>
-          <b>${trad('Ce crédit ne finance plus rien.')}</b> Le compte qu'il accompagnait a été
-          supprimé, mais ${fmtEUR0(doitEncore)} continuent de se soustraire de ton
-          patrimoine net. Ouvre la fiche pour le retirer.</span>
+          <b>${titreOrphelin}</b> ${trad('{v} de capital restant dû continuent de se soustraire de ton patrimoine net.')
+            .replace('{v}', fmtEUR0(doitEncore))}</span>
           <button class="btn sm" data-action="fiche-etab" data-id="${esc(e.id)}">${trad('Ouvrir la fiche')}</button>
         </div>` : '';
       return groupe(`e-${e.id}`, e.nom,
@@ -588,7 +600,7 @@ function viewAccounts() {
   ${sansCompte && !filtre ? '' : `<dl class="kv cpt-resume">
     <dt>${BASES.avoirs.nom}${aide(trad("La somme des comptes ouverts de cette page. Le même nombre que sur l’accueil : si les deux diffèrent, c’est qu’un compte est archivé ou qu’un montant vient d’être corrigé."))}</dt><dd>${fmtEUR(pat.brut)}</dd>
     ${pat.dettes ? `
-    <dt>${trad('Crédits en cours')}${aide(trad("Le capital qu’il te reste à rembourser. Les comptes archivés ne comptent pas."))}</dt>
+    <dt>${trad('Crédits en cours')}${aide(trad("Le capital qu’il te reste à rembourser. Les crédits restent comptés tant qu’ils ne sont pas soldés, même si le bien est archivé."))}</dt>
       <dd class="dette">−${fmtEUR(pat.dettes)}</dd>
     <dt><b>${trad('Patrimoine net')}</b></dt><dd><b>${fmtEUR(pat.net)}</b></dd>` : ''}
   </dl>`}
@@ -1076,8 +1088,8 @@ function blocCapitalRembourse(co) {
         <dd class="${nul ? '' : 'up'}"><b>${nul ? fmtEUR(0) : `+${fmtEUR(co.capitalMois)}`}</b></dd>
       ${/* A zero, le cout hors capital vaut le total paye, deja affiche juste
             au-dessus : une ligne de plus qui ne dit rien de plus. */
-        nul || co.horsCapital == null ? '' : `<dt>${trad('Coût hors remboursement de capital')}${
-        aide(trad('Ce que ce mois te coûte vraiment : tout ce qui sort du compte, moins la part qui rembourse du capital. C’est le total payé diminué de la ligne au-dessus.'))}${
+        nul || co.horsCapital == null ? '' : `<dt>${trad('Sorties hors remboursement de ton capital')}${
+        aide(trad('Tout ce qui sort du compte pour ce bien, moins la part qui rembourse ton capital : le total payé diminué de la ligne au-dessus. Si quelqu’un te rembourse sa part d’une mensualité commune, elle entre dans le budget comme une rentrée.'))}${
         (() => {
           const i = co.interetsMois, a = co.assuranceMois;
           if (!i && !a) return '';

@@ -533,9 +533,13 @@ suite('Un coût d’acquisition se décompose, il ne se devine pas', () => {
     const src = lireSource('assets/app.js');
     const haut = src.slice(src.indexOf('function espaceBien'),
                            src.indexOf('function barreValiderFiche'));
-    vrai(/const achatEntier = biens\.reduce\(\(s, \{ l \}\) => s \+ \(coutAcquisition\(l\) \|\| 0\), 0\);/
-      .test(haut), 'le coût entier passe par coutAcquisition');
-    vrai(/s \+ \(coutAcquisition\(l\) \|\| 0\) \* \(partDetention\(l\) \?\? 0\)/.test(haut),
+    /* Par la porte du compte, qui passe elle-meme par `coutAcquisition` pour
+       chaque lot : un lot sans cout rend le cout du bien inconnu, au lieu de ne
+       sommer que les lots connus. */
+    vrai(/const acq = acquisitionCompte\(c\);/.test(haut)
+      && /const achatEntier = coutConnu \? acq\.entier : 0;/.test(haut),
+      'le coût entier passe par acquisitionCompte');
+    vrai(/const achat = coutConnu \? acq\.detenu : 0;/.test(haut),
       'la part détenue aussi, et une part invalide écarte le lot au lieu de valoir le tout');
     vrai(!/num\(l\.prixDeRevient\)/.test(haut),
       'et le champ legacy ne se lit plus en direct dans la fiche');
@@ -1647,8 +1651,12 @@ suite('Une saisie invalide bloque vraiment l’enregistrement de la fiche', () =
     vrai(/if \(invalide\) \{[\s\S]{0,220}return;/.test(fn),
       'un champ invalide arrête le geste');
     vrai(/invalide\.focus\(\);/.test(fn), 'le curseur revient sur lui');
-    vrai(/La quote-part doit être comprise entre 0 et 100 %\./.test(fn),
-      'et le message dit la règle');
+    /* Le message suit le champ refuse : quote-part, affectation, montant
+       negatif ou invraisemblable. */
+    vrai(/toast\(messageChampInvalide\(invalide\)\);/.test(fn), 'et le message dit la règle');
+    const msg = s.slice(s.indexOf('function messageChampInvalide('), s.indexOf('function champDestination('));
+    vrai(/La quote-part doit être comprise entre 0 et 100 %\./.test(msg)
+      && /Un solde ne peut pas être négatif/.test(msg), 'celle du champ qui la viole');
   });
 
   test('la valeur invalide reste visible, et l’état s’efface dès la correction', () => {

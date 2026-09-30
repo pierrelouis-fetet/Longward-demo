@@ -952,7 +952,9 @@ function carteAccumulation() {
         <dd>${aEcran(-rec.spend)}</dd>
       <dt class="somme"><b>${trad('= Capacité d’épargne')}</b>${aide(aideCapacite)}</dt>
         <dd class="somme">${aEcran(rec.investable)}</dd>
-      <dt>${trad('+ Capital remboursé')}${aide(trad('La part de tes mensualités qui rembourse le capital de tes crédits. Elle réduit ta dette, donc elle augmente ton patrimoine net.'))}</dt>
+      <dt>${trad('+ Capital remboursé')}${aide(trad('La part de tes mensualités qui rembourse le capital de tes crédits. Elle réduit ta dette, donc elle augmente ton patrimoine net.')
+        + (capitalDuMoisEstime() ? ' ' + trad('Un crédit vérifié il y a plus d’un mois se calcule depuis son solde estimé d’aujourd’hui.') : '')
+        + (capitalSansAssurance() ? ' ' + trad('Un crédit sans taux d’assurance renseigné la suppose nulle : son capital remboursé peut être surestimé.') : ''))}</dt>
         <dd>${aEcran(rec.capitalRembourse)}</dd>
       <dt class="somme cle"><b>${trad('= Accumulation patrimoniale')}</b>${aide(aideTotal)}</dt>
         <dd class="somme cle"><b>${aEcran(rec.theoretical)}</b></dd>

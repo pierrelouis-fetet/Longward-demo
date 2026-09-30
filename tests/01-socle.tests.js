@@ -1711,8 +1711,8 @@ suite('Créer une ligne débite le compte choisi, sans le redemander', () => {
        ne pas toucher aux especes » : acheter ne debitait donc rien tant qu'on
        n'avait pas repondu, et le cash d'un compte-titres ne baissait jamais. */
     const f = fenetre();
-    vrai(/cle: 'debiter', type: 'case', valeur: true/.test(f),
-      'la case existe, et elle est cochée');
+    vrai(/cle: 'debiter', type: 'case', valeur: !contratSansCash\(/.test(f),
+      'la case existe, et elle est cochée, sauf sur un contrat qui ne tient pas de cash');
     vrai(!/cle: 'cash'/.test(f), 'la liste a quitté cette fenêtre');
     vrai(!/Aucun compte, ne pas toucher aux espèces/.test(f),
       'et son choix par défaut avec elle');
@@ -1721,8 +1721,20 @@ suite('Créer une ligne débite le compte choisi, sans le redemander', () => {
   test('le débit vise le compte de la ligne, et n’invente pas d’espèces', () => {
     const f = fenetre();
     vrai(/let debit = v\.debiter && achete \? lirePart\(v\.partie\) : null;/.test(f), 'la case commande le débit, et désigne la part qui paie');
-    vrai(/options: id => listeDeParts\(\[compteById\(id\)\], id\)\.options/.test(f),
+    vrai(/options: id => listeDeParts\(comptesQuiPaient\(id\), id\)\.options/.test(f),
       'le compte débité est celui de la ligne, et seules ses parts d’espèces paient');
+    /* Sauf un contrat sans cash : ce sont les comptes de liquidites qui versent. */
+    Fixture.poser();
+    eq(comptesQuiPaient('c_pea').map(c => c.id).join(), 'c_pea', 'un compte qui tient du cash paie lui-même');
+    Fixture.poser(s => s.comptes.push({ ...s.comptes[2], id: 'c_av', type: 'av', cash: [] }));
+    eq(comptesQuiPaient('c_av').map(c => c.id).join(), cashTargets().map(c => c.id).join(),
+      'un contrat sans cash propose les comptes de liquidités');
+    vrai(/valeur: !contratSansCash\(/.test(f), 'et sa case part décochée');
+    vrai(/\{ de: 'account', vers: 'debiter', coche: id => !contratSansCash\(id\), aide: aideDebitAjout \}/.test(f),
+      'et suit le compte choisi, son aide avec elle');
+    vrai(/if \(l\.coche\) \{\s*cible\.checked = !!l\.coche\(source\.value\);/.test(lireSource('assets/app.js') || ''),
+      'la fenêtre sait lier une case à une liste');
+    Fixture.poser();
     /* `cashInvestirEntree(compte, true)` cree une poche d'especes sur n'importe
        quel compte : sans le garde ci-dessus, un bien immobilier se mettrait a en
        afficher une. C'est donc a l'appelant de trancher, et il le fait. */
@@ -1730,7 +1742,7 @@ suite('Créer une ligne débite le compte choisi, sans le redemander', () => {
   });
 
   test('les chaînes neuves existent en anglais', () => {
-    for (const k of ['Soustraire le cash du compte choisi',
+    for (const k of ['Débiter le paiement d’une part d’espèces',
                      'décoche si tu déclares une ligne que tu détiens déjà',
                      'Ce compte ne porte pas d’espèces, rien n’a été débité']) {
       vrai(!!I18N.en[k], `« ${k} » est traduite`);

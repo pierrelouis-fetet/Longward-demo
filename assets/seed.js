@@ -79,7 +79,7 @@ const SEED_MONTHLY = [
     v: { courant:1256, livret:7982, especes:113, cashPea:2488, cashCto:649, pea:22445, cto:11331, crypto:2110, fondsNonCote:2440, appart:272000 } },
   { date: '2024-12-01', comment: '', dettes: 160996,
     v: { courant:1282, livret:8122, especes:115, cashPea:2690, cashCto:760, pea:22872, cto:11531, crypto:2160, fondsNonCote:2440, appart:272000 } },
-  { date: '2025-01-01', comment: 'Flat revalued at €150,000', dettes: 160440,
+  { date: '2025-01-01', comment: 'Flat revalued at €288,000', dettes: 160440,
     v: { courant:1307, livret:8262, especes:117, cashPea:2892, cashCto:871, pea:23299, cto:11731, crypto:2209, fondsNonCote:2440, appart:288000 } },
   { date: '2025-02-01', comment: '', dettes: 159883,
     v: { courant:1333, livret:8402, especes:118, cashPea:3093, cashCto:982, pea:23727, cto:11931, crypto:2259, fondsNonCote:2440, appart:288000 } },

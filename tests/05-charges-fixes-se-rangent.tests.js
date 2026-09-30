@@ -116,7 +116,7 @@ suite('Non coté : une aide qui cite ce qui existe', () => {
 
   const aideType = () => {
     const fr = Object.keys(FR).concat(Object.keys(I18N.en))
-      .find(k => /Non coté : deux types/.test(k));
+      .find(k => /Non coté : trois types/.test(k));
     return { fr, en: I18N.en[fr] };
   };
 
@@ -170,7 +170,7 @@ suite('Non coté : une aide qui cite ce qui existe', () => {
        « Financement participatif », deux noms de types qui n'existent plus. Une
        traduction sans emploi se garde sans se maintenir, et celle-la nommait de
        surcroit une plateforme reelle dans un fichier qui part en ligne. */
-    const toutes = Object.keys(I18N.en).filter(k => /Non coté : deux types/.test(k));
+    const toutes = Object.keys(I18N.en).filter(k => /Non coté : (deux|trois) types/.test(k));
     eq(toutes.length, 1, 'une seule clef pour cette aide');
     vrai(!Object.keys(I18N.en).some(k => /« Placements non cotés » pour/.test(k)),
       'et plus aucune qui décrive des types disparus');
@@ -1366,7 +1366,10 @@ suite('Pièges de source', () => {
       'et la raison dit quoi faire, pas seulement que c’est refusé');
 
     /* Le meme compte vers un type qui accepte les actions : possible. */
-    vrai(changementDeTypePossible(pea, 'av').ok,
+    /* Une assurance-vie accepte les actions, pas les especes : le PEA du
+       fixture en porte, elles se remettent a zero d'abord. */
+    vrai(!changementDeTypePossible(pea, 'av').ok, 'les espèces du PEA n’entrent pas dans un contrat');
+    vrai(changementDeTypePossible({ ...pea, cash: [] }, 'av').ok,
       'une assurance-vie accepte les actions, le changement passe');
 
     /* Cas limites : type inconnu, meme type, compte absent. */
@@ -1525,11 +1528,12 @@ suite('Pièges de source', () => {
       'le champ ne doit pas être réservé aux types sensibles : une date posée par '
       + 'erreur ailleurs deviendrait ineffaçable');
 
-    /* Le drapeau existe, et sur les trois types attendus. Une vue qui recopierait
-       la liste des types finirait par ne plus decrire le modele. */
+    /* Le drapeau existe, et sur les deux types attendus. Une vue qui recopierait
+       la liste des types finirait par ne plus decrire le modele. Le PER n'y est
+       pas : il se libere a un evenement, et sa date de deblocage se declare. */
     const sensibles = TYPES_COMPTE.filter(t => t.dateSensible).map(t => t.id).sort();
-    eq(sensibles.join(','), 'av,pea,per',
-      'PEA, assurance-vie et PER sont les trois types dont l’ancienneté compte');
+    eq(sensibles.join(','), 'av,pea',
+      'PEA et assurance-vie sont les deux types dont l’ancienneté compte');
     for (const t of TYPES_COMPTE.filter(t => !t.dateSensible)) {
       vrai(!t.dateSensible, `${t.id} n’a pas d’âge qui débloque quoi que ce soit`);
     }

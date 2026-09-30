@@ -199,6 +199,8 @@ function blocFinancementInitial(c) {
 function carteCredit(c, d, i, idxEtab) {
   const prog = progressionCredit(d);
   const mens = mensualiteCredit(d);
+  const partage = creditPartage(d);
+  const amort = mensualiteAmortissante(d);
   const e = echeancierCredit(d);
   const f = finCredit(d);
   const assur = assuranceMensuelleCredit(d);
@@ -226,10 +228,14 @@ function carteCredit(c, d, i, idxEtab) {
             aide(trad('Le capital emprunté au départ moins ce que tu dois encore. Les intérêts et l’assurance déjà payés n’en font pas partie : ils ne réduisent pas la dette.'))}</dt>
             <dd class="up">${fmtEUR0(prog.rembourse)} <span class="muted">· ${
               fmtPct(prog.pct, 0)}</span></dd>`}
-          ${!(mens > 0) ? '' : `<dt>${trad('Mensualité totale')}${
+          ${!(mens > 0) ? '' : `<dt>${trad(partage ? 'Mensualité facturée' : 'Mensualité totale')}${
             aide(trad('Ce qui sort de ton compte chaque mois pour ce prêt, assurance emprunteur incluse. C’est ce montant que le budget compte, et il ne se dédouble pas avec une charge d’assurance séparée.'))}
             <span class="sub">${trad('assurance incluse')}</span></dt>
             <dd><b>${fmtEUR(mens)} ${trad('/ mois')}</b></dd>`}
+          ${!(mens > 0) || !partage ? '' : `<dt>${trad('Ta part amortissante')}${
+            aide(trad('La part de la mensualité qui rembourse ta dette : c’est sur elle que se calculent le capital du mois, la date de fin et la projection.'))}
+            <span class="sub">${fmtPct(partCredit(d) * 100, 0)}</span></dt>
+            <dd>${fmtEUR(amort)} ${trad('/ mois')}</dd>`}
         </dl>
         ${!ventile ? '' : `
         <dl class="kv" style="margin-top:12px">
@@ -248,7 +254,12 @@ function carteCredit(c, d, i, idxEtab) {
           <dt>${trad('Intérêts restants')}${
             aide(trad("Ce que ce crédit te coûtera encore, du premier au dernier mois. Ce n'est pas une dette de plus : c'est le prix du temps, déjà compris dans tes mensualités."))}</dt>
             <dd class="dette">−${fmtEUR0(f.interets)}</dd>`}
-        </dl>`}
+        </dl>
+        ${!e.depuisProjection || !d.verifieLe ? '' : `<p class="hint" style="margin:8px 0 0">${
+          trad('Calculé depuis le solde estimé d’aujourd’hui, à partir du solde vérifié le {d}.')
+            .replace('{d}', esc(fmtDate(d.verifieLe)))}</p>`}
+        ${assuranceDeclaree(d) ? '' : `<p class="hint" style="margin:8px 0 0">${
+          trad('Taux d’assurance non renseigné : l’estimation la suppose nulle, ce qui peut surestimer le capital remboursé et avancer la date de fin.')}</p>`}`}
         ${!prog.incoherent ? '' : `<div class="note" style="margin-top:12px">⚠ <span>${
           trad('Le capital restant dû dépasse le capital emprunté au départ.')} ${
           trad('Ce peut être un prêt rechargeable ou des frais financés ; ce peut aussi être une saisie à corriger. Longward ne tranche pas.')}</span></div>`}
@@ -264,13 +275,14 @@ function carteCredit(c, d, i, idxEtab) {
         ${(() => {
           const r = resteAPayer(d);
           if (!r) return '';
-          const derniere = r.assurance > 0.5 || f && f.derniere < mens - 1;
+          const reduite = f && f.derniere < amort - 1;
+          const derniere = r.assurance > 0.5 || reduite;
           if (!derniere) return '';
           return `
         <dl class="kv" style="margin-top:12px">
           ${r.assurance > 0.5 ? `<dt>${trad('Assurance restante')}</dt>
             <dd>${fmtEUR0(r.assurance)}</dd>` : ''}
-          ${f && f.derniere < mens - 1 ? `<dt>${trad('Dernière échéance')}${
+          ${reduite ? `<dt>${trad(partage ? 'Dernière échéance, ta part' : 'Dernière échéance')}${
             aide(trad('Elle solde le reliquat, elle est donc plus petite que les autres.'))}</dt>
             <dd class="muted">${fmtEUR(f.derniere)}</dd>` : ''}
         </dl>`;
@@ -327,12 +339,13 @@ function espaceBien(c, idx, t) {
     .filter(({ l }) => (l.classe || 'immobilier') === 'immobilier');
   const { idxEtab, dettes, total: credit } = creditsDuCompte(c);
   const entiere = biens.reduce((s, { l }) => s + num(l.valeur), 0);
-  const achatEntier = biens.reduce((s, { l }) => s + (coutAcquisition(l) || 0), 0);
+  const acq = acquisitionCompte(c);
+  const coutConnu = acq.total != null && !acq.partInvalide;
+  const achatEntier = coutConnu ? acq.entier : 0;
   const partsInvalides = biens.filter(({ l }) => partDetention(l) === null);
   const valeur = biens.reduce((s, { l }) =>
     s + num(l.valeur) * (partDetention(l) ?? 0), 0);
-  const achat = biens.reduce((s, { l }) =>
-    s + (coutAcquisition(l) || 0) * (partDetention(l) ?? 0), 0);
+  const achat = coutConnu ? acq.detenu : 0;
   const partagee = Math.abs(entiere - valeur) > 0.005;
   const gain = achat ? valeur - achat : null;
 
@@ -406,7 +419,7 @@ function espaceBien(c, idx, t) {
           <div class="field"><label>${trad('Date d\'acquisition')}</label>
             <input type="date" data-path="comptes.${idx}.lignes.${i}.dateAcquisition"
                    value="${esc(l.dateAcquisition || '')}"></div>
-          <div class="field"><label>${trad('Ta part (%)')}${aide(trad("À remplir seulement si tu détiens ce bien à plusieurs : indivision, SCI, achat en couple sur deux tableaux de bord. Ton patrimoine ne compte alors que ta part. La valeur ci-dessus reste celle du bien entier, c'est elle que tu compares aux annonces. Elle ne répartit rien d'autre : le crédit, les loyers et les charges se saisissent tels que tu les dois, les reçois et les paies. Une charge partagée avec quelqu'un se règle par sa part, dans le budget."))}</label>
+          <div class="field"><label>${trad('Ta part (%)')}${aide(trad("À remplir seulement si tu détiens ce bien à plusieurs : indivision, SCI, achat en couple sur deux tableaux de bord. Ton patrimoine ne compte alors que ta part. La valeur ci-dessus reste celle du bien entier, c'est elle que tu compares aux annonces. Elle ne répartit rien d'autre : le crédit se saisit tel que tu le dois, les loyers et les charges tels que tu les reçois et les paies. Si la mensualité d'un prêt commun est facturée pour deux, indique ta part dans la fenêtre du crédit."))}</label>
             <input type="number" step="any" min="0" max="100" class="champ-large"
                    data-path="comptes.${idx}.lignes.${i}.part" value="${estDeclare(l.part) ? num(l.part) : ''}"
                    placeholder="100">
@@ -667,6 +680,8 @@ function viewFicheCompte(id) {
       }${aide(trad('Un seuil fiscal, pas un délai : avant lui, l’argent reste accessible, au prix de l’avantage d’impôt et, pour un PEA, du plan lui-même. C’est pourquoi la disponibilité affichée plus bas n’en dépend pas.'))}</p>`;
     })()}
     ${t.retrait ? `<p class="hint cpt-retrait">${trad('Retraits')}${deuxPoints()} ${trad(t.retrait)}</p>` : ''}
+    ${t.disponibilite === 'bloque' && c.debloqueLe ? `<p class="hint cpt-retrait">${trad('Déblocage prévu le {d}, date que tu as déclarée.')
+      .replace('{d}', esc(fmtDate(c.debloqueLe)))}</p>` : ''}
   </div>
 
   ${espaceBien(c, idx, t)}
@@ -802,9 +817,10 @@ function viewFicheCompte(id) {
           + 'à tout moment : l’historique des relevés suit le compte, il ne se '
           + 'perd pas. Un changement qui laisserait un placement sans place est '
           + 'refusé, en disant lequel déplacer. '
-          + 'Non coté : deux types, deux métiers. « Parts de société » pour du '
+          + 'Non coté : trois types. « Parts de société » pour du '
           + 'private equity, des parts de société ou un pacte d’associés : on '
-          + 'sort au rachat, pas à une date. « Prêt participatif » pour un prêt à un taux, '
+          + 'sort au rachat, pas à une date. « Fonds non coté » pour un fonds qui publie '
+          + 'sa valeur liquidative. « Prêt participatif » pour un prêt à un taux, '
           + 'avec une échéance et un état : ces lignes-là portent une date de '
           + 'remboursement, et l’application te rappelle celles qui l’ont dépassée.'))}</dt>
         <dd>${esc(trad(t.label))}${t.interne ? trad(', sans établissement') : ''}</dd>
@@ -819,6 +835,8 @@ function viewFicheCompte(id) {
         : (c.ouvertLe || estActifTerminal(t))
           ? `<dt>${motDateCompte(t)}</dt><dd>${c.ouvertLe ? esc(fmtDate(c.ouvertLe))
               : `<span class="muted">${trad('à renseigner')}</span>`}</dd>` : ''}
+        ${t.disponibilite === 'bloque' ? `<dt>${trad('Déblocage prévu')}${aide(trad('Une date que tu déclares, ta retraite en général. Elle se lit en tête de fiche ; aucun calcul ne la déduit ni ne la suppose.'))}</dt>
+        <dd>${c.debloqueLe ? esc(fmtDate(c.debloqueLe)) : `<span class="muted">${trad('non renseigné')}</span>`}</dd>` : ''}
         ${c.statut === 'archive' ? `<dt>${trad('Date de clôture')}</dt>
         <dd>${c.clotureLe ? esc(fmtDate(c.clotureLe))
               : `<span class="muted">${trad('non renseignée')}</span>`}</dd>` : ''}
@@ -829,19 +847,21 @@ function viewFicheCompte(id) {
                placeholder="${trad('facultatif')}" style="text-align:left"></div>
       ${carteSolde || estBien(t) ? '' : barreValiderFiche()}
     </div>
-    <div class="card">
+    ${t.interne && c.statut !== 'archive' ? '' : `<div class="card">
       <div class="card-head"><h2>${trad('actions.fiche', 'Actions')}</h2></div>
       <div class="fiche-actes">
         ${c.statut === 'archive'
           ? `<button class="btn ghost" data-action="restaurer-compte" data-id="${esc(c.id)}">${trad('Restaurer')}</button>`
           : `<button class="btn ghost" data-action="archiver-compte" data-id="${esc(c.id)}">${trad('Archiver')}</button>`}
-        <button class="btn ghost danger" data-action="supprimer-compte" data-id="${esc(c.id)}">${trad('Clôturer et supprimer')}</button>
+        ${t.interne ? '' : `<button class="btn ghost danger" data-action="supprimer-compte" data-id="${esc(c.id)}">${trad('Supprimer')}</button>`}
       </div>
       <p class="small muted" style="margin:12px 0 0">
-        ${trad('Archiver conserve l’historique et sort le compte de tous les totaux. '
+        ${t.interne
+          ? trad('Restaurer remet ces espèces dans tes totaux. Elles ne s’archivent plus : s’il n’y a plus de billets, mets leur montant à 0.')
+          : trad('Archiver conserve l’historique et sort le compte de tous les totaux. '
           + 'Supprimer efface aussi ses montants des vues. Les relevés passés restent lisibles.')}
       </p>
-    </div>`;
+    </div>`}`;
 }
 
 function viewFicheEtab(id) {
