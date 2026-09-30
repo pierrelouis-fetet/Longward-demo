@@ -488,20 +488,25 @@ function sheetSales() {
     cols: [
       { h: 'Date', t: 'date', w: 12 }, { h: 'Ligne', t: 'text', w: 26 },
       { h: 'ISIN', t: 'text', w: 15 }, { h: 'Compte', t: 'text', w: 16 },
-      { h: 'Qté', t: 'num', w: 10 }, { h: 'Prix de vente', t: 'eur', w: 14 },
+      { h: 'Qté', t: 'num', w: 10 }, { h: 'Prix unitaire', t: 'eur', w: 14 },
       { h: 'Devise', t: 'text', w: 8 }, { h: 'Taux vente', t: 'num', w: 11 },
-      { h: 'Prix de revient', t: 'eur', w: 15 }, { h: 'Encaissé', t: 'eur', w: 14 },
-      { h: 'Coût des titres', t: 'eur', w: 15 }, { h: 'Résultat', t: 'eur', w: 14 },
+      { h: 'Prix de revient unitaire', t: 'eur', w: 15 }, { h: 'Produit de la vente', t: 'eur', w: 16 },
+      { h: 'Encaissé net', t: 'eur', w: 14 },
+      { h: 'Coût', t: 'eur', w: 15 }, { h: 'Résultat', t: 'eur', w: 14 },
       { h: '%', t: 'num', w: 10 }, { h: 'Crédité sur', t: 'text', w: 18 },
       { h: 'Note', t: 'text', w: 40 },
     ],
     rows: ventes.map(v => [
       v.date, v.name, v.isin || '', ACC[v.account]?.label || v.account || '',
-      num(v.qty), round2(num(v.price)), v.currency || 'EUR', num(v.fxSell) || 1,
+      v.typeActif === 'bien' ? null : num(v.qty), v.typeActif === 'bien' ? null : round2(num(v.price)),
+      v.currency || 'EUR', num(v.fxSell) || 1,
       ...(r => {
         const coutConnu = r.fiable || v.declaree;
+        /* Le cout d'un bien est celui de ta part, connu ou non : `invested`. */
+        const coutBien = v.typeActif === 'bien' && v.invested != null;
         return [coutConnu && estNombre(v.buyPrice) ? round2(num(v.buyPrice)) : null, round2(num(v.gross)),
-                coutConnu && v.invested != null ? round2(num(v.invested)) : null,
+                round2(encaisseNetVente(v)),
+                (coutConnu || coutBien) && v.invested != null ? round2(num(v.invested)) : null,
                 r.fiable ? round2(r.montant) : null,
                 r.fiable && num(v.invested) ? round2(r.montant / num(v.invested) * 100) : null];
       })(resultatVente(v)),
@@ -510,7 +515,8 @@ function sheetSales() {
     total: [!st.fiables ? 'Aucune vente fiable' : st.partiel ? 'Total des ventes fiables' : 'Total',
             `${st.partiel ? `${st.fiables} sur ${st.count}` : st.count} vente${st.count > 1 ? 's' : ''}`,
             '', '', null, null, '', null, null,
-            st.fiables ? round2(st.grossFiables) : null, st.fiables ? round2(st.invested) : null,
+            st.fiables ? round2(st.grossFiables) : null, st.fiables ? round2(st.encaisseFiables) : null,
+            st.fiables ? round2(st.invested) : null,
             st.fiables ? round2(st.realised) : null,
             st.pct == null ? null : round2(st.pct), '', ''],
   };

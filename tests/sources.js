@@ -41,6 +41,7 @@ const PARTIES_DE_TESTS = [
   'tests/28-les-chiffres-se-lisent.tests.js',
   'tests/29-partie-compte.tests.js',
   'tests/30-arbitrages.tests.js',
+  'tests/31-vente-bien.tests.js',
 ];
 const PARTIES_DE_TESTS_CHARGEES = new Set();
 let PARTIE_DE_TESTS_COURANTE = null;

@@ -850,7 +850,9 @@ function viewFicheCompte(id) {
     </div>
     ${t.interne && c.statut !== 'archive' ? '' : `<div class="card">
       <div class="card-head"><h2>${trad('actions.fiche', 'Actions')}</h2></div>
-      <div class="fiche-actes">
+      <div class="fiche-actes${c.statut !== 'archive' && estImmoEnDirect(t) ? ' trois' : ''}">
+        ${c.statut !== 'archive' && estImmoEnDirect(t)
+          ? `<button class="btn ghost" data-action="vendre-bien" data-id="${esc(c.id)}">${trad('Vendre ce bien')}</button>` : ''}
         ${c.statut === 'archive'
           ? `<button class="btn ghost" data-action="restaurer-compte" data-id="${esc(c.id)}">${trad('Restaurer')}</button>`
           : `<button class="btn ghost" data-action="archiver-compte" data-id="${esc(c.id)}">${trad('Archiver')}</button>`}
@@ -859,8 +861,11 @@ function viewFicheCompte(id) {
       <p class="small muted" style="margin:12px 0 0">
         ${t.interne
           ? trad('Restaurer remet ces espèces dans tes totaux. Elles ne s’archivent plus : s’il n’y a plus de billets, mets leur montant à 0.')
-          : trad('Archiver conserve l’historique et sort le compte de tous les totaux. '
-          + 'Supprimer efface aussi ses montants des vues. Les relevés passés restent lisibles.')}
+          : `${c.statut !== 'archive' && estImmoEnDirect(t)
+              ? `${trad(creditsDuBien(c).length ? 'Vendre enregistre le prix, solde ses crédits et garde la vente au journal.'
+                                                : 'Vendre enregistre le prix et garde la vente au journal.')} ` : ''}${
+            trad('Archiver conserve l’historique et sort le compte de tous les totaux. '
+          + 'Supprimer efface aussi ses montants des vues. Les relevés passés restent lisibles.')}`}
       </p>
     </div>`}`;
 }

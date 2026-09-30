@@ -31,6 +31,7 @@ Object.assign(ACTIONS, {
     }
     const refus = verifierAnnulation(i);
     if (refus) { toast(refus); return; }
+    if (v.typeActif === 'bien') { await annulerVenteDeBien(i, v); return; }
     const ou = v.cashAccount ? ACC[v.cashAccount]?.label || compteById(v.cashAccount)
       && nomCompteV2(compteById(v.cashAccount)) || 'le cash' : null;
     if (!await askConfirm(trad('Annuler cette vente ?') + '\n'
@@ -267,8 +268,12 @@ Object.assign(ACTIONS, {
         ] : [
           { cle: 'lecture_montants', label: trad('Montants'), lecture: true,
             valeur: (num(v.qty) ? `${num(v.qty)} × ${fmtCur(v.price, dev)} = ` : '')
-              + `${fmtEUR(num(v.gross))}, ${fmtSigned(v.realised)}`,
-            aide: trad('ils ont crédité un compte et réduit une ligne le jour de la vente. Pour les '
+              /* Un resultat inconnu se dit tel : `fmtSigned(null)` ecrirait +0. */
+              + `${fmtEUR(num(v.gross))}, ${resultatVente(v).fiable ? fmtSigned(v.realised) : trad('non calculable')}`,
+            aide: v.typeActif === 'bien'
+              ? trad('ils ont soldé ses crédits et archivé le bien le jour de la vente. Pour les corriger : '
+                + 'annuler cette vente, puis la ressaisir')
+              : trad('ils ont crédité un compte et réduit une ligne le jour de la vente. Pour les '
               + 'corriger : annuler cette vente, puis la ressaisir, ce qui remet le cash et les titres d’aplomb') },
         ]),
         { cle: 'note', label: 'Note', type: 'texte', valeur: v.note || '' },
@@ -398,5 +403,31 @@ Object.assign(ACTIONS, {
     }
   },
 });
+
+async function annulerVenteDeBien(i, v) {
+  const ou = v.cashAccount ? (compteById(v.cashAccount) && nomCompteV2(compteById(v.cashAccount))) || trad('le cash') : null;
+  const e = round2(num(v.encaisse));
+  const morceaux = [
+    trad((v.dettesSoldees || []).length ? 'Le bien revient dans tes actifs, ses crédits et leurs charges reprennent leur place'
+                                        : 'Le bien revient dans tes actifs'),
+    !ou || !e ? '' : trad(e > 0 ? '{m} repartent de {ou}' : '{m} reviennent sur {ou}')
+      .replace('{m}', fmtEUR(Math.abs(e))).replace('{ou}', ou),
+    (v.fluxDelies || []).length ? trad('les loyers et charges restés au budget se rattachent de nouveau au bien')
+      : v.retirerFlux && (v.fluxRetires || []).some(x => !x.objet?.creditId)
+        ? trad('les loyers et charges retirés reprennent leur place dans le budget') : '',
+  ].filter(Boolean);
+  if (!await askConfirm(`${trad('Annuler cette vente ?')}\n${v.name}, ${fmtDate(v.date)}, ${fmtEUR(num(v.gross))}.\n\n`
+    + `${morceaux.join(', ')}, ${trad('et la vente quitte le journal.')}\n\n`
+    + trad('L’annulation défait cette vente, et elle seule. Réversible avec Ctrl+Z.'),
+    { ok: 'Annuler la vente', danger: true })) return;
+  const avant = structuredClone(Store.state);
+  const r = annulerVente(i);
+  if (!r || r.erreur) { toast((r && r.erreur) || trad('Rien n’a été modifié.')); return; }
+  Store.addBackup('avant annulation de la vente d’un bien', avant);
+  fermerApercuSi('vente');
+  refreshAccounts();
+  Store.save(); render();
+  toast(trad('Vente annulée, le bien revient dans tes actifs'));
+}
 
 partieChargee('assets/app-08-actions-marches.js');

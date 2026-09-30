@@ -873,6 +873,7 @@ details[open]::details-content { block-size: auto; }
     justify-content: end;
   }
   .fiche-actes.centre { justify-content: center; }
+  .fiche-actes.trois { grid-template-columns: repeat(3, minmax(0, 14em)); }
 }
 
 .cpt-section {

@@ -2134,7 +2134,8 @@ function variationPatrimoine(avant, apres) {
     ...(Store.state.sales || [])
       .filter(v => perimetreDeVente(v) === 'sortie' && num(v.gross) && dansIntervalle(v.date))
       .map(v => ({ genre: 'sortie', libelle: v.name || '', date: v.date,
-                   montant: -round2(num(v.sortie) || num(v.gross)) })),
+                   montant: v.typeActif === 'bien' ? round2(num(v.effetNet))
+                                                   : -round2(num(v.sortie) || num(v.gross)) })),
   ];
   return {
     depuis: avant.date, jusqua: apres.date, mois: moisEntre(avant.date, apres.date),

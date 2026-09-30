@@ -474,6 +474,8 @@ function verifierAnnulation(i) {
   if (!v) return trad('Cette vente n’existe plus.');
   if (v.declaree) return null;
   const src = compteById(v.account);
+  /* La vente d'un bien a ses propres gardes : voir `verifierAnnulationVenteBien`. */
+  if (v.cession && v.typeActif === 'bien') return verifierAnnulationVenteBien(v);
   if (v.cession) {
     if (!src) return trad('Le compte de ce placement n’existe plus : la cession ne peut pas s’annuler.');
     if (src.statut === 'archive' && !v.compteArchive) return trad('Le compte de ce placement est archivé : restaure-le d’abord.');
@@ -723,6 +725,267 @@ function cederPlacement({ compteId, index, nature = 'vente', parts, produit,
   return a;
 }
 
+/* --- VENDRE UN BIEN IMMOBILIER DETENU EN DIRECT ---------------------------
+
+   POURQUOI UN GESTE A PART. Un bien ne se cedait pas : il fallait l'archiver,
+   crediter le prix a la main, retirer le credit et sa charge a part, et rien
+   n'entrait au journal. Oublier un des trois laissait un patrimoine net faux.
+   La vente fait les trois ensemble, dans une seule transaction, et s'annule
+   en entier.
+
+   CE QUI SE VEND : le compte entier, tous ses lots (un appartement et son
+   parking partent ensemble). Chaque lot a son prix, du lot ENTIER comme sa
+   valeur, et sa quote-part : `produit` est ta part du prix. La vente d'un seul
+   lot n'est pas ce geste.
+
+   CE QUE LE PRIX PAIE : les credits lies (`creditsDuBien`), tous soldes, chacun
+   du montant que le decompte du notaire indique, puis les frais de sortie du
+   credit. Le reste, `encaisse`, arrive sur le compte designe ; negatif, il s'en
+   debite, et la part doit le couvrir. Aucun solde negatif ne se cree.
+
+   CE QUI SORT DU PATRIMOINE : la valeur detenue du bien (`sortie`), et les
+   soldes DECLARES des credits retires y reviennent. `effetNet` est ce que le
+   patrimoine net gagne ou perd, calcule sur les ecritures faites, et la
+   transaction le verifie au demi-centime.
+
+   Le resultat est une plus-value brute, `produit - investi`, sur le cout de ta
+   part ; il est inconnu si un lot n'a pas de cout ou si une quote-part est
+   invalide, comme pour une cession. Les frais de sortie du credit ne s'y
+   retranchent pas : ils paient le credit, pas le bien. */
+const lotsDuBien = compte => (compte?.lignes || []).filter(l => (l.classe || 'immobilier') === 'immobilier');
+
+function apercuVenteBien(compte, { prix = {}, remboursements = {}, frais = 0, credite = true } = {}) {
+  const lots = lotsDuBien(compte);
+  const parts = lots.map(l => partDetention(l));
+  const partOk = lots.length > 0 && parts.every(q => q !== null);
+  const produit = partOk ? round2(lots.reduce((s, l, k) => s + num(prix[l.id]) * parts[k], 0)) : 0;
+  const sortie = partOk ? round2(lots.reduce((s, l, k) => s + num(l.valeur) * parts[k], 0)) : 0;
+  const acq = acquisitionCompte(compte);
+  const investi = acq.total != null && !acq.partInvalide ? round2(acq.detenu) : null;
+  const dettes = creditsDuBien(compte);
+  const rembourse = round2(dettes.reduce((s, d) => s + num(remboursements[d.id]), 0));
+  const declare = round2(dettes.reduce((s, d) => s + num(d.montant), 0));
+  const f = round2(num(frais));
+  const encaisse = round2(produit - rembourse - f);
+  const deplace = !!credite && Math.abs(encaisse) >= 0.005;
+  return {
+    partOk, lots, dettes, produit, sortie, investi, rembourse, declare, frais: f, encaisse,
+    realised: investi === null ? null : round2(produit - investi),
+    pct: investi > 0 ? (produit / investi - 1) * 100 : null,
+    effetNet: round2((deplace ? encaisse : 0) - sortie + declare),
+  };
+}
+
+function phraseEffetVenteBien(a, credite) {
+  const avecCredits = (a.dettes || []).length > 0;
+  if (!credite && a.encaisse > 0.005)
+    return trad('Effet sur ton patrimoine suivi : {v}. Ce qui reste du prix, {m}, ne va sur aucun compte suivi.')
+      .replace('{v}', fmtSigned(a.effetNet)).replace('{m}', fmtEUR(a.encaisse));
+  if (Math.abs(a.effetNet) < 1) {
+    if (a.encaisse < -0.005) return trad('Ton patrimoine ne bouge pas : le prix et ton compte soldent ses crédits.');
+    if (avecCredits && Math.abs(a.encaisse) < 0.005) return trad('Ton patrimoine ne bouge pas : le prix solde exactement ses crédits.');
+    return trad(avecCredits ? 'Ton patrimoine ne bouge pas : le prix solde ses crédits, le reste passe au cash.'
+                            : 'Ton patrimoine ne bouge pas : la valeur du bien passe au cash.');
+  }
+  return trad(avecCredits ? 'Effet sur ton patrimoine : {v}, l’écart entre le prix, frais déduits, et la dernière valeur connue du bien et de ses crédits.'
+                          : 'Effet sur ton patrimoine : {v}, l’écart entre le prix et la dernière valeur connue du bien.')
+    .replace('{v}', fmtSigned(a.effetNet));
+}
+
+function fluxDuBien(compteId) {
+  const credits = new Set(creditsDuBien(compteById(compteId)).map(d => d.id));
+  const out = [];
+  B().income.forEach((r, index) => { if (r.bienId === compteId) out.push({ liste: 'income', index }); });
+  B().fixedCharges.forEach((c, index) => {
+    if (c.bienId === compteId && !(c.creditId && credits.has(c.creditId))) out.push({ liste: 'fixedCharges', index });
+  });
+  return out;
+}
+
+/* Pourquoi la vente ne peut pas se faire, ou `null`. Chaque lot a son prix,
+   chaque credit lie son remboursement, et rien d'autre : un identifiant qui
+   manque vaudrait zero sans que personne l'ait dit. */
+function verifierVenteBien({ compteId, prix = {}, remboursements = {}, frais, date, cashAccount, cashPart } = {}) {
+  const c = compteById(compteId);
+  if (!c) return trad('Ce bien n’existe plus.');
+  if (c.statut === 'archive') return trad('Ce bien est archivé : restaure-le d’abord.');
+  if (!estImmoEnDirect(typeCompte(c.type))) return trad('Seul un bien immobilier détenu en direct se vend ici.');
+  if ((Store.state.positions || []).some(p => p.account === c.id)) return trad('Ce compte porte des titres : ce n’est pas un bien à vendre ici.');
+  if ((c.cash || []).some(e => Math.abs(num(e.montant)) >= 0.005)) return trad('Ce bien porte des espèces : vide-les d’abord, la vente ne vend qu’un bien.');
+  if ((c.lignes || []).some(l => (l.classe || 'immobilier') !== 'immobilier')) return trad('Ce bien porte une ligne qui n’est pas de l’immobilier : déplace-la d’abord.');
+  if (!dateISOValide(date)) return trad('Indique la date de la vente.');
+  const lots = lotsDuBien(c);
+  if (!lots.length) return trad('Ce bien n’a aucun lot à vendre.');
+  const idsLots = new Set(lots.map(l => l.id));
+  if (Object.keys(prix).some(k => !idsLots.has(k)) || lots.some(l => !estDeclare(prix[l.id])))
+    return trad('Indique le prix de chaque lot.');
+  if (lots.some(l => !(num(prix[l.id]) >= 0) || !nombreValide(prix[l.id], 'montant'))) return trad('Prix de vente impossible.');
+  if (lots.some(l => partDetention(l) === null)) return trad('Une quote-part de ce bien est invalide : corrige-la d’abord.');
+  const dettes = creditsDuBien(c);
+  const idsDettes = new Set(dettes.map(d => d.id));
+  if (Object.keys(remboursements).some(k => !idsDettes.has(k)) || dettes.some(d => !estDeclare(remboursements[d.id])))
+    return trad('Indique ce que la vente a remboursé sur chaque crédit.');
+  for (const d of dettes) {
+    const m = remboursements[d.id];
+    if (!(num(m) >= 0) || !nombreValide(m, 'montant')) return trad('Remboursement impossible.');
+    if (num(d.montant) > 0.005 && !(num(m) > 0.005))
+      return trad('Indique ce que la vente a remboursé sur {c} : un crédit soldé ne disparaît pas sans paiement.')
+        .replace('{c}', d.libelle || trad('Crédit'));
+  }
+  if (estDeclare(frais) && (!(num(frais) >= 0) || !nombreValide(frais, 'montant'))) return trad('Frais impossibles.');
+  const a = apercuVenteBien(c, { prix, remboursements, frais, credite: !!cashAccount });
+  if (![a.produit, a.rembourse, a.sortie].every(m => nombreValide(m, 'montant'))
+      || !nombreValide(a.encaisse, 'signe') || !nombreValide(a.effetNet, 'signe'))
+    return trad('Les montants de cette vente dépassent ce qu’un montant peut porter.');
+  if (a.realised != null && !nombreValide(a.realised, 'signe')) return trad('Le résultat de cette vente dépasse ce qu’un montant peut porter.');
+  if (cashAccount === c.id) return trad('Le bien vendu ne peut pas recevoir son propre prix.');
+  if (!cashAccount && a.encaisse < -0.005) return trad('Le prix ne couvre pas les crédits : désigne le compte qui paie la différence.');
+  if (cashAccount && Math.abs(a.encaisse) >= 0.005) {
+    const e = verifierMouvement(cashAccount, a.encaisse, cashPart);
+    if (e) return e;
+  }
+  return null;
+}
+
+/* Un identifiant de vente qui n'existe pas encore : le compte vendu le garde
+   (`venduPar`), et deux ventes du meme instant ne doivent pas se confondre. */
+function idVenteUnique() {
+  const base = 's' + Date.now();
+  const pris = new Set((Store.state.sales || []).map(v => v.id));
+  let id = base, n = 2;
+  while (pris.has(id)) id = base + '-' + (n++);
+  return id;
+}
+
+const photoCompteVendu = c => JSON.stringify({ etabId: c.etabId, type: c.type, lignes: c.lignes || [],
+  cash: c.cash || [], statut: c.statut, clotureLe: c.clotureLe || '' });
+
+function vendreBien(args = {}) {
+  const erreur = verifierVenteBien(args);
+  if (erreur) return { erreur };
+  const netAvant = patrimoine().net;
+  let apercu = null;
+  const t = enTransaction(() => {
+    const c = compteById(args.compteId);
+    if (verifierVenteBien(args)) return false;
+    const a = apercuVenteBien(c, { ...args, credite: !!args.cashAccount });
+    apercu = a;
+    const deplace = !!args.cashAccount && Math.abs(a.encaisse) >= 0.005;
+    const e = etabById(c.etabId);
+    const id = idVenteUnique();
+    const dettesSoldees = (e?.dettes || []).map((d, index) => ({ d, index }))
+      .filter(x => a.dettes.includes(x.d))
+      .map(x => ({ etabId: e.id, index: x.index, dette: structuredClone(x.d), rembourse: round2(num(args.remboursements[x.d.id])) }));
+    const chargesDeCredit = [];
+    B().fixedCharges.forEach((ch, index) => {
+      if (ch.creditId && a.dettes.some(d => d.id === ch.creditId)) chargesDeCredit.push({ liste: 'fixedCharges', index, objet: structuredClone(ch) });
+    });
+    const flux = fluxDuBien(c.id).map(x => ({ ...x, objet: structuredClone(B()[x.liste][x.index]) }));
+    const retires = [...chargesDeCredit, ...(args.retirerFlux ? flux : [])];
+    const rangApres = x => x.index - retires.filter(y => y.liste === x.liste && y.index < x.index).length;
+    const delies = args.retirerFlux ? [] : flux.map(x => ({ ...x, indexApres: rangApres(x) }));
+
+    Store.state.sales = Store.state.sales || [];
+    Store.state.sales.unshift({
+      id, date: args.date,
+      name: nomCompteV2(c),
+      isin: '', symbol: '', assetClass: 'immobilier', role: '',
+      account: c.id, cashAccount: deplace ? args.cashAccount : '',
+      ...(deplace ? { cashPart: String(args.cashPart || '').replace(/\+$/, '') } : {}),
+      ...(deplace && /\+$/.test(args.cashPart || '') ? { partCreee: true } : {}),
+      qty: null, currency: 'EUR', fxSell: 1, fxBuy: 1, price: null, buyPrice: null,
+      gross: a.produit, invested: a.investi,
+      realised: a.realised,
+      note: args.note || '',
+      cession: 'vente', typeActif: 'bien', actifId: c.id,
+      destination: deplace ? 'choisie' : 'hors',
+      perimetre: deplace || Math.abs(a.encaisse) < 0.005 ? 'interne' : 'sortie',
+      sortie: a.sortie, encaisse: a.encaisse, rembourse: a.rembourse, frais: a.frais,
+      effetNet: a.effetNet,
+      dettesSoldees, fluxRetires: retires, retirerFlux: !!args.retirerFlux,
+      fluxDelies: delies,
+    });
+
+    if (deplace && !mouvementCash(args.cashAccount, a.encaisse, args.cashPart)) return false;
+
+    for (const x of [...dettesSoldees].sort((p, q) => q.index - p.index)) e.dettes.splice(x.index, 1);
+    for (const [liste, rangs] of Object.entries(retires.reduce((m, x) => ((m[x.liste] = m[x.liste] || []).push(x.index), m), {}))) {
+      for (const i of rangs.sort((p, q) => q - p)) B()[liste].splice(i, 1);
+    }
+    if (!args.retirerFlux) delierDuBien(c.id);
+
+    c.statut = 'archive';
+    c.clotureLe = args.date;
+    c.archiveMotif = 'sortie';
+    c.venduPar = id;
+    Store.state.sales[0].photo = photoCompteVendu(c);
+    return true;
+  }, () => apercu && Math.abs(patrimoine().net - (netAvant + apercu.effetNet)) < 0.005);
+  return t.ok ? apercu : { erreur: trad('Rien n’a été modifié.') };
+}
+
+/* Pourquoi la vente d'un bien ne peut pas s'annuler, ou `null`. */
+function verifierAnnulationVenteBien(v) {
+  const c = compteById(v.account);
+  if (!c) return trad('Le bien vendu n’existe plus : la vente ne peut pas s’annuler.');
+  if (c.statut !== 'archive' || c.venduPar !== v.id || (v.photo && photoCompteVendu(c) !== v.photo))
+    return trad('Le bien a changé depuis la vente : elle ne peut plus s’annuler.');
+  for (const x of (v.dettesSoldees || [])) {
+    const e = etabById(x.etabId);
+    if (!e) return trad('L’établissement qui portait son crédit n’existe plus : la vente ne peut pas s’annuler.');
+    if ((e.dettes || []).some(d => d.id === x.dette.id)) return trad('Un crédit de ce bien existe de nouveau : la vente ne peut pas s’annuler.');
+  }
+  for (const x of (v.fluxRetires || [])) {
+    const liste = B()[x.liste] || [];
+    const meme = JSON.stringify(x.objet);
+    if (liste.some(o => (x.objet.creditId && o.creditId === x.objet.creditId) || JSON.stringify(o) === meme))
+      return trad('Un loyer ou une charge de ce bien est de nouveau au budget : la vente ne peut pas s’annuler.');
+  }
+  for (const x of (v.fluxDelies || [])) {
+    const { bienId, ...sans } = x.objet;
+    const o = (B()[x.liste] || [])[x.indexApres];
+    if (!o || o.bienId || JSON.stringify(o) !== JSON.stringify(sans))
+      return trad('Un loyer ou une charge de ce bien a changé depuis la vente : elle ne peut plus s’annuler.');
+  }
+  if (v.cashAccount && Math.abs(num(v.encaisse)) >= 0.005) {
+    const e = verifierMouvement(v.cashAccount, -round2(num(v.encaisse)), partieDeVente(v));
+    if (e) return e;
+  }
+  return null;
+}
+
+/* L'annulation d'une vente deja verifiee, dans la transaction de
+   `annulerSansVerifier`. */
+function annulerVenteBienSansVerifier(i, v) {
+  if (v.cashAccount && Math.abs(num(v.encaisse)) >= 0.005
+      && !mouvementCash(v.cashAccount, -round2(num(v.encaisse)), partieDeVente(v))) return false;
+  if (v.partCreee) {
+    const c = compteById(v.cashAccount);
+    const k = (c?.cash || []).findIndex(e => e.affectation === v.cashPart);
+    const e = k >= 0 ? c.cash[k] : null;
+    if (e && Math.abs(num(e.montant)) < 0.005 && Object.keys(e).every(x => x === 'montant' || x === 'affectation'))
+      c.cash.splice(k, 1);
+  }
+  const aRattacher = (v.fluxDelies || []).map(x => B()[x.liste][x.indexApres]);
+  for (const x of [...(v.dettesSoldees || [])].sort((p, q) => p.index - q.index)) {
+    const e = etabById(x.etabId);
+    e.dettes = e.dettes || [];
+    e.dettes.splice(Math.min(x.index, e.dettes.length), 0, structuredClone(x.dette));
+  }
+  for (const x of [...(v.fluxRetires || [])].sort((p, q) => p.index - q.index)) {
+    const liste = B()[x.liste];
+    liste.splice(Math.min(x.index, liste.length), 0, structuredClone(x.objet));
+  }
+  for (const o of aRattacher) o.bienId = v.account;
+  const c = compteById(v.account);
+  c.statut = 'ouvert';
+  delete c.clotureLe;
+  delete c.archiveMotif;
+  delete c.venduPar;
+  Store.state.sales.splice(i, 1);
+  return v;
+}
+
 /*   C'est la reponse au chantier note dans ETAT.md : noter une vente sur un
    PEA cloture demandait de recreer le compte, la ligne, de vendre, puis
    d'archiver — quatre gestes pour fabriquer un fait passe. Ici la vente
@@ -831,6 +1094,7 @@ function annulerCession(i, v) {
   return t.ok ? v : { erreur: trad('Rien n’a été modifié.') };
 }
 function annulerCessionSansVerifier(i, v) {
+  if (v.typeActif === 'bien') return annulerVenteBienSansVerifier(i, v);
   if (perimetreDeVente(v) === 'interne' && round2(num(v.gross))
       && !mouvementCash(v.cashAccount, -round2(num(v.gross)), partieDeVente(v))) return false;
 
@@ -882,6 +1146,8 @@ function rangeStart(range) {
    oublie de corriger finit par contredire l'autre. Le filtre reste à l'appelant,
    le calcul est ici. */
 const estNombre = x => x !== null && x !== undefined && x !== '' && isFinite(Number(x));
+const encaisseNetVente = v => (v && v.typeActif === 'bien' ? num(v.encaisse) : num(v && v.gross));
+
 function resultatVente(v) {
   const non = raison => ({ montant: null, fiable: false, raison });
   if (!v) return non('resultat');
@@ -904,10 +1170,11 @@ function statsDesVentes(ventes) {
   const realised = fiables.reduce((s, v) => s + Number(v.realised), 0);
   const invested = fiables.reduce((s, v) => s + num(v.invested), 0);
   const grossFiables = fiables.reduce((s, v) => s + num(v.gross), 0);
+  const encaisseFiables = fiables.reduce((s, v) => s + encaisseNetVente(v), 0);
   return {
     sales: ventes, count: ventes.length,
     realised, invested,
-    fiables: fiables.length, nonFiables: ventes.length - fiables.length, grossFiables,
+    fiables: fiables.length, nonFiables: ventes.length - fiables.length, grossFiables, encaisseFiables,
     partiel: fiables.length < ventes.length,
     gross: ventes.reduce((s, v) => s + num(v.gross), 0),
     /* `null` et non 0 : sans vente, ou sans prix de revient sur celles qui

@@ -901,6 +901,7 @@ Object.assign(ACTIONS, {
     delete c.clotureLe;
     delete c.archiveMotif;
     delete c.archiveVers;
+    delete c.venduPar;
     refreshAccounts(); Store.save(); render();
     toast(`${guill(nomCompteV2(c))} ${trad('restauré')}${avait ? trad(', sa date de clôture est retirée') : ''}`);
   },
@@ -1221,6 +1222,24 @@ Object.assign(ACTIONS, {
       : trad('Cession enregistrée');
     toast(`${mot}${deuxPoints()} ${a.realised === null
       ? `${fmtEUR(a.produit)} ${trad('encaissés')}` : fmtSigned(a.realised)}`);
+  },
+  /* La vente d'un bien detenu en direct : le prix, les credits soldes, le reste
+     sur un compte, et le bien archive, dans une seule transaction
+     (`vendreBien`). Comme une cession, le compte vendu quitte la vue : on revient
+     aux actifs, la ou le geste se constate. */
+  async 'vendre-bien'(btn) {
+    const c = compteById(btn.dataset.id);
+    if (!c) return;
+    const v = await askVenteBien(c.id);
+    if (!v) return;
+    const avant = structuredClone(Store.state);
+    const a = vendreBien({ compteId: c.id, ...v });
+    if (!a || a.erreur) { toast((a && a.erreur) || trad('Rien n’a été modifié.')); return; }
+    Store.addBackup('avant vente d’un bien', avant);
+    refreshAccounts(); Store.save();
+    ACTIONS.goto({ dataset: { view: 'accounts', anchor: '' } });
+    toast(`${trad('Bien vendu')}${deuxPoints()} ${a.realised === null
+      ? `${fmtEUR(a.produit)}, ${trad('ta part')}` : fmtSigned(a.realised)}`);
   },
   async 'editer-placement'(btn) {
     const c = compteById(btn.dataset.id);

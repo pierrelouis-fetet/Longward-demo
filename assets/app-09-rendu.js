@@ -1009,6 +1009,156 @@ function askCession(compteId, index) {
   });
 }
 
+/* VENDRE UN BIEN. Le geste qui manquait au proprietaire : jusqu'ici, un
+   appartement vendu se sortait par « Archiver », qui ne dit rien du prix, et ses
+   credits restaient ouverts jusqu'a ce qu'on pense a les supprimer.
+
+   La fenetre demande ce que dit l'acte de vente et le decompte du notaire : le
+   prix de chaque lot, ce qui a ete rembourse sur chaque credit, les frais de
+   sortie du credit. L'apercu dit ensuite ce qui reste, et ou il va. Le modele
+   (`verifierVenteBien`) decide ; la fenetre ne fait que montrer.
+
+   LE SENS DU CASH SE LIT SUR L'APERCU. Un prix qui couvre les credits verse le
+   reste sur un compte : la meme destination que toute cession. Un prix qui ne
+   les couvre pas demande quel compte paie la difference, sans l'option « hors »
+   : un credit ne se solde pas avec de l'argent venu de nulle part. */
+function askVenteBien(compteId) {
+  return new Promise(resolve => {
+    const c = compteById(compteId);
+    const lots = lotsDuBien(c);
+    if (!c || !lots.length) { resolve(null); return; }
+    const m = $('#modal');
+    apercuOuvert = null;
+    const dettes = creditsDuBien(c);
+    const flux = fluxDuBien(c.id);
+    const seul = lots.length === 1;
+
+    $('#modalTitle').textContent = trad('Vendre ce bien');
+    $('#modalSub').textContent = trad(dettes.length
+      ? 'Le prix solde d’abord ses crédits, le résultat se calcule sur ton coût d’acquisition'
+      : 'Le résultat se calcule sur ton coût d’acquisition');
+
+    const champPrix = l => {
+      const q = partDetention(l);
+      const aideLot = q !== null && q < 1
+        ? trad('net vendeur, du bien entier : ta quote-part de {p} s’applique')
+            .replace('{p}', fmtPct(q * 100, Number.isInteger(round2(q * 100)) ? 0 : 2))
+        : trad('net vendeur, du bien entier');
+      const label = seul ? trad('Prix de vente ({dev})')
+        : trad('Prix de {l} ({dev})').replace('{l}', l.libelle || trad('ce lot'));
+      return `
+        <div class="field"><label>${esc(label)}</label>
+          <input type="number" step="any" data-prix="${esc(l.id)}" value="${round2(num(l.valeur))}" autocomplete="off">
+          <span class="hint">${esc(aideLot)}</span></div>`;
+    };
+    const champCredit = d => {
+      const p = projectionCredit(d).projete;
+      const aideCredit = p != null
+        ? trad('d’après ta mensualité, au {jour} : remplace-le par le montant du décompte du notaire').replace('{jour}', fmtDate(todayISO()))
+        : trad('le capital restant dû de la fiche : remplace-le par le montant du décompte du notaire');
+      return `
+        <div class="field"><label>${esc(trad('Remboursé sur {c} ({dev})').replace('{c}', d.libelle || trad('Crédit')))}</label>
+          <input type="number" step="any" data-rembourse="${esc(d.id)}" value="${round2(p != null ? p : num(d.montant))}" autocomplete="off">
+          <span class="hint">${esc(aideCredit)}</span></div>`;
+    };
+    const debit = listeDeParts(cashTargets(), defaultCashTarget(c.id));
+
+    $('#modalBody').innerHTML = `
+      <div class="modal-champs">
+        ${lots.map(champPrix).join('')}
+        ${dettes.map(champCredit).join('')}
+        ${!dettes.length ? '' : `
+        <div class="field"><label>${trad('Frais de sortie du crédit ({dev})')}</label>
+          <input type="number" step="any" id="vbFrais" value="0" autocomplete="off">
+          <span class="hint">${trad('indemnités de remboursement anticipé, mainlevée : 0 s’il n’y en a pas')}</span></div>`}
+        <div class="field"><label>${trad('Date')}</label>
+          <input type="date" id="vbDate" value="${todayISO()}"></div>
+        <div id="vbCredit">${champDestination('vb', c.id)}</div>
+        <div class="field" id="vbDebitChamp" hidden><label>${trad('Compte débité de la différence')}</label>
+          <select id="vbDebit">${debit.options.map(([v, l]) =>
+            `<option value="${esc(v)}" ${v === debit.valeur ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>
+          <span class="hint">${trad('le prix ne couvre pas les crédits et les frais : la différence se paie depuis ce compte')}</span></div>
+        ${!flux.length ? '' : `
+        <label class="field-case">
+          <input type="checkbox" id="vbFlux" checked>
+          <span>${trad('Retirer ses loyers et charges du budget')}</span>
+        </label>
+        <p class="hint">${trad('les lignes du budget qui visent ce bien : décochée, elles restent au budget, détachées de lui')}</p>`}
+        <div class="field"><label>${trad('Note')}</label>
+          <input id="vbNote" placeholder="${trad('Pourquoi cette vente ?')}" autocomplete="off"></div>
+      </div>
+      <div id="vbApercu" style="margin-top:4px"></div>`;
+    $('#modalFoot').innerHTML =
+      `<button class="btn ghost" id="vbCancel" type="button">${trad('Annuler')}</button>
+       <button class="btn" id="vbOk" type="button">${trad('Enregistrer')}</button>`;
+    montrerModal(m);
+
+    const lire = attr => Object.fromEntries([...$('#modalBody').querySelectorAll(`[data-${attr}]`)]
+      .map(el => [el.dataset[attr], el.value]));
+    const saisie = () => ({
+      prix: lire('prix'), remboursements: lire('rembourse'),
+      frais: $('#vbFrais') ? $('#vbFrais').value : 0,
+    });
+    let negatif = false;
+    const destination = () => (negatif ? $('#vbDebit').value : lireDestination('vb'));
+
+    const majApercu = () => {
+      const brut = apercuVenteBien(c, { ...saisie(), credite: true });
+      negatif = brut.encaisse < -0.005;
+      $('#vbCredit').hidden = negatif;
+      $('#vbDebitChamp').hidden = !negatif;
+      const credite = !!destination() && destination() !== PART_A_CHOISIR;
+      const a = apercuVenteBien(c, { ...saisie(), credite });
+      if (!a.partOk) {
+        $('#vbApercu').innerHTML = `<div class="note">⚠ <span>${
+          trad('Une quote-part de ce bien est invalide : corrige-la d’abord.')}</span></div>`;
+        $('#vbOk').disabled = true;
+        return;
+      }
+      $('#vbOk').disabled = false;
+      const inconnu = a.realised === null;
+      const bon = inconnu || a.realised >= 0;
+      const mot = trad(inconnu ? 'Prix de vente, ta part' : bon ? 'Plus-value réalisée' : 'Moins-value réalisée');
+      const detail = [
+        dettes.length ? `${trad('Crédits soldés')} ${fmtEUR(a.rembourse)}` : '',
+        a.frais ? `${trad('Frais de sortie du crédit')} ${fmtEUR(a.frais)}` : '',
+        `${trad(negatif ? 'Débité' : 'Encaissé')} ${fmtEUR(Math.abs(a.encaisse))}`,
+      ].filter(Boolean).join(' · ');
+      const effet = phraseEffetVenteBien(a, credite);
+      $('#vbApercu').innerHTML = `<div class="note" style="${inconnu ? '' : bon
+        ? 'background:color-mix(in oklab, var(--good) 12%, var(--surface-1)); border-color:color-mix(in oklab, var(--good) 38%, transparent)'
+        : 'background:color-mix(in oklab, var(--critical) 10%, var(--surface-1)); border-color:color-mix(in oklab, var(--critical) 34%, transparent)'}">
+          ${inconnu ? '' : bon ? '↗' : '↘'}
+          <span><b>${mot} ${trad('de')} ${inconnu ? fmtEUR(a.produit) : fmtSigned(a.realised)}${
+            a.pct == null ? '' : ` · ${fmtSignedPct(a.pct)}`}</b><br>
+          ${inconnu ? trad('Coût d’acquisition non renseigné : aucune plus-value n’est calculée.')
+            : trad('Sur {m} investis.').replace('{m}', fmtEUR(a.investi))}<br>
+          ${esc(detail)}<br>
+          ${esc(effet)}</span>
+        </div>`;
+    };
+    cablerDestination('vb', () => majApercu());
+    $('#modalBody').addEventListener('input', majApercu);
+    $('#modalBody').addEventListener('change', majApercu);
+    majApercu();
+
+    const fermer = v => { masquerModal(m); $('#modalClose').onclick = null; resolve(v); };
+    $('#vbCancel').onclick = () => fermer(null);
+    $('#modalClose').onclick = () => fermer(null);
+    $('#vbOk').onclick = () => {
+      if (destination() === PART_A_CHOISIR) {
+        erreurDeFenetre(trad(negatif ? 'Choisis la part qui paie la différence.' : 'Choisis la part qui reçoit le produit.'));
+        return;
+      }
+      const v = { ...saisie(), ...destinationDe(destination()), date: $('#vbDate').value,
+                  retirerFlux: $('#vbFlux') ? $('#vbFlux').checked : false, note: $('#vbNote').value.trim() };
+      const erreur = verifierVenteBien({ compteId, ...v });
+      if (erreur) { erreurDeFenetre(erreur); return; }
+      fermer(v);
+    };
+  });
+}
+
 function askSale(indexInitial) {
   return new Promise(resolve => {
     const m = $('#modal');

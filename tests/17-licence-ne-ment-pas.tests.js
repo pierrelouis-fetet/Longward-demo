@@ -1353,7 +1353,7 @@ suite('La réserve fiscale se dit dans une bulle', () => {
 
   test('elle vit sur le titre de la carte, plus sous la liste', () => {
     const bloc = journal();
-    vrai(/\$\{aide\(trad\('Résultat brut, avant frais et fiscalité/.test(bloc),
+    vrai(/aide\((?:`\$\{)?trad\('Résultat brut, avant frais et fiscalité/.test(bloc),
       'la réserve est une bulle du titre : elle vaut pour chaque ligne du '
       + 'journal, et ne se relit pas');
     vrai(!/<p class="hint"[^>]*>\$\{trad\('Résultat brut/.test(bloc),

@@ -1103,7 +1103,10 @@ function salesCard() {
   return `
   <div class="card" data-anchor="ventes">
     <div class="card-head">
-      <h2>${trad('Journal des ventes')}${aide(trad('Résultat brut, avant frais et fiscalité : '
+      <h2>${trad('Journal des ventes')}${(Store.state.sales || []).some(v => v.typeActif === 'bien')
+        ? aide(`${trad('Résultat brut, avant frais et fiscalité : le traitement fiscal dépend de ce qui est vendu, de l’enveloppe qui le portait et de ta situation.')} ${
+            trad('Un bien vendu compte les frais de son crédit dans ce qu’il encaisse, pas dans son résultat.')}`)
+        : aide(trad('Résultat brut, avant frais et fiscalité : '
         + 'le traitement fiscal dépend de l’enveloppe (PEA, CTO) et de ta situation.'))}</h2>
       <button class="btn sm ghost" data-action="sell-position"
               title="${trad('Enregistrer une vente et sa plus-value, ou en déclarer une passée')}">− ${trad('Vendre')}</button>
@@ -1166,6 +1169,7 @@ function lignesJournalVentes(j) {
       action: 'open-sale', index: j.rang.get(v),
       titre: v.name,
       sous: [fmtDate(v.date), v.declaree ? trad('déclarée, pour mémoire')
+               : v.typeActif === 'bien' ? trad('vendu {m}, ta part').replace('{m}', fmtEUR(num(v.gross)))
                : num(v.qty) ? `${num(v.qty)} × ${fmtCur(v.price, dev)}`
                : trad('{m} reçus').replace('{m}', fmtEUR(num(v.gross))),
              r.fiable ? '' : motifVente(r)].filter(Boolean).join(' · '),

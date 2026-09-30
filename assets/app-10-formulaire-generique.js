@@ -718,6 +718,22 @@ function lignesActifs(lignes, montrer = 0) {
     </div>`;
 }
 
+function detailVenteBien(v, r) {
+  const e = round2(num(v.encaisse));
+  const compte = v.cashAccount && compteById(v.cashAccount);
+  return `
+          <dt>${trad('Prix de vente, ta part')}</dt><dd>${fmtEUR(num(v.gross))}</dd>
+          ${(v.dettesSoldees || []).length ? `<dt>${trad('Crédits soldés')}</dt><dd>${fmtEUR(num(v.rembourse))}</dd>` : ''}
+          ${num(v.frais) ? `<dt>${trad('Frais de sortie du crédit')}</dt><dd>${fmtEUR(num(v.frais))}</dd>` : ''}
+          <dt>${trad(e < 0 ? 'Débité' : 'Encaissé')}</dt><dd>${fmtEUR(Math.abs(e))}</dd>
+          <dt>${trad('Coût d’acquisition')}</dt><dd>${v.invested == null
+            ? trad('non renseigné') : fmtEUR(num(v.invested))}</dd>
+          <dt>${trad('Plus-value')}</dt>
+            <dd class="${r.fiable ? cls(r.montant) : 'muted'}"><b>${r.fiable
+              ? fmtSigned(r.montant) : trad('non calculable')}</b></dd>
+          ${compte ? `<dt>${trad(e < 0 ? 'Débité de' : 'Encaissé sur')}</dt><dd>${esc(nomCompteV2(compte))}</dd>` : ''}`;
+}
+
 const APERCUS = {
   classe: (classe) => {
     const p = patrimoine();
@@ -1407,6 +1423,7 @@ const APERCUS = {
         : `${fmtSignedPct(pct)} ${trad('sur.investis', 'sur')} ${fmtEUR0(v.invested)} ${trad('investis')}`,
       html: `
         <dl class="kv">
+          ${v.typeActif === 'bien' ? detailVenteBien(v, r) : `
           ${v.declaree ? '' : `
           <dt>${trad('Quantité vendue')}</dt><dd>${num(v.qty)}</dd>
           <dt>${trad('Prix de vente')}</dt><dd>${fmtCurEur(v.price, dev, v.fxSell)}</dd>
@@ -1419,7 +1436,7 @@ const APERCUS = {
             <dd class="${r.fiable ? cls(r.montant) : 'muted'}"><b>${r.fiable
               ? fmtSigned(r.montant) : trad('non calculable')}</b></dd>
           ${depuis ? `<dt>${trad('Ligne vendue sur')}</dt><dd>${esc(depuis)}</dd>` : ''}
-          ${vers ? `<dt>${trad('Encaissé sur')}</dt><dd>${esc(vers)}</dd>` : ''}
+          ${vers ? `<dt>${trad('Encaissé sur')}</dt><dd>${esc(vers)}</dd>` : ''}`}
           ${v.note ? `<dt>${trad('Note')}</dt><dd>${esc(v.note)}</dd>` : ''}
         </dl>
         <div class="row" style="margin-top:12px">
