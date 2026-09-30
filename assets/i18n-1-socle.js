@@ -936,8 +936,8 @@ const I18N = {
     "À mettre à jour": "To update",
     "{n} valeurs saisies à la main": "{n} values entered by hand",
     "{n} valeur saisie à la main": "{n} value entered by hand",
-    "Des soldes, des estimations et des capitaux restant dus qui datent ou n’ont pas de date. Touche une ligne pour ouvrir le champ.":
-      "Balances, estimates and outstanding loan balances that are old or undated. Tap a line to open the field.",
+    "Des soldes, des estimations, des valeurs de supports et des capitaux restant dus qui datent ou n’ont pas de date. Touche une ligne pour ouvrir le champ.":
+      "Balances, estimates, fund values and outstanding loan balances that are old or undated. Tap a line to open the field.",
     "rien de déclaré": "nothing declared",
     "Déclarer des espèces": "Declare cash",
     "Autres pays": "Other countries",

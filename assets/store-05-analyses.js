@@ -2224,12 +2224,14 @@ const SOLDE_VIEUX_JOURS = 31;
 /* --- CE QUI SE MET A JOUR A LA MAIN, ET DEPUIS QUAND ----------------------
 
    Une entree par valeur saisie a la main qui a vieilli ou qui n'a pas de date :
-   un solde (plus de SOLDE_VIEUX_JOURS), une estimation ou une VL (la cadence de
-   `valeurPerimee`), un capital restant du (jamais verifie, ou RAPPEL_CREDIT_MOIS).
-   Les cours n'y sont pas : ils s'actualisent, ils ne se ressaisissent pas.
+   un solde (plus de SOLDE_VIEUX_JOURS), une estimation, une VL ou la valeur
+   relevee d'un support de contrat (la cadence de `valeurPerimee`), un capital
+   restant du (jamais verifie, ou RAPPEL_CREDIT_MOIS). Les cours n'y sont pas :
+   ils s'actualisent, ils ne se ressaisissent pas.
 
    Chaque entree dit ou aller : `route` mene a la fiche qui porte le champ, et
-   `ancre` a la carte qui le porte dans cette fiche. Un capital restant du va
+   `ancre` a la carte qui le porte dans cette fiche. Un support de contrat porte
+   en plus `ouvre`, la fenetre de sa ligne par son rang. Un capital restant du va
    sur la fiche du compte qu'il finance quand le lien existe, sur celle de
    l'etablissement sinon. `date` vaut null quand la valeur n'a pas de date, et
    c'est un etat a part entiere : « sans date » ne se confond pas avec « vieux ».
@@ -2248,14 +2250,19 @@ function valeursARevoir() {
       out.push({ genre: 'solde', nom: nomCompteV2(c), compteId: c.id, date: s.date || null,
                  route: routeCompte(c), ancre: 'solde' });
     }
-    if (!(estValeurEstimee(t) || (t && t.vl))) continue;
-    for (const l of (c.lignes || [])) {
+    const releve = valeurDeReleve(t);
+    if (!(estValeurEstimee(t) || (t && t.vl) || releve)) continue;
+    for (const [i, l] of (c.lignes || []).entries()) {
       if (!estDeclare(l.valeur)) continue;
+      if (releve && !num(l.valeur)) continue;
       if (!valeurPerimee(l, t)) continue;
       /* `publiee` : une VL se date du jour de sa publication, une estimation du
-         jour ou on l'a etablie, et la phrase ne les nomme pas pareil. */
+         jour ou on l'a etablie, et la phrase ne les nomme pas pareil. Un
+         support releve ouvre sa propre fenetre, par son rang : sur une fiche
+         qui en porte plusieurs, l'ancre seule ne dirait pas lequel a vieilli. */
       out.push({ genre: 'estimation', nom: nomLignePlacement(l, c), compteId: c.id,
                  date: l.estimeLe || null, publiee: !!(t && t.vl),
+                 ...(releve ? { releve: true, ouvre: { action: 'editer-placement', id: c.id, i } } : {}),
                  route: routeCompte(c), ancre: 'estimation' });
     }
   }
@@ -2280,7 +2287,8 @@ function aRafraichir() {
     if (x.genre === 'solde' && !x.date) { soldesSansDate.push(x.nom); continue; }
     if (x.genre === 'solde') out.push({ genre: 'solde', nom: x.nom, depuis: x.date, compteId: x.compteId });
     else if (x.genre === 'estimation') out.push({ genre: 'estimation', nom: x.nom, depuis: x.date,
-                                                  compteId: x.compteId, publiee: x.publiee });
+                                                  compteId: x.compteId, publiee: x.publiee,
+                                                  ...(x.releve ? { releve: true } : {}) });
     else if (x.genre === 'credit') out.push({ genre: 'credit', nom: x.nom, depuis: x.date });
   }
   if (soldesSansDate.length) out.push({ genre: 'soldesSansDate', nom: '', noms: soldesSansDate, depuis: null });

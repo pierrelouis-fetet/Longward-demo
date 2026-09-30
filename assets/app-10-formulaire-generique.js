@@ -363,6 +363,7 @@ function blocFraicheur() {
       : x.genre === 'solde' ? trad('solde vérifié le {d}').replace('{d}', d)
       : x.genre === 'credit' ? (d ? trad('capital restant dû vérifié le {d}').replace('{d}', d)
                                   : trad('capital restant dû jamais vérifié'))
+      : x.releve ? (d ? trad('valeur au {d}').replace('{d}', d) : trad('valeur sans date'))
       : x.publiee ? (d ? trad('VL du {d}').replace('{d}', d) : trad('sans date de VL'))
       : (d ? trad('estimée le {d}').replace('{d}', d) : trad('sans date d’estimation'));
     return `${esc(guill(x.nom))}${deuxPoints()} ${quoi}`;

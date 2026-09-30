@@ -772,7 +772,7 @@ suite('Formulaire de placement : les intitulés composés sont traduits aussi', 
     const dico = lireSource('assets/i18n.js');
     const declaree = cle => dico.includes('"' + cle + '":')
       || dico.includes("'" + cle + "':");
-    for (const cle of ['Valeur aujourd’hui ({dev})', 'Valeur estimée ({dev})',
+    for (const cle of ['Valeur aujourd’hui ({dev})', 'Valeur estimée ({dev})', 'Dernière valeur connue ({dev})',
                        'ce que la ligne vaut, capital et intérêts courus compris',
                        'ton estimation du jour : ce n’est pas un prix de vente, le produit réel se saisit à la cession',
                        'la dernière valeur liquidative publiée, pour les parts que tu détiens'])
@@ -783,7 +783,7 @@ suite('Formulaire de placement : les intitulés composés sont traduits aussi', 
     /* Une clef recopiee de travers ne casse rien de visible : elle rend juste
        le francais en anglais. Le test relit donc la vue plutot que sa memoire. */
     const app = lireSource('assets/app.js');
-    vrai(app.includes("${estime ? 'Valeur estimée' : 'Valeur aujourd’hui'} ({dev})"),
+    vrai(app.includes("${estime ? 'Valeur estimée' : releve ? 'Dernière valeur connue' : 'Valeur aujourd’hui'} ({dev})"),
       'le gabarit du montant n’a pas changé de forme');
   });
 });

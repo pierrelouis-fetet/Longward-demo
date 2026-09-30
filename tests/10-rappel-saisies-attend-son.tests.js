@@ -1292,12 +1292,13 @@ suite('Un bien se crée seul, s’estime, et se modifie par un bouton', () => {
     /* Et la date suit, parce que c'est elle qui rend l'intitule honnete : un
        chiffre estime sans date ne dit pas de quand.
 
-       La condition s'est elargie sans rien perdre. Une valeur DATEE couvre deux
-       natures — celle qu'on estime soi-meme et celle qu'un tiers publie — et
-       `datee` contient `estime` par construction, ce que la ligne suivante
-       exige. Un chiffre estime porte donc toujours sa date, comme avant. */
-    vrai(/const datee = estime \|\| publiee;/.test(src),
-      'une valeur datée, c’est une valeur estimée ou une valeur publiée');
+       La condition s'est elargie sans rien perdre. Une valeur DATEE couvre trois
+       natures : celle qu'on estime soi-meme, celle qu'un tiers publie, et celle
+       qu'on releve sur le document d'un assureur. `datee` contient `estime` par
+       construction, ce que la ligne suivante exige. Un chiffre estime porte donc
+       toujours sa date, comme avant. */
+    vrai(/const datee = estime \|\| publiee \|\| releve;/.test(src),
+      'une valeur datée, c’est une valeur estimée, publiée ou relevée');
     vrai(/\.\.\.\(datee \? \[\{ cle: 'estimeLe'/.test(src),
       'la date accompagne toujours la valeur estimée');
   });

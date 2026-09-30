@@ -670,19 +670,23 @@ const EXEMPLE_PLACEMENT = {
 
 function champsPlacement(classe, l = null, prete = false, type = null) {
   const echeancier = !!prete;
-  /* Trois notions voisines, et les confondre s'est deja paye : une valeur qu'on
-     ESTIME soi-meme (une montre, un appartement), une valeur qu'un tiers PUBLIE
-     (la VL d'un fonds), et le fait qu'une valeur porte une DATE — vrai des deux
-     cotes, faux pour un pret dont le nominal ne bouge pas.
+  /* Quatre notions voisines, et les confondre s'est deja paye : une valeur
+     qu'on ESTIME soi-meme (une montre, un appartement), une valeur qu'un tiers
+     PUBLIE (la VL d'un fonds), une valeur qu'on RELEVE sur le document d'un
+     assureur ou d'un teneur de compte (le fonds en euros d'un contrat mixte),
+     et le fait qu'une valeur porte une DATE : vrai des trois cotes, faux pour
+     un pret dont le nominal ne bouge pas.
 
-     `estime` commande le nom du montant : « Valeur estimee » pour ce qu'on
-     apprecie soi-meme, « Valeur aujourd'hui » pour ce qu'on lit quelque part.
-     Une VL rangee sous « Valeur estimee » aurait fait passer un chiffre publie
+     `estime` et `releve` commandent le nom du montant : "Valeur estimee" pour
+     ce qu'on apprecie soi-meme, "Derniere valeur connue" pour ce qu'un releve
+     donne et qui date de lui, "Valeur aujourd'hui" pour ce qu'on lit publie.
+     Une VL rangee sous "Valeur estimee" aurait fait passer un chiffre publie
      pour une opinion, ce qui est exactement l'inverse de ce qu'il est.
 
-     `datee` commande la presence du champ de date, et `publiee` son nom et sa
-     peremption. Un seul champ pour les deux natures : la date a laquelle ce
-     chiffre a ete etabli. Un second aurait ete deux ecritures du meme fait. */
+     `datee` commande la presence du champ de date, `publiee` et `releve` son
+     nom, `publiee` seul sa cadence. Un seul champ pour les trois natures : la
+     date a laquelle ce chiffre a ete etabli. Un second aurait ete deux
+     ecritures du meme fait. */
   const publiee = !!(type && type.vl);
   /* `estValeurEstimee` et non `estDetenuEnDirect` : une part de societe se
      valorise soi-meme autant qu'une montre, et c'est deja ce que dit la liste
@@ -693,7 +697,11 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
      Un seul predicat pour un seul fait : celui qui decide du mot « estimation »
      decide aussi de la date qui l'accompagne. */
   const estime = estValeurEstimee(type);
-  const datee = estime || publiee;
+  /* `releve` : le support saisi d'un contrat mixte, dont la valeur se lit sur
+     le releve de l'assureur ou du teneur de compte. Elle se date comme une VL,
+     du jour du document. */
+  const releve = valeurDeReleve(type);
+  const datee = estime || publiee || releve;
   return [
     { cle: 'libelle', label: 'Intitulé', type: 'texte', requis: true, max: NOM_LIGNE_MAX,
       valeur: l ? (l.libelle || '') : '',
@@ -703,10 +711,11 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
       aide: trad('il se déduit du montant investi, et commande la valeur du jour') }] : []),
     ...(type && type.parts ? [{ cle: 'section_valeur', label: estime ? 'Valeur estimée' : 'Valeur actuelle', type: 'section' }] : []),
     { cle: 'valeur',
-      label: `${estime ? 'Valeur estimée' : 'Valeur aujourd’hui'} ({dev})`, type: 'nombre',
+      label: `${estime ? 'Valeur estimée' : releve ? 'Dernière valeur connue' : 'Valeur aujourd’hui'} ({dev})`, type: 'nombre',
       valeur: l ? num(l.valeur) : '', exemple: '0',
       aide: estime ? 'ton estimation du jour : ce n’est pas un prix de vente, le produit réel se saisit à la cession'
           : publiee ? 'la dernière valeur liquidative publiée, pour les parts que tu détiens'
+          : releve ? 'celle que donne ton dernier relevé de l’assureur ou du teneur de compte : elle date du jour de ce relevé'
                     : 'ce que la ligne vaut, capital et intérêts courus compris',
       /* Le TOTAL reste la donnee stockee, le prix par part n'est qu'une autre
          facon de l'ecrire. Voir le cablage dans `askForm`. */
@@ -727,18 +736,17 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
     { cle: 'dateAcquisition', label: trad('Date d’entrée'), type: 'date',
       valeur: l ? (l.dateAcquisition || '') : todayISO() },
     ...(datee ? [{ cle: 'estimeLe',
-      label: trad(publiee ? 'VL du' : 'Estimée le'), type: 'date',
+      label: trad(publiee ? 'VL du' : releve ? 'Valeur au' : 'Estimée le'), type: 'date',
       valeur: l ? (l.estimeLe || '') : todayISO(),
-      /* ELLE NE PROMET PLUS DE RAPPEL. Le texte annoncait que la cloche
-         reclamerait cette valeur au bout d'un an : `valeurPerimee()` existe,
-         `aRevoir` se calcule, et AUCUN ecran ne les lit — ni la cloche, ni une
-         carte. Une bulle qui promet ce que l'application ne fait pas est un
-         mensonge de la meme famille qu'un commentaire perime, et celui-la se
-         serait propage a chaque type qu'on ajoute au drapeau.
+      /* ELLE NE PROMET PAS LA CLOCHE. Une valeur perimee (`valeurPerimee()`)
+         se rappelle dans la carte "A mettre a jour" d'Actifs et avant un
+         releve mensuel, jamais dans la cloche : une bulle qui la promettrait
+         mentirait, et le mensonge se propagerait a chaque type qu'on ajoute.
          Elle dit donc ce que la date EST : le jour ou ce chiffre a ete etabli,
-         ce qui est deja la seule chose qu'on ait besoin de savoir en la lisant. */
+         ou celui du document qui le donne. */
       aide: trad(publiee ? 'la date de la dernière valeur liquidative publiée'
-                         : 'le jour où tu as établi ce chiffre') }] : []),
+                 : releve ? 'la date de ce relevé : corrige-la s’il est plus ancien qu’aujourd’hui'
+                 : 'le jour où tu as établi ce chiffre') }] : []),
     ...(publiee ? [{ cle: 'vlPeriode', label: trad('Publiée'), type: 'liste',
       options: VL_PERIODES, valeur: l ? (l.vlPeriode || 'trimestre') : 'trimestre',
       aide: trad('à quelle fréquence le fonds publie sa valeur') }] : []),

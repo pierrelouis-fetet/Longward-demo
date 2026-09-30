@@ -647,6 +647,7 @@ const estDetenuEnDirect = t => !!t && !!t.direct;
    meme chose. La ligne annonce donc ce que le montant EST plutot que de
    comparer deux estimations. */
 const estValeurEstimee = t => !!t && (!!t.direct || !!t.estimee);
+const valeurDeReleve = t => !!t && !!t.melange;
 /* Un actif terminal : le contenant EST la chose, il ne porte pas de sous-lignes.
 
    Deux facons de l'etre, et une seule question : ce qu'on detient soi-meme
@@ -1474,7 +1475,8 @@ function valeurPerimee(ligne, type) {
 
    Chaque montant porte sa date sur l'objet qui le porte : `saisiLe` sur une part
    de cash (le jour ou le detenteur a tape ce solde), `estimeLe` sur une ligne
-   (le jour d'une estimation, ou celui de la VL publiee), `verifieLe` sur un
+   (le jour d'une estimation, celui de la VL publiee, ou celui du releve qui
+   donne la valeur d'un support de contrat), `verifieLe` sur un
    credit (le jour ou le capital a ete lu), et `quotes.lastRun` pour les cours.
 
    LA DATE SUIT LE MONTANT, ET L'ACTE DE VERIFICATION. Elle bouge quand le
@@ -1505,7 +1507,7 @@ function dateQuiSuit(chemin) {
   if (m) {
     const t = typeCompte((COMPTES()[+m[1]] || {}).type);
     if (estValeurEstimee(t)) return { chemin: `comptes.${m[1]}.lignes.${m[2]}.estimeLe`, genre: 'estimation' };
-    if (t && t.vl) return { chemin: `comptes.${m[1]}.lignes.${m[2]}.estimeLe`, genre: 'vl' };
+    if ((t && t.vl) || valeurDeReleve(t)) return { chemin: `comptes.${m[1]}.lignes.${m[2]}.estimeLe`, genre: 'vl' };
   }
   return null;
 }
@@ -1565,6 +1567,9 @@ function datesDuCompte(c) {
   if ((Store.state.positions || []).some(p => p.account === c.id && !p.manual)) {
     const last = Store.state.quotes?.lastRun;
     out.push({ genre: 'cours', date: last ? String(last).slice(0, 10) : null });
+  }
+  if (lignes.length && valeurDeReleve(t)) {
+    out.push({ genre: 'releve', date: plusAncienne(lignes.map(l => l.estimeLe || null)) });
   }
   return out;
 }

@@ -722,7 +722,7 @@ function viewFicheCompte(id) {
   </div>`}
 
   ${estBien(t) || seule || (!t.classes.some(x => x !== 'liquidites') && !lignes.length) ? '' : `
-  <div class="card">
+  <div class="card"${valeurDeReleve(t) ? ' data-anchor="estimation"' : ''}>
     <div class="card-head"><h2>${trad(t.melange ? (t.contenant === 'banque' ? 'Supports du plan' : 'Supports du contrat')
       : t.titres ? 'Lignes de titres' : 'Placements détenus')}</h2>
       <span class="hint">${trad('Disponibilité')}${aide(trad("Sous combien de temps chaque placement redevient de l’argent disponible : le délai de vente de l’actif, en séance pour un titre coté, des semaines ou des mois pour un bien ou un non coté. L’enveloppe ne l’allonge que si elle bloque vraiment l’argent, comme un PER jusqu’à la retraite ; les règles de retrait d’un PEA ou d’une assurance-vie changent l’impôt, pas ce délai, et se lisent en tête de fiche. Elle alimente la carte « Réserve de sécurité » de l’accueil. « Auto » suit ces règles, et chaque ligne peut les contredire : un non coté peut se revendre sur un marché secondaire."))}</span>

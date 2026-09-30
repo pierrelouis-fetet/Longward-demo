@@ -294,7 +294,7 @@ suite('Mettre à jour sans hésiter : le geste et sa validation, ensemble', () =
       'Chaque chiffre tapé est déjà enregistré : « Enregistrer » le confirme et le date du jour, « Annuler » revient au dernier état enregistré.',
       'Les deux chiffres qui bougent : ce que vaut le bien, et ce qu’il reste à rembourser. « Enregistrer » les date du jour, même inchangés.',
       'C’est ici que tu mets à jour le solde.',
-      'Des soldes, des estimations et des capitaux restant dus qui datent ou n’ont pas de date. Touche une ligne pour ouvrir le champ.',
+      'Des soldes, des estimations, des valeurs de supports et des capitaux restant dus qui datent ou n’ont pas de date. Touche une ligne pour ouvrir le champ.',
       '{n} valeurs saisies à la main', '{n} valeur saisie à la main'])
       vrai(!!I18N.en[k], `« ${k.slice(0, 40)} » a sa traduction`);
   });

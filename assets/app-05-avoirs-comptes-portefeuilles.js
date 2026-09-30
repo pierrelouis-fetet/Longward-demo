@@ -124,6 +124,7 @@ function phraseDateValeur(x) {
   if (x.genre === 'estimation') return d ? trad('estimée le {d}').replace('{d}', d) : trad('estimation sans date');
   if (x.genre === 'vl') return d ? trad('VL du {d}').replace('{d}', d) : trad('sans date de VL');
   if (x.genre === 'cours') return d ? trad('cours du {d}').replace('{d}', d) : trad('cours jamais actualisés');
+  if (x.genre === 'releve') return d ? trad('supports au {d}').replace('{d}', d) : trad('supports sans date');
   return '';
 }
 
@@ -324,8 +325,12 @@ function lignePlacement(l, compte, editable = false) {
     return seul == null ? combien : `${combien} · ${fmtPart(seul)} ${trad('la part')}`;
   })();
 
+  const brute = !l.marche && l.ref != null ? (compte.lignes || [])[l.ref] : null;
+  const dateReleve = brute && valeurDeReleve(typeCompte(compte.type)) && num(brute.valeur)
+    ? (brute.estimeLe ? trad('valeur au {d}').replace('{d}', fmtDate(brute.estimeLe)) : trad('valeur sans date'))
+    : '';
   const sousTitre = [CLASSES_ACTIFS[l.classe] || l.classe, nomCompteV2(compte),
-    parPart,
+    parPart, dateReleve,
     l.taux ? `${fmtNombre(num(l.taux))} % ${trad('annoncé')}` : '',
     l.echeance ? `${trad('échéance')} ${fmtJourMois(l.echeance)}` : '',
     st !== 'encours' ? STATUTS_LIGNE[st] : '']
@@ -400,11 +405,14 @@ function famillesDActifs() {
 
 /* CE QUI SE MET A JOUR A LA MAIN, EN TETE DE LA LISTE D'ACTIFS.
 
-   La liste vient de `valeursARevoir()` (store.js) : des soldes, des estimations
-   et des capitaux restant dus qui datent ou n'ont pas de date. Les cours n'y
-   sont pas, ils s'actualisent. Chaque ligne mene a la fiche ET au champ, par
-   `aller-fiche` avec son ancre et le curseur ; « sans date » se lit en toutes
-   lettres, ce n'est pas la meme chose qu'un chiffre vieux. Trois lignes, le
+   La liste vient de `valeursARevoir()` (store.js) : des soldes, des
+   estimations, des valeurs de supports et des capitaux restant dus qui datent
+   ou n'ont pas de date. Les cours n'y sont pas, ils s'actualisent. Chaque
+   ligne mene a la fiche ET au champ, par `aller-fiche` avec son ancre et le
+   curseur ; le support d'un contrat ouvre directement sa fenetre (`ouvre`),
+   parce qu'une fiche en porte plusieurs et que l'ancre ne dirait pas lequel.
+   "sans date" se lit en toutes lettres, ce n'est pas la meme chose qu'un
+   chiffre vieux. Trois lignes, le
    reste derriere un bouton qui ne re-rend pas la page (`revoir-tout`), et le
    depli survit aux rendus suivants le temps de la session. */
 const REVOIR_VISIBLES = 3;
@@ -417,6 +425,7 @@ function carteValeursARevoir() {
     if (x.genre === 'solde') return d ? trad('solde vérifié le {d}').replace('{d}', d) : trad('solde jamais vérifié');
     if (x.genre === 'credit') return d ? trad('capital restant dû vérifié le {d}').replace('{d}', d)
                                        : trad('capital restant dû jamais vérifié');
+    if (x.releve) return d ? trad('valeur au {d}').replace('{d}', d) : trad('valeur sans date');
     if (x.publiee) return d ? trad('VL du {d}').replace('{d}', d) : trad('sans date de VL');
     return d ? trad('estimée le {d}').replace('{d}', d) : trad('estimation sans date');
   };
@@ -429,13 +438,14 @@ function carteValeursARevoir() {
   const montrer = revoirToutOuvert ? liste.length : REVOIR_VISIBLES;
   return `
   <div class="card revoir${revoirToutOuvert ? ' ouvert' : ''}">
-    <div class="card-head"><h2>${trad('À mettre à jour')}${aide(trad('Des soldes, des estimations et des capitaux restant dus qui datent ou n’ont pas de date. Touche une ligne pour ouvrir le champ.'))}</h2>
+    <div class="card-head"><h2>${trad('À mettre à jour')}${aide(trad('Des soldes, des estimations, des valeurs de supports et des capitaux restant dus qui datent ou n’ont pas de date. Touche une ligne pour ouvrir le champ.'))}</h2>
       <span class="hint">${trad(liste.length > 1 ? '{n} valeurs saisies à la main' : '{n} valeur saisie à la main')
         .replace('{n}', liste.length)}</span></div>
     <div class="mlist-groupe">
       ${liste.map((x, k) => `
       <button type="button" class="mlist${k >= REVOIR_VISIBLES ? ' revoir-surplus' : ''}"
-              data-action="aller-fiche" data-route="${esc(x.route)}" data-anchor="${esc(x.ancre)}" data-focus="1">
+              ${x.ouvre ? `data-action="${esc(x.ouvre.action)}" data-id="${esc(x.ouvre.id)}" data-i="${x.ouvre.i}"`
+                : `data-action="aller-fiche" data-route="${esc(x.route)}" data-anchor="${esc(x.ancre)}" data-focus="1"`}>
         <span class="ml-nom">${esc(x.nom)}${contexte(x) ? `<span class="sub">${esc(contexte(x))}</span>` : ''}</span>
         <span class="ml-chiffres"><span class="${x.date ? 'muted' : ''}">${phrase(x)}</span></span>
         <span class="ml-chev" aria-hidden="true">›</span>
