@@ -1176,7 +1176,7 @@ suite('Créer un bien ne laisse plus passer une réponse sans suite', () => {
      le premier champ, et la banniere de commentaire disparait sur l'arbre
      publie. */
   const regle = () => { const s = app(); const i = s.indexOf('valide: v => {');
-    return s.slice(i, s.indexOf('champs: bien ? [', i)); };
+    return s.slice(i, s.indexOf('champs: placementTiers ? champsTiers : bien ? [', i)); };
 
   test('répondre oui au crédit exige un capital restant dû', () => {
     /* LE DEFAUT. La dette n'etait posee que si le capital restant etait positif :

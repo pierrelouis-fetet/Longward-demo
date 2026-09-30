@@ -266,10 +266,10 @@ suite('La partie compte : le PER et les contrats', () => {
     vrai(!per.dateSensible, 'aucun seuil d’ancienneté ne le libère');
     eq(per.disponibilite, 'bloque', 'il reste bloqué');
     const src = app();
-    vrai(/t\.disponibilite === 'bloque' \? \[\s*\{ cle: 'ouvertLe'[\s\S]{0,300}cle: 'debloqueLe'/.test(src),
+    vrai(/t\.echeanceUnique \? \[\s*\{ cle: 'ouvertLe'[\s\S]{0,300}cle: 'debloqueLe'/.test(src),
       'la création demande une ouverture facultative et le déblocage prévu');
     vrai(/if \('debloqueLe' in v\) pose\('debloqueLe', v\.debloqueLe\);/.test(src), 'la modification l’enregistre');
-    vrai(/t\.disponibilite === 'bloque' && c\.debloqueLe \?/.test(src), 'et la fiche le dit en tête');
+    vrai(/t\.echeanceUnique && c\.debloqueLe \?/.test(src), 'et la fiche le dit en tête');
     eq(I18N.en['Déblocage prévu'], 'Planned release', 'en anglais aussi');
   });
 

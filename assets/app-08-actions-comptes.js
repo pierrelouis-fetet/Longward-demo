@@ -105,10 +105,9 @@ Object.assign(ACTIONS, {
         aide: trad('il commande la poche du patrimoine et la disponibilité') });
 
       if (!t.interne && !t.sansEtab) {
-        const mot = contenantDuType(c.type);
-        const compatibles = ETABS().filter(e => e.id === c.etabId
-          || !COMPTES().some(x => x.etabId === e.id)
-          || contenantDeLEtab(e.id).titre === mot.titre);
+        const typeVise = saisi && saisi.type && saisi.type !== '__nouveau' ? saisi.type : c.type;
+        const mot = contenantDuType(typeVise);
+        const compatibles = etablissementsProposables(typeVise, c.etabId).map(x => x.etab);
         champs.push({ cle: 'etab', label: trad(mot.titre), type: 'liste',
           options: [...compatibles.map(e => [e.id, e.nom]), ['__nouveau', `+ ${trad(mot.nouveau)}…`]],
           valeur: valeur('etab', c.etabId || compatibles[0]?.id || '__nouveau'),
@@ -126,7 +125,7 @@ Object.assign(ACTIONS, {
           valeur: valeur('ouvertLe', c.ouvertLe || ''),
           aide: t.dateSensible ? trad('elle donne l’ancienneté, que la fiche affiche : cinq ans pour un PEA, huit pour une assurance-vie')
                                : trad('facultatif') },
-        ...(t.disponibilite === 'bloque' ? [{ cle: 'debloqueLe', label: trad('Déblocage prévu'), type: 'date',
+        ...(t.echeanceUnique ? [{ cle: 'debloqueLe', label: trad('Déblocage prévu'), type: 'date',
           valeur: valeur('debloqueLe', c.debloqueLe || ''),
           aide: trad('facultatif : la date à laquelle tu prévois de récupérer cet argent, ta retraite en général') }] : []),
         { cle: 'notes', label: 'Notes', type: 'texte',
@@ -154,6 +153,13 @@ Object.assign(ACTIONS, {
         const verdict = changementDeTypePossible(c, v.type);
         if (!verdict.ok) { toast(verdict.raison); saisi = v; continue; }
       }
+      const etabFinal = 'etab' in v ? v.etab : c.etabId;
+      if (etabFinal && etabFinal !== '__nouveau'
+          && !etablissementAccepte(etabFinal, v.type || c.type, c.id)) {
+        toast(trad('{t} ne se tient pas chez {e}, qui porte des comptes d’une autre nature : choisis un autre établissement.')
+          .replace('{t}', trad(typeCompte(v.type || c.type).label)).replace('{e}', etabById(etabFinal)?.nom || ''));
+        saisi = v; continue;
+      }
 
       /* Un champ vide efface, il n'ecrit pas une chaine vide : c'est ce que
          fait `setPath` pour la saisie directe, et deux regimes d'effacement
@@ -167,7 +173,7 @@ Object.assign(ACTIONS, {
       if ('etab' in v && v.etab !== c.etabId) {
         let cible = v.etab;
         if (cible === '__nouveau') {
-          const mot = contenantDuType(c.type);
+          const mot = contenantDuType(v.type || c.type);
           const nom = await askText(trad(mot.nouveau),
             trad('Son nom, tel qu’il s’affichera partout.'), trad(mot.exemple));
           if (!nom) { saisi = v; continue; }
@@ -318,8 +324,10 @@ Object.assign(ACTIONS, {
   async 'ajouter-compte'(btn) {
     if (!await devisePosee()) return;
     const etabImpose = btn?.dataset?.etab && etabById(btn.dataset.etab) ? btn.dataset.etab : null;
-    let etapes = etabImpose ? 2 : 3;
-    const e1 = await askForm({
+    const typeFixe = etabImpose && btn?.dataset?.typeFixe
+      && typesCompteChoix().some(t => t.id === btn.dataset.type) ? btn.dataset.type : null;
+    let etapes = typeFixe ? 1 : etabImpose ? 2 : 3;
+    const e1 = typeFixe ? { type: typeFixe } : await askForm({
       titre: trad('Qu’ajoutes-tu ?'),
       sous: `${trad('Étape')} 1 ${trad('sur.etape', 'sur')} ${etapes}${etabImpose
         ? `, ${trad('chez')} ${etabById(etabImpose).nom}`
@@ -378,10 +386,9 @@ Object.assign(ACTIONS, {
          le mettre en tete ni a le preselectionner. */
       const memeFamille = e => contenantDeLEtab(e.id).titre === mot.titre;
       const aDesComptes = e => COMPTES().some(c => c.etabId === e.id);
-      const proposables = [
-        ...ETABS().filter(e => aDesComptes(e) && memeFamille(e)),
-        ...ETABS().filter(e => !aDesComptes(e)),
-      ];
+      /* La meme famille, puis un guichet compatible (une banque pour une
+         assurance-vie), puis les vides : voir `etablissementsProposables`. */
+      const proposables = etablissementsProposables(t.id).map(x => x.etab);
       if (!proposables.length) etabId = '__nouveau';
       else {
         const e2 = await askForm({
@@ -414,15 +421,30 @@ Object.assign(ACTIONS, {
        demander si on l'habite, et ses trois couts ecrits au detail restaient
        ensuite hors de portee du seul champ que sa fiche propose. */
     const immoDirect = bien && estImmoEnDirect(t);
+    /* UN PLACEMENT TENU PAR UN TIERS, qui EST le compte : une part de societe,
+       un fonds non cote, un pret participatif. Il se cree par la meme fenetre que
+       "Placement dans..." (`champsPlacement`), et non par celle d'un bien, qui
+       demanderait un credit sur un bien, une date d'estimation pour un pret, et
+       nommerait la ligne comme la plateforme : deux prets de la meme plateforme
+       porteraient le meme nom. L'intitule se pre-remplit du nom de
+       l'etablissement tant qu'il n'y porte aucun compte, vide ensuite. */
+    const placementTiers = estActifTerminal(t) && !estDetenuEnDirect(t);
+    const etabDejaPeuple = !!etabId && COMPTES().some(c => c.etabId === etabId);
+    const champsTiers = !placementTiers ? [] : champsPlacement(classeDuBien, null, t.prete, t)
+      .map(ch => ch.cle === 'libelle' ? { ...ch, valeur: etabDejaPeuple ? '' : nomContenant() }
+        : ch.cle === 'valeur' ? { ...ch, requis: true } : ch);
 
     const e3 = await askForm({
-      titre: bien ? (estDetenuEnDirect(t) ? 'Valeur estimée'
+      titre: placementTiers ? trad(t.prete ? 'Le prêt' : 'Le placement')
+           : bien ? (estDetenuEnDirect(t) ? 'Valeur estimée'
                   : trad(t.classes.includes('nonCote') ? 'Valeur de la participation' : 'Valeur du bien'))
                   : t.sansCash ? trad(enContrat(t) ? 'Nommer le contrat' : 'Nommer le plan')
                   : `${BASES.liquidites.nom} ${trad('sur ce compte')}`,
-      sous: `${trad('Étape')} ${etapes} ${trad('sur.etape', 'sur')} ${etapes}${bien
-        ? `, ${trad('la valeur actuelle se compare au coût d’acquisition')}`
-        : t.sansCash ? `, ${trad('sa valeur viendra des supports que tu y ajouteras')}` : ''}`,
+      sous: (suite => etapes > 1
+        ? `${trad('Étape')} ${etapes} ${trad('sur.etape', 'sur')} ${etapes}${suite ? `, ${suite}` : ''}`
+        : majuscule(suite))(placementTiers ? trad('ce que tu y as mis, et ce que cela vaut aujourd’hui')
+          : bien ? trad('la valeur actuelle se compare au coût d’acquisition')
+          : t.sansCash ? trad('sa valeur viendra des supports que tu y ajouteras') : ''),
       ok: 'Créer',
       /* LES REGLES DE LA FENETRE, DANS L'ORDRE OU ELLES SE POSENT.
 
@@ -462,7 +484,7 @@ Object.assign(ACTIONS, {
           return { cle: 'part', message: trad('La quote-part doit être comprise entre 0 et 100 %.') };
         return null;
       },
-      champs: bien ? [
+      champs: placementTiers ? champsTiers : bien ? [
         ...(t.sansEtab ? [{ cle: 'nom', label: trad('Nom du bien'), type: 'texte', requis: true,
           max: NOM_LIGNE_MAX, exemple: 'ex. Rolex Submariner',
           aide: trad('une montre, une voiture, un tableau : ce nom s’affichera partout') }] : []),
@@ -582,7 +604,8 @@ Object.assign(ACTIONS, {
                    : enContrat(t) ? 'c’est lui qui distingue deux contrats du même type'
                    : 'c’est lui qui distingue deux plans du même type') },
         ...(t.sansCash ? [] : [
-        { cle: 'montant', label: trad('Montant ({dev})'), type: 'nombre', exemple: '0' },
+        { cle: 'montant', label: trad('Montant ({dev})'), type: 'nombre', exemple: '0',
+          aide: trad('Un compte joint se saisit comme tu le suis : ta part si chacun tient son tableau de bord, le solde entier pour suivre le foyer.') },
         { cle: 'usage', label: trad('À quoi sert cet argent ?'), type: 'liste',
           options: AFFECTATIONS, valeur: t.defaut,
           aide: trad('pré-rempli selon le type de compte, modifiable librement') },
@@ -591,7 +614,7 @@ Object.assign(ACTIONS, {
         ]),
         ...(t.dateSensible ? [{ cle: 'ouvertLe', label: trad('Date d’ouverture'), type: 'date',
           aide: trad('elle donne l’ancienneté, que la fiche affiche : cinq ans pour un PEA, huit pour une assurance-vie') }]
-          : t.disponibilite === 'bloque' ? [
+          : t.echeanceUnique ? [
           { cle: 'ouvertLe', label: trad('Date d’ouverture'), type: 'date', aide: trad('facultatif') },
           { cle: 'debloqueLe', label: trad('Déblocage prévu'), type: 'date',
             aide: trad('facultatif : la date à laquelle tu prévois de récupérer cet argent, ta retraite en général') }] : []),
@@ -613,7 +636,9 @@ Object.assign(ACTIONS, {
 
     const cash = [], lignes = [];
     const apportDit = estDeclare(e3.apport) ? num(e3.apport) : null;
-    if (bien) {
+    if (placementTiers) {
+      lignes.push(litPlacement(e3, { id: 'l' + Date.now().toString(36), classe: classeDuBien }, t));
+    } else if (bien) {
       lignes.push({ id: 'l' + Date.now().toString(36), classe: classeDuBien,
         libelle: String(e3.nom || '').trim() || nomContenant() || t.label,
         valeur: num(e3.valeur),
@@ -688,7 +713,7 @@ Object.assign(ACTIONS, {
     Store.state.comptes.push({
       id, etabId, type: t.id, statut: 'ouvert',
       libelle: String(e3.libelle || e3.nom || '').trim(),
-      ouvertLe: e3.ouvertLe || '', numero: '', notes: '',
+      ouvertLe: (placementTiers ? e3.dateAcquisition : e3.ouvertLe) || '', numero: '', notes: '',
       ...(e3.debloqueLe ? { debloqueLe: e3.debloqueLe } : {}),
       ...(apportDit === null ? {} : { apport: apportDit }),
       cash, lignes,
@@ -1141,8 +1166,11 @@ Object.assign(ACTIONS, {
        que rien ne le dise. La question se pose alors, et ses options se derivent
        de la liste du type : celle qu'on y ajoutera demain y apparaitra sans
        qu'on y pense. */
-    const possibles = (t.classes || []).filter(x => x !== 'liquidites');
-    const parDefaut = possibles[0] || 'nonCote';
+    /* Un contrat sans poche de cash (`sansCash`) garde `liquidites` pour ce
+       qu'elle y veut dire : un fonds monetaire, qui est une ligne. Ailleurs le
+       cash passe par les parts du compte, et la classe ne s'ajoute pas ici. */
+    const possibles = (t.classes || []).filter(x => x !== 'liquidites' || t.sansCash);
+    const parDefaut = possibles.find(x => x !== 'liquidites') || possibles[0] || 'nonCote';
     const demandeSupport = possibles.length > 1;
     const v = await askForm({
       titre: trad('Placement dans {v}').replace('{v}', nomCompteV2(c)),
@@ -1152,9 +1180,12 @@ Object.assign(ACTIONS, {
       ok: 'Ajouter',
       champs: [
         ...(demandeSupport ? [{ cle: 'classe', label: trad('Support'), type: 'liste',
-              valeur: parDefaut, options: possibles.map(x => [x, CLASSES_ACTIFS[x] || x]),
-              aide: trad('ce que le contrat propose : un fonds actions, un fonds euros, une SCPI') }] : []),
-        ...champsPlacement(parDefaut, null, t.prete, t),
+              valeur: parDefaut, options: possibles.map(x => [x, x === 'liquidites'
+                ? trad('Liquidités, un fonds monétaire') : (CLASSES_ACTIFS[x] || x)]),
+              aide: trad(enContrat(t) ? 'ce que le contrat propose : un fonds actions, un fonds euros, une SCPI'
+                                      : 'ce que le plan propose : un fonds actions, un fonds garanti, un fonds monétaire') }] : []),
+        ...champsPlacement(parDefaut, null, t.prete, t)
+          .map(ch => demandeSupport && ch.cle === 'libelle' ? { ...ch, exemple: 'ex. le nom du fonds ou du support' } : ch),
       ],
     });
     if (!v) return;

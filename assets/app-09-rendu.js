@@ -228,7 +228,7 @@ async function demanderTypePerso() {
          ne le disait, et le geste ressemblait a une reussite. Un champ dont
          l'absence annule tout doit le dire avant de fermer. */
       { cle: 'nom', label: trad('Nom du nouveau type'), type: 'texte', requis: true,
-        exemple: trad('ex. Plan d’épargne logement') },
+        exemple: trad('ex. Compte à terme') },
       { cle: 'poche', label: trad('Il se comporte comme'), type: 'liste', valeur: 'cash',
         options: [['cash', trad('De l’argent disponible (livret, compte courant)')],
                   ['bourse', trad('Un compte de titres (PEA, CTO)')],
@@ -590,7 +590,9 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
          booleen, la lecture est la meme pour les deux. */
       const estRequis = c => typeof c.requis === 'function' ? c.requis(out) : c.requis;
       const manquant = efface ? null : champs.find(c => estRequis(c) && vide(c));
-      if (manquant) { $(`#f_${manquant.cle}`).focus(); toast(`${manquant.label}${deuxPoints()} ${trad('à remplir')}`); return; }
+      /* Le libelle passe par `trad()` comme a l'affichage du champ : c'est la
+         qu'il se traduit et que `{dev}` prend le signe de la devise. */
+      if (manquant) { $(`#f_${manquant.cle}`).focus(); toast(`${trad(manquant.label)}${deuxPoints()} ${trad('à remplir')}`); return; }
       /* UN NOMBRE INVRAISEMBLABLE NE PASSE PAS LA PORTE. `type="number"` refuse
          les lettres mais laisse entrer « 5e26 », et `num()` le lit sans
          broncher : une quantite a dix puissance vingt-six a fait naitre une

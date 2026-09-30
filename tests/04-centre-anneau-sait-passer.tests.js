@@ -1828,7 +1828,9 @@ suite('Actifs terminaux : pas de placement dans un placement', () => {
        carte de l'actif, l'autre decide qu'une date absente s'affiche quand meme.
        Ce que le controle interdit, c'est de RECRIRE la condition — `t.direct ||
        t.terminal` a la main — pas de s'en servir deux fois. */
-    eq((app.match(/estActifTerminal\(t\)/g) || []).length, 2,
+    /* Un troisieme emploi : l'assistant choisit par elle la fenetre d'un
+       placement tenu par un tiers. */
+    eq((app.match(/estActifTerminal\(t\)/g) || []).length, 3,
       'la condition se lit, elle ne se réécrit pas');
     vrai(!/t\.direct \|\| t\.terminal/.test(app),
       'et personne ne la recopie à la main dans la vue');

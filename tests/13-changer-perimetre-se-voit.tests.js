@@ -800,7 +800,7 @@ suite('La synthèse d’accumulation a changé d’écran, pas de calcul', () =>
        une seule entrée : « + Nouvelle banque ou courtier… ». Une question posée
        à quelqu'un qui n'a pas le choix, au moment où il découvre l'application. */
     const src = lireSource('assets/app.js');
-    const i = src.indexOf('const proposables = [');
+    const i = src.indexOf('const proposables = etablissementsProposables(t.id)');
     const bloc = src.slice(i, src.indexOf("if (etabId === '__nouveau')", i));
     vrai(/if \(!proposables\.length\) etabId = '__nouveau';/.test(bloc),
       'sans rien à proposer, on passe directement au nom');

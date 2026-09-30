@@ -680,7 +680,7 @@ function viewFicheCompte(id) {
       }${aide(trad('Un seuil fiscal, pas un délai : avant lui, l’argent reste accessible, au prix de l’avantage d’impôt et, pour un PEA, du plan lui-même. C’est pourquoi la disponibilité affichée plus bas n’en dépend pas.'))}</p>`;
     })()}
     ${t.retrait ? `<p class="hint cpt-retrait">${trad('Retraits')}${deuxPoints()} ${trad(t.retrait)}</p>` : ''}
-    ${t.disponibilite === 'bloque' && c.debloqueLe ? `<p class="hint cpt-retrait">${trad('Déblocage prévu le {d}, date que tu as déclarée.')
+    ${t.echeanceUnique && c.debloqueLe ? `<p class="hint cpt-retrait">${trad('Déblocage prévu le {d}, date que tu as déclarée.')
       .replace('{d}', esc(fmtDate(c.debloqueLe)))}</p>` : ''}
   </div>
 
@@ -691,7 +691,8 @@ function viewFicheCompte(id) {
   <div class="card" data-anchor="solde">
     <div class="card-head"><h2>${BASES.liquidites.nom} ${trad('sur ce compte')}${aide(trad((c.cash || []).length
         ? 'Chaque chiffre s’enregistre dès la frappe. « Confirmer » date le solde du jour, même inchangé, et pose un point de retour. « Annuler les modifications » rend toute la fiche à ce point de retour, ou à son ouverture.'
-        : 'Chaque chiffre s’enregistre dès la frappe. « Enregistrer » pose un point de retour. « Annuler les modifications » rend toute la fiche à ce point de retour, ou à son ouverture.'))}</h2>
+        : 'Chaque chiffre s’enregistre dès la frappe. « Enregistrer » pose un point de retour. « Annuler les modifications » rend toute la fiche à ce point de retour, ou à son ouverture.')
+        + ' ' + trad('Un compte joint se saisit comme tu le suis : ta part si chacun tient son tableau de bord, le solde entier pour suivre le foyer.'))}</h2>
       <button class="btn sm ghost" data-action="scinder-cash" data-id="${esc(c.id)}"
               title="${trad('Déclarer un second usage sur le même compte')}">${trad('Scinder')}</button>
     </div>
@@ -835,7 +836,7 @@ function viewFicheCompte(id) {
         : (c.ouvertLe || estActifTerminal(t))
           ? `<dt>${motDateCompte(t)}</dt><dd>${c.ouvertLe ? esc(fmtDate(c.ouvertLe))
               : `<span class="muted">${trad('à renseigner')}</span>`}</dd>` : ''}
-        ${t.disponibilite === 'bloque' ? `<dt>${trad('Déblocage prévu')}${aide(trad('Une date que tu déclares, ta retraite en général. Elle se lit en tête de fiche ; aucun calcul ne la déduit ni ne la suppose.'))}</dt>
+        ${t.echeanceUnique ? `<dt>${trad('Déblocage prévu')}${aide(trad('Une date que tu déclares, ta retraite en général. Elle se lit en tête de fiche ; aucun calcul ne la déduit ni ne la suppose.'))}</dt>
         <dd>${c.debloqueLe ? esc(fmtDate(c.debloqueLe)) : `<span class="muted">${trad('non renseigné')}</span>`}</dd>` : ''}
         ${c.statut === 'archive' ? `<dt>${trad('Date de clôture')}</dt>
         <dd>${c.clotureLe ? esc(fmtDate(c.clotureLe))

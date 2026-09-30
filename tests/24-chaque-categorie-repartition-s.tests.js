@@ -256,13 +256,13 @@ suite('Mettre à jour sans hésiter : le geste et sa validation, ensemble', () =
     const dans = t => (rub.find(([x]) => x === t) || [null, []])[1].map(([id]) => id);
     eq(dans('Retraite et épargne avantagée').join(), 'us401k,traditionalIra,rothIra,hsa');
     eq(dans('Investissements').join(), 'cto,crypto');
-    eq(dans('Autres pays').join(), 'pea,av,per,scpi', 'les enveloppes françaises restent accessibles, une rubrique plus bas');
+    eq(dans('Autres pays').join(), 'pel,pea,av,per,pee,pereco,scpi', 'les enveloppes françaises restent accessibles, une rubrique plus bas');
     eq(rub.reduce((n, [, l]) => n + l.length, 0), typesCompteChoix().length, 'rien ne se perd');
     Fixture.poser(s => { s.meta.devise = 'EUR'; s.meta.deviseChoisie = false; });
     const fr = String(currentLang() || '').toLowerCase().startsWith('fr');
     eq(paysContexte(), fr ? 'fr' : 'us', 'avant le choix de la devise, la langue décide');
     for (const t of TYPES_COMPTE) vrai(!t.pays || ['fr', 'us'].includes(t.pays), `${t.id} : un pays connu, ou aucun`);
-    eq(TYPES_COMPTE.filter(t => t.pays === 'fr').map(t => t.id).join(), 'pea,av,per,scpi');
+    eq(TYPES_COMPTE.filter(t => t.pays === 'fr').map(t => t.id).join(), 'pel,pea,av,per,pee,pereco,scpi');
     eq(TYPES_COMPTE.filter(t => t.pays === 'us').map(t => t.id).join(), 'us401k,traditionalIra,rothIra,hsa');
     vrai(!!I18N.en['Autres pays'], 'la rubrique se traduit');
   });

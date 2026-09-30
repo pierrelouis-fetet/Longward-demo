@@ -339,6 +339,14 @@ const MOBILISABLE_LABEL = {
 const TYPES_COMPTE = [
   { id: 'courant', label: 'Compte courant', classes: ['liquidites'], defaut: 'courant',    groupe: 'cash' },
   { id: 'livret',  label: 'Livret',         classes: ['liquidites'], defaut: 'precaution', groupe: 'cash' },
+  /* Un PEL est de l'argent de projet, et il se recupere en quelques jours, au
+     prix du plan : un retrait le clot. D'ou `differe` plutot que l'immediat des
+     livrets. Pas de jauge de plafond : le plafond borne les VERSEMENTS, et le
+     solde, interets compris, peut le depasser ; sans cumul verse, un reste a
+     verser serait faux. Le texte des retraits dit donc le plafond en lettres. */
+  { id: 'pel',     label: 'Plan d’épargne logement (PEL)', classes: ['liquidites'], defaut: 'projet', groupe: 'cash',
+    disponibilite: 'differe', pays: 'fr',
+    retrait: 'Un retrait clôture le plan : l’argent arrive en quelques jours. Versements plafonnés à 61 200 €. Les droits à prêt dépendent de l’âge du plan.' },
   { id: 'pea',     label: 'PEA',            classes: ['liquidites', 'actions'], defaut: 'investir', groupe: 'bourse', titres: true, dateSensible: true, pays: 'fr',
     retrait: 'Avant 5 ans, un retrait clôture le plan, sauf exceptions prévues par la loi ; après 5 ans, tu peux retirer sans le clôturer. Vendre une ligne du plan, elle, se fait en séance.' },
   { id: 'cto',     label: 'Compte-titres (CTO)', classes: ['liquidites', 'actions', 'obligations'], defaut: 'investir', groupe: 'bourse', titres: true, pretSurTitres: true },
@@ -365,8 +373,22 @@ const TYPES_COMPTE = [
      Deux choses sous un seul mot, d'ou deux reglages. */
   { id: 'av',      label: 'Assurance-vie',  classes: ['liquidites', 'garanti', 'actions', 'obligations', 'immobilier', 'nonCote'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, dateSensible: true, pays: 'fr',
     retrait: 'Un rachat est possible à tout moment et arrive en quelques jours à quelques semaines ; le seuil des 8 ans ne change que l’impôt sur les gains.' },
-  { id: 'per',     label: 'Plan d’épargne retraite (PER)', classes: ['liquidites', 'garanti', 'actions', 'obligations', 'immobilier', 'nonCote'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, disponibilite: 'bloque', rubrique: 'retraite', pays: 'fr',
+  { id: 'per',     label: 'Plan d’épargne retraite (PER)', classes: ['liquidites', 'garanti', 'actions', 'obligations', 'immobilier', 'nonCote'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, disponibilite: 'bloque', echeanceUnique: true, rubrique: 'retraite', pays: 'fr',
     retrait: 'Bloqué jusqu’à la retraite, sauf cas de déblocage anticipé prévus par la loi, comme l’achat de ta résidence principale. Sa valeur s’entend avant l’impôt éventuel dû à la sortie.' },
+  /* L'EPARGNE SALARIALE, forme du 401(k) : des fonds choisis parmi ceux du plan,
+     pas de poche de cash, un teneur de compte et non un assureur (`contenant`).
+
+     `echeanceUnique` dit qu'une seule date libere tout le plan, et c'est elle
+     qu'on declare ("Deblocage prevu") : vrai d'un PER et d'un PERECO, qui se
+     liberent a la retraite. Faux d'un PEE, ou chaque versement a sa propre
+     echeance a cinq ans : une date pour tout le plan y serait trompeuse. Le PEE
+     reste `bloque` par prudence, la reserve ne compte pas ce qui est encore
+     indisponible ; le reglage par ligne rend disponible un support dont les
+     parts le sont deja. */
+  { id: 'pee',     label: 'Plan d’épargne entreprise (PEE)', classes: ['liquidites', 'garanti', 'actions', 'obligations'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, disponibilite: 'bloque', contenant: 'banque', rubrique: 'retraite', pays: 'fr',
+    retrait: 'Chaque versement est bloqué cinq ans, sauf cas de déblocage anticipé prévus par la loi : chacun a donc sa propre échéance. Un support dont les parts sont déjà disponibles se règle ligne par ligne.' },
+  { id: 'pereco',  label: 'PER d’entreprise collectif (PERECO)', classes: ['liquidites', 'garanti', 'actions', 'obligations'], defaut: 'investir', groupe: 'bourse', titres: true, melange: true, sansCash: true, disponibilite: 'bloque', echeanceUnique: true, contenant: 'banque', rubrique: 'retraite', pays: 'fr',
+    retrait: 'Bloqué jusqu’à la retraite, sauf cas de déblocage anticipé prévus par la loi. Sa valeur s’entend avant l’impôt éventuel dû à la sortie, qui dépend de l’origine des sommes.' },
   /* ENVELOPPES AMERICAINES. Quatre contenants, pas une fiscalite : aucun seuil
      d'age, aucun plafond, aucune penalite, aucun abondement n'entre ici. Ce
      sont des enveloppes de placement comme celles qui existent, et elles
@@ -438,7 +460,7 @@ const TYPES_COMPTE = [
      invitait a en ranger un second dedans. `direct` dit la meme chose pour ce
      qu'on detient physiquement ; celui-ci le dit pour ce qui est detenu par un
      tiers mais ne se subdivise pas. */
-  { id: 'pe',      label: 'Parts de société', classes: ['nonCote'], defaut: 'investir', groupe: 'pe', parts: true, terminal: true, estimee: true },
+  { id: 'pe',      label: 'Parts de société', classes: ['nonCote'], defaut: 'investir', groupe: 'pe', parts: true, terminal: true, estimee: true, contenant: 'societe' },
   /* `vl` : sa valeur ne s'estime pas, elle se PUBLIE. C'est la difference qui
      vaut un type a part plutot qu'un rangement dans « Parts de societe ».
 
@@ -453,9 +475,9 @@ const TYPES_COMPTE = [
      reconnaissable et plus faux : ces fonds vont du capital-risque a
      l'infrastructure, et le meme contenant les porte tous. */
   { id: 'fondsNonCote', label: 'Fonds non coté', classes: ['nonCote'],
-    defaut: 'investir', groupe: 'pe', parts: true, terminal: true, vl: true },
+    defaut: 'investir', groupe: 'pe', parts: true, terminal: true, vl: true, contenant: 'societe' },
   { id: 'crowdfunding', label: 'Prêt participatif', classes: ['nonCote'],
-    defaut: 'investir', groupe: 'pe', prete: true, terminal: true },
+    defaut: 'investir', groupe: 'pe', prete: true, terminal: true, contenant: 'societe' },
   /* `direct` : on le detient soi-meme, le contenant EST la chose.
 
      `bienImmo` : ce type EST un bien immobilier, il ne fait pas qu'en porter.
@@ -711,7 +733,6 @@ const contenantDuType = typeId => {
   const t = typeCompte(typeId);
   if (t.contenant && CONTENANTS[t.contenant]) return CONTENANTS[t.contenant];
   return t.bienImmo ? CONTENANTS.bien
-    : (typeId === 'pe' || typeId === 'crowdfunding') ? CONTENANTS.societe
     : t.melange ? CONTENANTS.assureur
     : CONTENANTS.banque;
 };
@@ -721,6 +742,33 @@ function contenantDeLEtab(etabId) {
   if (!types.length) return CONTENANTS.banque;
   const mots = [...new Set(types.map(t => contenantDuType(t).titre))];
   return mots.length === 1 ? contenantDuType(types[0]) : CONTENANTS.banque;
+}
+
+const FAMILLES_GUICHET = new Set(['banque', 'assureur']);
+const familleDuType = typeId => Object.keys(CONTENANTS).find(k => CONTENANTS[k] === contenantDuType(typeId));
+const famillesCompatibles = (a, b) => a === b || (FAMILLES_GUICHET.has(a) && FAMILLES_GUICHET.has(b));
+function famillesDeLEtab(etabId) {
+  return new Set(COMPTES().filter(c => c.etabId === etabId).map(c => familleDuType(c.type)));
+}
+/* L'etablissement accepte-t-il un compte de ce type ? Les familles de ses
+   autres comptes (`sauf` exclu, celui qu'on modifie) doivent toutes etre
+   compatibles avec celle du type ; sans autre compte, il accepte tout. */
+function etablissementAccepte(etabId, typeId, sauf = null) {
+  const cible = familleDuType(typeId);
+  return COMPTES().filter(c => c.etabId === etabId && c.id !== sauf)
+    .every(c => famillesCompatibles(familleDuType(c.type), cible));
+}
+function etablissementsProposables(typeId, etabCourant = null) {
+  const cible = familleDuType(typeId);
+  const rangs = [];
+  for (const e of ETABS()) {
+    if (e.id === etabCourant) { rangs.push({ rang: 0, etab: e, vide: !famillesDeLEtab(e.id).size }); continue; }
+    const f = [...famillesDeLEtab(e.id)];
+    if (!f.length) { rangs.push({ rang: 3, etab: e, vide: true }); continue; }
+    if (!f.every(x => famillesCompatibles(x, cible))) continue;
+    rangs.push({ rang: f.every(x => x === cible) ? 1 : 2, etab: e, vide: false });
+  }
+  return rangs.sort((a, b) => a.rang - b.rang).map(({ etab, vide }) => ({ etab, vide }));
 }
 
 function ETABS() { return Store.state.etabs || []; }

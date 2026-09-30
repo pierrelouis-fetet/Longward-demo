@@ -242,6 +242,9 @@ function detailsPlacement(c, idx, t, l) {
               ? null : trad(STATUTS_LIGNE[statutLigne(l)]))}
       ${ligne(trad('Liquidité'), champMobilite(l, c, true))}
     </dl>
+    ${!t.prete || !c.etabId ? '' : `<button type="button" class="btn sm ghost" style="margin-top:12px"
+            data-action="ajouter-compte" data-etab="${esc(c.etabId)}" data-type="${esc(c.type)}" data-type-fixe="1"
+            >+ ${esc(trad('Un autre prêt chez {e}').replace('{e}', nomEtabDe(c)))}</button>`}
   </div>`;
 }
 

@@ -1135,9 +1135,9 @@ suite('Des enveloppes américaines, sans fiscalité', () => {
     const titres = rub.map(([t]) => t);
     eq(titres.join(' | '), 'Comptes bancaires | Investissements | Retraite et épargne avantagée | Biens et autres | Autres pays');
     const dans = titre => rub.find(([t]) => t === titre)[1].map(([id]) => id);
-    eq(dans('Comptes bancaires').join(), 'courant,livret');
+    eq(dans('Comptes bancaires').join(), 'courant,livret,pel');
     eq(dans('Investissements').join(), 'pea,cto,av,crypto');
-    eq(dans('Retraite et épargne avantagée').join(), 'per');
+    eq(dans('Retraite et épargne avantagée').join(), 'per,pee,pereco');
     eq(dans('Biens et autres').join(), 'pe,fondsNonCote,crowdfunding,immo,scpi,bienValeur');
     eq(dans('Autres pays').join(), 'us401k,traditionalIra,rothIra,hsa');
     eq(rub.reduce((n, [, l]) => n + l.length, 0), typesCompteChoix().length, 'chaque type choisissable est dans une rubrique');

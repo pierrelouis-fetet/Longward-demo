@@ -913,8 +913,10 @@ suite('Chercher un titre, c’est en ajouter un', () => {
        enveloppe, un fonds euros et une SCPI tombaient tous deux en actifs de
        marche sans que rien ne le dise. Un fait se declare. */
     const src = lireSource('assets/app.js');
-    const bloc = src.slice(src.indexOf("async 'ajouter-placement'"),
-                           src.indexOf("async 'ajouter-placement'") + 2000);
+    /* Bornee a la fin de l'action, pas a un nombre de caracteres : un
+       commentaire ajoute la faisait sortir de la fenetre. */
+    const debut = src.indexOf("async 'ajouter-placement'");
+    const bloc = src.slice(debut, src.indexOf('\n  },\n', debut));
     vrai(/const possibles = \(t\.classes \|\| \[\]\)\.filter/.test(bloc),
       'les supports possibles se dérivent de la liste du type');
     vrai(/demandeSupport = possibles\.length > 1/.test(bloc),
@@ -1295,8 +1297,11 @@ suite('Chercher un titre, c’est en ajouter un', () => {
        un studio. On continue de le proposer, en dernier : le retirer ferait
        retaper un nom qui existe, donc deux etablissements homonymes. */
     const src = lireSource('assets/app.js');
-    vrai(/\.\.\.ETABS\(\)\.filter\(e => aDesComptes\(e\) && memeFamille\(e\)\),\s*\.\.\.ETABS\(\)\.filter\(e => !aDesComptes\(e\)\)/.test(src),
+    Fixture.poser(s => s.etabs.push({ id: 'e_vide', nom: 'Vide', notes: '', dettes: [] }));
+    const ordre = etablissementsProposables('courant').map(x => x.etab.id);
+    vrai(ordre.indexOf('e_banque') < ordre.indexOf('e_vide') && ordre[ordre.length - 1] === 'e_vide',
       'ceux qui ont des comptes et la bonne famille passent devant');
+    Fixture.poser();
     vrai(/valeur: proposables\.find\(e => aDesComptes\(e\) && memeFamille\(e\)\)\?\.id \|\| '__nouveau'/.test(src),
       'et le défaut ne tombe que sur l’un d’eux, sinon sur « + Nouveau »');
   });

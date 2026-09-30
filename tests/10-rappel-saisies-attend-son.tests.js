@@ -1488,8 +1488,11 @@ suite('Un bien change de contenant, et garde un seul nom', () => {
       'sauf là où il n’y a pas de contenant');
     /* Le sien reste dans la liste : sans lui, ouvrir la fenetre pour changer
        autre chose deplacerait le compte au premier contenant venu. */
-    vrai(/e\.id === c\.etabId\s*\n?\s*\|\|/.test(handler),
+    vrai(/etablissementsProposables\(typeVise, c\.etabId\)/.test(handler),
       'son contenant actuel reste choisissable');
+    Fixture.poser();
+    eq(etablissementsProposables('immo', 'e_bien')[0].etab.id, 'e_bien',
+      'et vient en tête, même pour un type que sa famille ne proposerait pas');
     /* Et l'ecriture se fait avant le reste, pour qu'un nom abandonne ne laisse
        pas la moitie des modifications posees. */
     const posEtab = handler.indexOf("c.etabId = cible;");

@@ -1519,7 +1519,9 @@ suite('Pièges de source', () => {
        facon d'effacer une date posee par erreur sur un livret. */
     const debut = source.indexOf("async 'modifier-compte'");
     vrai(debut > 0, 'l’action modifier-compte doit exister');
-    const handler = source.slice(debut, debut + 2800);
+    /* Bornee a l'action suivante, pas a un nombre de caracteres : un
+       commentaire ajoute dans la fenetre la faisait sortir de la tranche. */
+    const handler = source.slice(debut, source.indexOf("async 'ajouter-compte'", debut));
     vrai(handler.includes("cle: 'ouvertLe'"),
       'le formulaire de modification doit porter la date d’ouverture');
     vrai(/label: motDateCompte\(/.test(handler),

@@ -694,9 +694,9 @@ suite('Une fiche de compte ne dit que ce qui vaut pour ce compte', () => {
   test('le délai de vente et les règles de retrait ne se confondent pas', () => {
     eq(mobilisabilite('actions', 'pea'), mobilisabilite('actions', 'cto'),
       'une action se vend au même rythme dans un PEA et dans un compte-titres');
-    eq(mobilisabilite('actions', 'per'), 'bloque', 'seul un PER bloque vraiment l’argent');
+    eq(mobilisabilite('actions', 'per'), 'bloque', 'un PER bloque vraiment l’argent');
     const avecRetrait = TYPES_COMPTE.filter(t => t.retrait).map(t => t.id).sort();
-    eq(JSON.stringify(avecRetrait), JSON.stringify(['av', 'pea', 'per']),
+    eq(JSON.stringify(avecRetrait), JSON.stringify(['av', 'pea', 'pee', 'pel', 'per', 'pereco']),
       'les conditions de retrait se déclarent sur les enveloppes qui en ont');
     for (const t of TYPES_COMPTE.filter(x => x.retrait)) vrai(!!I18N.en[t.retrait], `traduit : ${t.id}`);
     const app = lireSource('assets/app.js');
