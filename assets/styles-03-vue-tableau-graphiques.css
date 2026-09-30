@@ -1185,13 +1185,17 @@ td .empty, th .empty { background: none; border: none; }
 
    Le fond vient de la bande, par un pseudo-element pose juste au-dessus d'elle,
    de la hauteur de l'encoche et plus large que l'ecran (les gouttieres
-   comprises). Barre en place, il vit derriere elle et ne se voit pas ; barre
-   partie, il ferme le trou. `env()` vaut zero hors application installee, et
-   le pseudo-element n'a alors aucune hauteur. */
+   comprises). Il ne se dessine que barre partie (`haut-cache`), la seule fois
+   ou le trou existe : barre en place, c'est elle qui couvre l'encoche, et le
+   pseudo-element cacherait ce qui se pose entre elle et les sous-onglets,
+   comme le bandeau de la demonstration en haut de page. `env()`
+   vaut zero hors application installee, et le pseudo-element n'a alors aucune
+   hauteur. */
 .sous-onglets::before {
-  content: ''; position: absolute; left: -50vw; right: -50vw; bottom: 100%;
+  content: none; position: absolute; left: -50vw; right: -50vw; bottom: 100%;
   height: env(safe-area-inset-top, 0px); background: var(--page);
 }
+body.haut-cache .sous-onglets::before { content: ''; }
 /* La hauteur de ligne est POSEE, et ce n'est pas un detail de style.
 
    En `normal`, elle depend de ce que la pilule contient : la pastille de rappel,

@@ -1993,6 +1993,11 @@ suite('Les animations s’éteignent, et se déclenchent au doigt', () => {
     vrai(/background:\s*var\(--page\)/.test(encoche[1]), 'de la couleur de la page, comme la bande');
     vrai(/left:\s*-50vw/.test(encoche[1]) && /right:\s*-50vw/.test(encoche[1]),
       'et plus large que l’écran : les gouttières aussi laissaient passer');
+    /* Barre en place, il cacherait le bandeau de la demonstration pose entre
+       la barre et les sous-onglets : il ne se dessine que barre partie. */
+    vrai(/content:\s*none/.test(encoche[1])
+      && /body\.haut-cache \.sous-onglets::before\s*\{\s*content:\s*''\s*;?\s*\}/.test(css),
+      'il ne se dessine que barre partie, sinon il cache ce qui se pose au-dessus des sous-onglets');
     vrai(!/backdrop-filter/.test(regleOnglets[1]),
       'ni de flou, qui dessine une bande aussi sûrement qu’une couleur — c’est '
       + 'l’étape intermédiaire qui n’a pas suffi. Seules les pastilles ont une surface');
@@ -2026,6 +2031,38 @@ suite('Les animations s’éteignent, et se déclenchent au doigt', () => {
     vrai(zOnglets > zBandeau,
       `la barre des sous-onglets (${zOnglets}) doit passer devant le bandeau `
       + `(${zBandeau}) : pendant qu'ils se croisent, c'est la navigation qu'on doit voir`);
+  });
+
+  test('barre en place, le bandeau posé au-dessus des sous-onglets reste visible', () => {
+    /* La zone de l'encoche vaut zero hors application installee : une feuille
+       injectee lui donne la hauteur d'un iPhone, et le doigt pose au centre du
+       bandeau doit le toucher, pas la bande qui peint l'encoche. */
+    const feuille = document.createElement('style');
+    feuille.textContent = '.sous-onglets::before { height: 50px !important; }';
+    const boite = document.createElement('div');
+    boite.style.cssText = 'position:fixed; left:0; top:0; width:360px; z-index:99999; background:#000';
+    boite.innerHTML = '<div class="bandeau-demo" style="margin:0; height:40px">x</div>'
+      + '<div class="sous-onglets" style="position:relative">y</div>';
+    document.head.appendChild(feuille);
+    document.body.appendChild(boite);
+    const sonde = () => {
+      const r = boite.firstChild.getBoundingClientRect();
+      return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    };
+    try {
+      /* D'abord la preuve que la sonde voit un recouvrement : barre partie, la
+         bande peint l'encoche par-dessus ce qui la precede. */
+      document.body.classList.add('haut-cache');
+      const partie = sonde();
+      vrai(partie && partie.closest('.sous-onglets'), 'barre partie, la bande peint l’encoche au-dessus d’elle');
+      document.body.classList.remove('haut-cache');
+      const enPlace = sonde();
+      vrai(enPlace && enPlace.closest('.bandeau-demo'), 'barre en place, le bandeau répond, rien ne le recouvre');
+    } finally {
+      document.body.classList.remove('haut-cache');
+      boite.remove();
+      feuille.remove();
+    }
   });
 
   test('chaque vue retrouve sa position, et jamais celle de sa voisine', () => {
