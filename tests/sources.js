@@ -45,6 +45,7 @@ const PARTIES_DE_TESTS = [
   'tests/32-supports-dates.tests.js',
   'tests/33-scpi.tests.js',
   'tests/34-compte-par-defaut.tests.js',
+  'tests/35-courbe-mensuelle.tests.js',
 ];
 const PARTIES_DE_TESTS_CHARGEES = new Set();
 let PARTIE_DE_TESTS_COURANTE = null;

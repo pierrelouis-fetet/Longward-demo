@@ -1792,9 +1792,9 @@ suite('Deux réglages, deux questions, et ils ne se marchent pas dessus', () => 
     pres(perimetre(false, true).total,  18250, 'Financier brut');
     pres(perimetre(true,  false).total, 98250, 'Global net');
     pres(perimetre(false, false).total, 138250, 'Global brut');
-    /* Et chacun s'accroche au chiffre que le reste de la page annonce : une
-       courbe qui finirait ailleurs que sur le patrimoine du jour raconterait une
-       autre histoire que le bandeau juste au-dessus. */
+    /* Et la serie par defaut, avec son point du jour, s'accroche au chiffre que
+       le reste de la page annonce. La carte d'evolution, elle, finit au dernier
+       releve (`aujourdhui: false`). */
     pres(perimetre(false, false).total, patrimoine().brut, 'le brut du bandeau');
     pres(perimetre(true, false).total, patrimoine().net, 'le net du bandeau');
     pres(perimetre(true, true).total, totalFinancier(),
@@ -1954,7 +1954,7 @@ suite('Deux réglages, deux questions, et ils ne se marchent pas dessus', () => 
     eq((sansCom.match(/'hero-base'\(btn\)/g) || []).length, 1,
       'et une seule action pour eux');
     /* La courbe herite : elle lit la variable de la page, elle n'en a pas une. */
-    vrai(/pointsEvolution\(\{ net: evoNet, financier: evoFinancier \}\)/.test(sansCom),
+    vrai(/pointsEvolution\(\{ net: evoNet, financier: evoFinancier, aujourdhui: false \}\)/.test(sansCom),
       'la courbe lit le Net / Brut de la page');
     eq((sansCom.match(/\bevoNet = /g) || []).length, 2,
       'une déclaration et un seul geste qui l’écrit');

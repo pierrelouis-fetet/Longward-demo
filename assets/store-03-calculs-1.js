@@ -279,9 +279,11 @@ function nowValue(accountId) {
 /*   Une réserve à connaître : l'historique ne peut pas suivre. Un relevé porte
    la valeur totale d'un compte, et la poche vient du compte (`rowGroups` →
    `a.gAff`) — le cash qui dort dans un PEA y reste donc rangé en bourse, sans
-   moyen de l'en extraire après coup. La courbe d'évolution montre par
-   conséquent un décalage au dernier point, entre le dernier mois enregistré
-   et « Auj. ». Il vaut le montant à investir, et le total ne bouge pas. */
+   moyen de l'en extraire après coup. Une serie qui finit par le point du jour
+   (`pointsEvolution` par defaut) montre par consequent un decalage entre le
+   dernier mois enregistre et ce point. Il vaut le montant a investir, et le
+   total ne bouge pas. La carte d'evolution, qui ne trace que des releves, n'a
+   pas ce point. */
 function nowByGroup() {
   const p = patrimoine();
   return {
@@ -594,7 +596,7 @@ function historySeries({ includeNow = true } = {}) {
     pts.push({ label: trad('Auj.'), date: todayISO(), cash: t.cash, bourse: t.bourse,
                garanti: t.garanti,
                crypto: t.crypto, pe: t.pe, immo: t.immo, biens: t.biens,
-               total: t.brut, comment: 'Photo actuelle' });
+               total: t.brut, comment: 'Photo actuelle', duJour: true });
   }
   return pts;
 }
@@ -619,8 +621,10 @@ function historySeries({ includeNow = true } = {}) {
    Chaque releve porte le capital restant du du mois (`dettes`), note par la photo
    au meme titre que les montants par compte. La bande d'immobilier monte donc
    doucement d'un mois sur l'autre, a mesure que le pret se rembourse -- c'est
-   exactement ce que le net veut montrer. Seul le dernier point utilise la dette
-   d'aujourd'hui. Les mois anterieurs a ce champ n'ont pas la donnee : ils restent
+   exactement ce que le net veut montrer. Seul le point du jour, quand la serie en
+   porte un, utilise la dette d'aujourd'hui ; la carte d'evolution n'en porte pas
+   (`aujourdhui: false`) et finit au dernier releve, avec la dette de ce releve.
+   Les mois anterieurs a ce champ n'ont pas la donnee : ils restent
    traces bruts plutot que de se voir appliquer une dette d'aujourd'hui qui n'etait
    pas la leur. La courbe se corrige d'elle-meme, un releve par mois.
 
@@ -630,8 +634,8 @@ function historySeries({ includeNow = true } = {}) {
    financier. Ce que la courbe ne peut pas faire, c'est appliquer la dette
    D'AUJOURD'HUI aux points d'HIER : un mois clos ne portait pas la marge ouverte
    la semaine derniere, et la retrancher de son point ferait descendre un passe
-   qui n'a pas eu lieu. Seul le dernier point connait la dette du jour, et c'est
-   deja la regle de la vue globale — les mois anterieurs restent bruts.
+   qui n'a pas eu lieu. Seul le point du jour connait la dette du jour, et c'est
+   deja la regle de la vue globale : les mois anterieurs restent bruts.
 
    La lecture d'AUJOURD'HUI, elle, retranche bien : la synthese de la page
    Allocation annonce les avoirs financiers, les dettes du perimetre et le net.
@@ -639,17 +643,21 @@ function historySeries({ includeNow = true } = {}) {
 
    La vue et le montage appellent tous deux cette fonction : la legende ne peut
    donc pas annoncer une serie que la courbe ne trace pas. */
-function pointsEvolution({ net = true, financier = false } = {}) {
+/* `aujourdhui` : la serie finit par le point du jour (le defaut, que lisent
+   les comparaisons au grand chiffre), ou au dernier releve mensuel (la carte
+   d'evolution, qui ne trace que des releves). */
+function pointsEvolution({ net = true, financier = false, aujourdhui = true } = {}) {
   const poches = pochesEvolution({ financier });
-  const pts = historySeries();
+  const pts = historySeries({ includeNow: aujourdhui });
   const retrancher = net && !financier;
-  const dettesAuj = retrancher ? patrimoine().dettes : 0;
+  const dettesAuj = retrancher && aujourdhui ? patrimoine().dettes : 0;
   return pts.map((p, i) => {
     /* Une copie, jamais le point d'origine : `historySeries()` sert aussi les
        variations et le rythme, qui comptent tout. */
     const q = { ...p };
     for (const cle of POCHES_EVOLUTION) if (!poches.includes(cle)) delete q[cle];
-    const dettes = retrancher ? (i === pts.length - 1 ? dettesAuj : num(p.dettes)) : 0;
+    const dettes = retrancher ? (p.duJour ? dettesAuj : num(p.dettes)) : 0;
+    delete q.duJour;
     if (dettes) {
       let reste = dettes;
       for (const cle of CASCADE_DETTES) {
@@ -700,8 +708,8 @@ function memeCourbe(a, b) {
   });
 }
 
-function basculesEvolution({ net = true, financier = false, range = 'all' } = {}) {
-  const courbe = (n, f) => limitRange(pointsEvolution({ net: n, financier: f }), range);
+function basculesEvolution({ net = true, financier = false, range = 'all', aujourdhui = true } = {}) {
+  const courbe = (n, f) => limitRange(pointsEvolution({ net: n, financier: f, aujourdhui }), range);
   const p = patrimoine();
   return {
     netBrut: Math.abs(num(p.net) - num(p.brut)) > 0.005
@@ -1006,6 +1014,7 @@ const aUnRelevePatrimonial = () =>
   (Store.state.monthly || []).some(r => !rowIsEmpty(r));
 const relevesRenseignes = () =>
   (Store.state.monthly || []).filter(r => !rowIsEmpty(r)).length;
+const courbeTracable = () => relevesRenseignes() >= 2;
 
 const aDesDepensesSaisies = () =>
   (B().expenses || []).some(r => Object.values(r.v || {}).some(v => num(v) !== 0));

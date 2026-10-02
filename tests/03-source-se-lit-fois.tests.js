@@ -665,7 +665,7 @@ suite('Une bascule qui ne change rien ne se montre pas', () => {
     const deb = src.indexOf('function basculesEvolution');
     const fn = src.slice(deb, src.indexOf('\n}', deb) + 2);
     vrai(fn.length > 200 && fn.length < 3000, 'la fonction doit être trouvable, et elle seule');
-    vrai(/const courbe = \(n, f\) => limitRange\(pointsEvolution\(\{ net: n, financier: f \}\), range\);/.test(fn),
+    vrai(/const courbe = \(n, f\) => limitRange\(pointsEvolution\(\{ net: n, financier: f, aujourdhui \}\), range\);/.test(fn),
       'les deux vues se calculent vraiment');
     vrai(/!memeCourbe\(courbe\(net, true\), courbe\(net, false\)\)/.test(fn),
       'et le périmètre se juge en les comparant');
@@ -707,7 +707,7 @@ suite('Une bascule qui ne change rien ne se montre pas', () => {
 
     const carte = app.slice(app.indexOf('function carteEvolution()'),
                             app.indexOf('function monterEvolution()'));
-    vrai(/const perimetreUtile = basculesAffichees\(\)\.perimetre;/.test(carte),
+    vrai(/const perimetreUtile = courbeTracable\(\) && basculesAffichees\(\)\.perimetre;/.test(carte),
       'la carte lit l’état une seule fois');
     vrai(/perimetreUtile \? `\s*\n\s*<span class="segmented seg-mini">/.test(carte),
       'et n’émet la bascule du périmètre que si elle sert');

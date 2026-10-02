@@ -1023,7 +1023,7 @@ function carteRythme() {
       ${relevesRenseignes() >= 2 ? rangeControl('pace-range', paceRange) : ''}</div>
     <div class="rythme-cadre"><div class="rythme-corps">
     ${relevesRenseignes() >= 2 ? `<div class="chart" id="chartPace"></div>`
-      : `<p class="empty" style="margin:0">${trad('Il faut deux relevés pour une pente : le premier ouvre la courbe, le second donne le rythme.')}</p>`}
+      : `<p class="empty" style="margin:0">${trad('Il faut deux relevés pour une pente : le second trace la courbe et donne le rythme.')}</p>`}
     ${(() => {
       const p = statsRythme(limitRange(monthlyPace().points, paceRange, { ecarts: true }));
       if (!p.count) return '';

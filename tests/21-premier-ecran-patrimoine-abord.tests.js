@@ -856,9 +856,9 @@ suite('Les cinq premières minutes après le premier compte', () => {
 
   test('2. avant le premier relevé, aucun graphique à axes nus sur l’accueil', () => {
     const s = app();
-    vrai(/\$\{!aUnRelevePatrimonial\(\) \? '' : `\s*<div class="evo-commandes">/.test(s)
+    vrai(/\$\{!courbeTracable\(\) \? \(aUnRelevePatrimonial\(\)[\s\S]{0,200}<div class="evo-commandes">/.test(s)
       && /<div class="chart" id="chartEvo"><\/div>`\}/.test(s),
-      'la courbe d’évolution et ses plages attendent le premier relevé');
+      'la courbe d’évolution et ses plages attendent le deuxième relevé');
     vrai(/\$\{relevesRenseignes\(\) >= 2 \? `<div class="chart" id="chartPace"><\/div>`/.test(s)
       && /trad\('Il faut deux relevés pour une pente/.test(s),
       'le rythme dit en une phrase ce qu’il attend');

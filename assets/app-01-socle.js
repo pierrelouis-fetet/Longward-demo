@@ -697,18 +697,18 @@ function legendeSeries(series, avecTotal = false) {
    Ce qui reste ici : le dessin, les couleurs, et le choix de l'utilisateur. */
 
 function basculesAffichees() {
-  return basculesEvolution({ net: evoNet, financier: evoFinancier, range: evoRange });
+  return basculesEvolution({ net: evoNet, financier: evoFinancier, range: evoRange, aujourdhui: false });
 }
 
 function evolutionAffichee() {
   const points = limitRange(
-    pointsEvolution({ net: evoNet, financier: evoFinancier }), evoRange);
+    pointsEvolution({ net: evoNet, financier: evoFinancier, aujourdhui: false }), evoRange);
   return { points, series: seriesUtiles(points, { financier: evoFinancier }) };
 }
 
 function carteEvolution() {
   const { series } = evolutionAffichee();
-  const perimetreUtile = basculesAffichees().perimetre;
+  const perimetreUtile = courbeTracable() && basculesAffichees().perimetre;
   return `
     <div class="card" data-anchor="evolution">
       <div class="card-head"><h2>${trad('Évolution du patrimoine')}${
@@ -723,11 +723,12 @@ function carteEvolution() {
                   class="${evoFinancier ? '' : 'on'}" aria-pressed="${!evoFinancier}"
                   title="${trad('Tout ton patrimoine')}">${trad('Global')}</button>
         </span>` : ''}</div>
-      ${!aUnRelevePatrimonial() ? '' : `
+      ${!courbeTracable() ? (aUnRelevePatrimonial()
+        ? `<p class="empty" style="margin:0">${trad('La courbe se trace dès ton deuxième relevé mensuel.')}</p>` : '') : `
       <div class="evo-commandes">${rangeControl('evo-range', evoRange)}</div>
       <div class="chart" id="chartEvo"></div>`}
       ${invitePremierPas('releves')}
-      ${!aUnRelevePatrimonial() ? '' : `<div class="legend">${legendeSeries(series, true)}</div>`}
+      ${!courbeTracable() ? '' : `<div class="legend">${legendeSeries(series, true)}</div>`}
     </div>`;
 }
 
