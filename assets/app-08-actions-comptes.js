@@ -887,6 +887,7 @@ Object.assign(ACTIONS, {
       return;
     }
     c.statut = 'archive';
+    oublierCompteParDefaut(c.id);
     if (v.clotureLe) c.clotureLe = v.clotureLe; else delete c.clotureLe;
     if (v.motif) c.archiveMotif = v.motif; else delete c.archiveMotif;
     refreshAccounts(); Store.save(); render();
@@ -1125,6 +1126,7 @@ Object.assign(ACTIONS, {
         broker: nomEtabDe(c), type: c.type, group: typeCompte(c.type).groupe, legacy: true });
     }
     Store.state.comptes = Store.state.comptes.filter(x => x.id !== c.id);
+    oublierCompteParDefaut(c.id);
     /* Le contenant part avec son dernier compte, comme ses credits juste avant.
 
        Il restait, vide, et plus aucun ecran ne le montrait : la liste des comptes

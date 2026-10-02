@@ -235,6 +235,11 @@ function mountSymbolSearch() {
 
           const cat = classeDuType(bouton.dataset.type);
           const deduite = !!bouton.dataset.type;
+          const depart = compteDeDepart(cat, compteVisePourAjout);
+          const classeCourante = () => {
+            const e = $('#f_assetClass');
+            return e && e.tagName === 'SELECT' ? e.value : cat;
+          };
           const v = await askForm({
             titre: bouton.dataset.nom || bouton.dataset.symbol,
             sous: trad('Où ranger cette ligne ?'),
@@ -243,15 +248,17 @@ function mountSymbolSearch() {
               ? { cle: 'partie', message: trad('Choisis la part qui paie.') } : null,
             lie: [
               ...(deduite ? [] : [{ de: 'assetClass', vers: 'account', options: comptesPourListe,
+                                    prefere: c => compteDeDepart(c),
                                     vide: 'aucun compte ne peut porter cette classe' }]),
+              ...liensCompteParDefaut(classeCourante, !deduite),
               { de: 'account', vers: 'debiter', coche: id => !contratSansCash(id), aide: aideDebitAjout },
               { de: 'account', vers: 'partie', options: id => listeDeParts(comptesQuiPaient(id), id).options,
                 vide: trad('ce compte ne porte pas d’espèces') },
             ],
             champs: [
               { cle: 'account', label: 'Compte', type: 'liste', options: comptesPourListe(cat),
-                valeur: compteVisePourAjout || defaultHoldingAccount(),
-                aide: trad('limité aux comptes compatibles') },
+                valeur: depart, aide: trad('limité aux comptes compatibles') },
+              champCompteParDefaut(cat, depart),
               { cle: 'qty', label: 'Quantité', type: 'nombre', exemple: '0',
                 aide: trad('laisse zéro si tu n’as pas encore acheté') },
               { cle: 'buyPrice', type: 'nombre',
@@ -272,12 +279,12 @@ function mountSymbolSearch() {
                   ? fmtCur(num(v.qty) * num(v.buyPrice), (cote && cote.currency) || deviseBase())
                   : '…' },
               ...(cashTargets().length ? [{
-                cle: 'debiter', type: 'case', valeur: !contratSansCash(compteVisePourAjout || defaultHoldingAccount()),
+                cle: 'debiter', type: 'case', valeur: !contratSansCash(depart),
                 label: trad('Débiter le paiement d’une part d’espèces'),
-                aide: aideDebitAjout(compteVisePourAjout || defaultHoldingAccount()) },
+                aide: aideDebitAjout(depart) },
               { cle: 'partie', label: trad('Payé depuis'), type: 'liste',
                 ...(({ options, valeur }) => ({ options, valeur }))(listeDeParts(
-                  comptesQuiPaient(compteVisePourAjout || defaultHoldingAccount()), compteVisePourAjout || defaultHoldingAccount())),
+                  comptesQuiPaient(depart), depart)),
                 montreSi: x => x.debiter }] : []),
               deduite
                 ? { cle: 'assetClass', label: trad('Classe d’actif'), lecture: true,
@@ -317,6 +324,7 @@ function mountSymbolSearch() {
           }
           const a = creerLigneAchetee({ ligne, brouillon, debit });
           if (a.erreur) { toast(a.erreur); return; }
+          poserCompteParDefaut(ligne.assetClass, v.account, !!v[CLE_CASE_DEFAUT]);
           Store.save(); render();
           toast(a.debite ? `${ligne.name} ${trad('ajouté')} · ${fmtEUR0(a.coutBase)} ${trad('débité')}` : `${ligne.name} ${trad('ajouté')}`);
           Quotes.refresh().then(() => render()).catch(() => {});

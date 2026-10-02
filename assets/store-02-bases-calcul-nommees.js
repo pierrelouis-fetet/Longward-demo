@@ -1076,6 +1076,7 @@ function archiverParTransfert({ source, destination, partie, montant, clotureLe 
     if (!e) { e = { montant: 0, affectation: cible }; dst.cash.push(e); }
     e.montant = round2(num(e.montant) + m);
     src.statut = 'archive';
+    oublierCompteParDefaut(src.id);
     src.archiveMotif = 'transfert';
     src.archiveVers = destination;
     if (clotureLe) src.clotureLe = clotureLe; else delete src.clotureLe;
@@ -1184,6 +1185,7 @@ function retirerComptesClos(ids) {
     r.poches = rowGroups(r);
   }
   Store.state.comptes = (Store.state.comptes || []).filter(c => !cibles.has(c.id));
+  for (const id of cibles) oublierCompteParDefaut(id);
   Store.state.accounts = (Store.state.accounts || []).filter(a => !cibles.has(a.id));
   refreshAccounts();
   return cibles.size;
@@ -1223,8 +1225,50 @@ function cashOf() { return 0; }
 
 function allocLabel(a) { return a.alloc || a.label; }
 
-function defaultHoldingAccount() {
-  return (accountsWhere(a => a.holdings)[0] || ACCOUNTS[0] || {}).id || '';
+/* LE COMPTE OU S'OUVRENT LES NOUVELLES LIGNES DE TITRES.
+
+   Le premier compte a titres, sauf si le detenteur en a designe un : une case
+   des fenetres d'ajout le pose. Deux preferences independantes,
+   `meta.comptesParDefaut.titres` et `.crypto` : un portefeuille de crypto
+   designe pour une crypto ne remplace pas le CTO des actions. Une seule regle
+   d'admissibilite, pour lire comme pour ecrire : le compte existe, n'est pas
+   archive, porte des titres et accepte la classe. Un compte archive ou
+   supprime emporte sa preference (`oublierCompteParDefaut`). */
+const cleCompteParDefaut = classe => (classe === 'crypto' ? 'crypto' : 'titres');
+function compteAdmissibleParDefaut(classe, id) {
+  if (!id) return false;
+  const a = ACCOUNTS.find(x => x.id === id);
+  if (!a || a.legacy || !a.holdings) return false;
+  return comptesPourCategorie(classe).some(c => c.id === id);
+}
+function compteParDefaut(classe) {
+  const id = ((Store.state.meta || {}).comptesParDefaut || {})[cleCompteParDefaut(classe)];
+  return compteAdmissibleParDefaut(classe, id) ? id : null;
+}
+function poserCompteParDefaut(classe, id, oui) {
+  const meta = Store.state.meta = Store.state.meta || {};
+  const cle = cleCompteParDefaut(classe);
+  const prefs = meta.comptesParDefaut || {};
+  if (oui) {
+    if (!compteAdmissibleParDefaut(classe, id) || prefs[cle] === id) return false;
+    meta.comptesParDefaut = { ...prefs, [cle]: id };
+    return true;
+  }
+  if (prefs[cle] !== id) return false;
+  const reste = { ...prefs };
+  delete reste[cle];
+  if (Object.keys(reste).length) meta.comptesParDefaut = reste; else delete meta.comptesParDefaut;
+  return true;
+}
+function oublierCompteParDefaut(id) {
+  const meta = Store.state.meta || {};
+  const prefs = meta.comptesParDefaut;
+  if (!prefs) return;
+  for (const k of Object.keys(prefs)) if (prefs[k] === id) delete prefs[k];
+  if (!Object.keys(prefs).length) delete meta.comptesParDefaut;
+}
+function defaultHoldingAccount(classe = 'actions') {
+  return compteParDefaut(classe) || (accountsWhere(a => a.holdings)[0] || ACCOUNTS[0] || {}).id || '';
 }
 
 const num = v => (v === '' || v === null || v === undefined || isNaN(v)) ? 0 : Number(v);

@@ -92,8 +92,10 @@ Object.assign(ACTIONS, {
     const v = await askForm({
       titre: trad('Nouvelle ligne de titres'),
       sous: trad('L’ISIN suffit : le symbole et le cours se remplissent à la prochaine actualisation'),
-      lie: { de: 'assetClass', vers: 'account', options: comptesPourListe,
-             vide: 'aucun compte ne peut porter cette classe' },
+      lie: [{ de: 'assetClass', vers: 'account', options: comptesPourListe,
+              prefere: c => compteDeDepart(c),
+              vide: 'aucun compte ne peut porter cette classe' },
+            ...liensCompteParDefaut(() => ($('#f_assetClass') || {}).value || 'actions', true)],
       champs: [
         { cle: 'name', label: 'Nom', type: 'texte', requis: true, max: NOM_LIGNE_MAX,
           exemple: 'ex. MSCI World',
@@ -106,8 +108,9 @@ Object.assign(ACTIONS, {
           aide: trad('coeur de portefeuille ou pari satellite') },
         /* `nomCompte()` rend un champ de renommage, pas un libelle : dans une
            liste deroulante il s'afficherait comme du HTML brut. */
-        { cle: 'account', label: 'Compte', type: 'liste', options: comptesPourListe('ETF'),
-          valeur: defaultHoldingAccount(), aide: trad('limité aux comptes compatibles') },
+        { cle: 'account', label: 'Compte', type: 'liste', options: comptesPourListe('actions'),
+          valeur: compteDeDepart('actions'), aide: trad('limité aux comptes compatibles') },
+        champCompteParDefaut('actions', compteDeDepart('actions')),
         { cle: 'qty', label: 'Quantité', type: 'nombre', exemple: '0' },
         { cle: 'buyPrice', label: trad('Prix de revient unitaire'), type: 'nombre', exemple: '0' },
         { cle: 'currency', label: 'Devise', type: 'liste', options: CURRENCIES.map(c => [c, c]), valeur: 'EUR' },
@@ -127,6 +130,7 @@ Object.assign(ACTIONS, {
       assetClass: v.assetClass, role: v.role, account: v.account, manual: v.manual,
       dateAchat: v.dateAchat || '',
     });
+    poserCompteParDefaut(v.assetClass, v.account, !!v[CLE_CASE_DEFAUT]);
     Store.save(); render();
     toast(`${guill(v.name)} ${trad('ajoutée')}`);
   },

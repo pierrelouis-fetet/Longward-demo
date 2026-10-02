@@ -403,6 +403,10 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
       const majCible = () => {
         if (l.coche) {
           cible.checked = !!l.coche(source.value);
+          if (l.actif) {
+            cible.disabled = !l.actif(source.value);
+            if (cible.disabled) cible.checked = false;
+          }
           const sub = l.aide && cible.closest('.field-case')?.querySelector('.sub');
           if (sub) sub.textContent = trad(l.aide(source.value));
           cible.dispatchEvent(new Event('change', { bubbles: true }));
@@ -414,6 +418,10 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
           ? opts.map(([v, lib]) => `<option value="${esc(String(v))}">${esc(lib)}</option>`).join('')
           : `<option value="">${esc(l.vide || 'aucun choix possible')}</option>`;
         if (opts.some(([v]) => String(v) === garde)) cible.value = garde;
+        else if (l.prefere) {
+          const p = String(l.prefere(source.value) ?? '');
+          if (opts.some(([v]) => String(v) === p)) cible.value = p;
+        }
         cible.disabled = !opts.length;
         if (cible.value !== garde) cible.dispatchEvent(new Event('change', { bubbles: true }));
       };

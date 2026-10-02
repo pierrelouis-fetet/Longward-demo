@@ -31,6 +31,24 @@ const classeDuType = t => {
 
 const comptesPourListe = cat => comptesPourCategorie(cat)
   .map(c => [c.id, sousNom('', nomCompteV2(c), nomEtabDe(c))]);
+const compteDeDepart = (cat, vise = null) => {
+  const ids = comptesPourListe(cat).map(([id]) => id);
+  return [vise, compteParDefaut(cat)].find(id => id && ids.includes(id)) || ids[0] || '';
+};
+const CLE_CASE_DEFAUT = 'parDefaut';
+const champCompteParDefaut = (cat, compte) => ({ cle: CLE_CASE_DEFAUT, type: 'case',
+  label: trad('Utiliser ce compte par défaut pour les prochaines lignes'),
+  valeur: !!compte && compte === compteParDefaut(cat) });
+function liensCompteParDefaut(classeCourante, classeModifiable) {
+  const compte = () => ($('#f_account') || {}).value || '';
+  const etat = id => ({ coche: id === compteParDefaut(classeCourante()),
+                        actif: compteAdmissibleParDefaut(classeCourante(), id) });
+  return [
+    { de: 'account', vers: CLE_CASE_DEFAUT, coche: id => etat(id).coche, actif: id => etat(id).actif },
+    ...(classeModifiable ? [{ de: 'assetClass', vers: CLE_CASE_DEFAUT,
+      coche: () => etat(compte()).coche, actif: () => etat(compte()).actif }] : []),
+  ];
+}
 const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF', 'SEK', 'CAD', 'JPY'];
 
 const EXCHANGES = [
