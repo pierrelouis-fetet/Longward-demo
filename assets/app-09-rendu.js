@@ -767,6 +767,75 @@ function askConfirm(texte, { danger = true, ok = 'Confirmer', refus = 'Annuler' 
   });
 }
 
+function celebrerCap(c) {
+  return new Promise(resolve => {
+    const m = $('#fete');
+    if (!m || !c) { resolve(); return; }
+    const avant = document.activeElement;
+    $('#feteTitre').textContent = trad('Cap franchi');
+    $('#feteMontant').innerHTML = escMontant(fmtEUR0(c.cap));
+    /* `eliderDe` : en francais, "de oct." devient "d'oct." devant une voyelle. */
+    $('#feteTexte').textContent = eliderDe(trad('Ton relevé de {m} atteint ou dépasse ce cap ; celui de {p} était en dessous.')
+      .replace('{m}', c.label).replace('{p}', c.labelPrecedent));
+    $('#feteEcart').innerHTML = `${escMontant(fmtEUR0(c.avant))} → ${escMontant(fmtEUR0(c.apres))}`;
+    const ok = $('#feteOk');
+    ok.textContent = trad('Continuer');
+    const inertes = [...document.body.children]
+      .filter(e => e !== m && e.tagName !== 'SCRIPT')
+      .map(e => [e, e.inert]);
+    for (const [e] of inertes) e.inert = true;
+    montrerModal(m);
+    ok.focus({ preventScroll: true });
+    const retirerEclats = pluieDEclats(m);
+    let fini = false;
+    const fermer = () => {
+      if (fini) return;
+      fini = true;
+      retirerEclats();
+      masquerModal(m);
+      ok.onclick = m.onclick = null;
+      document.removeEventListener('keydown', touche, true);
+      for (const [e, etait] of inertes) e.inert = etait;
+      if (avant && avant.isConnected && avant.offsetParent !== null) avant.focus({ preventScroll: true });
+      resolve();
+    };
+    const touche = e => {
+      if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); fermer(); }
+      else if (e.key === 'Tab') { e.preventDefault(); ok.focus({ preventScroll: true }); }
+    };
+    ok.onclick = fermer;
+    m.onclick = e => { if (e.target === m) fermer(); };
+    document.addEventListener('keydown', touche, true);
+  });
+}
+
+const ECLATS_FETE = 70;
+function pluieDEclats(m) {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches || !Element.prototype.animate) return () => {};
+  const couche = document.createElement('div');
+  couche.className = 'fete-eclats';
+  couche.setAttribute('aria-hidden', 'true');
+  const teintes = ['--accent', '--good', '--series-1', '--warning', '--series-3'];
+  const chute = innerHeight + 40;
+  for (let i = 0; i < ECLATS_FETE; i++) {
+    const e = document.createElement('i');
+    e.style.left = `${(Math.random() * 100).toFixed(1)}%`;
+    e.style.background = `var(${teintes[i % teintes.length]})`;
+    couche.appendChild(e);
+    const dx = (Math.random() - 0.5) * 160, tour = (Math.random() - 0.5) * 720;
+    e.animate([
+      { transform: 'translate3d(0, 0, 0) rotate(0deg)', opacity: 1 },
+      { transform: `translate3d(${dx.toFixed(0)}px, ${chute}px, 0) rotate(${tour.toFixed(0)}deg)`, opacity: 0.85 },
+    ], { duration: 1400 + Math.random() * 900, delay: Math.random() * 250,
+         easing: 'cubic-bezier(.2, .6, .4, 1)', fill: 'forwards' });
+  }
+  m.appendChild(couche);
+  let minuteur = 0;
+  const retirer = () => { clearTimeout(minuteur); couche.remove(); };
+  minuteur = setTimeout(retirer, 2700);
+  return retirer;
+}
+
 /* --- OU VA LE PRODUIT D'UNE CESSION ----------------------------------------
 
    Un seul composant pour toutes les fenetres de vente et de cession ; la

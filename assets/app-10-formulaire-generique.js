@@ -381,6 +381,10 @@ function askMonthlySnapshot(index) {
   return new Promise(resolve => {
     const r = Store.state.monthly[index];
     if (!r) { resolve(null); return; }
+    /* Ce qui ouvre la fenetre, et si une fete a eu lieu pendant qu'elle etait
+       ouverte : la fermeture rend alors le focus a la page (voir `fermer`). */
+    const ouvreur = document.activeElement;
+    let apresFete = false;
     const comptes = ACCOUNTS.slice();
     const montres = new Set(comptes.map(a => a.id));
     const masque = a => a.legacy && !num(r.v?.[a.id]);
@@ -567,6 +571,12 @@ function askMonthlySnapshot(index) {
       if (!ouverte) return;    // le premier releve ferme depuis « enregistrer », puis « quitter » repasse ici
       ouverte = false;
       masquerModal(m);      $('#modalClose').onclick = null;
+      if (apresFete) {
+        const visible = e => e && e.isConnected && e.offsetParent !== null;
+        const cible = [$(`#view [data-action="voir-releve"][data-i="${index}"]`), ouvreur,
+                       $('#view [data-action="ajouter-releve"]')].find(visible);
+        if (cible) cible.focus({ preventScroll: true });
+      }
       resolve(v);
     };
     const enregistrer = async () => {
@@ -604,6 +614,7 @@ function askMonthlySnapshot(index) {
         + trad('Réversible : le message qui suit propose de revenir en arrière.'),
           { ok: 'Remplacer' })) return false;
 
+      const capsAvant = capsFranchis();
       appliquerReleve(index, { v, comment: $('#relNote').value,
                                dettes: $('#relDettes').value });
       sale = false;
@@ -620,6 +631,14 @@ function askMonthlySnapshot(index) {
         return true;
       }
       const ligne = Store.state.monthly[index];
+      const pts = relevesParDate(historySeries({ includeNow: false }));
+      const cap = capAFeter(capsAvant, capsFranchis(pts), ligne.date,
+                            pts.length ? pts[pts.length - 1].date : null);
+      if (cap) {
+        apresFete = true;
+        await celebrerCap(cap);
+        return true;
+      }
       const brut = rowTotal(ligne), net = rowNet(ligne);
       toast(`${fmtMonth(r.date)} · ${Math.abs(brut - net) > 0.005
         ? `${fmtEUR0(brut)} ${trad('brut')} · ${fmtEUR0(net)} ${trad('net')}`

@@ -1147,8 +1147,14 @@ function viewHistory() {
   const anneeCourante = todayISO().slice(0, 4);
   if (historyYear === 'all') historyYear = null;   // le cran a quitte le selecteur
 
+  /* Dans l'ordre des dates, comme les caps : la marque d'un cap et l'ecart de
+     la meme ligne lisent la meme chronologie, quel que soit l'ordre de
+     `monthly`. L'index reel suit chaque ligne. */
   const tous = [];
-  for (let i = 0; i < Store.state.monthly.length; i++) {
+  const ordre = Store.state.monthly.map((x, i) => i).sort((a, b) =>
+    String(Store.state.monthly[a].date).localeCompare(String(Store.state.monthly[b].date)) || a - b);
+  const caps = capsFranchis();
+  for (const i of ordre) {
     const r = Store.state.monthly[i];
     if (rowIsEmpty(r)) continue;
     const net = rowNet(r), total = rowTotal(r);
@@ -1233,6 +1239,10 @@ function viewHistory() {
         action: 'voir-releve', index: i,
         classe: r.date === attente.key ? 'mois-courant' : '',
         titre: fmtMonth(r.date),
+        marque: (() => {
+          const c = capDuReleve(r.date, caps);
+          return c ? ` <span class="marque-cap" title="${esc(trad('Cap franchi'))}">◆ ${escMontant(fmtEUR0(c.cap))}</span>` : '';
+        })(),
         sous: [r.comment || '', mois > 1
           ? trad('écart sur {n} mois').replace('{n}', mois) : ''].filter(Boolean).join(' · '),
         valeur: fmtEUR0(net),

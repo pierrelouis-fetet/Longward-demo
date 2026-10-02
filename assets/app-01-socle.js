@@ -1085,6 +1085,7 @@ const EYEBROW_INSIGHT = {
   budget: 'Dépenses',
   concentration: 'Concentration',
   data_quality: 'À compléter',
+  milestone: 'Cap',
 };
 
 const PRESENTATION_INSIGHT = {
@@ -1166,6 +1167,13 @@ const PRESENTATION_INSIGHT = {
     phrase: p => trad('se libèrent dans {n} mois').replace('{n}', p.months),
     secondaire: () => trad('à la dernière échéance de ce crédit'),
     cta: { vue: 'accounts', libelle: 'Voir mes crédits' },
+  },
+  wealth_milestone: {
+    titre: () => trad('Cap franchi'),
+    valeur: p => fmtEUR0(p.cap),
+    phrase: p => eliderDe(trad('ton relevé de {m} l’atteint ou le dépasse').replace('{m}', p.month)),
+    secondaire: p => trad('{a} au relevé précédent').replace('{a}', fmtEUR0(p.before)),
+    cta: { vue: 'history', libelle: 'Voir l’historique' },
   },
   debt_balance_shift: {
     titre: p => trad(p.delta < 0 ? 'Ton encours de crédit a baissé'

@@ -53,6 +53,7 @@
 tr.mois-attendu > td { background: color-mix(in oklab, var(--warning) 9%, transparent); }
 tr.mois-attendu > td.sticky-col { box-shadow: inset 3px 0 0 var(--warning); }
 .marque-attendu { margin-left: 6px; color: var(--warning-text); font-size: var(--font-sm); }
+.marque-cap { margin-left: 6px; color: var(--accent); font-size: var(--font-xs); font-weight: 650; white-space: nowrap; }
 .note-relance { background: color-mix(in oklab, var(--warning) 12%, var(--surface-1));
   border-color: color-mix(in oklab, var(--warning) 38%, transparent);
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -1278,6 +1279,34 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 .modal-body table td.name { white-space: normal; }
 .modal-body table td .petit { font-size: var(--font-sm); }
 .modal-body { overflow-x: hidden; }
+
+#fete { z-index: 120; place-items: center; padding: 20px; }
+#fete .modal-panel {
+  width: min(22em, 100%); max-height: none; align-items: center; text-align: center;
+  padding: 26px 22px 20px; border-radius: var(--radius); border-bottom: 1px solid var(--border-strong);
+  animation: fete-entree .5s cubic-bezier(.22, 1.2, .36, 1);
+}
+#fete.modal-ferme .modal-panel { animation: modal-sort var(--duree-fenetre-sortie) ease forwards; }
+#fete .modal-panel::before { content: none; }
+.fete-surtitre {
+  margin: 0 0 6px; font-size: var(--font-sm); font-weight: 650;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--accent);
+}
+.fete-montant {
+  margin: 0 0 14px; font-size: var(--font-hero); font-weight: 720;
+  letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+  animation: fete-montant .7s .12s cubic-bezier(.22, 1.4, .36, 1) both;
+}
+.fete-texte { margin: 0 0 6px; color: var(--text-secondary); }
+.fete-ecart { margin: 0 0 18px; font-size: var(--font-sm); color: var(--muted); font-variant-numeric: tabular-nums; }
+#fete .btn { min-width: 10em; justify-content: center; }
+.fete-eclats { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 1; }
+.fete-eclats i { position: absolute; top: -14px; width: 7px; height: 11px; border-radius: 2px; }
+@keyframes fete-entree { from { opacity: 0; transform: scale(.9) } to { opacity: 1; transform: none } }
+@keyframes fete-montant { from { opacity: 0; transform: scale(.7) } to { opacity: 1; transform: none } }
+@media (prefers-reduced-motion: reduce) {
+  #fete .modal-panel, .fete-montant { animation: none; }
+}
 
 @media (max-width: 900px) {
   .modal { place-items: end center; padding: 0; }

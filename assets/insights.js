@@ -108,6 +108,20 @@ const SEUIL_AFFICHAGE_DETTE_PCT = 2;
 
 const MOIS_FRAICHEUR_RELEVE = 3;
 
+const RELEVES_RECENCE_CAP = 3;
+const MOIS_RECENCE_CAP = 6;
+
+function capRecent(m) {
+  const pts = relevesParDate(m.releves);
+  if (!pts.length) return null;
+  const dernier = pts[pts.length - 1];
+  if (moisEntre(String(dernier.date), String(m.aujourdhui)) > MOIS_FRAICHEUR_RELEVE) return null;
+  const c = dernierCap(pts);
+  if (!c || c.relevesDepuis > RELEVES_RECENCE_CAP - 1) return null;
+  if (moisEntre(String(c.date), String(m.aujourdhui)) > MOIS_RECENCE_CAP) return null;
+  return c;
+}
+
 const MOIS_MINIMUM_FENETRE_RYTHME = 6;
 
 const MOIS_MINIMUM_FENETRE_DEPENSES = 3;
@@ -737,6 +751,35 @@ const REGLES_INSIGHT = [
           rest: o.reste, restIsNotOnlyMarkets: true,
         },
         action: { vue: 'overview' },
+      };
+    },
+  },
+
+  {
+    id: 'wealth_milestone',
+    onglet: 'overview',
+    famille: 'jalon',
+    categorie: 'milestone',
+    priorite: INSIGHT_PRIORITE.MOYENNE,
+    dedupeGroup: 'wealth_milestone',
+    reposJours: 30,
+    materialite: 1,
+    question: 'Mon patrimoine net a-t-il atteint un palier rond ?',
+    titleKey: 'insight.wealth_milestone.title',
+    descriptionKey: 'insight.wealth_milestone.description',
+    eligible: m => !!capRecent(m),
+    evaluer(m) {
+      const c = capRecent(m);
+      if (!c) return null;
+      return {
+        valeur: c.cap,
+        poids: amplitude(RELEVES_RECENCE_CAP - c.relevesDepuis, 1),
+        params: { cap: c.cap, month: c.label, before: c.avant, after: c.apres },
+        evidence: {
+          source: 'releves', cap: c.cap, date: c.date, previousDate: c.datePrecedent,
+          before: c.avant, after: c.apres, statementsSince: c.relevesDepuis,
+        },
+        action: { vue: 'history' },
       };
     },
   },

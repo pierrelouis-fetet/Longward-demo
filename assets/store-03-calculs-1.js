@@ -672,6 +672,61 @@ function pointsEvolution({ net = true, financier = false, aujourdhui = true } = 
   });
 }
 
+/* --- LES CAPS DU PATRIMOINE NET ---------------------------------------------
+
+   Des paliers ronds, dans la devise de base : un nombre rond se lit de la meme
+   facon en euros et en dollars. Un cap est FRANCHI quand un releve l'atteint
+   ou le depasse alors que le releve precedent etait en dessous. C'est tout ce
+   que deux valeurs datees permettent de dire : ni le jour du passage, ni sa
+   cause. Le net est celui du journal (`rowNet`, porte par `pointDuReleve`). */
+const CAPS_PATRIMOINE = [10000, 25000, 50000, 75000, 100000, 150000, 200000, 250000,
+  300000, 400000, 500000, 750000, 1000000, 1500000, 2000000, 2500000, 3000000,
+  4000000, 5000000, 7500000, 10000000];
+
+const relevesParDate = points => [...(points || [])].filter(p => p && p.date)
+  .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+
+function capsFranchis(points = historySeries({ includeNow: false })) {
+  const pts = relevesParDate(points);
+  if (pts.length < 2) return [];
+  const vus = new Set(CAPS_PATRIMOINE.filter(c => num(pts[0].net) >= c));
+  const out = [];
+  for (let i = 1; i < pts.length; i++) {
+    const avant = num(pts[i - 1].net), apres = num(pts[i].net);
+    for (const cap of CAPS_PATRIMOINE) {
+      if (vus.has(cap) || !(avant < cap && cap <= apres)) continue;
+      vus.add(cap);
+      out.push({ cap, date: pts[i].date, label: pts[i].label, avant, apres,
+                 datePrecedent: pts[i - 1].date, labelPrecedent: pts[i - 1].label });
+    }
+  }
+  return out;
+}
+
+function capDuReleve(date, liste = capsFranchis()) {
+  const caps = liste.filter(c => c.date === date);
+  return caps.length ? caps[caps.length - 1] : null;
+}
+
+function dernierCap(points = historySeries({ includeNow: false })) {
+  const liste = capsFranchis(points);
+  if (!liste.length) return null;
+  const d = liste[liste.length - 1];
+  const dates = new Set(relevesParDate(points).map(p => String(p.date)));
+  return { ...d, relevesDepuis: [...dates].filter(x => x > String(d.date)).length };
+}
+
+/* Le cap a feter apres une sauvegarde, ou null. Il faut que le releve
+   enregistre soit le dernier en date, et qu'il atteigne un cap qui n'etait pas
+   franchi avant la sauvegarde : corriger un ancien releve, ou reenregistrer
+   le meme, ne fete rien. `avant` et `apres` sont deux listes de capsFranchis. */
+function capAFeter(avant, apres, date, dateDernier) {
+  if (!date || date !== dateDernier) return null;
+  const deja = new Set((avant || []).map(c => c.cap));
+  const nouveaux = (apres || []).filter(c => c.date === date && !deja.has(c.cap));
+  return nouveaux.length ? nouveaux[nouveaux.length - 1] : null;
+}
+
 /* --- Une bascule qui ne change rien ne se montre pas --------------------
 
    La question n'est PAS « ce detenteur a-t-il un appartement » ni « a-t-il un
