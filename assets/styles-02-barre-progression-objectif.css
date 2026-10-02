@@ -99,6 +99,12 @@ dt .sub .mois-lien { font: inherit; color: inherit; }
 .reeq-val { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .reeq-droite { flex: none; display: inline-flex; align-items: center; gap: 4px; }
 .reeq-droite .btn.icon.xs { padding: 2px 5px; font-size: var(--font-sm); }
+.reeq-droite .btn.icon[data-action="retirer-classe-cible"] {
+  color: var(--muted); justify-content: flex-end; padding-right: 0;
+}
+@media (hover: hover) { .reeq-droite .btn.icon[data-action="retirer-classe-cible"]:hover:not(:disabled) {
+  color: var(--text-primary); background: none;
+} }
 
 .reeq-jauge {
   position: relative; height: 8px; margin: 8px 0;
@@ -1428,6 +1434,7 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
   opacity: .8;
 }
 .chevron-role.ouvert { transform: rotate(90deg); }
+.reeq-nom .chevron-role { vertical-align: middle; margin: -4px 0 -4px 2px; }
 @media (hover: hover) { .chevron-role:hover {
   opacity: 1; background: color-mix(in oklab, var(--accent) 16%, transparent);
 } }

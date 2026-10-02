@@ -815,10 +815,7 @@ function viewRebalance() {
     return `
     <li class="reeq-ligne">
       <div class="reeq-haut">
-        <span class="reeq-nom">${esc(row.label)}</span>
-        <span class="reeq-droite">
-          <b class="reeq-val">${fmtEUR(row.value)}</b>
-          ${key && key.startsWith('classes.') ? `
+        <span class="reeq-nom">${esc(row.label)}${key && key.startsWith('classes.') ? `
             ${row.classeParente
               ? `<button class="chevron-role ouvert" data-action="refusionner-classe"
                          data-cle="${esc(row.classeParente)}"
@@ -837,7 +834,10 @@ function viewRebalance() {
                                title="Ouvrir en deux cibles : ${esc(row.label)} core et satellite"
                                aria-label="${trad('Séparer {c} en core et satellite').replace('{c}', esc(row.label))}"
                                >›</button>` : '';
-                })()}
+                })()}` : ''}</span>
+        <span class="reeq-droite">
+          <b class="reeq-val">${fmtEUR0(row.value)}</b>
+          ${key && key.startsWith('classes.') ? `
             <button class="btn icon xs" data-action="retirer-classe-cible"
                     data-cle="${esc(key.split('.')[1])}"
                     title="${trad('Sortir {c} du rééquilibrage').replace('{c}', esc(row.labelClasse || row.label))}">✕</button>` : ''}
@@ -1000,7 +1000,7 @@ ${trad('Le périmètre : tes comptes d’investissement (PEA, compte-titres, ass
         <li class="reeq-ligne">
           <div class="reeq-haut">
             <span class="reeq-nom">${esc(x.label)}</span>
-            <b class="reeq-val">${fmtEUR(x.value)} <span class="muted">· ${fmtPct(x.pct, 1)}</span></b>
+            <b class="reeq-val">${fmtEUR0(x.value)} <span class="muted">· ${fmtPct(x.pct, 1)}</span></b>
           </div>
           ${(() => {
             const empile = parts.map(p =>
