@@ -75,7 +75,7 @@ function viewData() {
   const ligneSauvegarde = (b, i) => `
       <li class="frise-ligne">
         <div class="frise-quand"><b>${esc(quand(b.at))}</b><span class="sub">${esc(heure(b.at))}</span></div>
-        <div class="frise-quoi"><b>${esc(majuscule(b.reason))}</b>
+        <div class="frise-quoi"><b>${esc(majuscule(trad(b.reason)))}</b>
           <span class="sub">${pluriel(((b.data && b.data.positions) || []).length, 'position', 'positions')} · ${
             (JSON.stringify(b.data || {}).length / 1024).toFixed(0)} Ko · ${fmtWhen(b.at)}</span></div>
         <button class="btn sm ghost" data-action="restore-backup" data-i="${i}">${trad('Restaurer')} →</button>

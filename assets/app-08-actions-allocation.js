@@ -101,6 +101,20 @@ Object.assign(ACTIONS, {
   /* La tresorerie passe par les memes deux actions que les classes. Sa cible ne
      vit pas dans `classes` mais a la racine, `targets.cashToInvest` : ce petit
      detour est le prix de ne pas dupliquer tout le mecanisme d'exclusion. */
+  async 'appliquer-modele-cible'(btn) {
+    await poserModeleCible(btn.dataset.modele);
+  },
+  async 'choisir-modele-cible'() {
+    const id = await askOptions({ titre: trad('Partir d’un modèle'),
+      sous: trad('Des exemples courants, pas un conseil : tu choisis, et chaque pourcentage reste modifiable.'),
+      options: MODELES_CIBLES.map(m => ({ v: m.id, l: trad(m.nom), sous: `${compositionModele(m)} · ${trad(m.phrase)}` })) });
+    if (id) await poserModeleCible(id);
+  },
+  'garder-cibles-origine'() {
+    Store.state.targets.origineRevue = true;
+    Store.save(); render();
+    toast(trad('Cibles gardées'));
+  },
   'retirer-classe-cible'(btn) {
     const k = btn.dataset.cle;
     const tg = Store.state.targets;
@@ -286,6 +300,26 @@ function appliquerChoixSociete(c, i, v) {
   } else if (l.societeId) {
     dissocierParticipation(cle);
   }
+}
+
+async function poserModeleCible(id) {
+  const effet = effetModeleCibles(id);
+  if (!effet) return;
+  if (etatCibles() !== 'aucune') {
+    const noms = cles => cles.map(k => ASSET_CLASSES[k] || k).join(', ');
+    const details = [
+      effet.regroupees.length ? trad('{c} retrouve une seule cible, sans partage core et satellite.').replace('{c}', noms(effet.regroupees)) : '',
+      effet.effacees.length ? trad('{c} n’a plus de cible, ni de partage core et satellite.').replace('{c}', noms(effet.effacees)) : '',
+      effet.reintegrees.length ? trad('{c} revient dans le rééquilibrage.').replace('{c}', noms(effet.reintegrees)) : '',
+    ].filter(Boolean).join('\n');
+    if (!await askConfirm(`${trad('Remplacer tes cibles actuelles par « {m} » ?').replace('{m}', trad(effet.modele.nom))}\n\n${
+      compositionModele(effet.modele)}${details ? `\n\n${details}` : ''}`, { ok: 'Remplacer', danger: false })) return;
+  }
+  const avant = structuredClone(Store.state);
+  appliquerModeleCibles(id);
+  Store.addBackup('avant un modèle de cibles', avant);
+  Store.save(); render();
+  toast(`${trad(effet.modele.nom)} · ${compositionModele(effet.modele)}`);
 }
 
 partieChargee('assets/app-08-actions-allocation.js');

@@ -272,7 +272,10 @@ function blankState() {
     monthly: mois,
     positions: [],
     accountInfo: {},
-    targets: { coreEtf: 70, satellites: 20, gold: 5, cashToInvest: 5 },
+    /* Aucune cible : personne ne les a choisies. L'onglet Cible propose de
+       partir d'un modele ou de les fixer soi-meme. `origineRevue` dit qu'il
+       n'y a pas de cibles d'origine a signaler. */
+    targets: { classes: {}, cashToInvest: 0, exclues: [], origineRevue: true },
     strategy: structuredClone(SEED_STRATEGY),
     accountTypes: structuredClone(SEED_ACCOUNT_TYPES),
     accounts: [],

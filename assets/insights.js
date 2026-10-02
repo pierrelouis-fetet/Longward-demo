@@ -552,6 +552,10 @@ const REGLES_INSIGHT = [
     eligible() {
       const r = rebalanceRows();
       if (!(num(r.base) > 0)) return false;
+      /* Des cibles qui ne font pas 100 %, ou dont le plan laisse un residu,
+         n'ecrivent aucun plan : l'insight ne signale pas un ecart que la page
+         ne sait pas arbitrer. Meme garde que la page, `planEquilibre`. */
+      if (!planEquilibre(r)) return false;
       return lignesReequilibrage(r).some(x => num(x.targetPct) > 0);
     },
     evaluer() {

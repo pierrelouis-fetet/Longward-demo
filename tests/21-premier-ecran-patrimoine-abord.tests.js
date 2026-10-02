@@ -712,10 +712,12 @@ suite('Aucun ecran vide ne ment, aucun ne se tait', () => {
     vrai(/trad\('Les cibles répartissent ce que tu as placé\./.test(garde), 'et il dit ce qu’il attend');
     vrai(/data-action="ajouter-compte"/.test(garde) && /invitePremierPas\('comptes'\)/.test(garde),
       'avec une seule action, celle du premier pas quand il reste à faire');
-    /* La félicitation demande une cible réelle : sans un pourcentage visé,
-       chaque écart vaut zéro et « tout est à sa cible » se lit tout seul. */
-    vrai(/\? `<p class="empty">\$\{trad\('✓ Chaque classe est à sa cible/.test(s)
-      && /sumT > 0\.005/.test(s), 'et elle demande qu’une cible existe');
+    /* La felicitation demande des cibles a 100 % : sans un pourcentage vise,
+       la carte propose de partir d'un modele, et des cibles incompletes
+       n'ecrivent aucun plan. */
+    vrai(/: !mouvements\.length \? `<p class="empty">\$\{declenche[\s\S]{0,120}: trad\('✓ Chaque classe est dans sa marge/.test(s)
+      && /\$\{etat === 'aucune' \? choixModelesCible\(true\)/.test(s)
+      && /: !equilibre \? `<p class="empty">/.test(s), 'et elle demande des cibles complètes');
   });
 
   test('2. Budget > Charges fixes sans ligne : ni total nul, ni tableau d’en-têtes', () => {

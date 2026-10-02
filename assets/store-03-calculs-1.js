@@ -1523,13 +1523,22 @@ const CLE_TRESORERIE = 'cashToInvest';
 const nomDeLaCible = cle =>
   cle === CLE_TRESORERIE ? AFFECTATION_LABEL.investir : (ASSET_CLASSES[cle] || cle);
 
-function sommeCibles() {
+/* La somme des cibles de la page, tresorerie comprise, en un seul endroit.
+   Une classe mise hors jeu ne compte pas : son encours a quitte la base, lui
+   reclamer une part de 100 % n'aurait pas de sens. La tresorerie sortie non
+   plus, sans quoi les cibles restantes ne pourraient jamais faire 100 %.
+   La somme BRUTE decide de l'etat des cibles (`etatCibles`) ; celle qu'affiche
+   la page en est l'arrondi, et ne se recalcule pas a part. */
+function sommeCiblesBrute() {
   const tg = Store.state.targets || {};
   const horsJeu = new Set(tg.exclues || []);
   const cash = horsJeu.has(CLE_TRESORERIE) ? 0 : num(tg.cashToInvest);
-  return round2(Object.entries(tg.classes || {})
+  return Object.entries(tg.classes || {})
     .filter(([k]) => !horsJeu.has(k))
-    .reduce((s, [, v]) => s + cibleDeClasse(v), 0) + cash);
+    .reduce((s, [, v]) => s + cibleDeClasse(v), 0) + cash;
+}
+function sommeCibles() {
+  return round2(sommeCiblesBrute());
 }
 
 function rebalanceRows() {
@@ -1582,6 +1591,149 @@ function rebalanceRows() {
     cash: cashSorti ? null
       : mk(AFFECTATION_LABEL.investir, t.cashToInvest, tg.cashToInvest, CLE_TRESORERIE),
   };
+}
+
+/* --- CE QUE LES CIBLES AUTORISENT -----------------------------------------
+
+   Trois etats, lus sur la somme BRUTE des cibles actives (`sommeCibles()`
+   arrondit pour l'affichage, et 99,996 % s'y lirait 100 %) :
+     'aucune'     rien n'est pose ; la page propose de partir d'un modele ;
+     'incomplete' la somme ne fait pas 100 % ; aucun mouvement ne s'ecrit ;
+     'complete'   le plan peut s'ecrire.
+   Toutes a zero veut dire "pas de cible posee", et non "cible de zero pour
+   chaque classe" : c'est deja la lecture de l'insight d'allocation. */
+function etatCibles() {
+  const s = sommeCiblesBrute();
+  if (s <= 1e-6) return 'aucune';
+  return Math.abs(s - 100) < 1e-6 ? 'complete' : 'incomplete';
+}
+
+function arrondirEnEquilibre(valeurs) {
+  const total = Math.round(valeurs.reduce((s, v) => s + num(v), 0));
+  const out = valeurs.map(v => Math.floor(num(v)));
+  let reste = total - out.reduce((s, v) => s + v, 0);
+  const ordre = valeurs.map((v, i) => ({ i, f: num(v) - Math.floor(num(v)) }))
+    .sort((a, b) => b.f - a.f || a.i - b.i);
+  for (let k = 0; k < ordre.length && reste > 0; k++, reste--) out[ordre[k].i] += 1;
+  return out;
+}
+
+const lignesDuPlan = r => (r.classes || []).concat(r.cash ? [r.cash] : []);
+
+function planEquilibre(r = rebalanceRows()) {
+  if (etatCibles() !== 'complete') return false;
+  return Math.round(lignesDuPlan(r).reduce((s, l) => s + num(l.delta), 0)) === 0;
+}
+
+const MARGE_MIN_POINTS = 1;
+const MARGE_MAX_POINTS = 5;
+const MARGE_PART_DE_CIBLE = 0.25;
+const margeCible = cible =>
+  Math.max(MARGE_MIN_POINTS, Math.min(MARGE_MAX_POINTS, MARGE_PART_DE_CIBLE * num(cible)));
+const horsMarge = l => Math.abs(num(l.pct) - num(l.targetPct)) >= margeCible(l.targetPct);
+
+function planDeclenche(r = rebalanceRows()) {
+  if (!planEquilibre(r)) return false;
+  return lignesDuPlan(r).some(horsMarge) || lignesReequilibrage(r).some(horsMarge);
+}
+
+/* Les mouvements du plan : TOUTES ses jambes, arrondies ensemble, et non les
+   seules lignes hors marge. Filtrer ligne par ligne casserait l'equilibre :
+   6 points a vendre contre 5 a acheter, avec des cibles a 100 %. Les jambes
+   encore dans leur marge restent, marquees comme telles. Un plan declenche
+   peut rendre une liste vide quand aucune jambe ne fait un euro entier : la
+   page le distingue de "chaque classe est dans sa marge" par `planDeclenche`. */
+function mouvementsDuPlan(r = rebalanceRows()) {
+  if (!planDeclenche(r)) return [];
+  const lignes = lignesDuPlan(r);
+  const euros = arrondirEnEquilibre(lignes.map(l => num(l.delta)));
+  return lignes.map((l, i) => ({ ...l, montant: euros[i], dansLaMarge: !horsMarge(l) }))
+    .filter(m => m.montant !== 0);
+}
+
+/* OU METTRE UN VERSEMENT, sans rien vendre : chaque ligne recoit sa part du
+   montant au prorata de son deficit sur la base augmentee du versement. Avec
+   des cibles a 100 %, les deficits couvrent toujours au moins le versement,
+   donc tout le montant va a ce qui est sous sa cible. En euros entiers, dont
+   la somme fait exactement la partie entiere du montant saisi ; la page dit
+   quand des centimes restent de cote (`listeVersement`). Elle ne lit que ses
+   arguments : c'est l'appelant qui verifie que le plan peut s'ecrire
+   (`planEquilibre`), comme pour la carte qui la porte. */
+function repartirVersement(r, montant) {
+  const v = Math.floor(num(montant));
+  if (!(v > 0)) return [];
+  const lignes = lignesDuPlan(r);
+  const base = num(r.base) + v;
+  const deficits = lignes.map(l => Math.max(0, base * num(l.targetPct) / 100 - num(l.value)));
+  const total = deficits.reduce((s, d) => s + d, 0);
+  if (!(total > 0)) return [];
+  const euros = arrondirEnEquilibre(deficits.map(d => d / total * v));
+  return lignes.map((l, i) => ({ cle: l.cle, label: l.label, montant: euros[i] }))
+    .filter(x => x.montant > 0);
+}
+
+const MODELES_CIBLES = [
+  { id: 'actions100', nom: 'Tout en actions', classes: { actions: 100 },
+    phrase: 'Tout ce qui est placé suit les marchés d’actions, dans leurs hausses comme dans leurs baisses.' },
+  { id: 'actions80', nom: '80 % actions', classes: { actions: 80, obligations: 20 },
+    phrase: 'Les obligations ont aussi une valeur qui varie, en particulier avec les taux d’intérêt.' },
+  { id: 'actions60', nom: '60 % actions', classes: { actions: 60, obligations: 40 },
+    phrase: 'Les obligations portent un risque de taux et un risque de défaut de l’émetteur.' },
+  { id: 'actions30', nom: '30 % actions', classes: { actions: 30, obligations: 50, monetaire: 20 },
+    phrase: 'Le rendement du monétaire peut rester inférieur à l’inflation.' },
+];
+const compositionModele = m => Object.entries(m.classes)
+  .map(([k, v]) => `${v} % ${String(ASSET_CLASSES[k] || k).toLowerCase()}`).join(' · ');
+
+/* Ce que l'application d'un modele changera, sans rien ecrire. Une classe
+   decoupee core/satellite que le modele cible retrouve une seule cible
+   (`regroupees`) ; celle qu'il ne cible pas perd sa cible et son partage
+   (`effacees`). Les classes sorties du reequilibrage que le modele cible y
+   reviennent (`reintegrees`). */
+function effetModeleCibles(id) {
+  const m = MODELES_CIBLES.find(x => x.id === id);
+  if (!m) return null;
+  const tg = Store.state.targets || {};
+  const avant = tg.classes || {};
+  const decoupees = Object.keys(avant).filter(k => avant[k] !== null && typeof avant[k] === 'object');
+  return {
+    modele: m,
+    regroupees: decoupees.filter(k => m.classes[k] > 0),
+    effacees: decoupees.filter(k => !(m.classes[k] > 0)),
+    reintegrees: (tg.exclues || []).filter(k => m.classes[k] > 0),
+  };
+}
+function appliquerModeleCibles(id) {
+  const effet = effetModeleCibles(id);
+  if (!effet) return null;
+  const tg = Store.state.targets || (Store.state.targets = {});
+  const positives = Object.keys(effet.modele.classes).filter(k => effet.modele.classes[k] > 0);
+  tg.classes = { ...effet.modele.classes };
+  tg.cashToInvest = 0;
+  tg.exclues = (tg.exclues || []).filter(k => !positives.includes(k));
+  if (tg.ciblesRetirees) {
+    for (const k of positives) delete tg.ciblesRetirees[k];
+    if (!Object.keys(tg.ciblesRetirees).length) delete tg.ciblesRetirees;
+  }
+  tg.origineRevue = true;
+  return effet;
+}
+
+/* LES CIBLES D'ORIGINE. Un profil cree avant ce changement a recu 90 % actions,
+   5 % metaux precieux et 5 % de tresorerie, que personne n'a choisis. Rien ne
+   les efface : une egalite de chiffres ne prouve pas qu'on ne les a pas
+   voulus. La page les signale, une fois, jusqu'a ce qu'on les garde ou qu'on
+   parte d'un modele (`origineRevue`). */
+function ciblesDOrigine() {
+  const tg = Store.state.targets || {};
+  if (tg.origineRevue) return false;
+  if ((tg.exclues || []).length) return false;
+  if (tg.ciblesRetirees && Object.keys(tg.ciblesRetirees).length) return false;
+  if (num(tg.cashToInvest) !== 5) return false;
+  const c = tg.classes || {};
+  const attendu = { actions: 90, metaux: 5 };
+  const simple = v => v === undefined || v === null || typeof v !== 'object';
+  return Object.keys({ ...c, ...attendu }).every(k => simple(c[k]) && num(c[k]) === (attendu[k] || 0));
 }
 
 /* Les placements derriere une ligne de cible.

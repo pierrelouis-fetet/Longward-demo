@@ -126,6 +126,7 @@ dt .sub .mois-lien { font: inherit; color: inherit; }
     color-mix(in oklab, var(--accent) 55%, transparent), var(--accent));
 }
 .reeq-reel.ok { background: var(--good); }
+.reeq-reel.neutre { background: color-mix(in oklab, var(--text-secondary) 45%, transparent); }
 .reeq-cible {
   position: absolute; top: -3px; bottom: -3px; width: 2px;
   background: var(--text-primary); opacity: .75; border-radius: 2px;

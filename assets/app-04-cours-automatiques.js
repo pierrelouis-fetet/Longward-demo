@@ -744,6 +744,11 @@ function viewRebalance() {
   const per = perimetreReequilibrage();
   const tg = Store.state.targets;
   const sumT = sommeCibles();
+  /* L'etat lu sur la somme brute : sans cible, ou incompletes, aucun mouvement
+     ne s'ecrit ; voir `etatCibles` et `planEquilibre`. */
+  const etat = etatCibles();
+  const equilibre = planEquilibre(r);
+  const declenche = planDeclenche(r);
 
   if (!(r.base > 0.005)) {
     return `
@@ -754,6 +759,11 @@ function viewRebalance() {
     ${invitePremierPas('comptes') || `
     <button type="button" class="btn sm" data-action="ajouter-compte" data-type="cto"
             style="margin:4px 0 0">${trad('Ajouter un compte d’investissement')}</button>`}
+  </div>
+  ${ciblesDOrigine() ? inviteCiblesOrigine() : ''}
+  <div class="card">
+    <div class="card-head"><h2>${trad(etat === 'aucune' ? 'Choisis un point de départ' : 'Tes cibles')}</h2></div>
+    ${etat === 'aucune' ? choixModelesCible(false) : resumeCibles()}
   </div>`;
   }
 
@@ -778,14 +788,12 @@ function viewRebalance() {
      ne figure alors ni dans les mouvements, ni dans la phrase « ta tresorerie
      disponible en couvre tant ». Trois lectures la supposaient presente, et la
      page tombait des qu'on la retirait. */
-  const mouvements = r.classes.concat(r.cash ? [r.cash] : [])
-    .filter(c => Math.abs(c.delta) >= 1);
-  const alleger   = mouvements.filter(c => c.delta < 0).sort((x, y) => x.delta - y.delta);
-  const renforcer = mouvements.filter(c => c.delta > 0).sort((x, y) => y.delta - x.delta);
-  const totalVente = alleger.reduce((s, c) => s - c.delta, 0);
-  const totalAchat = renforcer.reduce((s, c) => s + c.delta, 0);
-  const equilibre = Math.abs(totalVente - totalAchat) < 1;
-  const dispo = r.cash && r.cash.delta < 0 ? -r.cash.delta : 0;
+  const mouvements = mouvementsDuPlan(r);
+  const alleger   = mouvements.filter(c => c.montant < 0).sort((x, y) => x.montant - y.montant);
+  const renforcer = mouvements.filter(c => c.montant > 0).sort((x, y) => y.montant - x.montant);
+  const totalAchat = renforcer.reduce((s, c) => s + c.montant, 0);
+  const tresoPlan = mouvements.find(c => c.cle === CLE_TRESORERIE);
+  const dispo = tresoPlan && tresoPlan.montant < 0 ? -tresoPlan.montant : 0;
 
   /* `dansLaPhrase()` est partie avec la phrase de tete de la carte : elle ne
      servait qu'a mettre un intitule de tableau au milieu d'une phrase, et il n'y
@@ -794,13 +802,16 @@ function viewRebalance() {
 
   const listeMvt = (lignes, sens) => lignes.map(c =>
     `<li><b>${esc(c.label)}</b> <span class="montant-plan${sens > 0 ? ' renfort' : ''}">${
-      sens > 0 ? '+' : '−'}${fmtEUR0(Math.abs(c.delta))}</span>
-      <span class="muted">${trad('pour atteindre')} ${fmtPct(c.targetPct, 0)}</span></li>`).join('');
+      sens > 0 ? '+' : '−'}${fmtEUR0(Math.abs(c.montant))}</span>
+      <span class="muted">${trad('pour atteindre')} ${fmtPct(c.targetPct, 0)}${
+        c.dansLaMarge ? ` · ${trad('dans la marge')}` : ''}</span></li>`).join('');
 
   const ligneReeq = (row, key, base) => {
     const part = Math.max(0, Math.min(100, row.pct));
     const cible = Math.max(0, Math.min(100, row.targetPct));
-    const ecartFait = Math.abs(row.delta) < 1;
+    const sansCible = etat === 'aucune';
+    const constat = !sansCible && !equilibre;
+    const dansMarge = !sansCible && !constat && !horsMarge(row);
     return `
     <li class="reeq-ligne">
       <div class="reeq-haut">
@@ -838,7 +849,7 @@ function viewRebalance() {
       </div>
       ${(() => {
         const jauge = `
-          <i class="reeq-reel ${row.delta > 0 ? 'sous' : row.delta < 0 ? 'sur' : 'ok'}" style="width:${part.toFixed(2)}%"></i>
+          <i class="reeq-reel ${sansCible || constat ? 'neutre' : dansMarge ? 'ok' : row.delta > 0 ? 'sous' : row.delta < 0 ? 'sur' : 'ok'}" style="width:${part.toFixed(2)}%"></i>
           <i class="reeq-cible" style="left:${cible.toFixed(2)}%"></i>`;
         const ouvre = key === CLE_TRESORERIE
           ? { apercu: 'cashCible', arg: 'investir', quoi: 'les poches de cash' }
@@ -861,8 +872,10 @@ function viewRebalance() {
                 `<option value="${v}" ${v === valeurCible(key) ? 'selected' : ''}>${v}</option>`).join('')
             }</select><span class="u">%</span>`
                 : `<span class="muted">· ${trad('cible')} ${fmtPct(row.targetPct, 0)}</span>`}</span>
-        <span class="reeq-ecart ${ecartFait ? 'muted' : 'a-faire'}">${ecartFait
-          ? trad('à la cible')
+        <span class="reeq-ecart ${sansCible || constat || dansMarge ? 'muted' : 'a-faire'}">${sansCible ? trad('pas de cible')
+          : constat ? (Math.round(row.delta) === 0 ? trad('à la cible')
+            : `<b>${fmtEUR0(Math.abs(row.delta))}</b> ${row.delta > 0 ? trad('sous la cible') : trad('au-dessus de la cible')}`)
+          : dansMarge ? trad('dans la marge')
           : `<b class="${row.delta > 0 ? 'renfort' : ''}">${
                 row.delta > 0 ? '+' : '−'}${fmtEUR0(Math.abs(row.delta))}</b> ${
               row.delta > 0 ? trad('à renforcer')
@@ -876,14 +889,21 @@ function viewRebalance() {
     <b>${trad('tes comptes d’investissement')}</b> ${trad('et leur trésorerie,')}
     ${fmtEUR0(r.base)}${aide(trad("PEA, compte-titres, assurance-vie, PER, portefeuille de cryptomonnaies, avec leurs lignes et l’argent qui y attend d’être placé. Ton cash du quotidien, ton épargne de précaution, ton immobilier et ton non coté n’en font pas partie : ils ne s’arbitrent pas d’un clic, et les mélanger donnerait des pourcentages qu’aucune décision ne peut suivre. Allocation, elle, montre tout ton patrimoine."))}.</p>
 
+  ${ciblesDOrigine() ? inviteCiblesOrigine() : ''}
+
   <div class="card plan">
-    <div class="card-head"><h2>${trad('Ce qu’il y a à faire')}${aide(trad("Les mouvements qui ramènent chaque classe à sa cible. Quand tes pourcentages totalisent 100 %, ce qu’il faut vendre finance exactement ce qu’il faut acheter."))}</h2>
-      <span class="hint">${mouvements.length ? `${mouvements.length} ${mouvements.length > 1 ? trad('mouvements') : trad('mouvement')}` : sumT > 0.005 ? trad('rien à faire') : trad('cibles à fixer')}</span></div>
-    ${!mouvements.length
-      ? (sumT > 0.005
-        ? `<p class="empty">${trad('✓ Chaque classe est à sa cible. Rien à arbitrer.')}</p>`
-        : `<p class="empty">${trad('Fixe le pourcentage que tu vises par classe : '
-            + 'le plan d’arbitrage s’écrira en face de ce que tu détiens.')}</p>`)
+    <div class="card-head"><h2>${etat === 'aucune' ? trad('Choisis un point de départ')
+      : `${trad('Ce qu’il y a à faire')}${aide(trad("Les mouvements qui ramènent chaque classe à sa cible. Quand tes pourcentages totalisent 100 %, ce qu’il faut vendre finance exactement ce qu’il faut acheter."))}`}</h2>
+      <span class="hint">${mouvements.length ? `${mouvements.length} ${mouvements.length > 1 ? trad('mouvements') : trad('mouvement')}`
+        : etat === 'aucune' ? trad('cibles à fixer') : equilibre ? trad('rien à faire') : trad('cibles à compléter')}</span></div>
+    ${etat === 'aucune' ? choixModelesCible(true)
+      : !equilibre ? `<p class="empty">${sumT === 100
+          ? trad('Tes cibles ne font pas exactement 100 % : le plan s’écrit quand elles les font.')
+          : trad('Tes cibles totalisent {v} % : le plan s’écrit quand elles font 100 %.').replace('{v}', sumT)}</p>`
+      : !mouvements.length ? `<p class="empty">${declenche
+          ? trad('Les écarts font moins d’un euro : rien à arbitrer.')
+          : trad('✓ Chaque classe est dans sa marge : rien à arbitrer.')}</p>
+      <p class="hint" style="margin:8px 0 0">${trad(PHRASE_MARGE)}</p>`
       : `
       <div class="plan-cols">
         ${alleger.length ? `<div>
@@ -897,12 +917,12 @@ function viewRebalance() {
             ? `<p class="hint" style="margin:8px 0 0">${trad('Ta trésorerie disponible en couvre')} ${fmtEUR0(Math.min(dispo, totalAchat))} ${trad('sans rien vendre.')}</p>` : ''}
         </div>` : ''}
       </div>
-      ${equilibre ? '' : `<p class="hint" style="margin:12px 0 0">
-        ${trad('Ventes et achats ne s’équilibrent pas')} (${fmtEUR0(totalVente)} ${trad('contre')} ${fmtEUR0(totalAchat)})
-        ${trad('parce que tes cibles totalisent')} ${sumT} % ${trad('et non 100 %.')}</p>`}`}
+      <p class="hint" style="margin:12px 0 0">${trad(PHRASE_MARGE)}</p>`}
   </div>
 
-  ${sumT === 100 ? '' : `
+  ${!equilibre ? '' : carteVersementCible(r)}
+
+  ${etat !== 'incomplete' || sumT === 100 ? '' : `
   <div class="note" style="background:color-mix(in oklab, var(--${sumT > 100 ? 'critical' : 'warning'}) 12%, var(--surface-1));
        border-color:color-mix(in oklab, var(--${sumT > 100 ? 'critical' : 'warning'}) 40%, transparent)">
     ${sumT > 100 ? '⚠' : 'ⓘ'}
@@ -949,8 +969,14 @@ ${trad('Le périmètre : tes comptes d’investissement (PEA, compte-titres, ass
       ${r.cash ? `<li class="reeq-groupe reeq-groupe-suite">${trad('Trésorerie')}</li>
       ${ligneReeq(r.cash, CLE_TRESORERIE)}` : ''}
     </ul></div>
-    <button class="btn sm ghost" data-action="ajouter-classe-cible"
-            style="margin-top:12px">${trad('+ Suivre une classe')}</button>
+    ${etat === 'aucune' ? '' : `<p class="reeq-total">${sumT === 100
+      ? trad('Total des cibles : 100 %')
+      : sumT < 100 ? trad('Total des cibles : {v} % · il en manque {x}').replace('{v}', sumT).replace('{x}', round2(100 - sumT))
+      : trad('Total des cibles : {v} % · {x} de trop').replace('{v}', sumT).replace('{x}', round2(sumT - 100))}</p>`}
+    <div class="row" style="gap:8px;margin-top:12px">
+      <button class="btn sm ghost" data-action="ajouter-classe-cible">${trad('+ Suivre une classe')}</button>
+      <button class="btn sm ghost" data-action="choisir-modele-cible">${trad('Partir d’un modèle')}</button>
+    </div>
     <dl class="kv reeq-pied">
       <dt>${BASES.placeBourse.nom}</dt><dd>${fmtEUR(r.invested.value)} <span class="muted">· ${fmtPct(r.invested.pct, 1)}</span></dd>
       <dt>${BASES.baseCibles.nom}<span class="sub">${trad('base des pourcentages ci-dessus')}</span></dt><dd>${fmtEUR(r.base)}</dd>
@@ -1011,6 +1037,72 @@ ${trad('Le périmètre : tes comptes d’investissement (PEA, compte-titres, ass
 }
 
 function mountRebalance() {
+  const champ = $('#versementCible');
+  if (champ) champ.addEventListener('input', () => {
+    const cible = $('#versementRepartition');
+    if (cible) cible.innerHTML = listeVersement(rebalanceRows(), champ.value);
+  });
+}
+
+const PHRASE_MARGE = 'La marge vaut un quart de la cible, avec un minimum de 1 point et un maximum de 5 points.';
+
+/* Les quatre modeles, en liste. `avecListe` : la page porte les menus par
+   classe en dessous ; sans placement, ils viendront plus tard. */
+function choixModelesCible(avecListe) {
+  return `
+    <p class="hint" style="margin:0 0 8px">${trad('Des exemples courants, pas un conseil : tu choisis, et chaque pourcentage reste modifiable.')}</p>
+    <div class="choix-liste">${MODELES_CIBLES.map(m => `
+      <button type="button" class="choix-ligne" data-action="appliquer-modele-cible" data-modele="${esc(m.id)}">
+        <span class="choix-txt"><b>${esc(trad(m.nom))}</b><span class="sub">${esc(compositionModele(m))}</span>
+          <span class="sub">${esc(trad(m.phrase))}</span></span>
+      </button>`).join('')}</div>
+    <p class="hint" style="margin:8px 0 0">${trad(avecListe
+      ? 'Ou fixe tes propres pourcentages dans la liste ci-dessous.'
+      : 'Ou fixe tes propres pourcentages, classe par classe, après ton premier placement.')}</p>`;
+}
+
+function resumeCibles() {
+  const tg = Store.state.targets || {};
+  const parts = Object.entries(tg.classes || {})
+    .map(([k, v]) => [k, cibleDeClasse(v)]).filter(([, v]) => v > 0)
+    .map(([k, v]) => `${fmtPct(v, 0)} ${String(ASSET_CLASSES[k] || k).toLowerCase()}`);
+  if (num(tg.cashToInvest) > 0) parts.push(`${fmtPct(tg.cashToInvest, 0)} ${AFFECTATION_LABEL.investir.toLowerCase()}`);
+  return `
+    <p style="margin:0 0 8px">${esc(parts.join(' · '))}</p>
+    <button type="button" class="btn sm ghost" data-action="choisir-modele-cible">${trad('Partir d’un modèle')}</button>`;
+}
+
+function inviteCiblesOrigine() {
+  return `
+  <div class="note">ⓘ <span>${trad('Ces cibles sont celles que Longward posait par défaut : 90 % actions, 5 % métaux précieux, 5 % de trésorerie. Garde-les, ou pars d’un modèle.')}
+    <span class="row" style="gap:8px;margin-top:8px">
+      <button type="button" class="btn sm" data-action="garder-cibles-origine">${trad('Les garder')}</button>
+      <button type="button" class="btn sm ghost" data-action="choisir-modele-cible">${trad('Partir d’un modèle')}</button>
+    </span></span>
+  </div>`;
+}
+
+function carteVersementCible(r) {
+  const montant = Math.max(0, round2(num(projectionSettings().monthly)));
+  return `
+  <div class="card">
+    <div class="card-head"><h2>${trad('Ton prochain versement')}</h2></div>
+    <p class="hint" style="margin:0 0 8px">${trad('Une répartition par classe, qui rapproche tes parts de tes cibles sans rien vendre. Elle ne choisit aucun titre et n’exécute rien.')}</p>
+    <div class="field"><label for="versementCible">${trad('Montant à investir ({dev})')}</label>
+      <input type="number" step="0.01" min="0" inputmode="decimal" id="versementCible"
+             value="${montant || ''}" placeholder="0"></div>
+    <div id="versementRepartition">${listeVersement(r, montant)}</div>
+  </div>`;
+}
+function listeVersement(r, montant) {
+  const entier = Math.floor(num(montant));
+  const centimes = num(montant) - entier > 0.004;
+  const avis = centimes ? `<p class="hint" style="margin:0 0 8px">${trad('En euros entiers : {v} répartis, les centimes restent de côté.')
+      .replace('{v}', fmtEUR0(Math.max(0, entier)))}</p>` : '';
+  const parts = planEquilibre(r) ? repartirVersement(r, montant) : [];
+  if (!parts.length) return avis || `<p class="hint" style="margin:0">${trad('Indique un montant : sa répartition s’affiche ici.')}</p>`;
+  return `${avis}<div class="plan-cols"><div><ul>${parts.map(p => `
+    <li><b>${esc(p.label)}</b> <span class="montant-plan renfort">+${fmtEUR0(p.montant)}</span></li>`).join('')}</ul></div></div>`;
 }
 
 let historyShowLegacy = false;
