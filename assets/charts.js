@@ -239,6 +239,11 @@ const Charts = (() => {
   }
 
   let _ctx = null;
+  function largeurTexte(texte, police = '12.5px system-ui, -apple-system, "Segoe UI", sans-serif') {
+    if (!_ctx) _ctx = document.createElement('canvas').getContext('2d');
+    _ctx.font = police;
+    return _ctx.measureText(texte).width;
+  }
   function fitText(texte, largeurMax, police = '12.5px system-ui, -apple-system, "Segoe UI", sans-serif') {
     if (!_ctx) _ctx = document.createElement('canvas').getContext('2d');
     _ctx.font = police;
@@ -954,7 +959,13 @@ const Charts = (() => {
       const W = Math.max(el.clientWidth, 320);
       const rowH = opts.rowH || 30;
       const labelW = Math.min(210, Math.max(120, Math.round(W * 0.34)));
-      const valueW = 108;
+      const montants = items.map(it => fmtEUR0Texte(it.value));
+      const parts = items.map(it => fmtPct(it.pct ?? 0, 1));
+      const police = '12.5px system-ui, -apple-system, "Segoe UI", sans-serif';
+      const pctW = Math.ceil(Math.max(0, ...parts.map(t => largeurTexte(t, police)))) + 2;
+      const montantW = Math.ceil(Math.max(0, ...montants.map(t => largeurTexte(t, `550 ${police}`)))) + 2;
+      const ecart = 10;
+      const valueW = montantW + ecart + pctW + 8;
       const H = items.length * rowH + 8;
       const barMax = W - labelW - valueW - 8;
       const max = Math.max(...items.map(i => Math.abs(i.value)), 1);
@@ -974,7 +985,8 @@ const Charts = (() => {
                 <rect class="rb-barre" x="${labelW}" y="${y + 5}" width="${w}" height="${rowH - 14}" rx="4"
                       fill="${neg ? cssv('--critical') : (it.couleur || color)}"
                       fill-opacity="${it.dim ? .45 : 1}"/>
-                <text x="${W}" y="${y + rowH / 2 + 1}" text-anchor="end" class="rb-val">${fmtEUR0Texte(it.value)}<tspan class="rb-pct"> · ${fmtPct(it.pct ?? 0, 1)}</tspan></text>
+                <text x="${W - pctW - ecart}" y="${y + rowH / 2 + 1}" text-anchor="end" class="rb-val">${montants[i]}</text>
+                <text x="${W}" y="${y + rowH / 2 + 1}" text-anchor="end" class="rb-val rb-pct">${parts[i]}</text>
               </g>`;
           }).join('')}
         </svg>`;
