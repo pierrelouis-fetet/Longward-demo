@@ -132,12 +132,12 @@ function viewOverview() {
   /* --- LA COURBE DU VIDE DE DROITE --------------------------------------
 
      Cette courbe ne double pas la carte Evolution du patrimoine, deux cents
-     pixels plus bas : deux dessins du meme chiffre finissent par se contredire.
-     Elle est d'une autre nature, et la difference est structurelle, pas
-     cosmetique : sa fenetre est celle que `variationAn()` a retenue, la meme
-     exactement que la variation posee a sa gauche. Elle illustre CE
-     chiffre-la, elle ne resume pas l'historique. La carte du dessous, elle,
-     porte sa propre plage -- YTD, un an, trois ans, tout -- et son axe.
+     pixels plus bas, et elle ne la contredit pas non plus. Elle part du
+     releve que `variationAn()` a retenu, celui de la variation posee a sa
+     gauche, et trace les releves jusqu'au dernier, comme la carte du dessous :
+     les deux dessins finissent sur le meme releve. Le chiffre et sa variation
+     sont ceux du jour. La carte du dessous, elle, porte sa propre plage --
+     YTD, un an, trois ans, tout -- et son axe.
 
      Deux points au moins, sinon rien : `sparkline()` se tait sous ce seuil, et
      une ligne entre deux releves reste une vraie lecture. Aucun mois manquant

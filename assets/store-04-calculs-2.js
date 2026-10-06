@@ -504,15 +504,19 @@ function variationAn(aujourdhui = todayISO(), net = true) {
    designer le meme releve, et la courbe aurait alors illustre une autre periode
    que le chiffre pose juste a cote.
 
-   ET ELLE NE CALCULE RIEN. Les deux accesseurs sont mot pour mot ceux de
-   `variationAn()` : `net` sur un releve passe, `total` de `nowTotals()` pour
-   aujourd'hui — en se rappelant que le mot `total` designe le brut sur un
-   releve et le net sur la photo du jour. Aucun mois n'est interpole, aucun trou
-   n'est comble : ce sont les releves qui existent, et rien d'autre. */
+   ET ELLE NE CALCULE RIEN. Son accesseur est mot pour mot celui que
+   `variationAn()` applique a un releve passe : `net`, ou `total` (les avoirs)
+   en brut. Aucun mois n'est interpole, aucun trou n'est comble : ce sont les
+   releves qui existent, et rien d'autre.
+
+   ELLE NE TRACE QUE DES RELEVES, jusqu'au dernier, comme la carte Evolution
+   du dessous (`pointsEvolution({ aujourdhui: false })`) : les deux dessins
+   finissent sur le meme releve, et un point du jour ne prolonge pas l'un a
+   plat sans l'autre. Le chiffre et sa variation restent ceux du jour ; la
+   courbe part du meme releve qu'eux. */
 function pointsAn(depuis, net = true) {
   if (!depuis) return [];
-  const t = nowTotals();
-  const pts = historySeries({ includeNow: false })
+  return historySeries({ includeNow: false })
     .filter(p => String(p.date) >= String(depuis))
     /* L'ANNEE EN ENTIER, ET LE FORMATEUR QUI EXISTE DEJA POUR CA. Le ruban des
        releves abrege — « sept. 25 » — parce que ses colonnes sont etroites ;
@@ -521,8 +525,6 @@ function pointsAn(depuis, net = true) {
        est ecrit pour ce cas et sert deja aux echeances de credit : en poser un
        second ici aurait donne deux facons de nommer le meme mois. */
     .map(p => ({ valeur: num(net ? p.net : p.total), label: fmtMoisAn(p.date) }));
-  pts.push({ valeur: num(net ? t.total : t.brut), label: trad('Auj.') });
-  return pts;
 }
 
 const serieAn = (depuis, net = true) => pointsAn(depuis, net).map(p => p.valeur);

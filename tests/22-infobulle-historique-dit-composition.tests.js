@@ -930,26 +930,51 @@ suite('Le hero dit sa fenêtre et ce qu’elle n’est pas', () => {
 
 /* --- La courbe du hero, sur la fenetre de la variation ---------------------
 
-   Le vide a droite du grand chiffre donnait une carte inachevee. Il porte
-   desormais l'image du « +13 895 € · +7,6 % » pose a sa gauche : la meme
-   fenetre, la meme serie, aucun chiffre de plus. */
-suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
+   Le vide a droite du grand chiffre donnait une carte inachevee. Il porte une
+   courbe qui part du releve de la variation posee a sa gauche et trace les
+   releves jusqu'au dernier, comme la carte Evolution : aucun chiffre de plus,
+   et aucun point du jour. */
+suite('Le hero trace ses relevés depuis celui de sa variation', () => {
   const app = () => lireSource('assets/app.js');
 
-  test('la série couvre exactement la fenêtre que la variation annonce', () => {
+  test('la série part du relevé de la variation et trace les relevés jusqu’au dernier', () => {
     Fixture.poser();
     const v = variationAn(todayISO(), true);
     vrai(!!v, 'la fixture a de quoi comparer');
     const s = serieAn(v.depuis, true);
-    /* ELLE NE CHOISIT RIEN : la fenêtre lui est passée. Deux sélections côte à
-       côte auraient fini par ne pas désigner le même relevé, et la courbe
-       aurait illustré une autre période que le chiffre d'à côté. */
+    /* ELLE NE CHOISIT RIEN : le releve de depart lui est passe. Deux
+       selections cote a cote finiraient par ne pas designer le meme releve, et
+       la courbe ne partirait pas d'ou part le chiffre d'a cote. */
     const dans = historySeries({ includeNow: false }).filter(p => String(p.date) >= String(v.depuis));
-    eq(s.length, dans.length + 1, 'un point par relevé de la fenêtre, plus la photo du jour');
+    eq(s.length, dans.length, 'un point par relevé de la fenêtre, et rien d’autre');
     eq(s[0], num(dans[0].net), 'elle commence au relevé retenu par la variation');
-    eq(s[s.length - 1], num(nowTotals().total), 'et finit sur le patrimoine d’aujourd’hui');
-    /* Le premier et le dernier point encadrent exactement l'écart annoncé. */
-    pres(s[s.length - 1] - s[0], v.eur, 'les deux bouts font la variation affichée');
+    pres(s[0], v.avant, 'le même relevé que celui de la variation');
+    eq(s[s.length - 1], num(dans[dans.length - 1].net), 'et finit sur le dernier relevé');
+  });
+
+  test('en haut et en bas, les deux courbes finissent sur le même relevé', () => {
+    /* Les deux dessins ne tracent que des releves : ils finissent donc sur
+       le meme, et aucun palier du jour ne prolonge l'un sans l'autre. */
+    Fixture.poser();
+    for (const net of [true, false]) {
+      const v = variationAn(todayISO(), net);
+      const haut = pointsAn(v.depuis, net);
+      const bas = pointsEvolution({ net, financier: false, aujourdhui: false });
+      pres(haut[haut.length - 1].valeur, bas[bas.length - 1].total,
+        `${net ? 'en net' : 'en brut'}, la même dernière valeur`);
+      eq(haut[haut.length - 1].label, fmtMoisAn(bas[bas.length - 1].date), 'et le même relevé');
+    }
+  });
+
+  test('un seul relevé dans la fenêtre ne trace pas de courbe', () => {
+    const [a, m] = todayISO().split('-').map(Number);
+    const ilYaUnAn = `${a - 1}-${String(m).padStart(2, '0')}-01`;
+    Fixture.poser(s => {
+      s.monthly = [{ date: ilYaUnAn, comment: '', dettes: 0, v: { a: 1 }, parts: { a: { cash: 1000 } } }];
+    });
+    const v = variationAn(todayISO(), true);
+    vrai(!!v, 'la variation existe');
+    eq(pointsAn(v.depuis, true).length, 1, 'un point : sous le seuil de deux, la vue ne pose pas la courbe');
   });
 
   test('aucun point n’est inventé, aucun mois n’est comblé', () => {
@@ -958,8 +983,7 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
     const s = serieAn(v.depuis, true);
     const reels = historySeries({ includeNow: false })
       .filter(p => String(p.date) >= String(v.depuis)).map(p => num(p.net));
-    eq(s.slice(0, -1).join('|'), reels.join('|'),
-      'chaque valeur est celle d’un relevé qui existe');
+    eq(s.join('|'), reels.join('|'), 'chaque valeur est celle d’un relevé qui existe');
     /* Aucune interpolation, aucun lissage : le modèle ne fabrique rien. */
     const st = lireSource('assets/store.js');
     const f = st.slice(st.indexOf('function serieAn'), st.indexOf('function deltas'));
@@ -973,15 +997,14 @@ suite('Le hero illustre sa variation sans ajouter de chiffre', () => {
     Fixture.poser();
     const v = variationAn(todayISO(), false);
     const s = serieAn(v.depuis, false);
-    eq(s[s.length - 1], num(nowTotals().brut), 'en brut, la photo du jour est le brut');
     const dans = historySeries({ includeNow: false }).filter(p => String(p.date) >= String(v.depuis));
-    eq(s[0], num(dans[0].total), 'et un relevé passé porte son total d’avoirs');
-    /* ATTENTION AU MOT `total`, QUI DESIGNE DEUX CHOSES : le brut sur un relevé
-       passé, le net sur la photo du jour. Les deux accesseurs sont mot pour mot
-       ceux de variationAn(), et ce test le fige. */
+    eq(s[0], num(dans[0].total), 'en brut, un relevé porte son total d’avoirs');
+    eq(s[s.length - 1], num(dans[dans.length - 1].total), 'jusqu’au dernier relevé');
+    /* L'accesseur d'un releve est mot pour mot celui de variationAn() :
+       `net`, ou `total` (ses avoirs) en brut. Ce test le fige. */
     const net = serieAn(v.depuis, true);
-    vrai(net[net.length - 1] !== s[s.length - 1] || num(patrimoine().dettes) === 0,
-      'net et brut diffèrent dès qu’un crédit existe');
+    vrai(net[net.length - 1] !== s[s.length - 1] || num(dans[dans.length - 1].dettes) === 0,
+      'net et brut diffèrent dès que le relevé porte un crédit');
   });
 
   test('pas assez d’historique : aucune courbe, et surtout aucune fausse', () => {
@@ -1486,7 +1509,9 @@ suite('La courbe du hero s’explore au doigt', () => {
   };
 
   test('chaque valeur porte sa date, et les deux viennent du même parcours', () => {
-    Fixture.poser();
+    /* Un second releve dans la fenetre : la courbe ne trace que des releves,
+       et il en faut deux pour qu'elle existe. */
+    Fixture.poser(s => { s.monthly.push({ ...structuredClone(s.monthly[0]), date: '2026-07-01' }); });
     const v = variationAn(todayISO(), true);
     const pts = pointsAn(v.depuis, true);
     vrai(pts.length >= 2, `${pts.length} points`);
@@ -1504,12 +1529,12 @@ suite('La courbe du hero s’explore au doigt', () => {
        crédit : en poser un second ici aurait donné deux façons de nommer le
        même mois. */
     const dans = historySeries({ includeNow: false }).filter(p => String(p.date) >= String(v.depuis));
-    eq(pts.slice(0, -1).map(p => p.label).join('|'), dans.map(p => fmtMoisAn(p.date)).join('|'),
+    eq(pts.map(p => p.label).join('|'), dans.map(p => fmtMoisAn(p.date)).join('|'),
       'aucun second format de mois');
     setLang('fr');
     vrai(/^[a-zéû.]+ \d{4}$/.test(pts[0].label), `« ${pts[0].label} » porte son année entière`);
     vrai(!/ \d{2}$/.test(pts[0].label), 'et jamais une année sur deux chiffres');
-    eq(pts[pts.length - 1].label, trad('Auj.'), 'et le dernier point porte le mot du jour');
+    vrai(!pts.some(p => p.label === trad('Auj.')), 'et aucun point du jour : la courbe trace des relevés');
   });
 
   test('le point retenu est un relevé réel, jamais un entre-deux', () => {
