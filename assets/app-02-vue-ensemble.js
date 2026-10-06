@@ -132,24 +132,25 @@ function viewOverview() {
   /* --- LA COURBE DU VIDE DE DROITE --------------------------------------
 
      Cette courbe ne double pas la carte Evolution du patrimoine, deux cents
-     pixels plus bas, et elle ne la contredit pas non plus. Elle part du
-     releve que `variationAn()` a retenu, celui de la variation posee a sa
-     gauche, et trace les releves jusqu'au dernier, comme la carte du dessous :
-     les deux dessins finissent sur le meme releve. Le chiffre et sa variation
-     sont ceux du jour. La carte du dessous, elle, porte sa propre plage --
-     YTD, un an, trois ans, tout -- et son axe.
+     pixels plus bas. Elle part du releve que `variationAn()` a retenu, celui
+     de la variation posee a sa gauche, trace les releves puis finit sur le
+     patrimoine du jour : ses deux bouts font cette variation. Ses points
+     s'espacent selon leur date, si bien que les quelques jours entre le
+     dernier releve et aujourd'hui ne prennent que leur largeur. La carte du
+     dessous, elle, ne trace que des releves et porte sa propre plage -- YTD,
+     un an, trois ans, tout -- et son axe.
 
-     Deux points au moins, sinon rien : `sparkline()` se tait sous ce seuil, et
-     une ligne entre deux releves reste une vraie lecture. Aucun mois manquant
-     n'est comble.
+     Deux points au moins et une duree entre eux, sinon rien
+     (`courbeAnTracable`) : le releve de la variation et la photo du jour font
+     deja une vraie lecture. Aucun mois manquant n'est comble.
 
      Elle ne porte ni chiffre permanent, ni axe, ni plage, ni selection de
      periode : ce qui s'y ajoute est une infobulle au doigt, qui dit ce qu'on
      avait a ce moment-la sans quitter l'apercu. Le trace reste `aria-hidden` :
      le montant, la variation et la periode sont ecrits en toutes lettres trois
      lignes plus haut, et l'onglet Historique donne l'acces detaille. */
-  const serieHero = varAn ? serieAn(varAn.depuis, evoNet) : [];
-  const blocSpark = serieHero.length < 2 ? ''
+  const pointsHero = varAn ? pointsAn(varAn.depuis, evoNet) : [];
+  const blocSpark = !courbeAnTracable(pointsHero) ? ''
     : `<div class="hero-spark" id="heroSpark"></div>`;
 
   const moisEnAttente = currentMonthPending();
@@ -569,9 +570,9 @@ function mountOverview() {
        le `touch-action: pan-y` qui laisse la page defiler. Le code dormait
        faute d'etiquettes a montrer.
 
-       Le point retenu est toujours un releve REEL : l'abscisse du doigt se
-       arrondit au point le plus proche, aucun patrimoine intermediaire n'est
-       calcule. */
+       Le point retenu est un releve reel ou la photo du jour : le doigt prend
+       le point d'abscisse la plus proche, aucun patrimoine intermediaire n'est
+       calcule. Les abscisses suivent les jours (`positions`). */
     const pts = pointsAn(v.depuis, evoNet);
     /* `height` PLUS BASSE QUE LE DEFAUT DE QUARANTE-QUATRE, et elle se passe ici
        et nulle part ailleurs : posee en CSS sur le SVG, elle ne l'aplatirait pas
@@ -579,7 +580,7 @@ function mountOverview() {
        pixels suffisent a lire une tendance, et rendent a la courbe son rang :
        elle soutient le chiffre, elle ne le concurrence pas. */
     Charts.sparkline($('#heroSpark'), pts.map(p => p.valeur),
-      { labels: pts.map(p => p.label), height: 36 });
+      { labels: pts.map(p => p.label), height: 36, positions: pts.map(p => Date.parse(p.jour)) });
   })();
   if (!$('.apercu-edition')) defilerHeros();
 }

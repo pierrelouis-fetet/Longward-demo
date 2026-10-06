@@ -504,30 +504,80 @@ function variationAn(aujourdhui = todayISO(), net = true) {
    designer le meme releve, et la courbe aurait alors illustre une autre periode
    que le chiffre pose juste a cote.
 
-   ET ELLE NE CALCULE RIEN. Son accesseur est mot pour mot celui que
-   `variationAn()` applique a un releve passe : `net`, ou `total` (les avoirs)
-   en brut. Aucun mois n'est interpole, aucun trou n'est comble : ce sont les
-   releves qui existent, et rien d'autre.
+   ET ELLE NE CALCULE RIEN. Les deux accesseurs sont mot pour mot ceux de
+   `variationAn()` : `net` sur un releve passe, `total` de `nowTotals()` pour
+   aujourd'hui, en se rappelant que le mot `total` designe le brut sur un
+   releve et le net sur la photo du jour. Aucun mois n'est interpole, aucun
+   trou n'est comble : ce sont les releves qui existent, et rien d'autre.
 
-   ELLE NE TRACE QUE DES RELEVES, jusqu'au dernier, comme la carte Evolution
-   du dessous (`pointsEvolution({ aujourdhui: false })`) : les deux dessins
-   finissent sur le meme releve, et un point du jour ne prolonge pas l'un a
-   plat sans l'autre. Le chiffre et sa variation restent ceux du jour ; la
-   courbe part du meme releve qu'eux. */
-function pointsAn(depuis, net = true) {
+   ELLE FINIT SUR LE JOUR, ET SES POINTS SUIVENT LE CALENDRIER. Les releves de
+   la fenetre, puis la photo du jour : les deux bouts refont la variation
+   affichee. Chaque point porte son `jour` (`jourDuReleve`), et la courbe
+   espace ses points selon ces jours (`abscissesCourbe`) : les quelques jours
+   entre un releve pris dans le mois et aujourd'hui ne prennent que leur
+   largeur, et ne dessinent pas un palier d'un mois. Un releve date apres
+   aujourd'hui n'a pas sa place sur une courbe qui finit maintenant ; il reste
+   dans l'historique. */
+/* Le jour ou un releve a ete pris, pour le placer dans le temps : `clotureLe`
+   quand c'est une vraie date du calendrier (AAAA-MM-JJ, relue a l'identique),
+   du mois du releve, ni avant sa date ni apres aujourd'hui. Sinon la date du
+   releve : une photo de 2019 saisie aujourd'hui en rattrapage garde son mois,
+   une ligne de cloture au 31 decembre aussi. */
+function jourDuReleve(p, aujourdhui = todayISO()) {
+  const d = String((p && p.date) || '');
+  const c = String((p && p.clotureLe) || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(c)) return d;
+  const t = Date.parse(c);
+  if (!Number.isFinite(t) || new Date(t).toISOString().slice(0, 10) !== c) return d;
+  if (c.slice(0, 7) !== d.slice(0, 7) || c < d || c > String(aujourdhui)) return d;
+  return c;
+}
+
+function pointsAn(depuis, net = true, aujourdhui = todayISO()) {
   if (!depuis) return [];
-  return historySeries({ includeNow: false })
-    .filter(p => String(p.date) >= String(depuis))
+  const t = nowTotals();
+  const pts = historySeries({ includeNow: false })
+    .filter(p => String(p.date) >= String(depuis) && String(p.date) <= String(aujourdhui))
     /* L'ANNEE EN ENTIER, ET LE FORMATEUR QUI EXISTE DEJA POUR CA. Le ruban des
        releves abrege — « sept. 25 » — parce que ses colonnes sont etroites ;
        une bulle de deux lignes n'a pas cette contrainte, et « mars 26 » se lit
        moins bien que « mars 2026 » quand rien n'oblige a serrer. `fmtMoisAn()`
        est ecrit pour ce cas et sert deja aux echeances de credit : en poser un
        second ici aurait donne deux facons de nommer le meme mois. */
-    .map(p => ({ valeur: num(net ? p.net : p.total), label: fmtMoisAn(p.date) }));
+    .map(p => ({ valeur: num(net ? p.net : p.total), label: fmtMoisAn(p.date),
+                 jour: jourDuReleve(p, aujourdhui) }));
+  pts.push({ valeur: num(net ? t.total : t.brut), label: trad('Auj.'), jour: String(aujourdhui) });
+  return pts;
 }
 
 const serieAn = (depuis, net = true) => pointsAn(depuis, net).map(p => p.valeur);
+
+const courbeAnTracable = pts => Array.isArray(pts) && pts.length >= 2
+  && String(pts[pts.length - 1].jour) > String(pts[0].jour);
+
+/* LES ABSCISSES D'UNE PETITE COURBE. Avec une position par point (un
+   instant), chaque intervalle prend la largeur de sa duree : cinq jours entre
+   le dernier releve et aujourd'hui ne valent plus un mois. Les positions
+   doivent etre des nombres finis, une par valeur, qui ne reculent jamais ;
+   sinon les points se repartissent a egale distance, comme sans positions.
+   Une duree nulle rend `null` : il n'y a rien a tracer. Le modele la porte et
+   non `charts.js`, pour que les tests l'exercent. */
+function abscissesCourbe(n, largeur, positions) {
+  if (!(n >= 2)) return null;
+  const valides = Array.isArray(positions) && positions.length === n
+    && positions.every(v => Number.isFinite(v))
+    && positions.every((v, i) => i === 0 || v >= positions[i - 1]);
+  if (!valides) return Array.from({ length: n }, (_, i) => i * largeur / (n - 1));
+  const etendue = positions[n - 1] - positions[0];
+  if (!(etendue > 0)) return null;
+  return positions.map(v => (v - positions[0]) / etendue * largeur);
+}
+
+function indexLePlusProche(xs, px) {
+  let i = 0;
+  for (let k = 1; k < xs.length; k++) if (Math.abs(xs[k] - px) <= Math.abs(xs[i] - px)) i = k;
+  return i;
+}
 
 function deltas() {
   const pts = historySeries({ includeNow: false });

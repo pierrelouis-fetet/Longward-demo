@@ -1301,7 +1301,11 @@ const Charts = (() => {
       const plancher = Math.max(Math.abs(milieu) * AMPLITUDE_MINIMALE, Number.EPSILON);
       const bas = (max - min) < plancher ? milieu - plancher / 2 : min;
       const span = ((max - min) < plancher ? plancher : max - min) || 1;
-      const x = i => i * W / (values.length - 1);
+      /* Les abscisses viennent du modele : a egale distance, ou selon la duree
+         de chaque intervalle quand `positions` est fourni. Sans duree, rien. */
+      const xs = abscissesCourbe(values.length, W, opts.positions);
+      if (!xs) { el.innerHTML = ''; return; }
+      const x = i => xs[i];
       const y = v => H - 4 - ((v - bas) / span) * (H - 8);
       const pts = values.map((v, i) => `${x(i)},${y(v)}`).join(' ');
       const penteEnPixels = ((max - min) / span) * (H - 8);
@@ -1328,8 +1332,7 @@ const Charts = (() => {
 
       const montrer = ev => {
         const r = svg.getBoundingClientRect();
-        const i = Math.max(0, Math.min(values.length - 1,
-          Math.round((ev.clientX - r.left) / r.width * (values.length - 1))));
+        const i = indexLePlusProche(xs, (ev.clientX - r.left) / r.width * W);
         curseur.style.display = '';
         curseur.setAttribute('cx', x(i));
         curseur.setAttribute('cy', y(values[i]));

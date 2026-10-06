@@ -1137,7 +1137,7 @@ suite('Pièges de source', () => {
        `varAn.depuis`, elle redeviendrait le doublon qu'on avait retiré. */
     eq((source.match(/Charts\.sparkline/g) || []).length, 1,
       'une seule sparkline, et une seule montee');
-    vrai(/serieAn\(varAn\.depuis, evoNet\)/.test(source),
+    vrai(/pointsAn\(varAn\.depuis, evoNet\)/.test(source),
       'sa fenêtre est celle de la variation annoncée à côté, jamais une autre');
     vrai(/const pts = pointsAn\(v\.depuis, evoNet\);/.test(source),
       'et le montage lit la même');

@@ -580,9 +580,12 @@ function limitRange(points, range, { ecarts = false } = {}) {
 /* `net` est rendu a cote du brut : les deux se lisent, et aucun appelant
    n'a plus a refaire la soustraction -- c'est en la refaisant que le journal
    avait fini par ne plus la faire du tout. */
+/* `clotureLe` : le jour ou la photo a ete prise, pose par `appliquerReleve`.
+   La courbe du heros s'en sert pour placer le releve dans le temps
+   (`jourDuReleve`) ; un releve ancien ne le porte pas. */
 const pointDuReleve = r => ({ label: fmtMonth(r.date), date: r.date, ...rowGroups(r),
                               total: rowTotal(r), dettes: num(r.dettes), net: rowNet(r),
-                              comment: r.comment });
+                              comment: r.comment, clotureLe: r.clotureLe });
 
 function historySeries({ includeNow = true } = {}) {
   const pts = Store.state.monthly
