@@ -1730,6 +1730,8 @@ const Store = {
     if (!Array.isArray(s.budget.categories) || !s.budget.categories.length) {
       s.budget.categories = categoriesParDefaut();
     }
+    if (!s.budget.reglesImport || typeof s.budget.reglesImport !== 'object'
+        || Array.isArray(s.budget.reglesImport)) s.budget.reglesImport = {};
     /* Le calendrier des DÉPENSES, et lui seul.
 
        Il reste parce qu'il est la seule porte vers un mois passé : le tableau du

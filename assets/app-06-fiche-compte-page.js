@@ -1145,6 +1145,8 @@ function briqueDepensesVide(f) {
     <div class="card">
       <p class="empty" style="margin:0 0 4px">${trad('Suis ce que tu dépenses chaque mois. Saisis un premier mois pour découvrir ta moyenne mensuelle et ce qu’il te reste réellement.')}</p>
       <button type="button" class="btn sm" data-action="saisir-mois-courant" style="margin:4px 0 0">${trad('Saisir les dépenses du mois')}</button>
+      <button type="button" class="btn sm ghost" data-action="importer-tableau" data-cible="depenses"
+              style="margin:4px 0 0">⤒ ${trad('Importer l’export de ta banque')}</button>
       <p class="small muted" style="margin:12px 0 0">${f.target > 0
         ? `${trad('Objectif mensuel')} : ${fmtEUR0(f.target)} · `
         : ''}<button type="button" class="lien-nu" data-action="regler-objectif-depenses">${trad('Régler un objectif mensuel')}</button></p>
@@ -1419,6 +1421,8 @@ function viewBudget(section = 'depenses') {
       ${sansDistinction() ? ''
         : `<button class="btn sm ghost" data-action="add-category"
              >${trad('+ Ajouter une catégorie')}</button>`}
+      <button class="btn sm ghost" data-action="importer-tableau" data-cible="depenses"
+              >⤒ ${trad('Importer un fichier')}</button>
     </div>
     ${(() => {
       const att = depensesEnAttente();

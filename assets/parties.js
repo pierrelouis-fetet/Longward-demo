@@ -18,7 +18,8 @@ const GROUPES = {
     'assets/store-04-calculs-2.js',
     'assets/store-05-analyses.js',
     'assets/store-06-controles-coherence.js',
-    'assets/store-07-societes.js'
+    'assets/store-07-societes.js',
+    'assets/store-08-import.js'
   ],
   'assets/app.js': [
     'assets/app-01-socle.js',
@@ -36,6 +37,7 @@ const GROUPES = {
     'assets/app-08-actions-donnees.js',
     'assets/app-09-rendu.js',
     'assets/app-10-formulaire-generique.js',
+    'assets/app-10-import-tableau.js',
     'assets/app-11-fenetre-apercu.js'
   ],
   'assets/styles.css': [

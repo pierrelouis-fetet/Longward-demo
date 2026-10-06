@@ -135,7 +135,8 @@ function viewData() {
         <button class="btn" data-action="export-json">⤓ ${trad('Sauvegarde JSON')}</button>
         <label class="btn ghost" for="importFile">⤒ ${trad('Importer une sauvegarde')}</label>
       </div>
-      <input type="file" id="importFile" class="fichier-cache" accept="application/json,.json">
+      <input type="file" id="importFile" class="fichier-cache"
+             accept="application/json,.json,.csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
       <p class="small muted">${trad('Le JSON permet de restaurer entièrement Longward.')}${aide(trad('Le JSON restitue ton tableau de bord à l’identique : c’est celui à garder pour restaurer ou changer de machine. Importer remplace l’état enregistré dans ce navigateur, après confirmation, et une sauvegarde de l’état actuel est prise avant. Exporte d’abord si tu as un doute.'))}</p>
       <div class="row demo-bascule">
         ${modeDemo()
@@ -148,7 +149,7 @@ function viewData() {
     <div class="donnees-section">
       <h2>${trad('Exporter pour analyse')}</h2>
       <button class="btn ghost" data-action="export-xlsx-all">⤓ ${trad('Exporter vers Excel')}</button>
-      <p class="small muted">${trad('Consulte tes données dans Excel ou un tableur.')}${aide(trad("L’Excel est une photo pour lire et retravailler ailleurs : une feuille par thème, montants au format {dev}, pourcentages calculables. Le découpage d’une catégorie de dépenses y a sa propre feuille, une ligne par montant. Il ne contient pas tous les réglages, il ne peut donc pas être rechargé ici : pour restaurer, c’est la sauvegarde JSON."))}</p>
+      <p class="small muted">${trad('Consulte tes données dans Excel ou un tableur.')}${aide(trad("L’Excel est une photo pour lire et retravailler ailleurs : une feuille par thème, montants au format {dev}, pourcentages calculables. Il ne contient pas tous les réglages et ne restaure donc pas Longward : pour restaurer, c’est la sauvegarde JSON. Ses feuilles « Dépenses » et « Relevés mensuels » s’importent toutefois, comme tout tableau, depuis Budget et Historique."))}</p>
     </div>
     <div class="donnees-section donnees-annuler">
       <div class="controle-texte">
@@ -223,12 +224,13 @@ function mountData() {
   f.addEventListener('change', async () => {
     const file = f.files[0];
     if (!file) return;
-    if (/\.(xlsx|xls|csv)$/i.test(file.name)) {
-      await askConfirm(trad("L'Excel ne peut pas être réimporté") + '\n'
-        + trad("C'est une photo pour lire et retravailler ailleurs : il ne contient pas tous les "
-        + 'réglages du tableau de bord. Pour restaurer, prends le fichier « Sauvegarde JSON ».'),
-        { ok: 'Compris', danger: false });
+    if (/\.(xlsx|xls|csv|txt)$/i.test(file.name)) {
       f.value = '';
+      const ou = await askOptions({ titre: trad('Importer ce tableau'), sous: file.name, options: [
+        { v: 'depenses', l: trad('Dans les dépenses'), sous: trad('L’export d’une banque, ou un tableau par mois et par catégorie') },
+        { v: 'releves', l: trad('Dans les relevés'), sous: trad('Un tableau de suivi : un mois par ligne, une colonne par compte') },
+      ] });
+      if (ou) importerTableau(ou, file);
       return;
     }
     if (!await askConfirm(`${trad('Importer')} ${guill(file.name)} ?\n\n${trad('Cela remplacera toutes les données actuellement enregistrées dans ce navigateur.')}`)) {

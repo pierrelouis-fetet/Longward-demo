@@ -5,6 +5,9 @@
  *  Distributed WITHOUT ANY WARRANTY. See the LICENSE file for the full terms.
  */
 Object.assign(ACTIONS, {
+  'importer-tableau'(btn) {
+    importerTableau(btn.dataset.cible === 'releves' ? 'releves' : 'depenses');
+  },
   'sort-depenses'(btn) {
     const key = btn.dataset.key;
     depSort = !depSort || depSort.key !== key ? { key, dir: 'desc' }

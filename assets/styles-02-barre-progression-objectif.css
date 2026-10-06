@@ -1280,6 +1280,31 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 .modal-body table td .petit { font-size: var(--font-sm); }
 .modal-body { overflow-x: hidden; }
 
+.imp-colonnes, .imp-liste, .imp-groupes { display: flex; flex-direction: column; margin: 4px 0 0; }
+.imp-colonne, .imp-mois {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.imp-colonne-nom, .imp-mois > span, .imp-groupe-nom { display: flex; flex-direction: column; min-width: 0; }
+.imp-colonnes .sub, .imp-liste .sub, .imp-groupes .sub {
+  color: var(--muted); font-size: var(--font-sm); overflow-wrap: anywhere;
+}
+.imp-colonne select, .imp-mois select, .imp-groupe summary select { flex: none; max-width: 48%; }
+.imp-groupe { border-bottom: 1px solid var(--border); padding: 6px 0; }
+.imp-groupe summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  cursor: pointer; list-style: none;
+}
+.imp-groupe summary::-webkit-details-marker { display: none; }
+.imp-ligne {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center;
+  padding: 6px 0 6px 12px; font-size: var(--font-sm);
+}
+.imp-ligne > span { overflow-wrap: anywhere; }
+.imp-ligne select { grid-column: 1 / -1; }
+.imp-mois.imp-garde { opacity: .7; }
+.imp-titre { margin: 16px 0 4px; font-size: var(--font-md); }
+
 #fete { z-index: 120; place-items: center; padding: 20px; }
 #fete .modal-panel {
   width: min(22em, 100%); max-height: none; align-items: center; text-align: center;

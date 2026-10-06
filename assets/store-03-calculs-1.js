@@ -433,6 +433,11 @@ function partsDuReleve(v) {
     if (somme > 0.005)
       for (const k of Object.keys(brut)) part[k] = round2(total * brut[k] / somme);
     else part[defaut] = round2(total);
+    const reste = round2(round2(total) - Object.values(part).reduce((s, x) => s + x, 0));
+    if (reste) {
+      const k = Object.keys(part).reduce((g, x) => (Math.abs(part[x]) > Math.abs(part[g]) ? x : g));
+      part[k] = round2(part[k] + reste);
+    }
     parts[a.id] = part;
   }
   return parts;

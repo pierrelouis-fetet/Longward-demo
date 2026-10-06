@@ -1209,6 +1209,8 @@ function viewHistory() {
       <div class="row">
         ${annees.length > 1 ? yearControl('history-year', annees, annee) : ''}
         ${vide ? '' : `<button class="btn sm" data-action="ajouter-releve">${trad('Enregistrer un relevé')}</button>`}
+        ${pasAFaire('comptes') ? '' : `<button class="btn sm ghost" data-action="importer-tableau" data-cible="releves"
+                >⤒ ${trad('Importer')}</button>`}
       </div>
     </div>
     ${pasAFaire('comptes') ? `
@@ -1221,7 +1223,8 @@ function viewHistory() {
       ${trad('Un relevé est la photo de tes comptes à une date : la valeur de chaque poche, '
       + 'additionnée en un patrimoine total. Refais-le chaque mois, et la courbe de ton '
       + 'patrimoine se dessine.')}</p>
-    <button class="btn sm" data-action="ajouter-releve">${trad('Enregistrer ton premier relevé')}</button>`
+    <button class="btn sm" data-action="ajouter-releve">${trad('Enregistrer ton premier relevé')}</button>
+    <p class="hint" style="margin:12px 0 0">${trad('Tu suis déjà ton patrimoine dans un tableur ? Importe-le : un mois par ligne, une colonne par compte.')}</p>`
     : !lignes.length ? `
     <p class="empty" style="margin:0 0 10px">${trad('Aucun relevé en {a}.')
       .replace('{a}', esc(String(annee)))}

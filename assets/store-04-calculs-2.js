@@ -1287,6 +1287,8 @@ function renameExpenseCategory(ancien, nouveau) {
     const j = ret.indexOf(ancien);
     if (j >= 0) ret[j] = propre;
   }
+  const regles = Store.state.budget.reglesImport;
+  if (regles) for (const k of Object.keys(regles)) if (regles[k] === ancien) regles[k] = propre;
   return true;
 }
 
@@ -1301,6 +1303,8 @@ function removeExpenseCategory(cat) {
   liste.splice(i, 1);
   for (const r of Store.state.budget.expenses) if (r.v) delete r.v[cat];
   reprendreCategorie(cat);
+  const regles = Store.state.budget.reglesImport;
+  if (regles) for (const k of Object.keys(regles)) if (regles[k] === cat) delete regles[k];
   return true;
 }
 
