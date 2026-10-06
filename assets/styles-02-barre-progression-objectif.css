@@ -857,7 +857,7 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 .card-couvre:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .card-cliquable > *:not(.card-couvre) { position: relative; pointer-events: none; }
 .card-cliquable :is(.aide, .val-masquable, .segmented, .plage, .btn-oeil,
-                    .hero-delta-reglable, .rappel-sorties,
+                    .hero-delta-reglable, .rappel-sorties, .import-lien,
                     input, select, textarea) { pointer-events: auto; }
 
 /* Un des trois ecarts du haut se regle : celui de l'objectif de depenses.
@@ -1304,6 +1304,12 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 .imp-ligne select { grid-column: 1 / -1; }
 .imp-mois.imp-garde { opacity: .7; }
 .imp-titre { margin: 16px 0 4px; font-size: var(--font-md); }
+.imp-exemple {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px;
+  font-size: var(--font-sm); font-variant-numeric: tabular-nums;
+  padding: 8px 12px; border-radius: var(--radius-sm); background: var(--surface-2);
+}
+.imp-exemple > span:nth-child(3n+2) { overflow-wrap: anywhere; }
 
 #fete { z-index: 120; place-items: center; padding: 20px; }
 #fete .modal-panel {

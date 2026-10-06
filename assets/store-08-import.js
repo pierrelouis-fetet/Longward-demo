@@ -589,32 +589,58 @@ function lignesParMois(grille, debut, colDate, cibles, ordre = 'jm') {
   return { lignes, ecartees, doublons };
 }
 
-const MOTS_DETTE = ['dette', 'dettes', 'emprunt', 'emprunts', 'pret', 'prets', 'capital restant', 'credits en cours'];
+const MOTS_DETTE = ['dette', 'dettes', 'emprunt', 'emprunts', 'pret', 'prets', 'capital restant', 'credits en cours',
+  'outstanding loans', 'loan', 'loans', 'debt', 'debts', 'mortgage'];
 const MOTS_IGNORES_RELEVE = ['total', 'patrimoine', 'net', 'brut', 'commentaire', 'comment', 'note', 'cash', 'variation'];
 
 /* La cible de chaque colonne d'un tableau de releves : 'date', un compte
-   ({ compte: id }), 'dettes', IGNORER, ou '' (a choisir). Un compte ne se
-   pre-remplit que sur UNE correspondance exacte avec le nom d'un compte ouvert,
-   ou avec un etablissement qui n'en porte qu'un ; les comptes clotures se
-   choisissent a la main. `ignorer` : des en-tetes connus pour ne rien porter de
-   saisissable (les poches et totaux de l'export Longward). */
+   ({ compte: id }), 'dettes', IGNORER, ou '' (a choisir). L'ordre de lecture
+   decide, et il va du plus sur au moins sur :
+     1. une marque finale explicite : « [identifiant] » designe ce compte,
+        ouvert ou cloture, « [dettes] » les credits du mois ;
+     2. la colonne des mois, par son CONTENU : une colonne de mois n'est pas un
+        solde, meme si un compte porte le nom de son en-tete ;
+     3. le libelle exact d'un compte ouvert, puis « libelle etablissement »,
+        chacun seulement s'il designe UN compte ;
+     4. les mots de dette, parmi les colonnes qui restent : une colonne
+        reconnue comme compte n'est jamais une dette ;
+     5. les en-tetes sans montant a saisir (`ignorer`, totaux, commentaire),
+        puis l'etablissement qui ne porte qu'un compte ouvert.
+   Un compte cloture ne se pre-remplit que par sa marque. */
 function devinerColonnesReleves(entete, lignes, comptes, { ignorer = [] } = {}) {
   const ouverts = comptes.filter(a => !a.legacy);
+  const ids = new Set(comptes.map(a => a.id));
   const ignores = new Set(ignorer.map(normaliserTexte));
-  const noms = entete.map(c => normaliserTexte(c && c.v));
-  const date = noms.findIndex((n, i) => lignes.slice(0, 5).some(l => moisDepuisCellule(l[i])));
-  const dettes = noms.map((n, i) => (i !== date && (n === 'credits' && noms.includes('total brut')
-    || MOTS_DETTE.some(m => n === m || n.includes(m))) ? i : -1)).filter(i => i >= 0);
+  const bruts = entete.map(c => String((c && c.v) ?? '').trim());
+  const noms = bruts.map(normaliserTexte);
+  const seul = liste => (liste.length === 1 ? liste[0] : null);
+  const cibles = bruts.map(b => {
+    const m = /\[([^\][]+)\]\s*$/.exec(b);
+    if (!m) return undefined;
+    const marque = m[1].trim();
+    if (marque === 'dettes') return 'dettes';
+    return ids.has(marque) ? { compte: marque } : undefined;
+  });
+  const date = noms.findIndex((n, i) => cibles[i] === undefined
+    && lignes.slice(0, 5).some(l => moisDepuisCellule(l[i])));
+  if (date >= 0) cibles[date] = 'date';
+  noms.forEach((n, i) => {
+    if (cibles[i] !== undefined || !n) return;
+    const a = seul(ouverts.filter(x => normaliserTexte(x.label) === n))
+      || seul(ouverts.filter(x => normaliserTexte(`${x.label} ${x.broker || ''}`) === n));
+    if (a) cibles[i] = { compte: a.id };
+  });
+  const dettes = noms.map((n, i) => (cibles[i] === undefined && n
+    && ((n === 'credits' && noms.includes('total brut')) || MOTS_DETTE.some(m => n === m || n.includes(m))) ? i : -1))
+    .filter(i => i >= 0);
   return noms.map((n, i) => {
-    if (i === date) return 'date';
+    if (cibles[i] !== undefined) return cibles[i];
     if (!n) return IGNORER;
     if (dettes.length === 1 && dettes[0] === i) return 'dettes';
     if (dettes.includes(i)) return '';
-    const exacts = ouverts.filter(a => normaliserTexte(a.label) === n);
-    if (exacts.length === 1) return { compte: exacts[0].id };
     if (ignores.has(n) || / cash$/.test(n) || MOTS_IGNORES_RELEVE.some(m => n === m || n.startsWith(`${m} `))) return IGNORER;
     const parEtab = ouverts.filter(a => normaliserTexte(a.broker) === n);
-    if (!exacts.length && parEtab.length === 1) return { compte: parEtab[0].id };
+    if (parEtab.length === 1) return { compte: parEtab[0].id };
     const numerique = lignes.slice(0, 5).some(l => nombreDepuisCellule(l[i]) != null);
     return numerique ? '' : IGNORER;
   });
@@ -806,6 +832,56 @@ function ecrireImport(plan, { sauver = true } = {}) {
   refreshAccounts();
   if (sauver) Store.save();
   return { ok: true, modifies, enregistre: !Store._ecritureKo };
+}
+
+/* --- MODELES A REMPLIR ----------------------------------------------------
+
+   Un classeur pret a remplir, fait des colonnes de CE profil : ses
+   categories, ses comptes ouverts, ecrits tels qu'il les porte (seuls les
+   en-tetes fixes passent par la langue). Rempli puis importe, il se relit sans
+   rien associer a la main ; importe vide, il ne change rien. Une seule feuille,
+   "A remplir" : l'exemple vit dans la fenetre, il ne peut donc jamais
+   s'importer. Rend des feuilles au format de `Xlsx.build`. */
+
+const enTetesReserves = () => new Set(['Mois', 'Month', 'Crédits en cours', 'Outstanding loans',
+  trad('Mois'), trad('Crédits en cours')].map(normaliserTexte));
+
+function enTetesComptes(ouverts) {
+  const reserves = enTetesReserves();
+  const parNom = new Map();
+  for (const a of ouverts) {
+    const n = normaliserTexte(a.label);
+    parNom.set(n, (parNom.get(n) || 0) + 1);
+  }
+  return ouverts.map(a => {
+    const n = normaliserTexte(a.label);
+    return !n || parNom.get(n) > 1 || reserves.has(n) ? `${a.label} [${a.id}]` : a.label;
+  });
+}
+
+function modeleOperations() {
+  return [{ name: trad('À remplir'), rows: [], cols: [
+    { h: trad('Date'), t: 'date', w: 12 }, { h: trad('Libellé'), t: 'text', w: 40 }, { h: trad('Montant'), t: 'eur', w: 14 }] }];
+}
+
+function modeleDepensesParMois(categories, annee) {
+  const rows = Array.from({ length: 12 }, (_, i) =>
+    [`${annee}-${String(i + 1).padStart(2, '0')}-01`, ...categories.map(() => null)]);
+  return [{ name: trad('À remplir'), rows, cols: [
+    { h: trad('Mois'), t: 'date', w: 12 }, ...categories.map(c => ({ h: c, t: 'eur', w: 14 }))] }];
+}
+
+function modeleReleves(comptes, aujourdhui = todayISO(), avecDettes = false) {
+  const ouverts = comptes.filter(a => !a.legacy);
+  const entetes = enTetesComptes(ouverts);
+  const nomDettes = trad('Crédits en cours');
+  const conflit = ouverts.some(a => normaliserTexte(a.label) === normaliserTexte(nomDettes));
+  const [an, mois] = String(aujourdhui).split('-').map(Number);
+  const dates = Array.from({ length: 12 }, (_, i) =>
+    new Date(Date.UTC(an, mois - 12 + i, 1)).toISOString().slice(0, 10));
+  const cols = [{ h: trad('Mois'), t: 'date', w: 12 }, ...entetes.map(h => ({ h, t: 'eur', w: 16 }))];
+  if (avecDettes) cols.push({ h: conflit ? `${nomDettes} [dettes]` : nomDettes, t: 'eur', w: 16 });
+  return [{ name: trad('À remplir'), cols, rows: dates.map(d => [d, ...cols.slice(1).map(() => null)]) }];
 }
 
 /* L'import complet : une sauvegarde d'abord, une question si elle echoue,

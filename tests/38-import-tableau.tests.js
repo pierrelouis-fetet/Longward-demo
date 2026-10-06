@@ -516,4 +516,89 @@ suite('Import d’un tableau : la sauvegarde et l’enregistrement', () => {
   });
 });
 
+suite('Import d’un tableau : les modèles à remplir', () => {
+  /* Une feuille de modele relue comme le lecteur la rendrait : en-tetes en
+     texte, dates en date, cellules vides en vide. */
+  const grille = f => [
+    f.cols.map(c => ({ t: 'texte', v: c.h })),
+    ...f.rows.map(r => r.map((v, i) => (v == null ? { t: 'vide', v: null }
+      : f.cols[i].t === 'date' ? { t: 'date', v } : typeof v === 'number' ? { t: 'nombre', v } : { t: 'texte', v }))),
+  ];
+  const enAnglais = fn => { setLang('en'); try { return fn(); } finally { setLang('fr'); } };
+
+  test('le modèle d’opérations se relit, en français comme en anglais', () => {
+    for (const lire of [fn => fn(), enAnglais]) {
+      lire(() => {
+        const f = modeleOperations();
+        eq(f.length, 1, 'une seule feuille : l’exemple vit dans la fenêtre');
+        const g = grille(f[0]);
+        const c = devinerColonnesOperations(g[0], g.slice(1));
+        eq(`${c.date},${c.libelle},${c.montant}`, '0,1,2', `date, libellé, montant (${f[0].cols.map(x => x.h).join('/')})`);
+        eq(lignesOperations(g, 1, c).lignes.length, 0, 'vide, il n’importe rien');
+      });
+    }
+  });
+
+  test('le modèle par mois porte les catégories du profil telles quelles', () => {
+    const cats = ['Courses', 'Restos', 'Sorties du week-end'];
+    for (const lire of [fn => fn(), enAnglais]) {
+      lire(() => {
+        const f = modeleDepensesParMois(cats, '2026')[0];
+        eq(f.rows.length, 12, 'douze mois');
+        eq(f.cols.slice(1).map(c => c.h).join('|'), cats.join('|'), 'les noms du profil, sans traduction');
+        const g = grille(f);
+        eq(devinerFormeDepenses(g[0], g.slice(1), cats), 'mois', 'reconnu comme un tableau par mois');
+        const { date, colonnes } = devinerColonnesMois(g[0], g.slice(1), cats);
+        eq(date, 0);
+        eq(colonnes.slice(1).join('|'), cats.join('|'), 'chaque catégorie mappée');
+        eq(lignesParMois(g, 1, date, colonnes).lignes.length, 0, 'vide, il n’importe rien');
+      });
+    }
+  });
+
+  test('le modèle de relevés : homonymes, noms réservés et dettes se relisent sans rien à choisir', () => {
+    const comptes = [
+      { id: 'a1', label: 'Livret', broker: 'Banque Une', legacy: false },
+      { id: 'a2', label: 'Livret', broker: 'Banque Une', legacy: false },
+      { id: 'a3', label: 'Mois', broker: 'Banque Deux', legacy: false },
+      { id: 'a4', label: 'Month', broker: 'Banque Deux', legacy: false },
+      { id: 'a5', label: 'Crédits en cours', broker: 'Banque Deux', legacy: false },
+      { id: 'a6', label: 'Loan fund', broker: 'Courtier', legacy: false },
+      { id: 'a7', label: 'Vieux compte', broker: 'Banque Trois', legacy: true },
+    ];
+    for (const lire of [fn => fn(), enAnglais]) {
+      lire(() => {
+        const f = modeleReleves(comptes, '2026-10-07', true)[0];
+        eq(f.rows[0][0], '2025-11-01', 'du plus ancien des douze mois');
+        eq(f.rows[11][0], '2026-10-01', 'au mois en cours');
+        const entetes = f.cols.map(c => c.h);
+        vrai(!entetes.some(h => h.startsWith('Vieux compte')), 'un compte clôturé n’a pas de colonne');
+        eq(new Set(entetes).size, entetes.length, 'aucun en-tête en double');
+        const g = grille(f);
+        const c = devinerColonnesReleves(g[0], g.slice(1), comptes);
+        eq(c[0], 'date', 'la date reste la date');
+        eq(c.slice(1, 7).map(x => x.compte).join(','), 'a1,a2,a3,a4,a5,a6', `chaque compte retrouvé (${entetes.join(' | ')})`);
+        eq(c[7], 'dettes', 'et la colonne des crédits');
+        eq(blocagesColonnesReleves(g[0], c).length, 0, 'rien à choisir');
+        eq(lignesParMois(g, 1, 0, c.map(cleCibleReleve)).lignes.length, 0, 'vide, il ne change rien');
+      });
+    }
+  });
+
+  test('un en-tête complet départage, et un compte n’est jamais une dette', () => {
+    const comptes = [
+      { id: 'b1', label: 'Loan', broker: 'Banque', legacy: false },
+      { id: 'b2', label: 'Loan', broker: 'Autre', legacy: false },
+    ];
+    const g = lireCSV('Mois;Loan Banque;Outstanding loans\n01/2026;10;5000');
+    const c = devinerColonnesReleves(g[0], g.slice(1), comptes);
+    eq(c[1].compte, 'b1', '« libellé établissement » désigne un seul compte');
+    eq(c[2], 'dettes', 'l’en-tête anglais des dettes se reconnaît');
+    const marque = lireCSV('Mois;Ancien [b2];Total dettes [dettes]\n01/2026;1;2');
+    const cm = devinerColonnesReleves(marque[0], marque.slice(1), comptes);
+    eq(cm[1].compte, 'b2', 'une marque d’identifiant désigne son compte');
+    eq(cm[2], 'dettes', 'une marque de dettes aussi');
+  });
+});
+
 finDePartieDeTests('tests/38-import-tableau.tests.js');

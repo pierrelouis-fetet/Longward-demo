@@ -16,6 +16,12 @@ const MESSAGES_IMPORT = {
   vide: 'Ce fichier ne contient aucun tableau.',
 };
 
+const EXEMPLE_OPERATIONS = [
+  ['03/10/2026', 'CB BOULANGERIE', -4.2],
+  ['05/10/2026', 'PRLV ABONNEMENT MOBILE', -19.99],
+  ['28/10/2026', 'VIR SALAIRE', 2000],
+];
+
 function importerTableau(cible, fichierDonne = null) {
   return new Promise(resolve => {
     const m = $('#modal');
@@ -41,9 +47,27 @@ function importerTableau(cible, fichierDonne = null) {
           : trad('Ton tableau de suivi, en Excel (.xlsx) ou en CSV : un mois par ligne, une colonne par compte. Les mois en colonnes se lisent aussi, et la feuille « Relevés mensuels » de l’export Longward s’importe telle quelle.')}</p>
         <input type="file" id="impFichier" class="fichier-cache"
                accept=".csv,.txt,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+        ${depenses ? `<p class="hint" style="margin:12px 0 4px">${trad('Par exemple, trois opérations d’un export :')}</p>
+        <div class="imp-exemple">${EXEMPLE_OPERATIONS.map(([d, l, m]) => `
+          <span>${d}</span><span>${esc(trad(l))}</span><b>${m < 0 ? '−' : '+'}${
+            Math.abs(m).toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>`).join('')}
+        </div>
+        <p class="hint" style="margin:4px 0 0">${trad('Dans cet exemple, les dépenses sont négatives ; ta banque peut les écrire en positif, le sens se choisit à l’étape suivante. Une entrée d’argent, comme le salaire, ne s’importe pas.')}</p>` : ''}
+        <p class="hint" style="margin:12px 0 8px">${trad('Pas sûr du format ? Télécharge un modèle fait de tes colonnes, remplis-le, puis choisis-le ici :')}</p>
+        <div class="row" style="gap:8px">${depenses ? `
+          <button type="button" class="btn sm ghost" id="impModeleOps">⤓ ${trad('Opérations de banque')}</button>
+          <button type="button" class="btn sm ghost" id="impModeleMois">⤓ ${trad('Par mois et par catégorie')}</button>` : `
+          <button type="button" class="btn sm ghost" id="impModeleRel">⤓ ${trad('Télécharger un modèle')}</button>`}
+        </div>
         ${erreur ? `<p class="note" style="margin:12px 0 0">⚠ <span>${esc(erreur)}</span></p>` : ''}`;
       $('#modalFoot').innerHTML = `<label class="btn" for="impFichier">${trad('Choisir un fichier')}</label>`;
       $('#impFichier').onchange = () => { const f = $('#impFichier').files[0]; if (f) lire(f); };
+      const modele = (id, nom, feuilles) => { const b = $(id); if (b) b.onclick = () => Xlsx.save(nom, feuilles()); };
+      modele('#impModeleOps', trad('longward-modele-operations.xlsx'), () => modeleOperations());
+      modele('#impModeleMois', trad('longward-modele-depenses-par-mois.xlsx'),
+        () => modeleDepensesParMois(expenseCategories(), todayISO().slice(0, 4)));
+      modele('#impModeleRel', trad('longward-modele-releves.xlsx'), () => modeleReleves(ACCOUNTS, todayISO(),
+        num(patrimoine().dettes) > 0 || (Store.state.monthly || []).some(r => num(r.dettes) > 0)));
     };
     const lire = async f => {
       try {

@@ -1229,6 +1229,9 @@ function viewBudget(section = 'depenses') {
               .replace('{n}', parts.length - 6)}</p>` : ''}
         </div>`;
       })()}
+      <p class="small" style="margin:8px 0 0">
+        <button type="button" class="lien-nu import-lien" data-action="importer-tableau" data-cible="depenses"
+                >⤒ ${trad('Importer l’export de ta banque')}</button></p>
     </div>
 ` : briqueDepensesVide(f)}
 
