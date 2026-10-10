@@ -50,6 +50,7 @@ const PARTIES_DE_TESTS = [
   'tests/37-caps-du-patrimoine.tests.js',
   'tests/38-import-tableau.tests.js',
   'tests/39-synchronisation.tests.js',
+  'tests/40-serveur.tests.js',
 ];
 const PARTIES_DE_TESTS_CHARGEES = new Set();
 let PARTIE_DE_TESTS_COURANTE = null;

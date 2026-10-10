@@ -14,9 +14,9 @@ const HEADERS = {
   'Accept-Language': 'fr-FR,fr;q=0.9,en;q=0.8',
 };
 
-const json = (data, status = 200) => new Response(JSON.stringify(data), {
+const json = (data, status = 200, entetes = {}) => new Response(JSON.stringify(data), {
   status,
-  headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+  headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...entetes },
 });
 
 const hex = bytes => [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -286,6 +286,9 @@ async function figiCandidates(isin) {
   return out;
 }
 
+const ISIN_NOMS_MAX = 2;
+const ISIN_SONDES_MAX = 3;
+
 async function resolveIsin(code, prefer = '') {
   const isin = String(code || '').trim().toUpperCase();
   if (!isinIsValid(isin)) {
@@ -296,7 +299,7 @@ async function resolveIsin(code, prefer = '') {
   const candidates = await search(isin).catch(() => []);
   const seen = new Set(candidates.map(c => c.symbol));
 
-  for (const name of new Set(candidates.map(c => c.name).filter(Boolean))) {
+  for (const name of [...new Set(candidates.map(c => c.name).filter(Boolean))].slice(0, ISIN_NOMS_MAX)) {
     try {
       for (const extra of await search(name)) {
         if (!seen.has(extra.symbol)) { seen.add(extra.symbol); candidates.push(extra); }
@@ -310,7 +313,7 @@ async function resolveIsin(code, prefer = '') {
     try { extras = (await figiCandidates(isin)).filter(c => !seen.has(c.symbol)); }
     catch { extras = []; }
     extras.sort((a, b) => rank(a, prefer) - rank(b, prefer));
-    for (const cand of extras.slice(0, 6)) {
+    for (const cand of extras.slice(0, ISIN_SONDES_MAX)) {
       const probe = await quote(cand.symbol);
       if (probe.error) continue;
       cand.unverified = false;
@@ -643,22 +646,75 @@ const ABUS = {
    l'ecrire laisse deux requetes simultanees lire la meme valeur et la depasser
    toutes les deux. Le `ON CONFLICT ... DO UPDATE` fait l'addition dans la base,
    et `RETURNING` rend la valeur qui a reellement ete posee. */
-async function compteur(env, seau, plafond, fenetre) {
-  if (!env.DB) return { permis: true, reste: plafond };
+/* `poids` : ce que coute l'appel. Un pour un code demande ; autant que de
+   cotations pour un lot de la passerelle de marche. `fin` : la remise a zero
+   du seau, en secondes, pour dire a l'appelant quand revenir. */
+async function compteur(env, seau, plafond, fenetre, poids = 1) {
+  if (!env.DB) return { permis: true, reste: plafond, fin: 0 };
   const row = await env.DB.prepare(
     `INSERT INTO auth_throttle (bucket, count, reset_at)
-     VALUES (?1, 1, unixepoch() + ?2)
+     VALUES (?1, ?3, unixepoch() + ?2)
      ON CONFLICT(bucket) DO UPDATE SET
        count = CASE WHEN auth_throttle.reset_at <= unixepoch()
-                    THEN 1 ELSE auth_throttle.count + 1 END,
+                    THEN ?3 ELSE auth_throttle.count + ?3 END,
        reset_at = CASE WHEN auth_throttle.reset_at <= unixepoch()
                        THEN unixepoch() + ?2 ELSE auth_throttle.reset_at END
-     RETURNING count, reset_at`).bind(seau, fenetre).first();
-  const count = row?.count ?? 1;
-  return { permis: count <= plafond, reste: Math.max(0, plafond - count) };
+     RETURNING count, reset_at`).bind(seau, fenetre, poids).first();
+  const count = row?.count ?? poids;
+  return { permis: count <= plafond, reste: Math.max(0, plafond - count), fin: row?.reset_at ?? 0 };
 }
 
 const clientIp = request => request.headers.get('CF-Connecting-IP') || 'ip-inconnue';
+
+const FREIN_MARCHE = { plafond: 900, fenetre: 60 };
+const COUT_MARCHE = { cotation: 3, recherche: 1, isin: 13 };
+const FREIN_MEMOIRE_MAX = 5000;
+const FREIN_PURGE_MS = 10 * 60 * 1000;
+const freinMemoire = new Map();
+let freinPurgeA = 0;
+
+function poidsMarche(path, url) {
+  if (path === '/api/isin') return COUT_MARCHE.isin;
+  if (path === '/api/search') return COUT_MARCHE.recherche;
+  const n = (url.searchParams.get('symbols') || '').split(',').map(s => s.trim()).filter(Boolean).length;
+  return COUT_MARCHE.cotation * Math.max(1, Math.min(40, n));
+}
+
+function faireDeLaPlace(maintenant, plafond) {
+  for (const [k, v] of freinMemoire) if (v.fin <= maintenant) freinMemoire.delete(k);
+  if (freinMemoire.size < FREIN_MEMOIRE_MAX) return;
+  for (const [k, v] of freinMemoire) {
+    if (freinMemoire.size < FREIN_MEMOIRE_MAX * 0.9) break;
+    if (v.n < plafond) freinMemoire.delete(k);
+  }
+}
+
+function freinLocal(seau, poids, plafond, fenetre, maintenant = Date.now()) {
+  let e = freinMemoire.get(seau);
+  if (e && e.fin <= maintenant) { freinMemoire.delete(seau); e = null; }
+  if (!e) {
+    if (freinMemoire.size >= FREIN_MEMOIRE_MAX) faireDeLaPlace(maintenant, plafond);
+    if (freinMemoire.size >= FREIN_MEMOIRE_MAX) return { permis: true, attente: 0 };
+    e = { n: 0, fin: maintenant + fenetre * 1000 };
+    freinMemoire.set(seau, e);
+  }
+  e.n += poids;
+  return { permis: e.n <= plafond, attente: Math.max(1, Math.ceil((e.fin - maintenant) / 1000)) };
+}
+
+async function freinMarche(env, request, path, url) {
+  const seau = `marche:ip:${clientIp(request)}`;
+  const poids = poidsMarche(path, url);
+  if (!env.DB) return freinLocal(seau, poids, FREIN_MARCHE.plafond, FREIN_MARCHE.fenetre);
+  if (Date.now() - freinPurgeA > FREIN_PURGE_MS) {
+    freinPurgeA = Date.now();
+    await env.DB.prepare(
+      "DELETE FROM auth_throttle WHERE bucket LIKE 'marche:%' AND reset_at <= unixepoch()").run();
+  }
+  const c = await compteur(env, seau, FREIN_MARCHE.plafond, FREIN_MARCHE.fenetre, poids);
+  return { permis: c.permis,
+           attente: Math.max(1, (c.fin || 0) - Math.floor(Date.now() / 1000)) };
+}
 
 /* TURNSTILE DORT TANT QU'IL N'EST PAS CONFIGURE, comme le reste des portes de
    ce worker. Sans `TURNSTILE_SECRET_KEY`, la fonction laisse passer et le
@@ -1346,7 +1402,7 @@ export default {
     const identifie = !!appIdentity || !!email
       || (motDePasseAdmis && await tokenIsValid(cookieValue(request, 'wd_session'), pwd));
     const authorised = PUBLIC.includes(path)
-      || (DEMO_PUBLIQUE && !pwd)
+      || (DEMO_PUBLIQUE && !pwd && !emailAuthReady)
       || (env.ALLOW_PUBLIC === '1' && !emailAuthReady)
       || identifie;
 
@@ -1426,6 +1482,13 @@ export default {
          `DemoVivante` : un calcul pur, sans appel exterieur. */
       if (path === '/api/demo') {
         return json(DemoVivante.calculer(DemoVivante.jourBorne(url.searchParams.get('jour'))));
+      }
+
+      if (path === '/api/quotes' || path === '/api/isin' || path === '/api/search') {
+        const frein = await freinMarche(env, request, path, url);
+        if (!frein.permis) {
+          return json({ error: 'trop de requêtes' }, 429, { 'Retry-After': String(frein.attente) });
+        }
       }
 
       if (path === '/api/quotes') {
