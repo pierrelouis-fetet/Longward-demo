@@ -116,6 +116,39 @@ const Quotes = (() => {
       if (q && !q.error && q.price) fx[c] = 1 / q.price;
     }
 
+    const manquantes = [...new Set(Store.state.positions
+      .filter(pos => !pos.manual && (pos.symbol || '').trim())
+      .map(pos => bySym[pos.symbol.trim().toUpperCase()])
+      .filter(q => q && !q.error && q.price && q.currency && q.currency !== base && !(fx[q.currency] > 0))
+      .map(q => q.currency))];
+    if (manquantes.length) {
+      try {
+        const r2 = await fetch(BASE + '/api/quotes?symbols='
+          + encodeURIComponent(manquantes.map(c => `${base}${c}=X`).join(',')), { cache: 'no-store' });
+        if (r2.ok) {
+          const d2 = await r2.json();
+          manquantes.forEach((c, i) => {
+            const q = (d2.quotes || [])[i];
+            if (q && !q.error && q.price) fx[c] = 1 / q.price;
+          });
+        }
+      } catch (e) { /* les lignes concernees le diront */ }
+    }
+    /* L'ancien taux d'une ligne ne vaut que pour sa devise, et que sous la
+       devise de profil dans laquelle il a ete pris. Chaque ligne la retient
+       (`pos.fxBase`), posee a chaque taux ecrit ici. La marque globale,
+       `quotes.fxBase`, ne la remplace pas : elle passe a la nouvelle devise
+       des le premier rafraichissement, meme quand une ligne n'a pas eu son
+       change, et l'ancien rafraichissement pouvait deja garder le taux d'une
+       autre devise sous une marque a jour. Sans marque de ligne, la provenance
+       du taux est inconnue : il ne sert pas, et la ligne attend son change. */
+    const tauxDe = (pos, devise) => {
+      if (!devise || devise === base) return 1;
+      if (fx[devise] > 0) return fx[devise];
+      if (pos.fxBase === base && devise === pos.currency && num(pos.fx) > 0) return num(pos.fx);
+      return null;
+    };
+
     const changes = [];
     for (const pos of Store.state.positions) {
       const sym = (pos.symbol || '').trim();
@@ -124,6 +157,13 @@ const Quotes = (() => {
 
       if (!q || q.error || !q.price) {
         changes.push({ name: pos.name, symbol: sym, error: (q && q.error) || 'aucune réponse' });
+        continue;
+      }
+
+      const devise = q.currency || pos.currency;
+      const taux = tauxDe(pos, devise);
+      if (taux === null) {
+        changes.push({ name: pos.name, symbol: sym, error: trad('Change {c} indisponible').replace('{c}', devise) });
         continue;
       }
 
@@ -143,9 +183,8 @@ const Quotes = (() => {
       pos.volume = q.volume ?? null;
       if (q.firstTrade) pos.firstTrade = q.firstTrade;
       if (q.currency) pos.currency = q.currency;
-      pos.fx = (pos.currency && pos.currency !== deviseBase())
-        ? (fx[pos.currency] ?? num(pos.fx) ?? 1)
-        : 1;
+      pos.fx = taux;
+      pos.fxBase = base;
       
       changes.push({
         name: pos.name, symbol: q.symbol || sym, quoteName: q.name || '',

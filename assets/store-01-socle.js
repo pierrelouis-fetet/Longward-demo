@@ -41,6 +41,7 @@ function setModeDemo(on) {
   catch (e) {}
 }
 const cleStockage = () => cleParUtilisateur(modeDemo() ? CLE_DEMO : CLE_REELLE);
+const cleIllisible = () => cleParUtilisateur((modeDemo() ? CLE_DEMO : CLE_REELLE) + ':illisible');
 
 /* Ce que remplace un geste qui remplace tout. Importer une sauvegarde, en
    restaurer une ou tout effacer passent par `Store.save()`, donc par l'envoi

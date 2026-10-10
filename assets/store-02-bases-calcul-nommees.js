@@ -1644,19 +1644,77 @@ function guessSymbol(ticker) {
   return suffix === undefined ? m[2].toUpperCase() : m[2].toUpperCase() + suffix;
 }
 
+/* UN ETAT LOCAL ILLISIBLE SE MET DE COTE AVANT TOUTE ECRITURE.
+
+   `load()` retombait sur la graine quand la lecture ou la migration levait, et
+   le premier enregistrement ecrivait par-dessus la chaine brute : le
+   patrimoine local disparaissait sans trace. La chaine est desormais copiee
+   sous `cleIllisible()`, la plus recente remplacant la precedente. Si la copie
+   ne peut pas se poser (stockage plein), la chaine brute reste la seule, et
+   plus rien n'ecrit la clef principale tant qu'elle n'est pas telechargee :
+   voir `ecrireLocal()`. */
+function copieIllisibleConnue() {
+  try {
+    const t = localStorage.getItem(cleIllisible());
+    return t === null ? null : { cle: cleStockage(), octets: t.length, garde: true };
+  } catch (e) { return null; }
+}
+function mettreDeCoteIllisible(raw) {
+  try {
+    localStorage.setItem(cleIllisible(), raw);
+    return { cle: cleStockage(), octets: raw.length, garde: true };
+  } catch (e) {
+    return { cle: cleStockage(), octets: raw.length, garde: false };
+  }
+}
+
 const Store = {
   state: null,
+  /* `{ cle, octets, garde }` : une copie illisible constatee pour la clef
+     `cle` ; `garde` est faux quand elle n'a pas pu se poser a cote. Toujours
+     lue par `illisibleActif()`. */
+  illisible: null,
+  /* Vrai apres un etat local illisible, et jusqu'a ce que la version en ligne
+     soit reprise, que le cloud se dise vide, ou qu'un "Imposer" explicite la
+     remplace : l'etat en memoire est la graine. Voir `CloudSync.pushMaintenant`
+     et `CloudSync.init`.
+
+     LE DRAPEAU VIT DANS L'ETAT, `meta.envoiSuspendu`, et nulle part a cote.
+     Une clef de stockage separee pouvait echouer seule, stockage plein,
+     pendant que la graine s'ecrivait : au rechargement, plus rien ne disait
+     qu'elle remplacait un patrimoine. Dans l'etat, il s'ecrit avec la graine
+     ou pas du tout -- et si rien ne s'ecrit, la chaine illisible est encore
+     la, et le prochain chargement la constate de nouveau. Une version en ligne
+     reprise ne le porte pas : la remplacer le leve d'elle-meme. */
+  get envoiSuspendu() { return !!this.state?.meta?.envoiSuspendu; },
+  suspendreEnvoi() {
+    this.state.meta = this.state.meta || {};
+    this.state.meta.envoiSuspendu = true;
+  },
+  leverSuspension() {
+    if (this.state?.meta) delete this.state.meta.envoiSuspendu;
+  },
+
+  illisibleActif() {
+    return this.illisible && this.illisible.cle === cleStockage() ? this.illisible : null;
+  },
 
   load() {
     let raw = null;
     try { raw = localStorage.getItem(cleStockage()); } catch (e) { /* file:// restreint */ }
+    this.illisible = copieIllisibleConnue();
+    let illisible = false;
     if (raw) {
       try {
         this.state = JSON.parse(raw);
         this.migrate();
         this._prev = structuredClone(this.state);
         return this.state;
-      } catch (e) { console.warn('État illisible, retour au seed.', e); }
+      } catch (e) {
+        console.warn('État illisible, mis de côté.', e);
+        this.illisible = mettreDeCoteIllisible(raw);
+        illisible = true;
+      }
     }
     /* La graine passe par la migration comme un etat relu, et pour la meme
        raison : elle est ecrite dans l'ancien modele, un compte par ligne de
@@ -1672,6 +1730,7 @@ const Store = {
        qu'a la seule visite qui compte pour une demonstration : la premiere. */
     this.state = structuredClone(SEED);
     this.migrate();
+    if (illisible) this.suspendreEnvoi();
     this._prev = structuredClone(this.state);
     refreshAccounts();
     return this.state;
@@ -2126,15 +2185,15 @@ const Store = {
        Le signal passe par la vue, qui sait le montrer sans repeter : un temoin
        permanent tant que l'ecriture echoue, et un seul message au moment ou la
        situation change. `console.warn` reste, pour la trace technique. */
+    const illisible = this.illisibleActif();
+    const verrou = !!(illisible && !illisible.garde);
     try {
-      localStorage.setItem(cleStockage(), JSON.stringify(this.state));
+      if (!this.ecrireLocal()) throw new Error('copie illisible a telecharger');
       if (this._ecritureKo) { this._ecritureKo = false; signalerEcriture(true); }
       flashSaved();
     } catch (e) {
       console.warn('Sauvegarde impossible', e && e.name);
-      const nouveau = !this._ecritureKo;
-      this._ecritureKo = true;
-      signalerEcriture(false, nouveau);
+      this.signalerEchecEcriture();
     }
 
     /* Le cloud reçoit tout de suite, sauf pendant une frappe.
@@ -2152,9 +2211,38 @@ const Store = {
 
        Le défaut est ainsi le comportement sûr, et le regroupement devient une
        exception qu'on demande là où elle se justifie. */
-    if (typeof CloudSync !== 'undefined' && !modeDemo()) {
+    /* Verrouille, rien ne part en ligne non plus : l'etat en memoire est la
+       graine, et l'envoyer remplacerait la vraie version en ligne. La
+       suspension, elle, se garde dans l'envoi meme (`envoiSuspendu`), parce
+       que d'autres chemins que `save()` envoient. */
+    if (typeof CloudSync !== 'undefined' && !modeDemo() && !verrou) {
       if (opts.differe) CloudSync.schedulePush(); else CloudSync.push();
     }
+  },
+
+  signalerEchecEcriture() {
+    const nouveau = !this._ecritureKo;
+    this._ecritureKo = true;
+    signalerEcriture(false, nouveau);
+  },
+
+  ecrireLocal() {
+    const illisible = this.illisibleActif();
+    if (illisible && !illisible.garde) return false;
+    localStorage.setItem(cleStockage(), JSON.stringify(this.state));
+    return true;
+  },
+  texteIllisible() {
+    const illisible = this.illisibleActif();
+    if (!illisible) return null;
+    try { return localStorage.getItem(illisible.garde ? cleIllisible() : cleStockage()); }
+    catch (e) { return null; }
+  },
+  oublierIllisible() {
+    const illisible = this.illisibleActif();
+    if (!illisible) return;
+    if (illisible.garde) { try { localStorage.removeItem(cleIllisible()); } catch (e) {} }
+    this.illisible = null;
   },
 
   canUndo() { return this._undo.length > 0; },

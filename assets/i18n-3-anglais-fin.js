@@ -1668,6 +1668,16 @@ Object.assign(I18N.en, {
     "Si l’envoi réussit, la copie en ligne sera remplacée aussi, et tes autres appareils la reprendront à leur prochaine ouverture.": "If the upload succeeds, the online copy will be replaced too, and your other devices will pick it up the next time they open.",
     "les cours de la veille ne sont pas encore connus": "yesterday's closing prices are not known yet",
     "aucune de tes lignes n’a de cours du marché": "none of your holdings has a market price",
+    "Données de cet appareil illisibles": "This device's data is unreadable",
+    "Une copie brute est gardée : télécharge-la, puis supprime-la depuis Données.": "A raw copy is kept: download it, then delete it from Data.",
+    "Rien n’est écrit sur cet appareil tant que la copie brute n’est pas téléchargée.": "Nothing is written on this device until the raw copy is downloaded.",
+    "Télécharger la copie": "Download the copy",
+    "Supprimer la copie": "Delete the copy",
+    "Le fichier est-il bien enregistré ? Longward écrira ensuite de nouveau sur cet appareil, par-dessus la copie illisible.": "Is the file saved? Longward will then write on this device again, over the unreadable copy.",
+    "Oui, reprendre": "Yes, resume",
+    "Supprimer la copie illisible de cet appareil ?": "Delete the unreadable copy from this device?",
+    "Télécharge-la d’abord si tu veux la garder : cette suppression ne s’annule pas.": "Download it first if you want to keep it: this deletion cannot be undone.",
+    "Change {c} indisponible": "{c} exchange rate unavailable",
 });
 
 function t(cle, repli) {

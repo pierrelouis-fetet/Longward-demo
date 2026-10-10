@@ -655,7 +655,7 @@ suite('Premier lancement : Longward prend vie sous les yeux', () => {
     vrai(/setModeDemo\(true\);\s*Store\.state = structuredClone\(SEED\);/.test(action), 'l’exemple est la graine, sous son propre mode');
     const st = lireSource('assets/store.js');
     vrai(/cleParUtilisateur\(modeDemo\(\) \? CLE_DEMO : CLE_REELLE\)/.test(st), 'le mode a sa propre clef de stockage');
-    vrai(/if \(typeof CloudSync !== 'undefined' && !modeDemo\(\)\) \{\s*if \(opts\.differe\) CloudSync\.schedulePush\(\); else CloudSync\.push\(\);/.test(st),
+    vrai(/if \(typeof CloudSync !== 'undefined' && !modeDemo\(\) && !verrou\) \{\s*if \(opts\.differe\) CloudSync\.schedulePush\(\); else CloudSync\.push\(\);/.test(st),
       'et rien ne part au cloud en mode démonstration');
     vrai(/const cloud = modeDemo\(\) \? \{ available: false \} : await CloudSync\.init\(\);/.test(s), 'ni à l’ouverture');
     const html = lireSource('index.html');
@@ -1675,7 +1675,7 @@ suite('Une devise principale par profil', () => {
     const q = lireSource('assets/quotes.js');
     vrai(/p\.currency !== deviseBase\(\)/.test(q), 'une ligne dans la devise du profil ne se convertit pas');
     vrai(/`\$\{deviseBase\(\)\}\$\{c\}=X`/.test(q), 'la paire demandée part de la devise du profil');
-    vrai(/pos\.currency !== deviseBase\(\)/.test(q), 'et le taux ne s’applique qu’aux lignes étrangères');
+    vrai(/if \(!devise \|\| devise === base\) return 1;/.test(q), 'et le taux ne s’applique qu’aux lignes étrangères');
     neuf();
     Store.state.meta.devise = 'USD';
     Store.state.positions = [{ id: 'p1', name: 'S&P 500', symbol: 'SPY', qty: 10, price: 500,

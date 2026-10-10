@@ -1399,7 +1399,7 @@ suite('La vue des comptes suit sa source', () => {
     const fin = src.indexOf('canUndo()', debut);
     vrai(fin > debut, 'canUndo() doit suivre save()');
     const corps = src.slice(debut, fin);
-    vrai(corps.includes('localStorage.setItem'),
+    vrai(corps.includes('this.ecrireLocal()'),
       'la fenêtre doit bien contenir le corps de save(), sinon elle ne prouve rien');
     vrai(corps.includes('refreshAccounts()'),
       'sans cet appel, renommer un compte ou changer son type ne se voit qu’au '

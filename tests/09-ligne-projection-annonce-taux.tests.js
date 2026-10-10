@@ -634,8 +634,9 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
        regle la ou elle vit : la suite « Une estampille fraiche ne prouve aucun
        contenu frais » l'execute, celui-ci verifie qu'aucun autre chemin ne
        marque un alignement. */
-    vrai(/if \(verdict === 'aligne'\) markSynced\(localAt\);/.test(init[0]),
-      'il ne se pose que sur un alignement constaté, et par ce seul chemin');
+    vrai(/if \(verdict === 'aligne'\) \{[\s\S]*?if \(local === lastPayload\) \{\s*markSynced\(localAt\);/.test(init[0])
+      && (init[0].replace(/\/\*[\s\S]*?\*\//g, '').match(/markSynced\(localAt\)/g) || []).length === 1,
+      'il ne se pose que sur un alignement constaté, corps compris, et par ce seul chemin');
     vrai(/localAt === remoteAt\) return 'aligne'/.test(src),
       'et l’alignement reste l’égalité des deux horodatages, la seule preuve '
       + 'd’alignement dont on dispose au démarrage');
@@ -783,14 +784,14 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
        place, et se fait refuser sans raison : le correctif se retournerait contre
        le detenteur qui vient de choisir la version en ligne. */
     const src = sourceSync();
-    vrai(/const noterVersionLue = at => \{ markSynced\(at\);/.test(src),
+    vrai(/const noterVersionLue = \(at, corps\) => \{ markSynced\(at\);/.test(src),
       'cloudsync expose de quoi noter une version lue');
     /* Plus de branche « charger celle en ligne » : il n'y a plus de question, et
        les trois chemins passent par la meme porte. C'est elle qui note. */
     const app = lireSource('assets/app.js');
     const i = app.indexOf('async function prendreVersionEnLigne(');
     const porte = app.slice(i, app.indexOf('\n  }', i));
-    vrai(/CloudSync\.noterVersionLue\(quand\);/.test(porte),
+    vrai(/CloudSync\.noterVersionLue\(quand, recu\);/.test(porte),
       'la porte commune note la version adoptée');
   });
 
@@ -1349,7 +1350,7 @@ suite('Une estampille fraîche ne prouve aucun contenu frais', () => {
     vrai(/if \(!remote\) \{ markSynced\(''\); return \{ available: true, empty: true/.test(src),
       'init() efface le repère avant d’annoncer un cloud vide');
     const app = lireSource('assets/app.js').replace(/\/\*[\s\S]*?\*\//g, '');
-    vrai(/cloud\.empty\) \{\s*await CloudSync\.push\(\);/.test(app),
+    vrai(/cloud\.empty\) \{\s*Store\.leverSuspension\(\);\s*await CloudSync\.push\(\);/.test(app),
       'et le premier envoi est une écriture ordinaire');
   });
 

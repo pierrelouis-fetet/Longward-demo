@@ -1935,10 +1935,10 @@ suite('Synchronisation : c’est toujours la version en ligne', () => {
     /* Sans ce reperage, la sauvegarde suivante declarerait avoir lu une version
        qui n'est plus en place, et le serveur la refuserait sans raison. */
     const fn = adoption();
-    vrai(/CloudSync\.noterVersionLue\(quand\);/.test(fn),
-      'la version lue se note');
+    vrai(/CloudSync\.noterVersionLue\(quand, recu\);/.test(fn),
+      'la version lue se note, avec le corps reçu');
     const cs = lireSource('assets/cloudsync.js');
-    vrai(/const noterVersionLue = at => \{ markSynced\(at\); status\.conflict = null; \};/.test(cs),
+    vrai(/const noterVersionLue = \(at, corps\) => \{ markSynced\(at\); markSyncedBody\(corps \?\? corpsLocal\(\)\); status\.conflict = null; \};/.test(cs),
       'et noter la version lue clôt le conflit : il n’y a plus rien à arbitrer');
   });
 

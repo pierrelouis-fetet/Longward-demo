@@ -16,6 +16,15 @@ function healthChecks() {
   const add = (level, title, detail, view, cle) =>
     out.push({ level, sujet, title, detail, view, cle });
 
+  const illisible = Store.illisibleActif();
+  if (illisible) {
+    add('error', trad('Données de cet appareil illisibles'),
+      illisible.garde
+        ? trad('Une copie brute est gardée : télécharge-la, puis supprime-la depuis Données.')
+        : trad('Rien n’est écrit sur cet appareil tant que la copie brute n’est pas téléchargée.'),
+      'data');
+  }
+
   /* --- LES PREMIERS PAS PASSENT DEVANT TOUT LE RESTE ---------------------
 
      La cloche ne disait que des rappels d'exploitation : actualiser des cours,

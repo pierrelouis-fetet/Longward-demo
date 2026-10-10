@@ -169,7 +169,9 @@ Object.assign(ACTIONS, {
         + `${trad('Ici :')} ${new Date(Store.state.meta.savedAt || Date.now()).toLocaleString(locale())}\n\n`
         + trad("L'état actuel sera sauvegardé avant remplacement."))) return;
       Store.addBackup('avant rechargement cloud');
-      Store.state = data; Store.migrate(); Store.save();
+      Store.state = data; Store.migrate();
+      Store.leverSuspension();
+      Store.save();
       render(); toast(trad('Données rechargées'));
     } catch (e) { toast(trad('Échec :') + ' ' + e.message); }
   },
@@ -189,6 +191,26 @@ Object.assign(ACTIONS, {
   'undo'() {
     if (!Store.undo()) { toast(trad('Rien à annuler')); return; }
     render(); toast(trad('Modification annulée'));
+  },
+  async 'telecharger-illisible'() {
+    const brut = Store.texteIllisible();
+    if (brut === null) { toast(trad('Échec')); return; }
+    download(`longward-illisible-${stamp()}.json`, brut, 'text/plain');
+    const illisible = Store.illisibleActif();
+    if (illisible && !illisible.garde) {
+      if (!await askConfirm(trad('Le fichier est-il bien enregistré ? Longward écrira ensuite de nouveau sur cet appareil, par-dessus la copie illisible.'),
+        { ok: 'Oui, reprendre', danger: false })) return;
+      Store.oublierIllisible();
+      Store.save();
+    }
+    render();
+  },
+  async 'supprimer-illisible'() {
+    if (!await askConfirm(trad('Supprimer la copie illisible de cet appareil ?') + '\n\n'
+      + trad('Télécharge-la d’abord si tu veux la garder : cette suppression ne s’annule pas.'),
+      { ok: 'Supprimer', danger: true })) return;
+    Store.oublierIllisible();
+    render();
   },
   'export-json'() {
     download(`longward-${stamp()}.json`, JSON.stringify(Store.state, null, 2));

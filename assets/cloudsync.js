@@ -15,6 +15,37 @@ const CloudSync = (() => {
   const lastSyncedAt = () => { try { return localStorage.getItem(syncedKey()); } catch (e) { return null; } };
   const markSynced = at => { try { localStorage.setItem(syncedKey(), at || ''); } catch (e) {} };
 
+  /* L'EMPREINTE DU DERNIER CORPS QUE LE CLOUD PORTE, d'apres cet appareil.
+
+     La date ne suffit pas a reconnaitre un etat. Une ecriture derivee -- un
+     cours rafraichi, un ISIN resolu -- change le corps sans changer `savedAt`,
+     et le serveur arbitre sur cette seule date : deux corps differents
+     partagent donc une date. L'empreinte suit le corps. Elle se pose quand le
+     serveur a accepte un envoi (celle du corps envoye, pas de l'etat courant),
+     quand on prend la version en ligne, et au demarrage quand les deux cotes
+     sont identiques. Elle survit au rechargement et se cloisonne par compte,
+     comme la date : la deconnexion l'efface avec elle. */
+  const SYNCED_BODY_KEY = 'wealth-dashboard:synced-body';
+  const syncedBodyKey = () => userId ? `${SYNCED_BODY_KEY}:user:${userId}` : SYNCED_BODY_KEY;
+  const lastSyncedBody = () => { try { return localStorage.getItem(syncedBodyKey()); } catch (e) { return null; } };
+  const markSyncedBody = corps => { try { localStorage.setItem(syncedBodyKey(), empreinte(corps)); } catch (e) {} };
+  function hache53(texte, graine) {
+    let h1 = 0xdeadbeef ^ graine, h2 = 0x41c6ce57 ^ graine;
+    for (let i = 0; i < texte.length; i++) {
+      const c = texte.charCodeAt(i);
+      h1 = Math.imul(h1 ^ c, 2654435761);
+      h2 = Math.imul(h2 ^ c, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+    h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+    h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+  }
+  const empreinte = texte => `${texte.length.toString(36)}.${hache53(texte, 0)}.${hache53(texte, 1)}`;
+  const corpsLocal = () => JSON.stringify(Store.state);
+  const sansSuspension = st => ({ ...st, meta: { ...(st.meta || {}), envoiSuspendu: undefined } });
+
   const COMPTES_KEY = 'wealth-dashboard:comptes';
   const litComptes = () => {
     try { return localStorage.getItem(COMPTES_KEY) === '1'; } catch (e) { return false; }
@@ -35,6 +66,11 @@ const CloudSync = (() => {
   let user = null;              // email Cloudflare Access
   let timer = null;
   let lastPayload = null;       // évite les écritures identiques
+  /* Les corps confies a `sendBeacon`, tant qu'aucune reponse ne dit s'ils sont
+     arrives : le beacon part sans retour. Une liste et non un seul : deux
+     fermetures de suite confient deux corps, et le premier peut arriver quand
+     le second est refuse. */
+  let beacons = [];
   let status = { lastPush: null, error: null, conflict: null, pushing: false };
   let onChange = () => {};
   let onConflit = () => {};
@@ -46,12 +82,16 @@ const CloudSync = (() => {
      prochaine ecriture, et il doit donc se poser aussi quand on adopte l'etat du
      cloud sans l'avoir ecrit : sinon la sauvegarde suivante declare avoir lu une
      version qui n'est plus en place, et se fait refuser sans raison. */
-  const noterVersionLue = at => { markSynced(at); status.conflict = null; };
+  /* L'empreinte suit, et c'est celle du corps RECU (`corps`), tel qu'il est
+     en ligne : la migration qui suit l'adoption peut le changer, et l'etat
+     migre n'est alors pas en ligne -- `aJour()` le dit, et il part. Sans
+     corps, l'etat courant. */
+  const noterVersionLue = (at, corps) => { markSynced(at); markSyncedBody(corps ?? corpsLocal()); status.conflict = null; };
 
   const aJour = () => {
     const local = Store.state?.meta?.savedAt;
     if (!local) return true;
-    return lastSyncedAt() === local;
+    return lastSyncedAt() === local && lastSyncedBody() === empreinte(corpsLocal());
   };
 
   async function probe() {
@@ -104,7 +144,12 @@ const CloudSync = (() => {
 
   async function pushMaintenant({ force = false } = {}) {
     if (!available) return { skipped: true };
-    const payload = JSON.stringify(Store.state);
+    /* Apres un etat local illisible, la memoire porte la graine : l'envoyer
+       remplacerait la vraie version en ligne. Seuls la reprise de celle-ci ou
+       un "Imposer" explicite (`force`) levent la suspension. */
+    if (!force && Store.envoiSuspendu) return { skipped: true, suspendu: true };
+    const impose = force && Store.envoiSuspendu;
+    const payload = impose ? JSON.stringify(sansSuspension(Store.state)) : JSON.stringify(Store.state);
     if (!force && payload === lastPayload) return { skipped: true };
 
     /* L'horodatage de CE qu'on envoie, releve au moment de la serialisation.
@@ -134,6 +179,34 @@ const CloudSync = (() => {
 
       if (r.status === 409) {
         const d = await r.json();
+        /* NOTRE PROPRE BEACON, ARRIVE PENDANT QU'ON NE REGARDAIT PAS.
+
+           La fermeture a confie un corps a `sendBeacon`, sans reponse. Le
+           serveur l'a accepte, puis cet envoi-ci declare l'ancienne base et se
+           fait refuser : sans ce cas, retourner sur l'application apres l'avoir
+           cachee produisait un conflit contre soi-meme. La date seule ne le
+           prouve pas, puisqu'une ecriture derivee garde la sienne : on lit la
+           version en ligne et l'on compare les corps eux-memes, caractere pour
+           caractere. Le meme corps, c'est le notre ; un autre, c'est un vrai
+           conflit. */
+        /* Une lecture qui echoue n'est pas un verdict : elle part dans le
+           `catch`, comme une panne, avec son reessai, et les beacons restent en
+           attente. */
+        if (d && d.remoteSavedAt && beacons.some(b => b.at === d.remoteSavedAt)) {
+          const distant = await pull();
+          const texte = distant ? JSON.stringify(distant) : null;
+          const sien = beacons.find(b => b.payload === texte);
+          beacons = [];
+          if (sien) {
+            markSynced(sien.at);
+            markSyncedBody(sien.payload);
+            lastPayload = sien.payload;
+            status.error = null;
+            status.conflict = null;
+            if (payload === sien.payload) return { ok: true };
+            return pushMaintenant({ force });
+          }
+        }
         status.conflict = d;                 // une version plus récente existe en ligne
         status.error = null;
         onConflit(d);
@@ -143,6 +216,12 @@ const CloudSync = (() => {
 
       lastPayload = payload;
       markSynced(envoyeAt);
+      markSyncedBody(payload);
+      beacons = [];
+      if (impose && Store.leverSuspension) {
+        Store.leverSuspension();
+        try { if (Store.ecrireLocal) Store.ecrireLocal(); } catch (e) { /* le prochain enregistrement s'en charge */ }
+      }
       status.lastPush = new Date().toISOString();
       status.error = null;
       status.conflict = null;
@@ -227,6 +306,12 @@ const CloudSync = (() => {
        ecrasait un patrimoine entier sans un mot. */
     if (!remote) { markSynced(''); return { available: true, empty: true, user }; }
 
+    if (Store.envoiSuspendu) {
+      lastPayload = JSON.stringify(remote);
+      markSynced(remote?.meta?.savedAt);
+      return { available: true, adopted: true, at: remote?.meta?.savedAt, data: remote, user };
+    }
+
     lastPayload = JSON.stringify(remote);
 
     const remoteAt = remote?.meta?.savedAt;
@@ -248,7 +333,40 @@ const CloudSync = (() => {
        sans qu'aucune écriture n'ait eu lieu : le repère disait « cet état est
        aligné avec le cloud » alors qu'il n'avait jamais été envoyé, et la
        modification suivante devenait invisible au conflit. */
-    if (verdict === 'aligne') markSynced(localAt);
+    if (verdict === 'aligne') {
+      /* DATES EGALES, CORPS DIFFERENTS : QUI A LU QUOI ?
+
+         Deux corps identiques sont alignes, et le repere se pose.
+
+         Sinon, la date commune ne dit rien a elle seule : `horodatageApres()`
+         ordonne les decisions d'UN appareil, pas de deux. Deux appareils
+         partis de la meme version peuvent decider dans la meme milliseconde.
+         Celui qui n'a jamais lu cette date n'a donc rien a imposer : c'est un
+         conflit, regle comme les autres (version en ligne, sauvegarde,
+         message).
+
+         Celui qui l'a lue ou ecrite (`synced-at` egal) n'a pu la faire
+         diverger que par des ecritures derivees, qui gardent la date. Si son
+         corps n'est plus celui du repere -- ou s'il n'a pas de repere, sur une
+         installation d'avant lui --, une ecriture derivee n'est peut-etre
+         jamais partie : elle part maintenant, avec la date commune pour base.
+         Ce qui s'y perd au pire, ce sont des cours plus frais ecrits par un
+         autre appareil, que le prochain rafraichissement reprend. Si son
+         corps est celui du repere, l'ecart vient d'un autre appareil : on
+         prend sa version. */
+      const local = corpsLocal();
+      if (local === lastPayload) {
+        markSynced(localAt);
+        markSyncedBody(local);
+      } else if (lastSyncedAt() !== localAt) {
+        return { available: true, newer: true, at: remoteAt, data: remote, user, localAt };
+      } else if (lastSyncedBody() !== empreinte(local)) {
+        return { available: true, ready: true, user, aEnvoyer: true };
+      } else {
+        markSynced(remoteAt);
+        return { available: true, adopted: true, at: remoteAt, data: remote, user };
+      }
+    }
 
     /* `envoyer` : cet appareil porte une modification jamais partie ET le cloud
        est reste exactement la ou il l'avait laisse. Il n'y a donc rien a perdre
@@ -268,13 +386,17 @@ const CloudSync = (() => {
      deja envoye, et repousse le meme corps une seconde fois. Sans consequence
      sur les donnees, mais une ecriture pour rien.
 
-     `lastPayload` est mis a jour tout de suite : le beacon part sans reponse a
-     attendre, donc rien d'autre ne peut le faire. Deux passages a la suite —
-     l'ecran se cache, puis la page se decharge — n'envoient ainsi qu'une fois. */
+     RIEN N'EST MARQUE ENVOYE. `sendBeacon` rend false quand le navigateur
+     refuse le corps (trop gros pour partir en arriere-plan, quota), et meme
+     quand il l'accepte, le serveur peut le refuser sans que personne ne le
+     sache. Le corps confie est seulement retenu dans `beacons` : un second
+     passage avec le meme corps -- l'ecran se cache, puis la page se decharge --
+     ne repart pas, et le retour sur la page (`reprendre`) verifie. */
   function flushOnUnload() {
-    if (!available) return;
+    if (!available || Store.envoiSuspendu) return;
     const payload = JSON.stringify(Store.state);
     if (payload === lastPayload) return;
+    if (beacons.some(b => b.payload === payload)) return;
     clearTimeout(timer);
     try {
       const vu = lastSyncedAt();
@@ -282,15 +404,20 @@ const CloudSync = (() => {
       const separateur = params ? '&' : '?';
       /* `sendBeacon` ne porte pas d'en-tete : le compte passe donc en
          parametre, faute de mieux, et le serveur le compare a sa session. */
-      navigator.sendBeacon('/api/state' + params + separateur
+      const parti = navigator.sendBeacon('/api/state' + params + separateur
         + `user=${encodeURIComponent(userId || '')}`,
         new Blob([payload], { type: 'application/json' }));
-      lastPayload = payload;
+      if (parti) beacons.push({ payload, at: Store.state?.meta?.savedAt || '' });
     } catch (e) { /* rien à faire de plus au moment de la fermeture */ }
   }
 
+  function reprendre() {
+    if (!available) return null;
+    return beacons.length || !aJour() ? push() : null;
+  }
+
   return {
-    init, pull, push, schedulePush, probe, flushOnUnload, setOnChange,
+    init, pull, push, schedulePush, probe, flushOnUnload, reprendre, setOnChange,
     setOnConflit, noterVersionLue, arbitrer,
     isAvailable: () => available,
     aJour,

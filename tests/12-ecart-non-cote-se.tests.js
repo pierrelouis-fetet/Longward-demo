@@ -241,8 +241,9 @@ suite('Une modification ne se perd pas quand l’écran se verrouille', () => {
 
   test('le flush ne réenvoie pas deux fois le même état', () => {
     /* L'ecran se cache, puis la page se decharge : deux appels a la suite. Le
-       corps envoye est retenu, donc le second ne fait rien — et le minuteur est
-       annule, pour qu'une page restauree ne repousse pas un etat deja parti. */
+       corps confie au beacon est retenu, donc le second ne fait rien, et le
+       minuteur est annule. Le comportement se joue dans la suite 39 ; ce
+       controle garde la forme. */
     const cs = lireSource('assets/cloudsync.js');
     /* La tranche s'arrete a la fermeture de la fonction, pas apres un
        nombre de caracteres : une ligne ajoutee dans le corps poussait le
@@ -252,8 +253,10 @@ suite('Une modification ne se perd pas quand l’écran se verrouille', () => {
     const fn = cs.slice(debut, cs.indexOf('\n  }\n', debut));
     vrai(/if \(payload === lastPayload\) return;/.test(fn),
       'un état déjà envoyé ne repart pas');
-    vrai(/lastPayload = payload;/.test(fn),
-      'et le beacon n’ayant pas de réponse, c’est ici que le repère se pose');
+    vrai(/if \(beacons\.some\(b => b\.payload === payload\)\) return;/.test(fn),
+      'un corps déjà confié au beacon ne repart pas');
+    vrai(!/lastPayload = payload;/.test(fn),
+      'et rien n’est marqué envoyé sans réponse du serveur');
     vrai(/clearTimeout\(timer\)/.test(fn),
       'le minuteur armé est annulé : une page restaurée ne repousse rien');
   });

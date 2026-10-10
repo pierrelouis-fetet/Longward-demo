@@ -1831,15 +1831,25 @@ partieChargee('assets/app-11-fenetre-apercu.js');
      devient la base des ecritures suivantes, sinon la prochaine sauvegarde se
      ferait refuser pour avoir declare une version qui n'est plus en place ; et
      le conflit se clot, sinon la cloche reclamerait un arbitrage deja rendu. */
+  /* Le corps recu se note AVANT la migration, qui le modifie en place : c'est
+     lui qui est en ligne. Si la migration a change quelque chose, l'etat migre
+     part aussitot. L'ecriture locale passe par `ecrireLocal()`, qui refuse tant
+     qu'une chaine illisible attend d'etre telechargee : le message de reussite
+     se tait alors, et le signal d'echec d'ecriture parle a sa place. */
   async function prendreVersionEnLigne(donnees, quand, mot) {
     Store.addBackup('avant adoption de la version en ligne');
+    const recu = JSON.stringify(donnees);
     Store.state = donnees;
     Store.migrate();
     refreshAccounts();
-    CloudSync.noterVersionLue(quand);
-    try { localStorage.setItem(cleStockage(), JSON.stringify(Store.state)); } catch (e) {}
+    CloudSync.noterVersionLue(quand, recu);
+    Store.leverSuspension();
+    let ecrit = false;
+    try { ecrit = Store.ecrireLocal(); } catch (e) {}
     render();
-    toast(trad(mot));
+    if (ecrit) toast(trad(mot));
+    else Store.signalerEchecEcriture();
+    if (!CloudSync.aJour()) CloudSync.push();
   }
 
   if (localDAbord) {
@@ -1916,7 +1926,9 @@ partieChargee('assets/app-11-fenetre-apercu.js');
       /* Premier envoi : rien en ligne, donc rien a perdre. Sans `force` non
          plus — `init()` a efface le repere, l'ecriture part sans base, et c'est
          le serveur qui n'insere que s'il n'y a toujours rien. Si cette lecture
-         a vide etait fausse, un refus vaut mieux qu'un patrimoine efface. */
+         a vide etait fausse, un refus vaut mieux qu'un patrimoine efface. Rien
+         en ligne ne pouvant etre remplace, une suspension n'a plus d'objet. */
+      Store.leverSuspension();
       await CloudSync.push();
     }
     /* Deux evenements, et c'est le second qui repare la perte.
@@ -1940,7 +1952,11 @@ partieChargee('assets/app-11-fenetre-apercu.js');
       window.addEventListener('pagehide', () => CloudSync.flushOnUnload());
       document.addEventListener('visibilitychange', () => {
         if (document.hidden) CloudSync.flushOnUnload();
+        else CloudSync.reprendre();
       });
+      /* Une page restauree du cache d'arriere-plan ne repasse pas toujours par
+         `visibilitychange` : `pageshow` persiste couvre ce retour-la. */
+      window.addEventListener('pageshow', e => { if (e.persisted) CloudSync.reprendre(); });
       window.addEventListener('online', () => CloudSync.push());
     }
   } catch (e) { console.warn('Synchro cloud indisponible', e); }

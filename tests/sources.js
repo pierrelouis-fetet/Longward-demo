@@ -49,6 +49,7 @@ const PARTIES_DE_TESTS = [
   'tests/36-cibles-debutant.tests.js',
   'tests/37-caps-du-patrimoine.tests.js',
   'tests/38-import-tableau.tests.js',
+  'tests/39-synchronisation.tests.js',
 ];
 const PARTIES_DE_TESTS_CHARGEES = new Set();
 let PARTIE_DE_TESTS_COURANTE = null;

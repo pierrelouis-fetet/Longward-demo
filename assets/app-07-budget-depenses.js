@@ -102,6 +102,19 @@ function viewData() {
       <button class="btn sm ghost" data-action="cloud-force">${trad('Imposer celle de cet appareil')}</button>
     </div>` : ''}
   </section>
+  ${Store.illisibleActif() ? `<section class="card tight etat-donnees etat-erreur">
+    <span class="etat-point" aria-hidden="true"></span>
+    <div class="etat-texte">
+      <b>${trad('Données de cet appareil illisibles')}</b>
+      <span class="sub">${Store.illisibleActif().garde
+        ? trad('Une copie brute est gardée : télécharge-la, puis supprime-la depuis Données.')
+        : trad('Rien n’est écrit sur cet appareil tant que la copie brute n’est pas téléchargée.')}</span>
+    </div>
+    <div class="paire-btn etat-conflit">
+      <button class="btn sm" data-action="telecharger-illisible">${trad('Télécharger la copie')}</button>
+      ${Store.illisibleActif().garde ? `<button class="btn sm ghost danger" data-action="supprimer-illisible">${trad('Supprimer la copie')}</button>` : ''}
+    </div>
+  </section>` : ''}
 
   <div class="colonnes-bureau">
   <section class="card tight controles ${anomalies.length ? 'controles-alerte' : 'controles-ok'}">
