@@ -728,12 +728,12 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
        correctif a ete ecrit dans `functions/api/state.js`, qui ne tourne pas. */
     const src = lireSource('_worker.js');
     vrai(src, '_worker.js doit être lisible pour ce contrôle');
-    const bloc = src.match(/async function handleState\([\s\S]*?\n\}/);
-    vrai(bloc, 'handleState() doit être trouvable');
+    const bloc = src.match(/async function ecrireEtatKV\([\s\S]*?\n\}/);
+    vrai(bloc, 'ecrireEtatKV() doit être trouvable');
     const code = bloc[0].replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
     vrai(/params\.get\('base'\)/.test(code),
       'l’écrivain déclare la version qu’il a lue');
-    vrai(/base !== prevAt/.test(code),
+    vrai(/base !== avant\.revision/.test(code),
       'et l’écriture n’est acceptée que si c’est encore celle en place');
     /* L'ancienne regle ne suffisait pas et ne doit pas revenir seule : elle
        comparait deux horloges, or l'onglet perime a toujours la plus fraiche. */
@@ -773,13 +773,15 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
        pourquoi ce chemin-la doit lui aussi declarer sa base. Un onglet perime
        qu'on ferme envoyait tout son etat d'un coup. */
     const src = sourceSync();
+    vrai(/const base = lastSyncedRev\(\);[\s\S]{0,200}&base=\$\{encodeURIComponent\(base\)\}/.test(src),
+      'les paramètres d’écriture portent la révision lue');
     const push = src.match(/async function pushMaintenant\([\s\S]*?\n  \}/)[0]
       .replace(/\/\*[\s\S]*?\*\//g, '');
-    vrai(/base=\$\{encodeURIComponent\(vu\)\}/.test(push),
+    vrai(/parametresEcriture\(force\)/.test(push),
       'l’envoi ordinaire déclare la version lue');
     const flush = src.match(/function flushOnUnload\([\s\S]*?\n  \}/)[0]
       .replace(/\/\*[\s\S]*?\*\//g, '');
-    vrai(/base=\$\{encodeURIComponent\(vu\)\}/.test(flush),
+    vrai(/parametresEcriture\(false,/.test(flush),
       'le beacon de fermeture aussi');
   });
 
@@ -788,15 +790,15 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
        place, et se fait refuser sans raison : le correctif se retournerait contre
        le detenteur qui vient de choisir la version en ligne. */
     const src = sourceSync();
-    vrai(/const noterVersionLue = \(at, corps\) => \{ markSynced\(at\);/.test(src),
+    vrai(/const noterVersionLue = \(at, corps, revision\) => \{\s*markSynced\(at\);/.test(src),
       'cloudsync expose de quoi noter une version lue');
     /* Plus de branche « charger celle en ligne » : il n'y a plus de question, et
        les trois chemins passent par la meme porte. C'est elle qui note. */
     const st = lireSource('assets/store.js');
     const i = st.indexOf('  adopterVersionEnLigne(donnees, quand');
     const porte = i < 0 ? '' : st.slice(i, st.indexOf('\n  },', i));
-    vrai(/CloudSync\.noterVersionLue\(quand, recu\);/.test(porte),
-      'la porte commune note la version adoptée');
+    vrai(/CloudSync\.noterVersionLue\(quand, recu, revision\);/.test(porte),
+      'la porte commune note la version adoptée, et sa révision');
   });
 
   test('un refus se voit ailleurs que sur la page Données', () => {
@@ -1339,9 +1341,16 @@ suite('Une estampille fraîche ne prouve aucun contenu frais', () => {
       'sans repère de filiation, l’estampille locale ne prouve rien');
   });
 
-  test('rien en ligne et rien ici ne déclenche aucune écriture', () => {
-    eq(arbitre()({ localAt: undefined, remoteAt: undefined, syncedAt: null }), 'rien',
-      'un état sans horodatage se ferait refuser par le serveur — révision manquante');
+  test('un état en ligne sans date ne se remplace jamais sur la foi d’une absence', () => {
+    /* Aucune filiation ne se prouve contre lui : la regle du detenteur
+       s'applique, la version en ligne, avec sauvegarde. Un local sans date n'a
+       rien a perdre, il adopte ; deux corps identiques sont alignes. */
+    eq(arbitre()({ localAt: J20, remoteAt: undefined, syncedAt: J19 }), 'conflit',
+      'un local daté face à un distant sans date : la version en ligne, avec sauvegarde');
+    eq(arbitre()({ localAt: undefined, remoteAt: undefined, syncedAt: null }), 'conflit',
+      'deux corps différents sans date : la version en ligne, avec sauvegarde et message');
+    eq(arbitre()({ localAt: J20, remoteAt: undefined, syncedAt: null, memesCorps: true }), 'aligne',
+      'deux corps identiques sont alignés, quelles que soient les dates');
   });
 
   test('le premier envoi ne force plus rien non plus', () => {
@@ -1351,7 +1360,7 @@ suite('Une estampille fraîche ne prouve aucun contenu frais', () => {
        entier. Le repere est efface, l'ecriture part sans base, et c'est le
        serveur qui n'insere que s'il n'y a toujours rien. */
     const src = lireSource('assets/cloudsync.js');
-    vrai(/if \(!remote\) \{ markSynced\(''\); return \{ available: true, empty: true/.test(src),
+    vrai(/if \(!remote\) \{ markSynced\(''\); markSyncedRev\(''\); return \{ available: true, empty: true/.test(src),
       'init() efface le repère avant d’annoncer un cloud vide');
     const app = lireSource('assets/app.js').replace(/\/\*[\s\S]*?\*\//g, '');
     vrai(/cloud\.empty\) \{\s*Store\.leverSuspension\(\);\s*await CloudSync\.push\(\);/.test(app),

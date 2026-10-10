@@ -47,6 +47,7 @@ import urllib.request
 
 import captures
 import parcours
+import controle_sql
 
 # La console Windows ecrit en cp1252 et etouffe sur la coche du verdict : le
 # script mourait apres avoir lu le bon resultat, ce qui est la pire facon
@@ -354,6 +355,14 @@ def main():
                     code = 1
                 else:
                     print(f"{joues} parcours joués sans faute")
+                    # Puis le SQL de l'etat contre un vrai SQLite : voir
+                    # controle_sql.py.
+                    fautes_sql, n_sql = controle_sql.verifier(os.path.dirname(os.path.abspath(__file__)))
+                    if fautes_sql:
+                        print("\nLe SQL de l'état ne tient pas :\n  " + "\n  ".join(fautes_sql), file=sys.stderr)
+                        code = 1
+                    else:
+                        print(f"{n_sql} contrôles SQL sur SQLite {controle_sql.sqlite3.sqlite_version}")
     finally:
         chrome.terminate()
         if serveur:

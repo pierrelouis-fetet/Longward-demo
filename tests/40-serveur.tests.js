@@ -139,4 +139,184 @@ suite('La passerelle de marché a un frein', () => {
   });
 });
 
+/* ------------------------------------------------------------------
+   Le protocole de l'etat, joue sur le serveur.
+
+   La source du worker est evaluee : `export default {` y devient une
+   constante, et la fonction rend les fonctions internes. Rien n'est ajoute au
+   module servi. Le faux D1 reconnait les instructions de `SQL_ETAT` par leur
+   texte meme, et les applique d'un seul tenant, comme la vraie base ; leur
+   semantique SQL est prouvee a part, contre SQLite (controle_sql.py).
+   ------------------------------------------------------------------ */
+const InternesServeur = (() => {
+  let cache = null;
+  return () => cache || (cache = new Function(
+    lireSource('_worker.js').replace(/export default \{/, 'const __defaut = {')
+    + `\nreturn { handleState, servirEtatD1, lireEtatKV, SQL_ETAT, MAX_OCTETS_D1,
+        handleStateD1: typeof handleStateD1 === 'function' ? handleStateD1 : null };`)());
+})();
+
+function kvEtat(initial = {}) {
+  const m = new Map(Object.entries(initial).map(([k, v]) => [k, { value: v, metadata: null }]));
+  return { m,
+    get: async k => (m.has(k) ? m.get(k).value : null),
+    getWithMetadata: async k => (m.has(k) ? { ...m.get(k) } : { value: null, metadata: null }),
+    put: async (k, value, o = {}) => { m.set(k, { value, metadata: o.metadata || null }); },
+    delete: async k => { m.delete(k); } };
+}
+
+function d1Etat(SQL) {
+  const lignes = new Map(), sauvegardes = [], bascule = new Map();
+  let maintenant = 1000;
+  const changes = n => ({ meta: { changes: n } });
+  const schemaDe = b => { try { return Number(JSON.parse(b)?.schemaVersion ?? 0) || 0; } catch { return 0; } };
+  const exec = (sql, a) => {
+    if (/^\s*CREATE TABLE/.test(sql)) return changes(0);
+    const l = lignes.get(a[0]);
+    switch (sql) {
+      case SQL.lire: return l ? { body: l.body, revision: l.revision } : null;
+      case SQL.ecrireSurBase: {
+        const x = lignes.get(a[2]);
+        if (!x || x.revision !== a[3] || x.body === '') return changes(0);
+        lignes.set(a[2], { body: a[0], revision: a[1] }); return changes(1);
+      }
+      case SQL.ecrireSansBase:
+        if (l && l.body !== '') return changes(0);
+        lignes.set(a[0], { body: a[1], revision: a[2] }); return changes(1);
+      case SQL.imposer: lignes.set(a[0], { body: a[1], revision: a[2] }); return changes(1);
+      case SQL.sauverSurBase:
+        if (l && l.revision === a[1] && l.body !== '' && schemaDe(l.body) !== a[2]) { sauvegardes.push({ owner: a[0], body: l.body }); return changes(1); }
+        return changes(0);
+      case SQL.sauverAvantImposer:
+        if (l && l.body !== '' && schemaDe(l.body) !== a[1]) { sauvegardes.push({ owner: a[0], body: l.body }); return changes(1); }
+        return changes(0);
+      case SQL.effacer: lignes.set(a[0], { body: '', revision: '' }); return changes(1);
+      case SQL.importer:
+        if (l) return changes(0);
+        lignes.set(a[0], { body: a[1], revision: a[2] }); return changes(1);
+      case SQL.purgerSauvegardes: return changes(0);
+      case SQL.basculeVue: if (!bascule.has(a[0])) bascule.set(a[0], maintenant); return changes(1);
+      case SQL.basculeLire: return bascule.has(a[0]) ? { depuis: maintenant - bascule.get(a[0]) } : null;
+    }
+    throw new Error('instruction inconnue du faux D1 : ' + sql.slice(0, 60));
+  };
+  const lier = (sql, args) => ({ sql, args, first: async () => exec(sql, args), run: async () => exec(sql, args) });
+  return { lignes, sauvegardes, avancer: s => { maintenant += s; },
+    prepare: sql => ({ ...lier(sql, []), bind: (...a) => lier(sql, a) }),
+    batch: async stmts => stmts.map(st => exec(st.sql, st.args)) };
+}
+
+const corpsEtat = (at, extra = {}) => JSON.stringify({ positions: [], monthly: [], schemaVersion: 2, meta: { savedAt: at }, ...extra });
+const requeteEtat = (methode, params = '', corps) =>
+  new Request('https://longward.test/api/state' + params, corps === undefined ? { method: methode } : { method: methode, body: corps });
+const P1 = '2026-10-01T10:00:00.000Z', P2 = '2026-10-01T11:00:00.000Z', P3 = '2026-10-01T12:00:00.000Z';
+const CLE_ETAT = 'state:default';
+
+suite('Le protocole de l’état sur le serveur : KV', () => {
+  test('un état d’avant le protocole a sa date pour révision ; chaque écriture tire un jeton', async () => {
+    const { handleState } = InternesServeur();
+    const WEALTH = kvEtat({ [CLE_ETAT]: corpsEtat(P1) });
+    const g = await handleState(requeteEtat('GET'), { WEALTH }, null, true);
+    eq(g.headers.get('X-Longward-Revision'), P1, 'la lecture rend la date comme révision');
+    const p = await handleState(requeteEtat('PUT', '?proto=2&base=' + P1, corpsEtat(P2)), { WEALTH }, null, true);
+    eq(p.status, 200, 'l’écriture sur cette base passe');
+    const jeton = (await p.json()).revision;
+    vrai(/^r1-/.test(jeton), `et rend un jeton : ${jeton}`);
+    eq(WEALTH.m.get(CLE_ETAT).metadata.revision, jeton, 'gardé dans les métadonnées');
+    eq((await handleState(requeteEtat('GET'), { WEALTH }, null, true)).headers.get('X-Longward-Revision'), jeton,
+      'et rendu par la lecture suivante');
+    const vieux = await handleState(requeteEtat('PUT', '?proto=2&base=' + P1, corpsEtat(P3)), { WEALTH }, null, true);
+    eq(vieux.status, 409, 'l’ancienne base est refusée');
+    eq((await vieux.json()).remoteRevision, jeton, 'avec la révision en place');
+  });
+
+  test('sans proto=2, aucune écriture : ni sur base, ni sans base, ni forcée, ni effacement', async () => {
+    const { handleState } = InternesServeur();
+    const WEALTH = kvEtat({ [CLE_ETAT]: corpsEtat(P1) });
+    for (const params of ['?base=' + P1, '', '?force=1']) {
+      const r = await handleState(requeteEtat('PUT', params, corpsEtat(P2)), { WEALTH }, null, true);
+      eq(r.status, 426, `« ${params || 'sans base'} » : recharge nécessaire`);
+    }
+    eq((await handleState(requeteEtat('DELETE'), { WEALTH }, null, true)).status, 426, 'effacer aussi');
+    eq(JSON.parse(WEALTH.m.get(CLE_ETAT).value).meta.savedAt, P1, 'rien n’a bougé');
+  });
+
+  test('une valeur d’avant, sans date, a une révision stable : lecture, puis écriture', async () => {
+    const { handleState } = InternesServeur();
+    const sansDate = JSON.stringify({ positions: [], monthly: [], meta: {} });
+    const WEALTH = kvEtat({ [CLE_ETAT]: sansDate });
+    const r1 = (await handleState(requeteEtat('GET'), { WEALTH }, null, true)).headers.get('X-Longward-Revision');
+    const r2 = (await handleState(requeteEtat('GET'), { WEALTH }, null, true)).headers.get('X-Longward-Revision');
+    vrai(!!r1 && r1 === r2, `une révision non vide et stable : ${r1}`);
+    const p = await handleState(requeteEtat('PUT', '?proto=2&base=' + encodeURIComponent(r1), corpsEtat(P1)), { WEALTH }, null, true);
+    eq(p.status, 200, 'l’écriture sur cette base passe');
+  });
+
+  test('un corps qui revient à une valeur passée ne rend pas sa révision', async () => {
+    const { handleState } = InternesServeur();
+    const WEALTH = kvEtat();
+    const ecrire = async (corps, base) => handleState(requeteEtat('PUT', '?proto=2' + (base ? '&base=' + base : ''), corps), { WEALTH }, null, true);
+    const rA = (await (await ecrire(corpsEtat(P1))).json()).revision;
+    const rB = (await (await ecrire(corpsEtat(P2), rA)).json()).revision;
+    const rA2 = (await (await ecrire(corpsEtat(P1), rB)).json()).revision;
+    vrai(rA2 !== rA, 'A, B, puis A : un jeton neuf');
+    eq((await ecrire(corpsEtat(P3), rA)).status, 409, 'un appareil resté sur le premier A ne peut pas écrire');
+  });
+});
+
+suite('Le protocole de l’état sur le serveur : D1', () => {
+  test('deux écritures sur la même base : une seule passe', async () => {
+    const { servirEtatD1, SQL_ETAT } = InternesServeur();
+    const DB = d1Etat(SQL_ETAT);
+    const env = { DB };
+    const r0 = await servirEtatD1(requeteEtat('PUT', '?proto=2', corpsEtat(P1)), env, 'o1');
+    eq(r0.status, 200, 'rien en ligne : la première écriture passe sans base');
+    const base = (await r0.json()).revision;
+    const [a, b] = await Promise.all([
+      servirEtatD1(requeteEtat('PUT', '?proto=2&base=' + base, corpsEtat(P2, { note: 'a' })), env, 'o1'),
+      servirEtatD1(requeteEtat('PUT', '?proto=2&base=' + base, corpsEtat(P2, { note: 'b' })), env, 'o1'),
+    ]);
+    eq([a.status, b.status].sort().join(','), '200,409', 'même date, corps différents : l’une passe, l’autre non');
+    eq((await servirEtatD1(requeteEtat('PUT', '?proto=2', corpsEtat(P3)), env, 'o1')).status, 409,
+      'sans base sur un état existant : refus');
+  });
+
+  test('la sauvegarde de migration n’existe que pour une écriture acceptée', async () => {
+    const { servirEtatD1, SQL_ETAT } = InternesServeur();
+    const DB = d1Etat(SQL_ETAT);
+    const env = { DB };
+    const base = (await (await servirEtatD1(requeteEtat('PUT', '?proto=2', corpsEtat(P1)), env, 'o1')).json()).revision;
+    eq((await servirEtatD1(requeteEtat('PUT', '?proto=2&base=perimee', corpsEtat(P2, { schemaVersion: 3 })), env, 'o1')).status, 409, 'base périmée');
+    eq(DB.sauvegardes.length, 0, 'aucune sauvegarde pour un refus');
+    eq((await servirEtatD1(requeteEtat('PUT', '?proto=2&base=' + base, corpsEtat(P2, { schemaVersion: 3 })), env, 'o1')).status, 200, 'migration acceptée');
+    eq(DB.sauvegardes.length, 1, 'une sauvegarde');
+    eq(JSON.parse(DB.sauvegardes[0].body).schemaVersion, 2, 'de l’état remplacé');
+    eq((await servirEtatD1(requeteEtat('PUT', '?proto=2&force=1', corpsEtat(P3, { schemaVersion: 4 })), env, 'o1')).status, 200, 'force');
+    eq(DB.sauvegardes.length, 2, 'force sauvegarde aussi ce qu’il remplace');
+  });
+
+  test('un état effacé reste effacé, et une écriture sans base repart', async () => {
+    const { servirEtatD1, SQL_ETAT } = InternesServeur();
+    const DB = d1Etat(SQL_ETAT);
+    const env = { DB };
+    const base = (await (await servirEtatD1(requeteEtat('PUT', '?proto=2', corpsEtat(P1)), env, 'o1')).json()).revision;
+    eq((await servirEtatD1(requeteEtat('DELETE', '?proto=2'), env, 'o1')).status, 200, 'effacé');
+    eq((await servirEtatD1(requeteEtat('GET'), env, 'o1')).status, 204, 'se lit comme absent');
+    eq((await servirEtatD1(requeteEtat('PUT', '?proto=2&base=' + base, corpsEtat(P2)), env, 'o1')).status, 409,
+      'l’ancienne base ne ressuscite rien');
+    eq((await servirEtatD1(requeteEtat('PUT', '?proto=2', corpsEtat(P3)), env, 'o1')).status, 200, 'une écriture neuve passe');
+  });
+
+  test('la taille se compte en octets, et l’ancien client est refusé', async () => {
+    const { servirEtatD1, SQL_ETAT, MAX_OCTETS_D1 } = InternesServeur();
+    const env = { DB: d1Etat(SQL_ETAT) };
+    const lourd = corpsEtat(P1, { note: 'é'.repeat(Math.ceil(MAX_OCTETS_D1 / 2) + 10) });
+    vrai(lourd.length < 2 * 1024 * 1024, 'sous la limite en caractères');
+    const r = await servirEtatD1(requeteEtat('PUT', '?proto=2', lourd), env, 'o1');
+    eq(r.status, 413, 'au-dessus de la limite de la base en octets : refusé');
+    eq((await servirEtatD1(requeteEtat('PUT', '', corpsEtat(P1)), env, 'o1')).status, 426, 'sans proto=2 : recharge nécessaire');
+    eq((await servirEtatD1(requeteEtat('DELETE'), env, 'o1')).status, 426, 'effacer sans proto=2 aussi');
+  });
+});
+
 finDePartieDeTests('tests/40-serveur.tests.js');

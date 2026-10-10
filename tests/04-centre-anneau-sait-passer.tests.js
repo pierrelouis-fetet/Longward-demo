@@ -1918,7 +1918,7 @@ suite('Synchronisation : c’est toujours la version en ligne', () => {
       'une définition et trois appels');
     vrai(!/Store\.addBackup\('avant chargement cloud'\)/.test(app),
       'plus de seconde écriture de la même adoption');
-    vrai(/Store\.adopterVersionEnLigne\(data, at, 'avant rechargement cloud'\)/.test(app),
+    vrai(/Store\.adopterVersionEnLigne\(data, at, 'avant rechargement cloud', lu\.revision\)/.test(app),
       'et le rechargement depuis le cloud passe par la même porte');
   });
 
@@ -1928,7 +1928,7 @@ suite('Synchronisation : c’est toujours la version en ligne', () => {
        retour, elle n'aurait jamais existe. L'ordre n'est pas un detail — une
        sauvegarde posee apres le remplacement copierait la version en ligne. */
     const fn = adoption();
-    vrai(/adopterVersionEnLigne\(donnees, quand, raison = 'avant adoption de la version en ligne'\)/.test(fn),
+    vrai(/adopterVersionEnLigne\(donnees, quand, raison = 'avant adoption de la version en ligne', revision = ''\)/.test(fn),
       'la raison par défaut nomme l’adoption');
     const iSauve = fn.indexOf('this.addBackup(raison);');
     const iEtat = fn.indexOf('this.state = donnees;');
@@ -1941,10 +1941,10 @@ suite('Synchronisation : c’est toujours la version en ligne', () => {
     /* Sans ce reperage, la sauvegarde suivante declarerait avoir lu une version
        qui n'est plus en place, et le serveur la refuserait sans raison. */
     const fn = adoption();
-    vrai(/if \(cloud\) CloudSync\.noterVersionLue\(quand, recu\);/.test(fn),
+    vrai(/if \(cloud\) CloudSync\.noterVersionLue\(quand, recu, revision\);/.test(fn),
       'la version lue se note, avec le corps reçu');
     const cs = lireSource('assets/cloudsync.js');
-    vrai(/const noterVersionLue = \(at, corps\) => \{ markSynced\(at\); markSyncedBody\(corps \?\? corpsLocal\(\)\); status\.conflict = null; \};/.test(cs),
+    vrai(/const noterVersionLue = \(at, corps, revision\) => \{\s*markSynced\(at\); markSyncedBody\(corps \?\? corpsLocal\(\)\); markSyncedRev\(revision \|\| ''\); status\.conflict = null;\s*\};/.test(cs),
       'et noter la version lue clôt le conflit : il n’y a plus rien à arbitrer');
   });
 
@@ -1965,7 +1965,7 @@ suite('Synchronisation : c’est toujours la version en ligne', () => {
     const i = app.indexOf('CloudSync.setOnConflit(');
     const bloc = app.slice(i, app.indexOf('\n  });', i));
     vrai(/await CloudSync\.pull\(\)/.test(bloc), 'elle lit la version en ligne');
-    vrai(/prendreVersionEnLigne\(distant,/.test(bloc), 'et la prend');
+    vrai(/prendreVersionEnLigne\(lu\.donnees,/.test(bloc) && /lu\.revision\);/.test(bloc), 'et la prend, avec sa révision');
     /* Le repli, qui compte autant : hors ligne, une lecture n'aboutit pas, et
        c'est justement le cas courant quand une ecriture vient d'echouer. */
     vrai(/catch \(e\) \{/.test(bloc), 'un échec de lecture est rattrapé');
@@ -1979,8 +1979,10 @@ suite('Synchronisation : c’est toujours la version en ligne', () => {
        version qui n'est plus en place — sinon un onglet ouvert depuis des
        heures ecraserait ce qu'un autre appareil vient d'enregistrer. */
     const w = lireSource('_worker.js');
-    vrai(/if \(prevAt && base !== prevAt\)/.test(w),
-      'le serveur compare toujours la version lue à celle en place');
+    vrai(/if \(!force && avant && base !== avant\.revision\) return refusDeConflit\(/.test(w),
+      'le serveur compare toujours la version lue à celle en place, en KV');
+    vrai(/WHERE owner_id = \? AND revision = \? AND body != ''/.test(w),
+      'et dans l’instruction même, en D1');
     vrai(/error: 'conflit'/.test(w), 'et refuse quand elles diffèrent');
   });
 });

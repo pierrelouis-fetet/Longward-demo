@@ -1834,8 +1834,8 @@ partieChargee('assets/app-11-fenetre-apercu.js');
   /* Le geste vit dans `Store.adopterVersionEnLigne`, porte commune avec
      "Recharger depuis le cloud" ; ici, l'ecran et le message. Un refus
      d'ecriture locale tait la reussite : le signal d'echec parle a sa place. */
-  async function prendreVersionEnLigne(donnees, quand, mot) {
-    const ecrit = Store.adopterVersionEnLigne(donnees, quand);
+  async function prendreVersionEnLigne(donnees, quand, mot, revision) {
+    const ecrit = Store.adopterVersionEnLigne(donnees, quand, undefined, revision);
     render();
     if (ecrit) toast(trad(mot));
   }
@@ -1857,21 +1857,15 @@ partieChargee('assets/app-11-fenetre-apercu.js');
     majTemoinEnregistrement();
     if (currentView() === 'data') render();
   });
-  CloudSync.setOnConflit(async d => {
-    try {
-      const distant = await CloudSync.pull();
-      if (distant) {
-        await prendreVersionEnLigne(distant,
-          distant?.meta?.savedAt || d.remoteSavedAt,
-          'Version en ligne reprise. Ta saisie est dans les sauvegardes.');
-        return;
-      }
-    } catch (e) { /* hors ligne : on garde ce qu'on a, et la cloche le dira */ }
-    toast(trad('Modification gardée ici : une autre version existe en ligne'));
-    render();
-  });
-  try {
-    const cloud = modeDemo() ? { available: false } : await CloudSync.init();
+  async function brancherCloud(cloud) {
+    if (cloud.bascule) {
+      majTemoinEnregistrement();
+      setTimeout(async () => {
+        try { await brancherCloud(await CloudSync.init()); }
+        catch (e) { console.warn('Synchro cloud indisponible', e); }
+      }, Math.max(5, Number(cloud.attente) || 30) * 1000);
+      return;
+    }
     majTemoinEnregistrement();
     if (cloud.adopted) {
       /* Cet appareil était simplement en retard, sans modification locale :
@@ -1883,10 +1877,10 @@ partieChargee('assets/app-11-fenetre-apercu.js');
          construction, donc la seule chose qui rende l'erreur réparable est un
          point de retour : Données → sauvegardes. Elle ne coûte rien et elle
          couvre le jour où ce raisonnement se trompera encore. */
-      await prendreVersionEnLigne(cloud.data, cloud.at, 'Données à jour depuis le cloud');
+      await prendreVersionEnLigne(cloud.data, cloud.at, 'Données à jour depuis le cloud', cloud.revision);
     } else if (cloud.newer) {
       await prendreVersionEnLigne(cloud.data, cloud.at,
-        'Version en ligne reprise. Ta saisie est dans les sauvegardes.');
+        'Version en ligne reprise. Ta saisie est dans les sauvegardes.', cloud.revision);
     } else if (cloud.aEnvoyer) {
       /* Cet appareil porte une modification jamais partie, et le cloud est
          reste exactement la ou il l'avait laisse. Elle part maintenant, sans
@@ -1919,6 +1913,24 @@ partieChargee('assets/app-11-fenetre-apercu.js');
       Store.leverSuspension();
       await CloudSync.push();
     }
+  }
+
+  CloudSync.setOnConflit(async d => {
+    try {
+      const lu = await CloudSync.pull();
+      if (lu) {
+        await prendreVersionEnLigne(lu.donnees,
+          lu.donnees?.meta?.savedAt || d.remoteSavedAt,
+          'Version en ligne reprise. Ta saisie est dans les sauvegardes.', lu.revision);
+        return;
+      }
+    } catch (e) { /* hors ligne : on garde ce qu'on a, et la cloche le dira */ }
+    toast(trad('Modification gardée ici : une autre version existe en ligne'));
+    render();
+  });
+  try {
+    const cloud = modeDemo() ? { available: false } : await CloudSync.init();
+    await brancherCloud(cloud);
     /* Deux evenements, et c'est le second qui repare la perte.
 
        `pagehide` ne suffit pas sur telephone : verrouiller l'ecran ou passer a

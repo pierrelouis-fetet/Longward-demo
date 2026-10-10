@@ -16,29 +16,43 @@ const BacASable = (() => {
              removeItem: k => { m.delete(k); } };
   }
 
-  /* Le serveur KV du worker : une ecriture sans `force` n'est acceptee que si
-     sa base est la date en place. Le corps se garde tel qu'il est arrive. */
+  /* Le serveur du protocole commun : chaque ecriture acceptee tire un jeton
+     de revision, rendu apres l'ecriture et dans l'en-tete de chaque lecture ;
+     une ecriture sans `force` n'est acceptee que si sa base est ce jeton ; une
+     ecriture sans `proto=2` recoit 426. Un etat pose avant le protocole a pour
+     revision sa date. `poser()` simule l'ecriture d'un autre appareil. Le corps
+     se garde tel qu'il est arrive. */
   function serveur(initial) {
-    const s = { corps: initial ? JSON.stringify(initial) : null, puts: 0, refus: 0,
-                panne: false, lecturesEnPanne: 0, retenir: false, retenus: [] };
+    const s = { corps: initial ? JSON.stringify(initial) : null,
+                revision: initial ? (initial.meta?.savedAt || '') : '', n: 0,
+                puts: 0, refus: 0, anciens: 0, panne: false, lecturesEnPanne: 0, bascule: 0,
+                retenir: false, retenus: [] };
+    s.poser = etat => { s.corps = JSON.stringify(etat); s.revision = 'r-ailleurs-' + (++s.n); };
     s.ecrire = (url, corps) => {
       const p = new URL(url, 'http://local').searchParams;
-      const avant = s.corps ? JSON.parse(s.corps)?.meta?.savedAt : null;
-      if (p.get('force') !== '1' && avant && p.get('base') !== avant) {
+      if (p.get('proto') !== '2') { s.anciens++; return { status: 426, body: { error: 'recharge nécessaire' } }; }
+      if (p.get('force') !== '1' && s.corps !== null && p.get('base') !== s.revision) {
         s.refus++;
-        return { status: 409, body: { error: 'conflit', remoteSavedAt: avant,
-          localSavedAt: JSON.parse(corps)?.meta?.savedAt, base: p.get('base') } };
+        return { status: 409, body: { error: 'conflit', remoteSavedAt: JSON.parse(s.corps)?.meta?.savedAt || null,
+          remoteRevision: s.revision, localSavedAt: JSON.parse(corps)?.meta?.savedAt, base: p.get('base') } };
       }
       s.corps = corps;
+      s.revision = 'r-' + (++s.n);
       s.puts++;
-      return { status: 200, body: { ok: true } };
+      return { status: 200, body: { ok: true, revision: s.revision } };
     };
-    const reponse = (status, body) => ({ status, ok: status >= 200 && status < 300, json: async () => body });
+    const reponse = (status, body, entetes = {}) => ({
+      status, ok: status >= 200 && status < 300,
+      json: async () => (typeof body === 'string' ? JSON.parse(body) : body),
+      text: async () => (typeof body === 'string' ? body : JSON.stringify(body)),
+      headers: { get: k => (k in entetes ? entetes[k] : null) },
+    });
     s.fetch = async (url, init = {}) => {
       if (s.panne) throw new Error('reseau coupe');
       if ((init.method || 'GET') === 'GET') {
         if (s.lecturesEnPanne > 0) { s.lecturesEnPanne--; throw new Error('lecture coupee'); }
-        return s.corps ? reponse(200, JSON.parse(s.corps)) : reponse(204, null);
+        if (s.bascule > 0) { s.bascule--; return reponse(503, { error: 'bascule en cours', bascule: true, attente: 1 }); }
+        return s.corps ? reponse(200, s.corps, { 'X-Longward-Revision': s.revision }) : reponse(204, null);
       }
       if (s.retenir) await new Promise(r => s.retenus.push(r));
       const r = s.ecrire(url, init.body);
@@ -159,7 +173,7 @@ suite('La fermeture d’onglet ne marque rien comme envoyé sans preuve', () => 
     cs.flushOnUnload();
     /* Un autre appareil a ecrit, a la meme date, autre chose : le beacon
        arrive apres lui et se fait refuser. */
-    srv.corps = JSON.stringify(etatSync(T2, { positions: [{ id: 'autre' }] }));
+    srv.poser(etatSync(T2, { positions: [{ id: 'autre' }] }));
     await cs.livrerBeacons();
     const r = await cs.reprendre();
     vrai(r && r.conflict, 'la date seule ne prouve rien : conflit');
@@ -215,7 +229,7 @@ suite('Le témoin suit le corps, pas seulement la date', () => {
 
   test('dates égales, corps local reconnu, corps distant différent : on prend la version en ligne', async () => {
     const { srv, st, store } = await appareilAligne();
-    srv.corps = JSON.stringify(etatSync(T1, { quotes: { lastRun: 'ailleurs' } }));
+    srv.poser(etatSync(T1, { quotes: { lastRun: 'ailleurs' } }));
     const cs2 = BacASable.charger({ srv, st, store });
     const r = await cs2.init();
     vrai(r.adopted, 'l’écart vient d’un autre appareil : adopter');
@@ -227,6 +241,7 @@ suite('Le témoin suit le corps, pas seulement la date', () => {
     srv.lecturesEnPanne = 1;
     const st = BacASable.stockage();
     st.setItem('wealth-dashboard:synced-at', T1);
+    st.setItem('wealth-dashboard:synced-rev', T1);
     const store = { state: etatSync('', { positions: [{ id: 'graine' }] }), envoiSuspendu: true };
     const cs = BacASable.charger({ srv, st, store, beacon: () => true });
     const r = await cs.init();
@@ -277,10 +292,10 @@ suite('Le témoin suit le corps, pas seulement la date', () => {
   test('une adoption suivie d’une migration envoie l’état migré', async () => {
     const { srv, store, cs } = await appareilAligne();
     const recu = JSON.stringify(etatSync(T2, { positions: [{ id: 'p1' }] }));
-    srv.corps = recu;
+    srv.corps = recu; srv.revision = 'r-adopte';
     /* La migration change le corps en place, apres sa lecture. */
     store.state = { ...JSON.parse(recu), schemaVersion: 9 };
-    cs.noterVersionLue(T2, recu);
+    cs.noterVersionLue(T2, recu, srv.revision);
     vrai(!cs.aJour(), 'l’état migré n’est pas en ligne');
     const r = await cs.push();
     vrai(r && r.ok, 'il part, avec la base lue');
@@ -293,7 +308,7 @@ suite('Le témoin suit le corps, pas seulement la date', () => {
     const i = st.indexOf('  adopterVersionEnLigne(donnees, quand');
     const fn = i < 0 ? '' : st.slice(i, st.indexOf('\n  },', i));
     const ordre = ['this.addBackup(raison);', 'const recu = JSON.stringify(donnees);', 'this.migrate();',
-      'CloudSync.noterVersionLue(quand, recu);', 'this.leverSuspension();', 'this.ecrireLocal()',
+      'CloudSync.noterVersionLue(quand, recu, revision);', 'this.leverSuspension();', 'this.ecrireLocal()',
       'if (cloud && !CloudSync.aJour()) CloudSync.push();'];
     const pos = ordre.map(x => fn.indexOf(x));
     vrai(pos.every(p => p > 0), `les sept gestes sont là : ${pos.join(', ')}`);
@@ -303,7 +318,7 @@ suite('Le témoin suit le corps, pas seulement la date', () => {
     const app = lireSource('assets/app.js');
     const k = app.indexOf('async function prendreVersionEnLigne(');
     const vue = app.slice(k, app.indexOf('\n  }\n', k));
-    vrai(/const ecrit = Store\.adopterVersionEnLigne\(donnees, quand\);\s*render\(\);\s*if \(ecrit\) toast\(trad\(mot\)\);/.test(vue),
+    vrai(/const ecrit = Store\.adopterVersionEnLigne\(donnees, quand, undefined, revision\);\s*render\(\);\s*if \(ecrit\) toast\(trad\(mot\)\);/.test(vue),
       'et la vue tait sa réussite quand rien ne s’est écrit');
   });
 
@@ -329,7 +344,7 @@ suite('Le témoin suit le corps, pas seulement la date', () => {
       const cs = BacASable.charger({ srv, st, store: Store });
       vrai(await cs.probe(), 'synchronisation disponible');
       globalThis.CloudSync = cs;
-      const ecrit = Store.adopterVersionEnLigne(JSON.parse(srv.corps), T2, 'avant rechargement cloud');
+      const ecrit = Store.adopterVersionEnLigne(JSON.parse(srv.corps), T2, 'avant rechargement cloud', srv.revision);
       vrai(ecrit, 'l’état s’écrit sur cet appareil');
       await calme(); await calme(); await calme();
       eq(srv.refus, 0, 'aucun envoi refusé');
@@ -344,6 +359,131 @@ suite('Le témoin suit le corps, pas seulement la date', () => {
       Fixture.poser();
     }
     for (const [k, v] of avant) eq(localStorage.getItem(k), v, `${k} rendue telle quelle`);
+  });
+});
+
+/* --- Le protocole des revisions ------------------------------------------------
+   La filiation se prouve par le jeton que le serveur rend, plus par la date. */
+suite('La revision vient du serveur, et chaque ecriture dit son protocole', () => {
+  test('aucune écriture ne part sans proto=2, beacon compris', async () => {
+    const { srv, store, cs } = await appareilAligne({ beacon: () => true });
+    store.state = etatSync(T2, { positions: [{ id: 'p1' }] });
+    await cs.push();
+    store.state = etatSync(T3, { positions: [{ id: 'p2' }] });
+    cs.flushOnUnload();
+    await cs.livrerBeacons();
+    eq(srv.anciens, 0, 'le serveur n’a vu aucun ancien client');
+  });
+
+  test('la base est le jeton rendu, et une date égale ne suffit pas', async () => {
+    const { srv, store, cs } = await appareilAligne();
+    store.state = etatSync(T2, { positions: [{ id: 'p1' }] });
+    vrai((await cs.push()).ok, 'premier envoi accepté');
+    const jeton = srv.revision;
+    /* Un autre appareil ecrit un autre corps, A LA MEME DATE. */
+    srv.poser(etatSync(T2, { positions: [{ id: 'ailleurs' }] }));
+    store.state = etatSync(T3, { positions: [{ id: 'p1' }, { id: 'p2' }] });
+    const r = await cs.push();
+    vrai(r && r.conflict, `la base ${jeton} n’est plus en place : refus, malgré la même date`);
+  });
+
+  test('l’envoi au démarrage part sur la révision lue', async () => {
+    const srv = BacASable.serveur(etatSync(T1));
+    const st = BacASable.stockage();
+    st.setItem('wealth-dashboard:synced-at', T1);
+    const store = { state: etatSync(T1, { quotes: { lastRun: 'x' } }) };
+    const cs = BacASable.charger({ srv, st, store });
+    const r = await cs.init();
+    eq(r.aEnvoyer, true, 'une écriture dérivée jamais partie');
+    vrai((await cs.push()).ok, 'elle part, sur la révision lue au démarrage');
+    eq(srv.refus, 0, 'sans un seul refus');
+  });
+
+  test('après une adoption, l’écriture suivante part sur la révision reçue', async () => {
+    const { srv, store, cs } = await appareilAligne();
+    srv.poser(etatSync(T2, { positions: [{ id: 'ailleurs' }] }));
+    const lu = await cs.pull();
+    eq(lu.revision, srv.revision, 'la lecture rend la révision de l’en-tête');
+    store.state = lu.donnees;
+    cs.noterVersionLue(T2, lu.texte, lu.revision);
+    store.state = etatSync(T3, { positions: [{ id: 'ailleurs' }, { id: 'ici' }] });
+    vrai((await cs.push()).ok, 'acceptée');
+    eq(srv.refus, 0, 'sans conflit');
+  });
+
+  test('pendant une bascule, rien ne part ; ensuite, l’arbitrage d’abord', async () => {
+    const srv = BacASable.serveur(etatSync(T1));
+    srv.bascule = 1;
+    const st = BacASable.stockage();
+    const store = { state: etatSync(T1) };
+    const cs = BacASable.charger({ srv, st, store, beacon: () => true });
+    const r = await cs.init();
+    vrai(r.bascule, 'la lecture dit la bascule');
+    vrai(cs.enBascule(), 'et la synchronisation l’attend');
+    store.state = etatSync(T2, { positions: [{ id: 'p1' }] });
+    const p = await cs.push();
+    vrai(p && p.bascule, 'un envoi attend');
+    cs.flushOnUnload();
+    eq(cs.beaconsEnAttente(), 0, 'la fermeture aussi');
+    eq(srv.puts, 0, 'rien n’est parti');
+    const r2 = await cs.init();
+    vrai(!r2.bascule && !cs.enBascule(), 'la bascule finie, la lecture reprend');
+    vrai(r2.newer, 'et l’arbitrage a lieu : le local a bougé sans repère, la version en ligne d’abord');
+  });
+
+  test('une panne pendant la bascule ne bloque pas l’onglet', async () => {
+    const srv = BacASable.serveur(etatSync(T1));
+    srv.bascule = 1;
+    const st = BacASable.stockage();
+    const store = { state: etatSync(T1) };
+    const cs = BacASable.charger({ srv, st, store });
+    vrai((await cs.init()).bascule, 'la bascule commence');
+    srv.lecturesEnPanne = 1;
+    const r = await cs.init();
+    vrai(r.bascule, 'une lecture en panne pendant l’attente : l’attente continue, le branchement relira');
+    const r2 = await cs.init();
+    vrai(!cs.enBascule() && !r2.bascule, 'le réseau revenu, la lecture aboutit et lève l’attente');
+    vrai(r2.ready || r2.adopted, 'puis l’arbitrage a lieu');
+  });
+
+  test('un distant sans date n’est jamais écrasé automatiquement', async () => {
+    const sansDate = { positions: [{ id: 'enLigne' }], monthly: [], meta: {} };
+    for (const [local, attendu] of [
+      [etatSync(T2, { positions: [{ id: 'ici' }] }), 'newer'],
+      [{ positions: [{ id: 'ici' }], monthly: [], meta: {} }, 'newer'],
+      [sansDate, 'aligne'],
+    ]) {
+      const srv = BacASable.serveur(sansDate);
+      const st = BacASable.stockage();
+      const store = { state: JSON.parse(JSON.stringify(local)) };
+      const cs = BacASable.charger({ srv, st, store });
+      const r = await cs.init();
+      const verdict = r.newer ? 'newer' : r.adopted ? 'adopted' : r.aEnvoyer ? 'envoyer' : 'aligne';
+      eq(verdict, attendu, `local ${JSON.stringify(local.meta)} : ${attendu}`);
+      eq(srv.puts, 0, 'rien n’est écrit par-dessus');
+    }
+  });
+
+  test('le retour à KV après une base : adoption, puis restauration de la sauvegarde', async () => {
+    /* La base porte Y, que cet appareil a ecrite. On la delie : la lecture
+       retombe sur KV, reste en X. L'app prend X (sauvegarde posee) ; restaurer
+       la sauvegarde ecrit Y sur la revision de X, que l'appareil vient de lire. */
+    const X = etatSync(T1, { positions: [{ id: 'X' }] });
+    const kv = BacASable.serveur(X);
+    const st = BacASable.stockage();
+    st.setItem('wealth-dashboard:synced-at', T2);
+    st.setItem('wealth-dashboard:synced-rev', 'r-base-Y');
+    const Y = etatSync(T2, { positions: [{ id: 'Y' }] });
+    const store = { state: JSON.parse(JSON.stringify(Y)) };
+    const cs = BacASable.charger({ srv: kv, st, store });
+    const r = await cs.init();
+    vrai(r.newer || r.adopted, 'l’ancienne valeur KV se prend, avec sauvegarde');
+    store.state = r.data;
+    cs.noterVersionLue(r.at, JSON.stringify(r.data), r.revision);
+    /* Restaurer la sauvegarde : l'etat Y revient, date apres, et part. */
+    store.state = { ...JSON.parse(JSON.stringify(Y)), meta: { savedAt: T3 } };
+    vrai((await cs.push()).ok, 'la restauration s’écrit sur la révision lue');
+    eq(JSON.parse(kv.corps).positions[0].id, 'Y', 'KV porte de nouveau Y');
   });
 });
 

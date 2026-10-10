@@ -29,6 +29,16 @@ CREATE TABLE IF NOT EXISTS portfolios (
   updated_at INTEGER NOT NULL
 );
 
+-- Les copies d'un etat avant une migration de schema, posees par l'ecriture
+-- qui les remplace et dans le meme lot. Elles suivent le compte : effacees
+-- avec lui, renommees avec lui. Le worker cree la table si elle manque.
+CREATE TABLE IF NOT EXISTS portfolio_backups (
+  owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+  created_at INTEGER NOT NULL,
+  schema_version INTEGER NOT NULL,
+  body TEXT NOT NULL
+);
+
 -- LE COMPTEUR D'ABUS, ET POURQUOI IL VIT ICI PLUTOT QU'EN MEMOIRE.
 --
 -- Un Worker n'a pas de memoire entre deux requetes, et deux requetes voisines

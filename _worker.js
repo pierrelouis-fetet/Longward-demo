@@ -342,6 +342,204 @@ const MAX_BYTES = 2 * 1024 * 1024;
 const FICHIERS_DE_DEVELOPPEMENT = /^\/(tests(\.html|\/.*)|\.github\/.*|regles\/.*|CLAUDE\.md|AGENTS\.md|README\.md|DEPLOY\.md|ICONES\.md|schema\.sql|wrangler\.json|[^/]+\.py)$/;
 const keyFor = email => `state:${email || 'default'}`;
 
+/* ---------------- etat : le protocole commun ----------------
+   Ce bloc est le meme dans le worker de la demonstration et dans celui de
+   l'instance privee. Seule la creation des tables (SCHEMA_ETAT_D1) differe :
+   la demonstration rattache ses etats a des comptes, l'instance privee n'en a
+   pas.
+
+   ON N'ECRASE QUE LA VERSION QU'ON A LUE. L'ecrivain declare la revision qu'il
+   a lue (`base`) ; l'ecriture n'est acceptee que si c'est encore celle en
+   place, quelle que soit son horloge : un onglet reste ouvert des heures porte
+   une date fraiche sur un contenu perime. `force=1` est la porte de
+   l'arbitrage : le detenteur a vu les deux versions et impose la sienne.
+
+   LA REVISION EST UN JETON, TIRE A CHAQUE ECRITURE ACCEPTEE. Une date ne
+   prouve pas la filiation (une ecriture derivee la garde, deux appareils
+   peuvent la partager), une empreinte non plus (un corps qui revient a une
+   valeur passee la retrouve). Le jeton se rend apres une ecriture et dans
+   l'en-tete `X-Longward-Revision` de chaque lecture. Un etat ecrit avant ce
+   protocole n'en a pas : sa revision est sa date, jusqu'a sa premiere
+   reecriture.
+
+   CHAQUE ECRITURE DIT SA VERSION DU PROTOCOLE (`proto=2`). Un onglet charge
+   avec un code d'avant ne la porte pas : il recoit 426, qu'il traite comme une
+   panne, et garde son etat local jusqu'au rechargement, au lieu d'arbitrer
+   contre un protocole qu'il ne parle pas. */
+const PROTO_ETAT = '2';
+const MAX_OCTETS_D1 = 1900000;
+const jetonRevision = () => 'r1-' + crypto.randomUUID();
+const octets = texte => new TextEncoder().encode(texte).length;
+const dateDeCorps = texte => { try { return JSON.parse(texte)?.meta?.savedAt || null; } catch { return null; } };
+const versionDeSchema = etat => Number(etat?.schemaVersion ?? 0) || 0;
+
+function refusAncienClient(params) {
+  return params.get('proto') === PROTO_ETAT ? null : json({ error: 'recharge nécessaire' }, 426);
+}
+
+function reponseEtat(texte, revision) {
+  return new Response(texte, { headers: {
+    'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store',
+    'X-Longward-Revision': revision || '',
+  } });
+}
+
+function lireCorpsEtat(body) {
+  if (body.length > MAX_BYTES) return { refus: json({ error: 'état trop volumineux' }, 413) };
+  let incoming;
+  try { incoming = JSON.parse(body); }
+  catch { return { refus: json({ error: 'JSON invalide' }, 400) }; }
+  if (!incoming || !incoming.positions || !incoming.monthly) {
+    return { refus: json({ error: 'format inattendu' }, 400) };
+  }
+  return { incoming };
+}
+
+const refusDeConflit = (avant, incoming, base) => json({
+  error: 'conflit', remoteSavedAt: avant ? dateDeCorps(avant.texte) : null,
+  remoteRevision: avant ? avant.revision : null,
+  localSavedAt: incoming?.meta?.savedAt || null, base: base || null, raison: 'version non lue' }, 409);
+
+async function empreinteAncienne(texte) {
+  const b = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texte)));
+  return 'kv-' + [...b].slice(0, 16).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+async function lireEtatKV(env, key) {
+  const { value, metadata } = await env.WEALTH.getWithMetadata(key);
+  if (value === null || value === undefined) return null;
+  return { texte: value,
+           revision: metadata?.revision || dateDeCorps(value) || await empreinteAncienne(value) };
+}
+
+async function ecrireEtatKV(env, key, body, incoming, params) {
+  const force = params.get('force') === '1';
+  const base = params.get('base');
+  const avant = await lireEtatKV(env, key);
+  if (!force && avant && base !== avant.revision) return refusDeConflit(avant, incoming, base);
+  if (avant) {
+    try {
+      const vAvant = versionDeSchema(JSON.parse(avant.texte));
+      if (versionDeSchema(incoming) !== vAvant) {
+        const quand = new Date().toISOString().replace(/[:.]/g, '-');
+        await env.WEALTH.put(`${key}:backup:v${vAvant}:${quand}`, avant.texte,
+                             { expirationTtl: 60 * 60 * 24 * 180 });
+      }
+    } catch { /* une sauvegarde ratee ne doit pas empecher l'enregistrement */ }
+  }
+  const revision = jetonRevision();
+  await env.WEALTH.put(key, body, { metadata: { revision } });
+  return json({ ok: true, savedAt: incoming?.meta?.savedAt || null, revision, bytes: body.length });
+}
+
+/* D1 : la comparaison et l'ecriture tiennent dans une instruction. Les
+   parametres de chaque instruction sont dans l'ordre indique. Un etat efface
+   reste une ligne au corps vide (`body = ''`) : il se lit comme absent, et
+   rien ne le ressuscite. La sauvegarde de migration se pose dans le meme lot
+   que l'ecriture, sous la meme condition : elle n'existe que pour une
+   ecriture acceptee. */
+const SCHEMA_VERSION_SQL = "IFNULL(json_extract(CASE WHEN json_valid(body) THEN body ELSE '{}' END, '$.schemaVersion'), 0)";
+const SQL_ETAT = {
+  lire: `SELECT body, revision FROM portfolios WHERE owner_id = ?`,
+  ecrireSurBase: `UPDATE portfolios SET body = ?, revision = ?, updated_at = unixepoch()
+    WHERE owner_id = ? AND revision = ? AND body != ''`,
+  ecrireSansBase: `INSERT INTO portfolios (owner_id, body, revision, updated_at)
+    VALUES (?, ?, ?, unixepoch())
+    ON CONFLICT(owner_id) DO UPDATE SET
+      body = excluded.body, revision = excluded.revision, updated_at = unixepoch()
+    WHERE portfolios.body = ''`,
+  imposer: `INSERT INTO portfolios (owner_id, body, revision, updated_at)
+    VALUES (?, ?, ?, unixepoch())
+    ON CONFLICT(owner_id) DO UPDATE SET
+      body = excluded.body, revision = excluded.revision, updated_at = unixepoch()`,
+  sauverSurBase: `INSERT INTO portfolio_backups (owner_id, created_at, schema_version, body)
+    SELECT owner_id, unixepoch(), ${SCHEMA_VERSION_SQL}, body FROM portfolios
+     WHERE owner_id = ? AND revision = ? AND body != '' AND ${SCHEMA_VERSION_SQL} != ?`,
+  sauverAvantImposer: `INSERT INTO portfolio_backups (owner_id, created_at, schema_version, body)
+    SELECT owner_id, unixepoch(), ${SCHEMA_VERSION_SQL}, body FROM portfolios
+     WHERE owner_id = ? AND body != '' AND ${SCHEMA_VERSION_SQL} != ?`,
+  effacer: `INSERT INTO portfolios (owner_id, body, revision, updated_at)
+    VALUES (?, '', '', unixepoch())
+    ON CONFLICT(owner_id) DO UPDATE SET body = '', revision = '', updated_at = unixepoch()`,
+  importer: `INSERT OR IGNORE INTO portfolios (owner_id, body, revision, updated_at)
+    VALUES (?, ?, ?, unixepoch())`,
+  purgerSauvegardes: `DELETE FROM portfolio_backups WHERE created_at < unixepoch() - 15552000`,
+  basculeVue: `INSERT OR IGNORE INTO etat_bascule (owner_id, vu_le) VALUES (?, unixepoch())`,
+  basculeLire: `SELECT unixepoch() - vu_le AS depuis FROM etat_bascule WHERE owner_id = ?`,
+};
+
+let tablesEtatPretes = false;
+async function preparerTablesEtat(env) {
+  if (tablesEtatPretes) return;
+  for (const sql of SCHEMA_ETAT_D1) await env.DB.prepare(sql).run();
+  tablesEtatPretes = true;
+}
+
+async function lireEtatD1(env, owner) {
+  const row = await env.DB.prepare(SQL_ETAT.lire).bind(owner).first();
+  return row && row.body !== '' ? { texte: row.body, revision: row.revision } : null;
+}
+
+let sauvegardesPurgeesA = 0;
+async function ecrireEtatD1(env, owner, body, incoming, params) {
+  if (octets(body) > MAX_OCTETS_D1) return json({ error: 'état trop volumineux pour la base' }, 413);
+  const force = params.get('force') === '1';
+  const base = params.get('base');
+  const revision = jetonRevision();
+  const schema = versionDeSchema(incoming);
+  let ecrit;
+  if (force) {
+    const r = await env.DB.batch([
+      env.DB.prepare(SQL_ETAT.sauverAvantImposer).bind(owner, schema),
+      env.DB.prepare(SQL_ETAT.imposer).bind(owner, body, revision)]);
+    ecrit = (r[1]?.meta?.changes || 0) >= 1;
+  } else if (base) {
+    const r = await env.DB.batch([
+      env.DB.prepare(SQL_ETAT.sauverSurBase).bind(owner, base, schema),
+      env.DB.prepare(SQL_ETAT.ecrireSurBase).bind(body, revision, owner, base)]);
+    ecrit = r[1]?.meta?.changes === 1;
+  } else {
+    const r = await env.DB.prepare(SQL_ETAT.ecrireSansBase).bind(owner, body, revision).run();
+    ecrit = r.meta?.changes === 1;
+  }
+  if (Date.now() - sauvegardesPurgeesA > 86400000) {
+    sauvegardesPurgeesA = Date.now();
+    try { await env.DB.prepare(SQL_ETAT.purgerSauvegardes).run(); } catch { /* le prochain jour */ }
+  }
+  if (ecrit) return json({ ok: true, savedAt: incoming?.meta?.savedAt || null, revision, bytes: body.length });
+  return refusDeConflit(await lireEtatD1(env, owner), incoming, base);
+}
+
+async function servirEtatD1(request, env, owner) {
+  if (request.method === 'GET') {
+    const e = await lireEtatD1(env, owner);
+    return e ? reponseEtat(e.texte, e.revision) : new Response(null, { status: 204 });
+  }
+  if (request.method !== 'PUT' && request.method !== 'POST' && request.method !== 'DELETE') {
+    return json({ error: 'méthode non autorisée' }, 405);
+  }
+  const params = new URL(request.url).searchParams;
+  const refus = refusAncienClient(params);
+  if (refus) return refus;
+  if (request.method === 'DELETE') {
+    await env.DB.prepare(SQL_ETAT.effacer).bind(owner).run();
+    return json({ ok: true });
+  }
+  const body = await request.text();
+  const lu = lireCorpsEtat(body);
+  if (lu.refus) return lu.refus;
+  return ecrireEtatD1(env, owner, body, lu.incoming, params);
+}
+
+/* Les tables d'etat de la demonstration : `portfolios` vit dans schema.sql,
+   rattachee aux comptes ; ses sauvegardes suivent le compte, effacees et
+   renommees avec lui. */
+const SCHEMA_ETAT_D1 = [
+  `CREATE TABLE IF NOT EXISTS portfolio_backups (
+     owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE,
+     created_at INTEGER NOT NULL, schema_version INTEGER NOT NULL, body TEXT NOT NULL)`,
+];
+
 async function handleState(request, env, email, identifie) {
   if (!env.WEALTH) return json({ error: 'stockage non configuré' }, 501);
   /* UN VISITEUR ANONYME N'A PAS D'ETAT, ET NE PEUT PAS PRENDRE CELUI DES AUTRES.
@@ -359,91 +557,21 @@ async function handleState(request, env, email, identifie) {
      lettres commune. La porte est fermee dans le code, la ou elle se relit. */
   if (!identifie) return json({ error: 'identité requise' }, 403);
   const key = keyFor(email);
-
   if (request.method === 'GET') {
-    const raw = await env.WEALTH.get(key);
-    if (!raw) return new Response(null, { status: 204 });
-    return new Response(raw, {
-      headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
-    });
+    const e = await lireEtatKV(env, key);
+    return e ? reponseEtat(e.texte, e.revision) : new Response(null, { status: 204 });
   }
-
+  const params = new URL(request.url).searchParams;
+  const refus = refusAncienClient(params);
+  if (refus) return refus;
   if (request.method === 'DELETE') {
     await env.WEALTH.delete(key);
     return json({ ok: true });
   }
-
   const body = await request.text();
-  if (body.length > MAX_BYTES) return json({ error: 'état trop volumineux' }, 413);
-
-  let incoming;
-  try { incoming = JSON.parse(body); }
-  catch { return json({ error: 'JSON invalide' }, 400); }
-  if (!incoming || !incoming.positions || !incoming.monthly) {
-    return json({ error: 'format inattendu' }, 400);
-  }
-
-  /* Garde-fou : on n'écrase que la version qu'on a lue.
-     -------------------------------------------------------------------------
-     La règle précédente comparait deux horodatages : elle refusait une écriture
-     dont le `savedAt` était plus ancien que celui en ligne. Elle ne pouvait pas
-     tenir, et la preuve est venue des sauvegardes du détenteur — six « avant
-     adoption de la version en ligne » dans une seule journée, et des montants
-     saisis qui disparaissaient.
-
-     Un onglet resté ouvert garde en mémoire l'état d'il y a six heures. Le
-     rafraîchissement automatique des cours y appelle `Store.save()` toutes les
-     cinq minutes, et `Store.save()` estampille `savedAt = maintenant`. Cet onglet
-     envoie donc un contenu périmé avec une estampille fraîche, plus récente que
-     celle du téléphone qui vient de saisir. L'ancienne règle l'acceptait — un
-     horodatage récent ne dit rien de l'âge du contenu — et le téléphone, lui
-     proprement synchronisé, adoptait ensuite cette version en se croyant
-     simplement en retard.
-
-     On compare donc une filiation, comme le fait `If-Match` : l'écrivain déclare
-     la version qu'il a lue, et l'écriture n'est acceptée que si c'est encore
-     celle en place. Un onglet qui n'a pas vu la dernière version est refusé,
-     quelle que soit son horloge. C'est ici et non côté client parce que le
-     `sendBeacon` de la fermeture d'onglet ne peut rien vérifier avant de partir.
-
-     Sans `base` — un client d'avant ce correctif, dont un onglet encore ouvert —
-     le refus est la bonne réponse : c'est exactement l'écrivain dont on se
-     protège. Rien n'est perdu pour lui, son état reste sur son appareil, et un
-     rechargement lui rend le droit d'écrire.
-
-     `force=1` reste la porte de l'arbitrage : c'est le détenteur qui a vu les
-     deux dates et choisi d'imposer la sienne. */
-  const params = new URL(request.url).searchParams;
-  if (params.get('force') !== '1') {
-    const existing = await env.WEALTH.get(key);
-    if (existing) {
-      try {
-        const prevAt = JSON.parse(existing)?.meta?.savedAt;
-        const nextAt = incoming?.meta?.savedAt;
-        const base = params.get('base');
-        if (prevAt && base !== prevAt) {
-          return json({ error: 'conflit', remoteSavedAt: prevAt, localSavedAt: nextAt,
-                        base: base || null, raison: 'version non lue' }, 409);
-        }
-      } catch { /* état précédent illisible : on le remplace */ }
-    }
-  }
-
-  try {
-    const avant = await env.WEALTH.get(key);
-    if (avant) {
-      const vAvant = JSON.parse(avant)?.schemaVersion ?? 0;
-      const vApres = incoming?.schemaVersion ?? 0;
-      if (vApres !== vAvant) {
-        const quand = new Date().toISOString().replace(/[:.]/g, '-');
-        await env.WEALTH.put(`${key}:backup:v${vAvant}:${quand}`, avant,
-                             { expirationTtl: 60 * 60 * 24 * 180 });
-      }
-    }
-  } catch { /* une sauvegarde ratee ne doit pas empecher l'enregistrement */ }
-
-  await env.WEALTH.put(key, body);
-  return json({ ok: true, savedAt: incoming?.meta?.savedAt || null, bytes: body.length });
+  const lu = lireCorpsEtat(body);
+  if (lu.refus) return lu.refus;
+  return ecrireEtatKV(env, key, body, lu.incoming, params);
 }
 
 const DEMO_PUBLIQUE = true;
@@ -458,70 +586,8 @@ async function handleD1State(request, env, identity) {
     return json({ error: 'session changée, recharge nécessaire' }, 409);
   }
 
-  if (request.method === 'GET') {
-    const row = await env.DB.prepare(
-      'SELECT body FROM portfolios WHERE owner_id = ?').bind(owner).first();
-    if (!row) return new Response(null, { status: 204 });
-    return new Response(row.body, {
-      headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
-    });
-  }
-
-  if (request.method === 'DELETE') {
-    await env.DB.prepare('DELETE FROM portfolios WHERE owner_id = ?').bind(owner).run();
-    return json({ ok: true });
-  }
-
-  if (request.method !== 'PUT' && request.method !== 'POST') {
-    return json({ error: 'méthode non autorisée' }, 405);
-  }
-
-  const body = await request.text();
-  if (body.length > MAX_BYTES) return json({ error: 'état trop volumineux' }, 413);
-  let incoming;
-  try { incoming = JSON.parse(body); }
-  catch { return json({ error: 'JSON invalide' }, 400); }
-  if (!incoming || !incoming.positions || !incoming.monthly) {
-    return json({ error: 'format inattendu' }, 400);
-  }
-
-  const nextRevision = incoming?.meta?.savedAt;
-  if (!nextRevision) return json({ error: 'révision manquante' }, 400);
-  const params = new URL(request.url).searchParams;
-  const force = params.get('force') === '1';
-  const base = params.get('base');
-
-  if (force) {
-    await env.DB.prepare(
-      `INSERT INTO portfolios (owner_id, body, revision, updated_at)
-       VALUES (?, ?, ?, unixepoch())
-       ON CONFLICT(owner_id) DO UPDATE SET
-         body = excluded.body, revision = excluded.revision, updated_at = unixepoch()`)
-      .bind(owner, body, nextRevision).run();
-    return json({ ok: true, savedAt: nextRevision, bytes: body.length });
-  }
-
-  if (!base) {
-    const inserted = await env.DB.prepare(
-      `INSERT OR IGNORE INTO portfolios (owner_id, body, revision, updated_at)
-       VALUES (?, ?, ?, unixepoch())`).bind(owner, body, nextRevision).run();
-    if (inserted.meta?.changes === 1) {
-      return json({ ok: true, savedAt: nextRevision, bytes: body.length });
-    }
-  } else {
-    const updated = await env.DB.prepare(
-      `UPDATE portfolios SET body = ?, revision = ?, updated_at = unixepoch()
-        WHERE owner_id = ? AND revision = ?`)
-      .bind(body, nextRevision, owner, base).run();
-    if (updated.meta?.changes === 1) {
-      return json({ ok: true, savedAt: nextRevision, bytes: body.length });
-    }
-  }
-
-  const current = await env.DB.prepare(
-    'SELECT revision FROM portfolios WHERE owner_id = ?').bind(owner).first();
-  return json({ error: 'conflit', remoteSavedAt: current?.revision || null,
-    localSavedAt: nextRevision, base: base || null, raison: 'version non lue' }, 409);
+  await preparerTablesEtat(env);
+  return servirEtatD1(request, env, owner);
 }
 
 const CLEFS_TTL_MS = 60 * 60 * 1000;

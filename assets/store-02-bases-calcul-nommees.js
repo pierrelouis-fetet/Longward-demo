@@ -2238,14 +2238,14 @@ const Store = {
      change quelque chose, l'etat migre part aussitot, sur la bonne base.
 
      Rend vrai si l'etat s'est ecrit sur cet appareil. */
-  adopterVersionEnLigne(donnees, quand, raison = 'avant adoption de la version en ligne') {
+  adopterVersionEnLigne(donnees, quand, raison = 'avant adoption de la version en ligne', revision = '') {
     this.addBackup(raison);
     const recu = JSON.stringify(donnees);
     this.state = donnees;
     this.migrate();
     refreshAccounts();
     const cloud = typeof CloudSync !== 'undefined';
-    if (cloud) CloudSync.noterVersionLue(quand, recu);
+    if (cloud) CloudSync.noterVersionLue(quand, recu, revision);
     this.leverSuspension();
     let ecrit = false;
     try { ecrit = this.ecrireLocal(); } catch (e) { /* signale ci-dessous */ }

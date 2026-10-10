@@ -44,6 +44,25 @@ const CloudSync = (() => {
   }
   const empreinte = texte => `${texte.length.toString(36)}.${hache53(texte, 0)}.${hache53(texte, 1)}`;
   const corpsLocal = () => JSON.stringify(Store.state);
+
+  /* LA REVISION QUE LE SERVEUR A DONNEE A LA VERSION QU'ON A LUE OU ECRITE.
+
+     La date ne prouve pas la filiation : une ecriture derivee la garde, deux
+     appareils peuvent la partager, et un corps qui revient a une valeur passee
+     la retrouverait. Le serveur tire donc un jeton neuf a chaque ecriture
+     acceptee ; il le rend apres un envoi, et dans l'en-tete de chaque lecture.
+     La base d'un envoi est ce jeton, et rien d'autre. `synced-at` garde son role
+     dans l'arbitrage du demarrage, qui raisonne sur les dates. */
+  const SYNCED_REV_KEY = 'wealth-dashboard:synced-rev';
+  const syncedRevKey = () => userId ? `${SYNCED_REV_KEY}:user:${userId}` : SYNCED_REV_KEY;
+  const lastSyncedRev = () => { try { return localStorage.getItem(syncedRevKey()) || ''; } catch (e) { return ''; } };
+  const markSyncedRev = rev => { try { localStorage.setItem(syncedRevKey(), rev || ''); } catch (e) {} };
+  const PROTO = 2;
+  const parametresEcriture = (force, extra = '') => {
+    const base = lastSyncedRev();
+    return `?proto=${PROTO}` + (force ? '&force=1' : (base ? `&base=${encodeURIComponent(base)}` : '')) + extra;
+  };
+  let enBascule = false;
   const sansSuspension = st => ({ ...st, meta: { ...(st.meta || {}), envoiSuspendu: undefined } });
 
   const COMPTES_KEY = 'wealth-dashboard:comptes';
@@ -86,7 +105,9 @@ const CloudSync = (() => {
      en ligne : la migration qui suit l'adoption peut le changer, et l'etat
      migre n'est alors pas en ligne -- `aJour()` le dit, et il part. Sans
      corps, l'etat courant. */
-  const noterVersionLue = (at, corps) => { markSynced(at); markSyncedBody(corps ?? corpsLocal()); status.conflict = null; };
+  const noterVersionLue = (at, corps, revision) => {
+    markSynced(at); markSyncedBody(corps ?? corpsLocal()); markSyncedRev(revision || ''); status.conflict = null;
+  };
 
   const aJour = () => {
     const local = Store.state?.meta?.savedAt;
@@ -112,8 +133,14 @@ const CloudSync = (() => {
       cache: 'no-store', headers: { 'X-Longward-User': userId || '' },
     });
     if (r.status === 204) return null;
+    if (r.status === 503) {
+      let d = null;
+      try { d = await r.json(); } catch (e) { /* une 503 ordinaire */ }
+      if (d && d.bascule) throw Object.assign(new Error('bascule en cours'), { bascule: true, attente: d.attente || 30 });
+    }
     if (!r.ok) throw new Error(`lecture impossible (HTTP ${r.status})`);
-    return r.json();
+    const texte = await r.text();
+    return { donnees: JSON.parse(texte), texte, revision: r.headers.get('X-Longward-Revision') || '' };
   }
 
   /* Un seul envoi en vol a la fois.
@@ -148,6 +175,7 @@ const CloudSync = (() => {
        remplacerait la vraie version en ligne. Seuls la reprise de celle-ci ou
        un "Imposer" explicite (`force`) levent la suspension. */
     if (!force && Store.envoiSuspendu) return { skipped: true, suspendu: true };
+    if (enBascule) return { skipped: true, bascule: true };
     const impose = force && Store.envoiSuspendu;
     const payload = impose ? JSON.stringify(sansSuspension(Store.state)) : JSON.stringify(Store.state);
     if (!force && payload === lastPayload) return { skipped: true };
@@ -169,9 +197,7 @@ const CloudSync = (() => {
          Sans ce parametre, un onglet ouvert depuis des heures ecrasait ce qu'un
          autre appareil venait d'enregistrer, sur la seule foi d'une estampille
          plus fraiche. */
-      const vu = lastSyncedAt();
-      const params = force ? '?force=1' : (vu ? `?base=${encodeURIComponent(vu)}` : '');
-      const r = await fetch('/api/state' + params, {
+      const r = await fetch('/api/state' + parametresEcriture(force), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'X-Longward-User': userId || '' },
         body: payload,
@@ -194,12 +220,13 @@ const CloudSync = (() => {
            attente. */
         if (d && d.remoteSavedAt && beacons.some(b => b.at === d.remoteSavedAt)) {
           const distant = await pull();
-          const texte = distant ? JSON.stringify(distant) : null;
+          const texte = distant ? distant.texte : null;
           const sien = beacons.find(b => b.payload === texte);
           beacons = [];
           if (sien) {
             markSynced(sien.at);
             markSyncedBody(sien.payload);
+            markSyncedRev(distant.revision);
             lastPayload = sien.payload;
             status.error = null;
             status.conflict = null;
@@ -212,11 +239,14 @@ const CloudSync = (() => {
         onConflit(d);
         return { conflict: d };
       }
-      if (!r.ok) throw new Error(`écriture impossible (HTTP ${r.status})`);
+      if (!r.ok) throw new Error(r.status === 426 ? 'recharge nécessaire' : `écriture impossible (HTTP ${r.status})`);
+      let accord = null;
+      try { accord = await r.json(); } catch (e) { /* un serveur sans corps de reponse */ }
 
       lastPayload = payload;
       markSynced(envoyeAt);
       markSyncedBody(payload);
+      markSyncedRev(accord && accord.revision);
       beacons = [];
       if (impose && Store.leverSuspension) {
         Store.leverSuspension();
@@ -279,10 +309,17 @@ const CloudSync = (() => {
      depuis, et cet ecart-la est un conflit quel que soit le sens des horloges.
      La regle du detenteur s'y applique alors comme partout ailleurs — la
      version en ligne, avec une sauvegarde et un message. */
-  function arbitrer({ localAt, remoteAt, syncedAt }) {
-    if (!localAt && !remoteAt) return 'rien';
+  /* `memesCorps` : le corps local est-il, caractere pour caractere, celui qu'on
+     vient de lire ? Deux corps identiques sont alignes quelles que soient les
+     dates. Un distant qui existe sans date n'est jamais ecrase sur la foi
+     d'une absence : aucune filiation ne se prouve contre lui, et la regle du
+     detenteur s'applique -- la version en ligne, avec sauvegarde et le message
+     qui dit ou la retrouver, que le local ait une date ou non. Un local sans
+     date face a un distant date n'a rien a perdre : il adopte. */
+  function arbitrer({ localAt, remoteAt, syncedAt, memesCorps = false }) {
+    if (memesCorps) return 'aligne';
+    if (!remoteAt) return 'conflit';         // un distant sans date ne se remplace pas
     if (!localAt) return 'adopter';          // rien a perdre ici
-    if (!remoteAt) return 'envoyer';         // rien de lisible en ligne
     if (localAt === remoteAt) return 'aligne';
     if (remoteAt > localAt) {
       return localAt === syncedAt ? 'adopter' : 'conflit';
@@ -293,9 +330,19 @@ const CloudSync = (() => {
   async function init() {
     if (!probed && !(await probe())) return { available: false };
     if (!available) return { available: false };
-    let remote = null;
-    try { remote = await pull(); }
-    catch (e) { status.error = e.message; return { available: true, error: e.message }; }
+    let lu = null;
+    try { lu = await pull(); }
+    catch (e) {
+      status.error = e.message;
+      if (e.bascule || enBascule) {
+        enBascule = true;
+        return { available: true, bascule: true, attente: e.attente || 30 };
+      }
+      return { available: true, error: e.message };
+    }
+    enBascule = false;
+    const remote = lu ? lu.donnees : null;
+    const revisionLue = lu ? lu.revision : '';
 
     /* Rien en ligne. Le repere de synchronisation est efface avant l'envoi :
        il designe une version que le cloud n'a plus, donc le declarer ferait
@@ -304,27 +351,28 @@ const CloudSync = (() => {
        toujours rien. Un `force` faisait la meme chose en supprimant l'arbitrage
        au lieu de le laisser se tenir : si ce 204 etait une fausse lecture, il
        ecrasait un patrimoine entier sans un mot. */
-    if (!remote) { markSynced(''); return { available: true, empty: true, user }; }
+    if (!remote) { markSynced(''); markSyncedRev(''); return { available: true, empty: true, user }; }
 
     if (Store.envoiSuspendu) {
       lastPayload = JSON.stringify(remote);
       markSynced(remote?.meta?.savedAt);
-      return { available: true, adopted: true, at: remote?.meta?.savedAt, data: remote, user };
+      return { available: true, adopted: true, at: remote?.meta?.savedAt, data: remote, revision: revisionLue, user };
     }
 
     lastPayload = JSON.stringify(remote);
 
     const remoteAt = remote?.meta?.savedAt;
     const localAt = Store.state?.meta?.savedAt;
-    const verdict = arbitrer({ localAt, remoteAt, syncedAt: lastSyncedAt() });
+    const verdict = arbitrer({ localAt, remoteAt, syncedAt: lastSyncedAt(),
+                               memesCorps: corpsLocal() === lastPayload });
 
     if (verdict === 'adopter') {
       markSynced(remoteAt);
-      return { available: true, adopted: true, at: remoteAt, data: remote, user };
+      return { available: true, adopted: true, at: remoteAt, data: remote, revision: revisionLue, user };
     }
 
     if (verdict === 'conflit') {
-      return { available: true, newer: true, at: remoteAt, data: remote, user, localAt };
+      return { available: true, newer: true, at: remoteAt, data: remote, revision: revisionLue, user, localAt };
     }
 
     /* Le repère ne se pose que sur une égalité vraie.
@@ -358,13 +406,15 @@ const CloudSync = (() => {
       if (local === lastPayload) {
         markSynced(localAt);
         markSyncedBody(local);
+        markSyncedRev(revisionLue);
       } else if (lastSyncedAt() !== localAt) {
-        return { available: true, newer: true, at: remoteAt, data: remote, user, localAt };
+        return { available: true, newer: true, at: remoteAt, data: remote, revision: revisionLue, user, localAt };
       } else if (lastSyncedBody() !== empreinte(local)) {
+        markSyncedRev(revisionLue);
         return { available: true, ready: true, user, aEnvoyer: true };
       } else {
         markSynced(remoteAt);
-        return { available: true, adopted: true, at: remoteAt, data: remote, user };
+        return { available: true, adopted: true, at: remoteAt, data: remote, revision: revisionLue, user };
       }
     }
 
@@ -373,6 +423,7 @@ const CloudSync = (() => {
        en ligne, et l'envoi part au demarrage plutot que d'attendre la frappe
        suivante — c'est cette attente qui perdait la saisie quand l'application
        passait en veille avant l'envoi differe. */
+    if (verdict === 'envoyer') markSyncedRev(revisionLue);
     return { available: true, ready: true, user, aEnvoyer: verdict === 'envoyer' };
   }
 
@@ -393,26 +444,23 @@ const CloudSync = (() => {
      passage avec le meme corps -- l'ecran se cache, puis la page se decharge --
      ne repart pas, et le retour sur la page (`reprendre`) verifie. */
   function flushOnUnload() {
-    if (!available || Store.envoiSuspendu) return;
+    if (!available || Store.envoiSuspendu || enBascule) return;
     const payload = JSON.stringify(Store.state);
     if (payload === lastPayload) return;
     if (beacons.some(b => b.payload === payload)) return;
     clearTimeout(timer);
     try {
-      const vu = lastSyncedAt();
-      const params = vu ? `?base=${encodeURIComponent(vu)}` : '';
-      const separateur = params ? '&' : '?';
       /* `sendBeacon` ne porte pas d'en-tete : le compte passe donc en
          parametre, faute de mieux, et le serveur le compare a sa session. */
-      const parti = navigator.sendBeacon('/api/state' + params + separateur
-        + `user=${encodeURIComponent(userId || '')}`,
+      const parti = navigator.sendBeacon('/api/state'
+        + parametresEcriture(false, `&user=${encodeURIComponent(userId || '')}`),
         new Blob([payload], { type: 'application/json' }));
       if (parti) beacons.push({ payload, at: Store.state?.meta?.savedAt || '' });
     } catch (e) { /* rien à faire de plus au moment de la fermeture */ }
   }
 
   function reprendre() {
-    if (!available) return null;
+    if (!available || enBascule) return null;
     return beacons.length || !aJour() ? push() : null;
   }
 
@@ -420,6 +468,7 @@ const CloudSync = (() => {
     init, pull, push, schedulePush, probe, flushOnUnload, reprendre, setOnChange,
     setOnConflit, noterVersionLue, arbitrer,
     isAvailable: () => available,
+    enBascule: () => enBascule,
     aJour,
     getUser: () => user,
     getUserId: () => userId,

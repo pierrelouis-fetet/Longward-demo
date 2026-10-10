@@ -161,14 +161,15 @@ Object.assign(ACTIONS, {
   },
   async 'cloud-pull'() {
     try {
-      const data = await CloudSync.pull();
-      if (!data) { toast(trad('Rien en ligne')); return; }
+      const lu = await CloudSync.pull();
+      if (!lu) { toast(trad('Rien en ligne')); return; }
+      const data = lu.donnees;
       const at = data.meta?.savedAt;
       if (!await askConfirm(trad('Recharger les données depuis le cloud ?') + '\n\n'
         + `${trad('En ligne :')} ${at ? new Date(at).toLocaleString(locale()) : trad('inconnue')}\n`
         + `${trad('Ici :')} ${new Date(Store.state.meta.savedAt || Date.now()).toLocaleString(locale())}\n\n`
         + trad("L'état actuel sera sauvegardé avant remplacement."))) return;
-      const ecrit = Store.adopterVersionEnLigne(data, at, 'avant rechargement cloud');
+      const ecrit = Store.adopterVersionEnLigne(data, at, 'avant rechargement cloud', lu.revision);
       render();
       if (ecrit) toast(trad('Données rechargées'));
     } catch (e) { toast(trad('Échec :') + ' ' + e.message); }
