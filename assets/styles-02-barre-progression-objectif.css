@@ -53,7 +53,8 @@
 tr.mois-attendu > td { background: color-mix(in oklab, var(--warning) 9%, transparent); }
 tr.mois-attendu > td.sticky-col { box-shadow: inset 3px 0 0 var(--warning); }
 .marque-attendu { margin-left: 6px; color: var(--warning-text); font-size: var(--font-sm); }
-.marque-cap { margin-left: 6px; color: var(--accent); font-size: var(--font-xs); font-weight: 650; white-space: nowrap; }
+.marque-cap { color: var(--accent); font-size: var(--font-xs); font-weight: 650; white-space: nowrap; }
+.ml-nom .marque-cap { display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; }
 .note-relance { background: color-mix(in oklab, var(--warning) 12%, var(--surface-1));
   border-color: color-mix(in oklab, var(--warning) 38%, transparent);
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

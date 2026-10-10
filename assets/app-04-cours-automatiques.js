@@ -1210,7 +1210,7 @@ function viewHistory() {
         ${annees.length > 1 ? yearControl('history-year', annees, annee) : ''}
         ${vide ? '' : `<button class="btn sm" data-action="ajouter-releve">${trad('Enregistrer un relevé')}</button>`}
         ${pasAFaire('comptes') ? '' : `<button class="btn sm ghost" data-action="importer-tableau" data-cible="releves"
-                >⤒ ${trad('Importer')}</button>`}
+                >${trad('Importer')}</button>`}
       </div>
     </div>
     ${pasAFaire('comptes') ? `

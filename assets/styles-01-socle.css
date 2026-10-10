@@ -1387,6 +1387,7 @@ table .field :is(input, select) { max-width: none; }
 }
 .hero > .hero-label { margin-bottom: -10px; }
 .hero-label > .segmented { margin-left: auto; }
+.hero-label > .import-lien { margin-left: auto; text-transform: none; letter-spacing: normal; }
 
 /* La version reduite du controle segmente vit plus bas, apres `.segmented`.
    Elle etait ecrite ici et n'a jamais rien fait : voir son commentaire. */

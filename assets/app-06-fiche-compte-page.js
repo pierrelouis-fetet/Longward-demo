@@ -1146,7 +1146,7 @@ function briqueDepensesVide(f) {
       <p class="empty" style="margin:0 0 4px">${trad('Suis ce que tu dépenses chaque mois. Saisis un premier mois pour découvrir ta moyenne mensuelle et ce qu’il te reste réellement.')}</p>
       <button type="button" class="btn sm" data-action="saisir-mois-courant" style="margin:4px 0 0">${trad('Saisir les dépenses du mois')}</button>
       <button type="button" class="btn sm ghost" data-action="importer-tableau" data-cible="depenses"
-              style="margin:4px 0 0">⤒ ${trad('Importer l’export de ta banque')}</button>
+              style="margin:4px 0 0">${trad('Importer l’export de ta banque')}</button>
       <p class="small muted" style="margin:12px 0 0">${f.target > 0
         ? `${trad('Objectif mensuel')} : ${fmtEUR0(f.target)} · `
         : ''}<button type="button" class="lien-nu" data-action="regler-objectif-depenses">${trad('Régler un objectif mensuel')}</button></p>
@@ -1183,7 +1183,9 @@ function viewBudget(section = 'depenses') {
               aria-label="${trad('Saisir les dépenses du mois')}"
               title="${trad('Saisir les dépenses du mois')}"></button>
       <div>
-        <div class="hero-label">${cur ? (cur.isCurrent ? trad('Dépenses du mois en cours') : `${trad('Dernier mois renseigné')} · ${esc(cur.label)}`) : trad('Dépenses')}</div>
+        <div class="hero-label">${cur ? (cur.isCurrent ? trad('Dépenses du mois en cours') : `${trad('Dernier mois renseigné')} · ${esc(cur.label)}`) : trad('Dépenses')}
+          <button type="button" class="btn sm ghost import-lien" data-action="importer-tableau" data-cible="depenses"
+                  title="${esc(trad('Importer l’export de ta banque'))}">${trad('Importer')}</button></div>
         <div class="hero-value">${cur ? fmtEUR0(cur.total) : ''}</div>
       </div>
       <div class="hero-deltas">
@@ -1229,9 +1231,6 @@ function viewBudget(section = 'depenses') {
               .replace('{n}', parts.length - 6)}</p>` : ''}
         </div>`;
       })()}
-      <p class="small" style="margin:8px 0 0">
-        <button type="button" class="lien-nu import-lien" data-action="importer-tableau" data-cible="depenses"
-                >⤒ ${trad('Importer l’export de ta banque')}</button></p>
     </div>
 ` : briqueDepensesVide(f)}
 
@@ -1425,7 +1424,7 @@ function viewBudget(section = 'depenses') {
         : `<button class="btn sm ghost" data-action="add-category"
              >${trad('+ Ajouter une catégorie')}</button>`}
       <button class="btn sm ghost" data-action="importer-tableau" data-cible="depenses"
-              >⤒ ${trad('Importer un fichier')}</button>
+              >${trad('Importer un fichier')}</button>
     </div>
     ${(() => {
       const att = depensesEnAttente();
