@@ -2220,6 +2220,43 @@ const Store = {
     }
   },
 
+  /* PRENDRE LA VERSION EN LIGNE, PAR UNE SEULE PORTE.
+
+     L'adoption automatique (appareil en retard, ecriture refusee) et
+     "Recharger depuis le cloud" font le meme geste ; le second l'ecrivait a
+     part, sans noter la version recue, et son `save()` declarait ensuite
+     l'ancienne base : refuse, pendant que l'ecran annoncait "Donnees
+     rechargees".
+
+     L'ordre compte. La sauvegarde d'abord, sinon elle copierait la version
+     en ligne. Le corps recu se serialise AVANT la migration, qui le modifie en
+     place : c'est lui qui est en ligne, et `noterVersionLue` en fait la base
+     des ecritures suivantes. La version en ligne en memoire leve la
+     suspension d'envoi. L'ecriture locale passe par `ecrireLocal()`, qui
+     refuse tant qu'une chaine illisible attend d'etre telechargee : l'echec se
+     signale, et l'appelant tait son message de reussite. Si la migration a
+     change quelque chose, l'etat migre part aussitot, sur la bonne base.
+
+     Rend vrai si l'etat s'est ecrit sur cet appareil. */
+  adopterVersionEnLigne(donnees, quand, raison = 'avant adoption de la version en ligne') {
+    this.addBackup(raison);
+    const recu = JSON.stringify(donnees);
+    this.state = donnees;
+    this.migrate();
+    refreshAccounts();
+    const cloud = typeof CloudSync !== 'undefined';
+    if (cloud) CloudSync.noterVersionLue(quand, recu);
+    this.leverSuspension();
+    let ecrit = false;
+    try { ecrit = this.ecrireLocal(); } catch (e) { /* signale ci-dessous */ }
+    /* Comme `save()` : une ecriture qui reussit apres un echec le dit, sans
+       quoi le temoin resterait sur "Non enregistre". */
+    if (!ecrit) this.signalerEchecEcriture();
+    else if (this._ecritureKo) { this._ecritureKo = false; signalerEcriture(true); }
+    if (cloud && !CloudSync.aJour()) CloudSync.push();
+    return ecrit;
+  },
+
   signalerEchecEcriture() {
     const nouveau = !this._ecritureKo;
     this._ecritureKo = true;

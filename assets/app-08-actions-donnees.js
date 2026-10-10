@@ -168,11 +168,9 @@ Object.assign(ACTIONS, {
         + `${trad('En ligne :')} ${at ? new Date(at).toLocaleString(locale()) : trad('inconnue')}\n`
         + `${trad('Ici :')} ${new Date(Store.state.meta.savedAt || Date.now()).toLocaleString(locale())}\n\n`
         + trad("L'état actuel sera sauvegardé avant remplacement."))) return;
-      Store.addBackup('avant rechargement cloud');
-      Store.state = data; Store.migrate();
-      Store.leverSuspension();
-      Store.save();
-      render(); toast(trad('Données rechargées'));
+      const ecrit = Store.adopterVersionEnLigne(data, at, 'avant rechargement cloud');
+      render();
+      if (ecrit) toast(trad('Données rechargées'));
     } catch (e) { toast(trad('Échec :') + ' ' + e.message); }
   },
   'make-backup'() {

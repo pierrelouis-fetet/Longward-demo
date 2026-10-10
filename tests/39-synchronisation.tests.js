@@ -289,17 +289,61 @@ suite('Le témoin suit le corps, pas seulement la date', () => {
   });
 
   test('l’adoption note le corps reçu avant la migration, et n’écrit qu’en passant par le verrou', () => {
-    const app = lireSource('assets/app.js');
-    const i = app.indexOf('async function prendreVersionEnLigne(');
-    const fn = app.slice(i, app.indexOf('\n  }\n', i));
-    const ordre = ['const recu = JSON.stringify(donnees);', 'Store.migrate();',
-      'CloudSync.noterVersionLue(quand, recu);', 'Store.ecrireLocal()', 'if (!CloudSync.aJour()) CloudSync.push();'];
+    const st = lireSource('assets/store.js');
+    const i = st.indexOf('  adopterVersionEnLigne(donnees, quand');
+    const fn = i < 0 ? '' : st.slice(i, st.indexOf('\n  },', i));
+    const ordre = ['this.addBackup(raison);', 'const recu = JSON.stringify(donnees);', 'this.migrate();',
+      'CloudSync.noterVersionLue(quand, recu);', 'this.leverSuspension();', 'this.ecrireLocal()',
+      'if (cloud && !CloudSync.aJour()) CloudSync.push();'];
     const pos = ordre.map(x => fn.indexOf(x));
-    vrai(pos.every(p => p > 0), `les cinq gestes sont là : ${pos.join(', ')}`);
+    vrai(pos.every(p => p > 0), `les sept gestes sont là : ${pos.join(', ')}`);
     vrai(pos.every((p, k) => !k || p > pos[k - 1]), 'dans cet ordre');
-    vrai(/if \(ecrit\) toast\(trad\(mot\)\);\s*else Store\.signalerEchecEcriture\(\);/.test(fn),
-      'un refus d’écriture ne s’annonce pas comme une réussite');
-    vrai(/Store\.leverSuspension\(\);/.test(fn), 'et la version reprise lève la suspension');
+    vrai(/if \(!ecrit\) this\.signalerEchecEcriture\(\);\s*else if \(this\._ecritureKo\)/.test(fn),
+      'un refus d’écriture se signale, et une réussite après un échec aussi');
+    const app = lireSource('assets/app.js');
+    const k = app.indexOf('async function prendreVersionEnLigne(');
+    const vue = app.slice(k, app.indexOf('\n  }\n', k));
+    vrai(/const ecrit = Store\.adopterVersionEnLigne\(donnees, quand\);\s*render\(\);\s*if \(ecrit\) toast\(trad\(mot\)\);/.test(vue),
+      'et la vue tait sa réussite quand rien ne s’est écrit');
+  });
+
+  test('recharger depuis le cloud avec un repère ancien : aucun refus, aucun conflit', async () => {
+    /* Le Store reel, une synchronisation du bac a sable posee en global : la
+       porte d'adoption appelle `CloudSync` comme dans l'application. Les
+       chaines brutes de la clef principale et des sauvegardes sont remises
+       telles quelles. */
+    const demo0 = modeDemo();
+    setModeDemo(false);
+    const cles = [cleStockage(), cleSauvegardes()];
+    const avant = cles.map(k => [k, localStorage.getItem(k)]);
+    const etat0 = Store.state, ill0 = Store.illisible, ko0 = Store._ecritureKo;
+    const cs0 = Object.getOwnPropertyDescriptor(globalThis, 'CloudSync');
+    try {
+      const T0 = '2026-10-01T09:00:00.000Z';
+      const enLigne = { ...Fixture.etat(), meta: { ...Fixture.etat().meta, savedAt: T2 } };
+      const srv = BacASable.serveur(enLigne);
+      const st = BacASable.stockage();
+      st.setItem('wealth-dashboard:synced-at', T0);
+      Fixture.poser(s => { s.meta.savedAt = T0; });
+      Store.illisible = null;
+      const cs = BacASable.charger({ srv, st, store: Store });
+      vrai(await cs.probe(), 'synchronisation disponible');
+      globalThis.CloudSync = cs;
+      const ecrit = Store.adopterVersionEnLigne(JSON.parse(srv.corps), T2, 'avant rechargement cloud');
+      vrai(ecrit, 'l’état s’écrit sur cet appareil');
+      await calme(); await calme(); await calme();
+      eq(srv.refus, 0, 'aucun envoi refusé');
+      eq(cs.status().conflict, null, 'aucun conflit');
+      eq(st.getItem('wealth-dashboard:synced-at'), T2, 'la version reçue est la base');
+      vrai(cs.aJour(), 'et l’appareil est à jour, état migré compris');
+    } finally {
+      setModeDemo(demo0);
+      for (const [k, v] of avant) { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); }
+      if (cs0) Object.defineProperty(globalThis, 'CloudSync', cs0); else delete globalThis.CloudSync;
+      Store.state = etat0; Store.illisible = ill0; Store._ecritureKo = ko0;
+      Fixture.poser();
+    }
+    for (const [k, v] of avant) eq(localStorage.getItem(k), v, `${k} rendue telle quelle`);
   });
 });
 
@@ -446,6 +490,27 @@ suite('Un état local illisible n’est plus écrasé', () => {
         Store.save();
         eq(vus.join(' '), 'false:true true:false', 'l’échec, puis le rétablissement');
       } finally { poserSignalEcriture(sig0); }
+    });
+  });
+
+  test('un échec d’écriture se rétablit aussi par une adoption', () => {
+    avecStockagePreserve(() => {
+      const sauvegardes = [cleSauvegardes(), localStorage.getItem(cleSauvegardes())];
+      const sig0 = signalerEcriture;
+      const vus = [];
+      poserSignalEcriture((ok, premier) => vus.push(`${ok}:${!!premier}`));
+      try {
+        setModeDemo(false);
+        delete globalThis.CloudSync;
+        Store.illisible = null; Store._ecritureKo = false;
+        Store.signalerEchecEcriture();
+        vrai(Store.adopterVersionEnLigne(Fixture.etat(), T2), 'l’adoption s’écrit');
+        eq(vus.join(' '), 'false:true true:false', 'l’échec, puis le rétablissement');
+      } finally {
+        poserSignalEcriture(sig0);
+        if (sauvegardes[1] === null) localStorage.removeItem(sauvegardes[0]);
+        else localStorage.setItem(sauvegardes[0], sauvegardes[1]);
+      }
     });
   });
 

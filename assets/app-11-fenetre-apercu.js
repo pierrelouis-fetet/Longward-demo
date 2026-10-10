@@ -1831,25 +1831,13 @@ partieChargee('assets/app-11-fenetre-apercu.js');
      devient la base des ecritures suivantes, sinon la prochaine sauvegarde se
      ferait refuser pour avoir declare une version qui n'est plus en place ; et
      le conflit se clot, sinon la cloche reclamerait un arbitrage deja rendu. */
-  /* Le corps recu se note AVANT la migration, qui le modifie en place : c'est
-     lui qui est en ligne. Si la migration a change quelque chose, l'etat migre
-     part aussitot. L'ecriture locale passe par `ecrireLocal()`, qui refuse tant
-     qu'une chaine illisible attend d'etre telechargee : le message de reussite
-     se tait alors, et le signal d'echec d'ecriture parle a sa place. */
+  /* Le geste vit dans `Store.adopterVersionEnLigne`, porte commune avec
+     "Recharger depuis le cloud" ; ici, l'ecran et le message. Un refus
+     d'ecriture locale tait la reussite : le signal d'echec parle a sa place. */
   async function prendreVersionEnLigne(donnees, quand, mot) {
-    Store.addBackup('avant adoption de la version en ligne');
-    const recu = JSON.stringify(donnees);
-    Store.state = donnees;
-    Store.migrate();
-    refreshAccounts();
-    CloudSync.noterVersionLue(quand, recu);
-    Store.leverSuspension();
-    let ecrit = false;
-    try { ecrit = Store.ecrireLocal(); } catch (e) {}
+    const ecrit = Store.adopterVersionEnLigne(donnees, quand);
     render();
     if (ecrit) toast(trad(mot));
-    else Store.signalerEchecEcriture();
-    if (!CloudSync.aJour()) CloudSync.push();
   }
 
   if (localDAbord) {

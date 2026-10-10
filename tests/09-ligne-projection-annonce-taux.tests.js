@@ -706,8 +706,12 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
     vrai(/prendreVersionEnLigne\(/.test(bloc[0]),
       'elle passe par la porte commune plutôt que de remplacer elle-même');
     const porte = app.slice(app.indexOf('async function prendreVersionEnLigne('));
-    vrai(/Store\.addBackup\(/.test(porte.slice(0, 600)),
-      'et cette porte pose une sauvegarde avant de tout remplacer');
+    vrai(/Store\.adopterVersionEnLigne\(/.test(porte.slice(0, 600)),
+      'et cette porte passe par celle du store');
+    const st = lireSource('assets/store.js');
+    const i = st.indexOf('  adopterVersionEnLigne(donnees, quand');
+    vrai(i > 0 && /this\.addBackup\(raison\);/.test(st.slice(i, i + 400)),
+      'qui pose une sauvegarde avant de tout remplacer');
   });
 
   /* Des montants enregistres ne disparaissent pas au retour sur l'application.
@@ -788,9 +792,9 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
       'cloudsync expose de quoi noter une version lue');
     /* Plus de branche « charger celle en ligne » : il n'y a plus de question, et
        les trois chemins passent par la meme porte. C'est elle qui note. */
-    const app = lireSource('assets/app.js');
-    const i = app.indexOf('async function prendreVersionEnLigne(');
-    const porte = app.slice(i, app.indexOf('\n  }', i));
+    const st = lireSource('assets/store.js');
+    const i = st.indexOf('  adopterVersionEnLigne(donnees, quand');
+    const porte = i < 0 ? '' : st.slice(i, st.indexOf('\n  },', i));
     vrai(/CloudSync\.noterVersionLue\(quand, recu\);/.test(porte),
       'la porte commune note la version adoptée');
   });

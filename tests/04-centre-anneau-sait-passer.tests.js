@@ -1885,10 +1885,12 @@ suite('Actifs terminaux : pas de placement dans un placement', () => {
    ------------------------------------------------------------------ */
 suite('Synchronisation : c’est toujours la version en ligne', () => {
 
+  /* Le geste d'adopter vit dans le store, porte commune de l'adoption
+     automatique et du rechargement depuis le cloud. */
   const adoption = () => {
-    const app = lireSource('assets/app.js');
-    const i = app.indexOf('async function prendreVersionEnLigne(');
-    return app.slice(i, app.indexOf('\n  }', i));
+    const st = lireSource('assets/store.js');
+    const i = st.indexOf('  adopterVersionEnLigne(donnees, quand');
+    return i < 0 ? '' : st.slice(i, st.indexOf('\n  },', i));
   };
 
   test('l’application ne demande plus quelle version garder', () => {
@@ -1916,6 +1918,8 @@ suite('Synchronisation : c’est toujours la version en ligne', () => {
       'une définition et trois appels');
     vrai(!/Store\.addBackup\('avant chargement cloud'\)/.test(app),
       'plus de seconde écriture de la même adoption');
+    vrai(/Store\.adopterVersionEnLigne\(data, at, 'avant rechargement cloud'\)/.test(app),
+      'et le rechargement depuis le cloud passe par la même porte');
   });
 
   test('la sauvegarde précède le remplacement, jamais l’inverse', () => {
@@ -1924,8 +1928,10 @@ suite('Synchronisation : c’est toujours la version en ligne', () => {
        retour, elle n'aurait jamais existe. L'ordre n'est pas un detail — une
        sauvegarde posee apres le remplacement copierait la version en ligne. */
     const fn = adoption();
-    const iSauve = fn.indexOf("Store.addBackup('avant adoption de la version en ligne')");
-    const iEtat = fn.indexOf('Store.state = donnees;');
+    vrai(/adopterVersionEnLigne\(donnees, quand, raison = 'avant adoption de la version en ligne'\)/.test(fn),
+      'la raison par défaut nomme l’adoption');
+    const iSauve = fn.indexOf('this.addBackup(raison);');
+    const iEtat = fn.indexOf('this.state = donnees;');
     vrai(iSauve > 0, 'la sauvegarde existe');
     vrai(iEtat > 0, 'le remplacement aussi');
     vrai(iSauve < iEtat, 'et la sauvegarde vient avant');
@@ -1935,7 +1941,7 @@ suite('Synchronisation : c’est toujours la version en ligne', () => {
     /* Sans ce reperage, la sauvegarde suivante declarerait avoir lu une version
        qui n'est plus en place, et le serveur la refuserait sans raison. */
     const fn = adoption();
-    vrai(/CloudSync\.noterVersionLue\(quand, recu\);/.test(fn),
+    vrai(/if \(cloud\) CloudSync\.noterVersionLue\(quand, recu\);/.test(fn),
       'la version lue se note, avec le corps reçu');
     const cs = lireSource('assets/cloudsync.js');
     vrai(/const noterVersionLue = \(at, corps\) => \{ markSynced\(at\); markSyncedBody\(corps \?\? corpsLocal\(\)\); status\.conflict = null; \};/.test(cs),
