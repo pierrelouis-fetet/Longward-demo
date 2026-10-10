@@ -481,14 +481,17 @@ suite('L’interface tient ses seuils', () => {
   /* -- Un glyphe ne dit qu'une chose ------------------------------- */
 
   test('le glyphe de l’actualisation ne sert pas à effacer', () => {
-    /* ↻ veut dire « actualiser » a quatre endroits : les cours, la
-       synchronisation, le symbole depuis l'ISIN, l'etat du chargement. Le meme
-       signe annoncait « effacer seize mois de releves ». */
+    /* L'icone d'actualisation veut dire "actualiser" a quatre endroits : les
+       cours, la synchronisation, le symbole depuis l'ISIN, l'etat du
+       chargement. Sur le bouton qui efface tout, le meme signe promettrait une
+       actualisation et detruirait seize mois de releves. */
     const src = lireSource('assets/app.js');
     const i = src.indexOf('data-action="start-blank"');
     const ligne = src.slice(src.lastIndexOf('<button', i), src.indexOf('</button>', i));
-    vrai(!/↻/.test(ligne), 'le bouton qui efface tout ne porte plus le signe de l’actualisation');
-    vrai(/↻/.test(src), 'le signe reste, pour ce qu’il veut dire');
+    vrai(!/↻|icone\('actualiser'\)/.test(ligne), 'le bouton qui efface tout ne porte pas le signe de l’actualisation');
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, '');
+    eq((code.match(/icone\('actualiser'\)/g) || []).length, 4, 'le signe reste, pour ce qu’il veut dire, à ses quatre endroits');
+    vrai(!/[⤒⤓↻]/.test(code.replace(/<!--[\s\S]*?-->/g, '')), 'et plus aucun glyphe de flèche ne s’écrit dans le code');
   });
 
   test('l’acte qui retire un montant se nomme', () => {

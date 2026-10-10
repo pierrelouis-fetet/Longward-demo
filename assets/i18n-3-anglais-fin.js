@@ -1678,6 +1678,7 @@ Object.assign(I18N.en, {
     "Supprimer la copie illisible de cet appareil ?": "Delete the unreadable copy from this device?",
     "Télécharge-la d’abord si tu veux la garder : cette suppression ne s’annule pas.": "Download it first if you want to keep it: this deletion cannot be undone.",
     "Change {c} indisponible": "{c} exchange rate unavailable",
+    "Ne plus demander {m} ce mois-ci": "Stop asking about {m} this month",
 });
 
 function t(cle, repli) {

@@ -462,7 +462,7 @@ function askMonthlySnapshot(index) {
       ${photo && revolu ? blocFraicheur() : ''}
       ${photo && revolu ? `
       <button class="btn pleine" id="relPhoto" type="button"
-              >⤒ ${trad('Préremplir avec les montants actuels')} · ${fmtEUR0(photo)}</button>
+              >${icone('importer')} ${trad('Préremplir avec les montants actuels')} · ${fmtEUR0(photo)}</button>
       ${/* La phrase d'aide redisait le bouton avec d'autres mots (« remplir
             automatiquement ») : deux formulations pour un geste. Elle dit
             maintenant ce que le bouton ne dit pas, d'ou viennent les valeurs,

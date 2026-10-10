@@ -55,9 +55,9 @@ function importerTableau(cible, fichierDonne = null) {
         <p class="hint" style="margin:4px 0 0">${trad('Dans cet exemple, les dépenses sont négatives ; ta banque peut les écrire en positif, le sens se choisit à l’étape suivante. Une entrée d’argent, comme le salaire, ne s’importe pas.')}</p>` : ''}
         <p class="hint" style="margin:12px 0 8px">${trad('Pas sûr du format ? Télécharge un modèle fait de tes colonnes, remplis-le, puis choisis-le ici :')}</p>
         <div class="row" style="gap:8px">${depenses ? `
-          <button type="button" class="btn sm ghost" id="impModeleOps">⤓ ${trad('Opérations de banque')}</button>
-          <button type="button" class="btn sm ghost" id="impModeleMois">⤓ ${trad('Par mois et par catégorie')}</button>` : `
-          <button type="button" class="btn sm ghost" id="impModeleRel">⤓ ${trad('Télécharger un modèle')}</button>`}
+          <button type="button" class="btn sm ghost" id="impModeleOps">${icone('exporter')} ${trad('Opérations de banque')}</button>
+          <button type="button" class="btn sm ghost" id="impModeleMois">${icone('exporter')} ${trad('Par mois et par catégorie')}</button>` : `
+          <button type="button" class="btn sm ghost" id="impModeleRel">${icone('exporter')} ${trad('Télécharger un modèle')}</button>`}
         </div>
         ${erreur ? `<p class="note" style="margin:12px 0 0">⚠ <span>${esc(erreur)}</span></p>` : ''}`;
       $('#modalFoot').innerHTML = `<label class="btn" for="impFichier">${trad('Choisir un fichier')}</label>`;

@@ -96,7 +96,7 @@ function viewData() {
       <span class="etat-compte">${compteurs}</span>
     </div>
     ${cloud && !s.conflict ? `<button class="btn icon etat-sync" data-action="cloud-push" type="button"
-        title="${trad('Synchroniser maintenant')}" aria-label="${trad('Synchroniser maintenant')}">↻</button>` : ''}
+        title="${trad('Synchroniser maintenant')}" aria-label="${trad('Synchroniser maintenant')}">${icone('actualiser')}</button>` : ''}
     ${cloud && s.conflict ? `<div class="paire-btn etat-conflit">
       <button class="btn sm" data-action="cloud-pull">${trad('Prendre la version en ligne')}</button>
       <button class="btn sm ghost" data-action="cloud-force">${trad('Imposer celle de cet appareil')}</button>
@@ -145,8 +145,8 @@ function viewData() {
     <div class="donnees-section">
       <h2>${trad('Sauvegarde et restauration')}</h2>
       <div class="paire-btn">
-        <button class="btn" data-action="export-json">⤓ ${trad('Sauvegarde JSON')}</button>
-        <label class="btn ghost" for="importFile">⤒ ${trad('Importer une sauvegarde')}</label>
+        <button class="btn" data-action="export-json">${icone('exporter')} ${trad('Sauvegarde JSON')}</button>
+        <label class="btn ghost" for="importFile">${icone('importer')} ${trad('Importer une sauvegarde')}</label>
       </div>
       <input type="file" id="importFile" class="fichier-cache"
              accept="application/json,.json,.csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
@@ -161,7 +161,7 @@ function viewData() {
     </div>
     <div class="donnees-section">
       <h2>${trad('Exporter pour analyse')}</h2>
-      <button class="btn ghost" data-action="export-xlsx-all">⤓ ${trad('Exporter vers Excel')}</button>
+      <button class="btn ghost" data-action="export-xlsx-all">${icone('exporter')} ${trad('Exporter vers Excel')}</button>
       <p class="small muted">${trad('Consulte tes données dans Excel ou un tableur.')}${aide(trad("L’Excel est une photo pour lire et retravailler ailleurs : une feuille par thème, montants au format {dev}, pourcentages calculables. Il ne contient pas tous les réglages et ne restaure donc pas Longward : pour restaurer, c’est la sauvegarde JSON. Ses feuilles « Dépenses » et « Relevés mensuels » s’importent toutefois, comme tout tableau, depuis Budget et Historique."))}</p>
     </div>
     <div class="donnees-section donnees-annuler">

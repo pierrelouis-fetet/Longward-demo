@@ -1641,7 +1641,7 @@ function askPosition(index) {
         <div class="field"><label>${trad('Symbole')}${(p.isin || '').trim() ? `
             <button type="button" class="btn xs ghost" data-action="resolve-row" data-i="${index}"
                     style="margin-left:8px"
-                    title="${trad('Remplacer le symbole par celui que désigne l\'ISIN')}">${trad('↻ Depuis l\'ISIN')}</button>` : ''}</label>
+                    title="${trad('Remplacer le symbole par celui que désigne l\'ISIN')}">${icone('actualiser')} ${trad('Depuis l’ISIN')}</button>` : ''}</label>
           <input data-path="positions.${index}.symbol" value="${esc(p.symbol || '')}"
                  maxlength="12" style="text-transform:uppercase"></div>
       </div>

@@ -1033,13 +1033,30 @@ function carteReserveResume() {
   </div>`;
 }
 
+/* LES ICONES DE GESTE SE DESSINENT, ELLES NE S'ECRIVENT PAS.
+
+   Une fleche ou une boucle ecrite en caractere Unicode depend de la police du
+   systeme : sous Windows, la fleche d'import se dessine en T barre. Un trait
+   SVG garde la meme forme partout, prend la couleur et la taille du texte qu'il
+   accompagne, et ne se lit pas : le libelle du bouton dit le geste. Classe
+   `ic-geste`, et non `ic`, que portent les entrees du menu. */
+const TRACES_ICONE = {
+  importer: '<path d="M12 15V4"/><path d="M7.5 8.5 12 4l4.5 4.5"/><path d="M5 15.5V19h14v-3.5"/>',
+  exporter: '<path d="M12 4v11"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M5 15.5V19h14v-3.5"/>',
+  actualiser: '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 4.5v4.2h-4.2"/>',
+};
+function icone(nom) {
+  return `<svg class="ic-geste" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${TRACES_ICONE[nom] || ''}</svg>`;
+}
+
 function sortiesRappel(genre, label, avant = '') {
   return `<span class="rappel-sorties">
     ${avant}
     <button type="button" class="btn sm ghost" data-action="reporter-rappel" data-genre="${esc(genre)}"
             title="${esc(trad('Repousse ce rappel de {n} jours').replace('{n}', REPORT_JOURS))}">${trad('Plus tard')}</button>
     <button type="button" class="btn icon xs" data-action="taire-rappel" data-genre="${esc(genre)}"
-            aria-label="Ne plus demander ${esc(label)} ce mois-ci"
+            aria-label="${esc(trad('Ne plus demander {m} ce mois-ci').replace('{m}', label))}"
             title="${trad('Ne plus le demander ce mois-ci')}">✕</button>
   </span>`;
 }

@@ -8,7 +8,10 @@ parcours le jouent, apres une suite verte et complete, dans le profil temporaire
 du lanceur -- jamais dans des donnees reelles.
 
 Chaque parcours est le corps d'une fonction asynchrone, joue dans un document
-charge sur sa route : il rend `true`, ou la phrase qui dit ce qui manque. Les
+charge sur sa route : il rend `true`, ou la phrase qui dit ce qui manque. Il
+peut aussi etre une liste de tels corps, entre lesquels une chaine
+"TOUCHE:<nom>" envoie une vraie touche au navigateur (CDP) : un `.click()` ne
+prouve pas qu'un geste se fait au clavier. Les
 aides (`pause`, `attendre`, `cliquerVisible`) y sont posees avant lui. Les
 fenetres s'ouvrent par le bouton que la vue montre, jamais par un appel direct :
 un bouton absent ou mal branche doit faire echouer le parcours. Un titre
@@ -132,6 +135,48 @@ PARCOURS = [
         """,
     ),
     (
+        "Les rappels du mois forment une carte, et chaque rangée garde ses gestes",
+        "#/overview", "overview", 390,
+        [r"""
+        const cle = currentMonthKey();
+        Store.state.meta.rappelsMasques = {};
+        Store.state.meta.jourRappel = 1;
+        const i = Store.state.monthly.findIndex(x => x.date === cle);
+        if (i >= 0) Store.state.monthly[i] = { ...Store.state.monthly[i], v: {}, dettes: 0 };
+        const clos = moisPrecedentKey();
+        const j = Store.state.budget.expenses.findIndex(x => x.month === clos);
+        if (j >= 0) Store.state.budget.expenses[j] = { ...Store.state.budget.expenses[j], v: {} };
+        Store.save(); render();
+        await pause(150);
+        if (!currentMonthPending().missing || !depensesEnAttente().missing) return 'les deux rappels ne s’allument pas';
+        const carte = document.querySelector('#view > .rappels');
+        if (!carte) return 'aucune carte ne porte les rappels';
+        const rangees = [...carte.querySelectorAll(':scope > .rappel')];
+        if (rangees.length !== 2) return `${rangees.length} rangée(s) au lieu de deux`;
+        for (const r of rangees) {
+          if (!r.querySelector('.card-couvre') || !r.querySelector('[data-action="reporter-rappel"]')
+              || !r.querySelector('[data-action="taire-rappel"]')) return 'une rangée a perdu un geste';
+          if ([...r.querySelectorAll('button')].some(b => b.tabIndex < 0)) return 'un geste ne se joint pas au clavier';
+        }
+        carte.scrollIntoView({ block: 'center' });
+        await pause(80);
+        const b = rangees[1].getBoundingClientRect();
+        if (document.elementFromPoint(b.left + 24, b.top + 2) !== rangees[1].querySelector('.card-couvre')) return 'juste sous le filet, le toucher n’atteint pas la couverture de la seconde rangée';
+        if (document.elementFromPoint(b.left + 24, b.top - 2) !== rangees[0].querySelector('.card-couvre')) return 'juste au-dessus, il n’atteint pas celle de la première';
+        const plusTard = rangees[0].querySelector('[data-action="reporter-rappel"]');
+        plusTard.focus();
+        if (document.activeElement !== plusTard) return '« Plus tard » ne prend pas le focus';
+        return true;
+        """,
+        "TOUCHE:Enter",
+        r"""
+        if (!await attendre(() => document.querySelectorAll('#view > .rappels > .rappel').length === 1)) return 'Entrée sur « Plus tard » ne retire pas sa rangée';
+        document.querySelector('#view > .rappels [data-action="taire-rappel"]').click();
+        if (!await attendre(() => !document.querySelector('#view > .rappels'))) return 'après la dernière croix, une carte vide reste';
+        return true;
+        """],
+    ),
+    (
         "Un état local illisible se montre, et sa copie se supprime",
         "#/data", "data", 1280,
         r"""
@@ -171,6 +216,20 @@ def _fermer_onglet(cdp, ident):
 
 
 _chargements = 0
+
+
+def _touche(onglet, nom):
+    """Une vraie touche, enfoncee puis relachee, dans l'element qui a le focus.
+    Le caractere porte par l'enfoncement (`text`) est ce qui active un bouton :
+    sans lui, Chrome voit la touche mais ne la tape pas."""
+    codes = {"Enter": (13, "\r"), "Space": (32, " "), "Tab": (9, "")}
+    vk, texte = codes.get(nom, (0, ""))
+    touche = " " if nom == "Space" else nom
+    onglet.envoie("Input.dispatchKeyEvent", type="keyDown", key=touche, code=nom,
+                  windowsVirtualKeyCode=vk, text=texte, unmodifiedText=texte)
+    onglet.envoie("Input.dispatchKeyEvent", type="keyUp", key=touche, code=nom,
+                  windowsVirtualKeyCode=vk)
+    time.sleep(0.1)
 
 
 def _charger(onglet, base, route, vue, largeur):
@@ -214,10 +273,17 @@ def jouer(base, cdp, routes):
             if titre != "✓ rendu " + vue:
                 fautes.append(f"{nom} : la route {route} ne rend pas {vue} ({titre!r})")
                 continue
-            try:
-                r = onglet.js("(async () => {" + AIDES_JS + corps + "})()")
-            except Exception as e:
-                r = f"exception : {e}"
+            r = True
+            for morceau in ([corps] if isinstance(corps, str) else corps):
+                if morceau.startswith("TOUCHE:"):
+                    _touche(onglet, morceau[len("TOUCHE:"):])
+                    continue
+                try:
+                    r = onglet.js("(async () => {" + AIDES_JS + morceau + "})()")
+                except Exception as e:
+                    r = f"exception : {e}"
+                if r is not True:
+                    break
             apres = onglet.js("document.title") or ""
             if r is not True:
                 fautes.append(f"{nom} : {r}")

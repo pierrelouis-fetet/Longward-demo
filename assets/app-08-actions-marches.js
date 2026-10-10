@@ -384,7 +384,7 @@ Object.assign(ACTIONS, {
     const label = btn && !chip ? btn.textContent : null;
     if (btn) { btn.disabled = true; }
     if (chip) majEtatCours('encours');
-    else if (btn) btn.textContent = `↻ ${trad('Récupération…')}`;
+    else if (btn) btn.innerHTML = `${icone('actualiser')} ${esc(trad('Récupération…'))}`;
     try {
       const { changes, empty } = await Quotes.refresh();
       /* Les lignes dont le cours a REELLEMENT bouge, avant le rendu qui les

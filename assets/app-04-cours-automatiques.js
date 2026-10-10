@@ -18,7 +18,7 @@ function barreEtatCours() {
   <div class="barre-etat">
     <button class="etat-cours" id="btnQuotes" type="button" data-action="refresh-quotes"
             title="${trad('Récupérer les cours de bourse')}"><i class="pt"></i><span id="coursQuand">${trad('Cours')}</span><span
-            class="etat-maj" aria-hidden="true">↻</span></button>
+            class="etat-maj" aria-hidden="true">${icone('actualiser')}</span></button>
   </div>`;
 }
 
@@ -1181,7 +1181,7 @@ function viewHistory() {
   return `
   ${(() => {
     if (!attente.missing || !tous.length) return '';
-    return `<div class="note">⤒ <span><b>${esc(attente.label)} ${trad('n’est pas encore enregistré.')}</b>
+    return `<div class="note">${icone('importer')} <span><b>${esc(attente.label)} ${trad('n’est pas encore enregistré.')}</b>
       ${trad('Un relevé reprend d’un coup tous les montants actuels ({v}), et tient en un geste.')
         .replace('{v}', fmtEUR0(nowTotals().total))}</span>
       ${sortiesRappel('releve', attente.label,

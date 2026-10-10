@@ -204,6 +204,8 @@ function viewOverview() {
 
   ${cartes.tete}
 
+  ${(moisEnAttente.missing || depEnAttente.missing) && !guide ? `
+  <section class="rappels" aria-label="${esc(trad('À faire'))}">
   ${moisEnAttente.missing && !guide ? `
   <div class="rappel card-cliquable">
     <button type="button" class="card-couvre" data-action="ajouter-releve"
@@ -223,6 +225,7 @@ function viewOverview() {
       <span class="muted">${trad('Le mois est clos, ce qu’il a coûté reste à enregistrer')}</span></span>
     ${sortiesRappel('depenses', depEnAttente.label)}
   </div>` : ''}
+  </section>` : ''}
 
   ${cartes.suite}
 

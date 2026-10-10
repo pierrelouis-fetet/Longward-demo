@@ -543,6 +543,9 @@ th .u {
 }
 .rappel-mois { white-space: nowrap; }
 .rappel-texte { flex: 1 1 140px; }
+.rappels { display: grid; }
+.rappels > .rappel + .rappel { border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+.rappels > .rappel:has(+ .rappel) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 
 /* Les sorties du rappel, groupees a droite. Elles arrivent apres
    `.note-relance .btn`, qui pose `margin-left: auto` sur chaque bouton :

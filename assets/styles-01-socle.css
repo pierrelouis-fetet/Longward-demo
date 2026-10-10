@@ -840,7 +840,7 @@ svg.oeil-masque {
 .etat-cours.encours .pt { animation: pouls 1s ease-in-out infinite; }
 @keyframes pouls { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
 
-.etat-maj { font-size: var(--font-md); line-height: 1; opacity: .45; transition: opacity .15s; }
+.etat-maj { font-size: var(--font-md); line-height: 1; opacity: .45; transition: opacity .15s; display: inline-flex; }
 @media (hover: hover) { .etat-cours:hover .etat-maj { opacity: 1; } }
 .etat-cours.tiede .etat-maj, .etat-cours.hs .etat-maj { opacity: .9; }
 .etat-cours.encours .etat-maj { animation: tourne .9s linear infinite; opacity: 1; }
@@ -1387,6 +1387,11 @@ table .field :is(input, select) { max-width: none; }
 }
 .hero > .hero-label { margin-bottom: -10px; }
 .hero-label > .segmented { margin-left: auto; }
+.ic-geste {
+  width: 1.05em; height: 1.05em; flex: none; vertical-align: -0.16em;
+  fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.btn:not(.icon) > .ic-geste:first-child { margin-right: .4em; }
 .hero-label > .import-lien { margin-left: auto; text-transform: none; letter-spacing: normal; }
 
 /* La version reduite du controle segmente vit plus bas, apres `.segmented`.

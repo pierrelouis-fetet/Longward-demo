@@ -189,7 +189,7 @@ Object.assign(I18N.en, {
     "À renforcer": "To top up",
     "Épargne mensuelle": "Monthly savings",
     "Épargne mensuelle ({dev})": "Monthly savings ({dev})",
-    "↻ Depuis l'ISIN": "↻ From the ISIN",
+    "Depuis l’ISIN": "From the ISIN",
 
     " montant estimé": " estimated amount",
     "% charges": "% costs",
