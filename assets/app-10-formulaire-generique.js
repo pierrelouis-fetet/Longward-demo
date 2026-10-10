@@ -1714,7 +1714,7 @@ const APERCUS = {
            j.sansDonnee ? `${j.sansDonnee} ${trad('sans cours de veille')}` : '',
            j.horsSeance ? `${j.horsSeance} ${trad('sans cours du jour')}` : '',
            j.asOfMarche ? `${trad('cours')} ${fmtCoursQuand(j.asOfMarche)}` : ''].filter(Boolean).join(' · ')
-        : trad('pas de clôture de veille en mémoire'),
+        : causeSansVariation(j),
       total: j.eur,
       totalNote: j.toutHorsSeance
         ? trad('aucune de tes lignes n’a coté depuis minuit')

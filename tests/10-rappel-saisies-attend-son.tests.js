@@ -166,7 +166,7 @@ suite('Un mois resté vide se signale', () => {
     const src = lireSource('assets/store.js');
     vrai(src, 'assets/store.js doit être lisible pour ce contrôle');
     vrai(/const trousReleves = \(\) => moisVides\(/.test(src)
-      && /const trousDepenses = \(\) => moisVides\(/.test(src),
+      && /const trousDepenses = \(\) => \{\s*const clos = moisPrecedentKey\(\);\s*return moisVides\(/.test(src),
       'les deux doivent dériver de moisVides()');
   });
 });
@@ -1953,6 +1953,88 @@ suite('Un bien de valeur compte partout', () => {
       'les lignes se filtrent sur la classe du total, pas sur le groupe d’écran');
     vrai(!/groupe === 'pe'/.test(bloc),
       'le groupe d’écran rassemble aussi l’immobilier et les biens : il ment ici');
+  });
+});
+
+/* --- Un mois, un signal ------------------------------------------------------
+   Le mois clos a son rappel, qui attend son jour et se repousse. Le controle
+   des trous le reclamait aussi, des le 1er : deux lignes pour le meme mois, et
+   une qui parlait avant le jour choisi ou malgre le report. */
+suite('Le mois clos des dépenses n’est pas un trou', () => {
+  const poser = meta => Fixture.poser(s => {
+    Object.assign(s.meta, meta);
+    s.budget.expenses = [
+      { month: '2026-07-01', v: { Courses: 400 }, note: '' },
+      { month: '2026-08-01', v: { Courses: 410 }, note: '' },
+      { month: '2026-09-01', v: {}, note: '' },
+      { month: '2026-10-01', v: {}, note: '' },
+    ];
+  });
+  const septembre = () => {
+    const sept = fmtMonth('2026-09-01');
+    return healthChecks().filter(c => `${c.title} ${c.detail || ''}`.includes(sept)).length;
+  };
+
+  test('avant le jour du rappel, personne ne réclame septembre', () => {
+    auJour('2026-10-10', () => {
+      poser({ jourRappel: 15 });
+      eq(trousDepenses().length, 0, 'septembre n’est pas un trou');
+      eq(septembre(), 0, 'le rappel attend le 15, et rien ne parle à sa place');
+    });
+    Fixture.poser();
+  });
+
+  test('« Plus tard » tait septembre pendant le report, puis il revient', () => {
+    auJour('2026-10-10', () => {
+      poser({ jourRappel: 1 });
+      eq(reporterRappel('depenses'), '2026-10-17', 'sept jours de report');
+      eq(septembre(), 0, 'pendant le report, ni le rappel ni le trou');
+    });
+    auJour('2026-10-17', () => {
+      eq(septembre(), 1, 'l’échéance passée, le rappel revient, et lui seul');
+    });
+    Fixture.poser();
+  });
+
+  test('« Pas ce mois-ci » tait septembre, trou compris', () => {
+    auJour('2026-10-10', () => {
+      poser({ jourRappel: 1, rappelsMasques: { depenses: '2026-09-01' } });
+      eq(septembre(), 0, 'le masque du mois vaut pour toute la cloche');
+    });
+    Fixture.poser();
+  });
+
+  test('le jour venu, un seul signal', () => {
+    auJour('2026-10-10', () => {
+      poser({ jourRappel: 1 });
+      vrai(depensesEnAttente().missing, 'le rappel du mois clos parle');
+      eq(septembre(), 1, 'et lui seul');
+    });
+    Fixture.poser();
+  });
+
+  test('le mois suivant clos, septembre vide devient un trou', () => {
+    auJour('2026-11-10', () => {
+      Fixture.poser(s => {
+        s.budget.expenses = [
+          { month: '2026-08-01', v: { Courses: 410 }, note: '' },
+          { month: '2026-09-01', v: {}, note: '' },
+          { month: '2026-10-01', v: { Courses: 420 }, note: '' },
+        ];
+      });
+      eq(trousDepenses().join(','), '2026-09-01', 'septembre manque ; octobre, rempli, n’est rien');
+    });
+    Fixture.poser();
+  });
+
+  test('l’aide du relevé à enregistrer nomme le bouton visible', () => {
+    Fixture.poser(s => { s.monthly = []; });
+    eq(aideReleveEnAttente(), trad('« Enregistrer ton premier relevé » y reprend d’un coup tous les montants actuels'),
+      'sans relevé, le bouton de l’état vide');
+    Fixture.poser(s => { s.monthly = [{ date: '2026-09-01', comment: '', v: { c_courant: 3000 } }]; });
+    eq(aideReleveEnAttente(), trad('« Enregistrer le relevé » y reprend d’un coup tous les montants actuels'),
+      'ensuite, celui du bandeau');
+    Fixture.poser();
   });
 });
 

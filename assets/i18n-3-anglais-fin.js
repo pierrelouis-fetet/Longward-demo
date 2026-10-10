@@ -98,7 +98,8 @@ Object.assign(I18N.en, {
     "mois affichés": "months shown",
     "mois affiché": "month shown",
     "catégories": "categories",
-    "Le bouton ⤒ de sa ligne y reprend tous les montants actuels": "The ⤒ button on its row copies in all the current amounts",
+    "« Enregistrer le relevé » y reprend d’un coup tous les montants actuels": "\"Record the statement\" there copies in all the current amounts at once",
+    "« Enregistrer ton premier relevé » y reprend d’un coup tous les montants actuels": "\"Record your first statement\" there copies in all the current amounts at once",
     "Le JSON pour restaurer, l'Excel pour lire ailleurs.": "The JSON to restore, the Excel to read elsewhere.",
     "Par défaut": "Default",
     "Europe": "Europe",
@@ -1664,6 +1665,9 @@ Object.assign(I18N.en, {
     "Un loyer ou une charge de ce bien est de nouveau au budget : la vente ne peut pas s’annuler.": "A rent or cost of this property is back in the budget: the sale cannot be cancelled.",
     "Un loyer ou une charge de ce bien a changé depuis la vente : elle ne peut plus s’annuler.": "A rent or cost of this property has changed since the sale: it can no longer be cancelled.",
     "Les montants de cette vente dépassent ce qu’un montant peut porter.": "The amounts of this sale exceed what an amount can hold.",
+    "Si l’envoi réussit, la copie en ligne sera remplacée aussi, et tes autres appareils la reprendront à leur prochaine ouverture.": "If the upload succeeds, the online copy will be replaced too, and your other devices will pick it up the next time they open.",
+    "les cours de la veille ne sont pas encore connus": "yesterday's closing prices are not known yet",
+    "aucune de tes lignes n’a de cours du marché": "none of your holdings has a market price",
 });
 
 function t(cle, repli) {

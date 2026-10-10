@@ -1375,7 +1375,7 @@ suite('Une estampille fraîche ne prouve aucun contenu frais', () => {
        appareil pour porteur d'une modification, et la question « qui est en
        avance ? » reste sans reponse fiable. */
     const store = lireSource('assets/store.js');
-    vrai(/if \(!opts\.derive\) this\.state\.meta\.savedAt = new Date\(\)\.toISOString\(\);/
+    vrai(/if \(!opts\.derive\) this\.state\.meta\.savedAt = horodatageApres\(opts\.apres, this\.state\.meta\.savedAt\);/
       .test(store),
       'Store.save() ne date l’état que pour une écriture qui porte une décision');
     const q = lireSource('assets/quotes.js');
@@ -2053,6 +2053,76 @@ suite('L’échelle visuelle est fermée', () => {
       vrai(['4', '8', '12'].includes(m[1]),
         `marge en ligne de ${m[1]}px : les paliers sont 4, 8 et 12 — ${m[0]}`);
     }
+  });
+});
+
+/* --- Annuler est une decision ---------------------------------------------
+   Le vrai `Store.save()`, hors exemple, avec un faux `CloudSync` qui compte les
+   envois. `save()` ecrit le stockage de cette origine : la chaine brute est mise
+   de cote avant et remise telle quelle apres, comme pour tout geste qui
+   enregistre. L'horloge est figee : deux gestes dans la meme milliseconde
+   doivent quand meme recevoir deux dates. */
+suite('Annuler passe par l’enregistrement ordinaire', () => {
+  test('un envoi, une date plus récente que l’état annulé, rien de réempilé', () => {
+    const demo0 = modeDemo();
+    const cs0 = Object.getOwnPropertyDescriptor(globalThis, 'CloudSync');
+    const flash0 = Object.getOwnPropertyDescriptor(globalThis, 'flashSaved');
+    const now0 = Date.now;
+    const pile0 = Store._undo, prev0 = Store._prev, push0 = Store._lastPush, ko0 = Store._ecritureKo;
+    setModeDemo(false);
+    const cle = cleStockage();
+    const brut = localStorage.getItem(cle);
+    let envois = 0;
+    try {
+      globalThis.CloudSync = { isAvailable: () => true, push() { envois++; }, schedulePush() {} };
+      if (!flash0) globalThis.flashSaved = () => {};
+      Date.now = () => Date.parse('2026-10-10T12:00:00.000Z');
+      Fixture.poser();
+      Store._undo = []; Store._prev = structuredClone(Store.state); Store._lastPush = 0;
+
+      Store.state.meta.objective = 111111; Store.save();
+      const t1 = Store.state.meta.savedAt;
+      Store._lastPush = 0;
+      Store.state.meta.objective = 222222; Store.save();
+      const t2 = Store.state.meta.savedAt;
+      vrai(t2 > t1, `horloge figée, deux gestes : deux dates (${t1}, ${t2})`);
+      eq(envois, 2, 'chaque geste part en ligne');
+      eq(Store.undoCount(), 2, 'deux états à défaire');
+
+      vrai(Store.undo(), 'il restait de quoi annuler');
+      eq(Store.state.meta.objective, 111111, 'l’état d’avant revient');
+      vrai(Store.state.meta.savedAt > t2, 'daté après l’état annulé, que le cloud porte peut-être');
+      eq(envois, 3, 'et l’annulation part en ligne');
+      eq(Store.undoCount(), 1, 'la pile baisse d’un, sans réempiler l’état annulé');
+      eq(JSON.parse(localStorage.getItem(cle)).meta.objective, 111111, 'l’écriture locale suit');
+
+      vrai(Store.undo(), 'un second Annuler');
+      eq(Store.state.meta.objective, Fixture.etat().meta.objective, 'remonte d’un cran, pas vers l’état annulé');
+      eq(Store.undo(), false, 'pile vide : rien à annuler');
+      eq(envois, 4, 'et rien ne part pour rien');
+    } finally {
+      Date.now = now0;
+      if (brut === null) localStorage.removeItem(cle); else localStorage.setItem(cle, brut);
+      setModeDemo(demo0);
+      if (cs0) Object.defineProperty(globalThis, 'CloudSync', cs0); else delete globalThis.CloudSync;
+      if (!flash0) delete globalThis.flashSaved;
+      Store._undo = pile0; Store._prev = prev0; Store._lastPush = push0; Store._ecritureKo = ko0;
+      Fixture.poser();
+    }
+    eq(localStorage.getItem(cle), brut, 'le stockage de cette origine est rendu tel quel');
+  });
+
+  test('la date suit l’horloge, ou dépasse la plus récente connue', () => {
+    const now0 = Date.now;
+    try {
+      Date.now = () => Date.parse('2026-10-10T12:00:00.000Z');
+      eq(horodatageApres(), '2026-10-10T12:00:00.000Z', 'rien de connu : l’horloge');
+      eq(horodatageApres('2026-10-10T11:00:00.000Z'), '2026-10-10T12:00:00.000Z', 'l’horloge avance : elle');
+      eq(horodatageApres('2026-10-10T12:00:00.000Z'), '2026-10-10T12:00:00.001Z', 'même milliseconde : une de plus');
+      eq(horodatageApres('2026-10-11T08:00:00.000Z', '2026-10-10T09:00:00.000Z'), '2026-10-11T08:00:00.001Z',
+        'horloge en retard : la plus récente connue, plus une');
+      eq(horodatageApres('', 'n’importe quoi', undefined), '2026-10-10T12:00:00.000Z', 'l’illisible ne compte pas');
+    } finally { Date.now = now0; }
   });
 });
 

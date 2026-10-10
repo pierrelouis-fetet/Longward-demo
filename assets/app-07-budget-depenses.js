@@ -233,7 +233,7 @@ function mountData() {
       if (ou) importerTableau(ou, file);
       return;
     }
-    if (!await askConfirm(`${trad('Importer')} ${guill(file.name)} ?\n\n${trad('Cela remplacera toutes les données actuellement enregistrées dans ce navigateur.')}`)) {
+    if (!await askConfirm(`${trad('Importer')} ${guill(file.name)} ?\n\n${trad('Cela remplacera toutes les données actuellement enregistrées dans ce navigateur.')}${phraseCopieEnLigne()}`)) {
       f.value = ''; return;
     }
     /* LIRE, VALIDER, SAUVEGARDER L'ANCIEN, PUIS SEULEMENT REMPLACER.

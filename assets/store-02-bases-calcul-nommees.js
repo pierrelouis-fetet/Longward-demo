@@ -2086,13 +2086,10 @@ const Store = {
   _lastPush: 0,
 
   /* `differe` : regrouper l'envoi au cloud au lieu de le faire tout de suite.
-     Reserve a la frappe, ou cinq caracteres valent cinq appels. */
+     Reserve a la frappe, ou cinq caracteres valent cinq appels.
+     `apres` : une date que la nouvelle doit depasser, en plus de celle de
+     l'etat courant (voir `undo()`). */
   save(opts = {}) {
-    /* La projection des comptes se refait ici, et non chez l'appelant.
-
-       Une vue ne se rafraichit pas a la main a huit endroits : la source
-       change, la vue suit. Les appels qui subsistent chez les appelants sont
-       desormais sans effet, sauf `undo()`, qui ne passe pas par ici. */
     refreshAccounts();
     this.state.meta = this.state.meta || {};
     this.state.meta.aVerifier = signalerInvalides(this.state);
@@ -2115,7 +2112,7 @@ const Store = {
 
        `derive` marque ces ecritures-la : la donnee est enregistree et envoyee
        comme les autres, mais elle ne pretend pas dater l'etat. */
-    if (!opts.derive) this.state.meta.savedAt = new Date().toISOString();
+    if (!opts.derive) this.state.meta.savedAt = horodatageApres(opts.apres, this.state.meta.savedAt);
     this._prev = structuredClone(this.state);
     /* UN ECHEC D'ECRITURE NE PEUT PAS RESTER SILENCIEUX.
 
@@ -2164,13 +2161,26 @@ const Store = {
 
   undoCount() { return this._undo.length; },
 
+  /* ANNULER EST UNE DECISION, ET PASSE PAR LE MEME ENREGISTREMENT QU'UNE AUTRE.
+
+     Une ecriture locale seule laissait le cloud sur l'etat annule, date plus
+     tard que l'etat restaure : le chargement suivant le reprenait, et le geste
+     defait revenait. `save()` porte l'horodatage, l'envoi, le recalcul des
+     valeurs a verifier et le signal d'un echec d'ecriture.
+
+     `_prev` est vide avant l'appel : `save()` n'empile que ce qu'il trouve, et
+     l'etat qu'on vient d'annuler ne doit pas devenir le prochain "Annuler".
+
+     L'etat restaure porte une date plus ancienne que celui qu'il remplace ;
+     `apres` force la nouvelle date au-dela de celle de l'etat annule, que le
+     cloud porte peut-etre deja. A egalite, l'arbitrage lirait "aligne". */
   undo() {
     const prev = this._undo.pop();
     if (!prev) return false;
+    const annuleLe = this.state?.meta?.savedAt;
     this.state = prev;
-    this._prev = structuredClone(prev);
-    refreshAccounts();               // sinon la liste des comptes reste celle d'avant
-    try { localStorage.setItem(cleStockage(), JSON.stringify(this.state)); } catch (e) {}
+    this._prev = null;
+    this.save({ apres: annuleLe });
     return true;
   },
 

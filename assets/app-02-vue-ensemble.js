@@ -507,10 +507,16 @@ function carteTitresResume() {
         })()}
         ${(() => {
           const j = dayPerformance();
+          /* Deux situations pour une meme mesure muette. Aucune ligne ne se
+             mesure : `causeSansVariation` dit pourquoi, faute de cours du
+             marche ou faute de cloture de la veille. Ou toutes ont des cours
+             d'avant minuit : "hors seance", et sans cette phrase la carte
+             annoncait "+0 EUR, +0,00 %" sur une journee qui n'avait pas encore
+             de cours. */
           if (!j.lignes.length || j.toutHorsSeance) return `
-        <p class="pf-jour-muet">${trad('Aujourd’hui')}${deuxPoints()} ${trad('hors séance')}, ${j.lignes.length
-              ? trad('aucune ligne n’a coté depuis minuit')
-              : trad('pas de clôture de veille en mémoire')}</p>`;
+        <p class="pf-jour-muet">${trad('Aujourd’hui')}${deuxPoints()} ${j.lignes.length
+              ? `${trad('hors séance')}, ${trad('aucune ligne n’a coté depuis minuit')}`
+              : causeSansVariation(j)}</p>`;
           return `
         <button type="button" class="pf-mesure" data-action="apercu" data-apercu="jourTitres">
           <span class="pf-lab">${trad('Aujourd’hui')}</span>

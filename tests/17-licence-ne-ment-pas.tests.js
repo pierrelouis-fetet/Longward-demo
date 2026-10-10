@@ -1653,18 +1653,19 @@ suite('La carte du portefeuille raconte une phrase', () => {
       'et le gain porte sa base dans son nom, au lieu de « Performance »');
   });
 
-  test('sans séance, la mesure du jour le dit au lieu d’afficher zéro', () => {
-    /* Deux causes, deux phrases : aucune cloture de reference en memoire, ou
-       des cours qui datent tous d'avant minuit. La refonte ne devait en perdre
-       aucune — un « +0 € » sur une journee sans cours est un chiffre faux. */
+  test('sans mesure du jour, la carte dit pourquoi au lieu d’afficher zéro', () => {
+    /* Deux situations, deux phrases : aucune ligne mesurable, dont le modele
+       dit la cause, ou des cours qui datent tous d'avant minuit. La refonte ne
+       devait en perdre aucune : un "+0 EUR" sur une journee sans cours est un
+       chiffre faux. */
     const src = lireSource('assets/app.js');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
     const i = src.indexOf('<div class="pf-mesures">');
     const bloc = src.slice(i, src.indexOf('</div>\n    </div>', i));
     vrai(/!j\.lignes\.length \|\| j\.toutHorsSeance/.test(bloc),
       'deux causes gardent la mesure du jour');
-    vrai(/trad\('pas de clôture de veille en mémoire'\)/.test(bloc),
-      'la première se nomme');
+    vrai(/causeSansVariation\(j\)/.test(bloc),
+      'la première se nomme, par le modèle');
     vrai(/trad\('aucune ligne n’a coté depuis minuit'\)/.test(bloc),
       'la seconde aussi');
     vrai(/trad\('hors séance'\)/.test(bloc),

@@ -1584,7 +1584,7 @@ suite('L’accueil résume, et chaque résumé mène à son détail', () => {
     const bloc = vue.slice(vue.indexOf('const j = dayPerformance();'), vue.indexOf('data-apercu="jourTitres"'));
     vrai(/<p class="pf-jour-muet">/.test(bloc), 'une mention');
     vrai(!/pf-mesure pf-muet/.test(bloc), 'et non plus une ligne de mesure');
-    vrai(/pas de clôture de veille en mémoire/.test(bloc), 'qui dit sa cause');
+    vrai(/causeSansVariation\(j\)/.test(bloc), 'qui dit sa cause');
   });
 
   test('l’Historique monte les barres du rythme, qui l’ont rejoint', () => {
@@ -2003,6 +2003,34 @@ suite('L’Aperçu se personnalise, et le patrimoine reste en tête', () => {
     for (const [c, marques] of [['{c}, position {n} sur {t}', ['{c}', '{n}', '{t}']], ['{c}, carte masquée', ['{c}']],
                                 ['{c}, carte affichée', ['{c}']], ['{n} catégories', ['{n}']]])
       for (const mq of marques) vrai(I18N.en[c].includes(mq), `« ${c} » garde ${mq}`);
+  });
+});
+
+/* --- La cause d'une journee sans mesure -------------------------------------
+   "Hors seance, pas de cloture de veille" disait deux choses fausses quand
+   les lignes etaient saisies a la main : il n'y a ni seance ni veille pour
+   elles. La cause se derive des lignes. */
+suite('Une journée sans mesure dit sa vraie cause', () => {
+  test('des lignes à la main n’attendent aucun cours de la veille', () => {
+    Fixture.poser(s => { for (const p of s.positions) p.manual = true; });
+    const j = dayPerformance();
+    eq(j.lignes.length, 0, 'rien ne se mesure');
+    eq(causeSansVariation(j), trad('aucune de tes lignes n’a de cours du marché'), 'et c’est faute de cours');
+    Fixture.poser();
+  });
+
+  test('une ligne cotée sans clôture de référence attend celle-ci', () => {
+    Fixture.poser(s => { for (const p of s.positions) { p.prevClose = 0; p.dateAchat = ''; } });
+    const j = dayPerformance();
+    eq(j.lignes.length, 0, 'rien ne se mesure');
+    eq(causeSansVariation(j), trad('les cours de la veille ne sont pas encore connus'), 'faute de veille');
+    Fixture.poser();
+  });
+
+  test('un cours manquant compte comme une ligne sans prix', () => {
+    Fixture.poser(s => { for (const p of s.positions) p.price = 0; });
+    eq(causeSansVariation(), trad('aucune de tes lignes n’a de cours du marché'), 'pas de prix, pas de marché');
+    Fixture.poser();
   });
 });
 

@@ -136,7 +136,7 @@ Object.assign(ACTIONS, {
         .replace('{p}', Store.state.positions.length)
         .replace('{c}', ACCOUNTS.length)
         .replace('{m}', Store.state.monthly.filter(r => !rowIsEmpty(r)).length)
-      + '\n\n' + trad('Une sauvegarde est prise avant, et Ctrl+Z annule.'),
+      + '\n\n' + trad('Une sauvegarde est prise avant, et Ctrl+Z annule.') + phraseCopieEnLigne(),
       { ok: 'Tout effacer', danger: true })) return;
 
     Store.addBackup('avant remise à zéro');
@@ -182,7 +182,7 @@ Object.assign(ACTIONS, {
     if (!b) return;
     if (!await askConfirm(trad('Restaurer la sauvegarde du {d} ?').replace('{d}',
         new Date(b.at).toLocaleString(locale(), { dateStyle: 'long', timeStyle: 'short' }))
-      + '\n\n' + trad("L'état actuel sera d'abord sauvegardé, tu pourras donc revenir en arrière."))) return;
+      + '\n\n' + trad("L'état actuel sera d'abord sauvegardé, tu pourras donc revenir en arrière.") + phraseCopieEnLigne())) return;
     Store.restoreBackup(i);
     render(); toast(trad('Sauvegarde restaurée'));
   },

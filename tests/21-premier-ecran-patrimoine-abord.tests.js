@@ -1818,4 +1818,40 @@ suite('La devise, avant la première saisie', () => {
    L'infobulle porte desormais la part, sur la meme base que le total qu'elle
    affiche, et les chiffres de cette suite sont ceux de l'exemple qui l'a
    demandee. */
+/* --- Les gestes qui remplacent tout disent la copie en ligne ---------------
+   Le harnais ne charge pas la synchronisation : un faux `CloudSync` dit
+   seulement s'il est branche. Le mode d'exemple se retablit tel qu'il etait. */
+suite('Remplacer tout dit la copie en ligne', () => {
+  const PHRASE = 'Si l’envoi réussit, la copie en ligne sera remplacée aussi, et tes autres appareils la reprendront à leur prochaine ouverture.';
+
+  test('la phrase suit la synchronisation, jamais en exemple', () => {
+    const cs0 = Object.getOwnPropertyDescriptor(globalThis, 'CloudSync');
+    const demo0 = modeDemo();
+    try {
+      setModeDemo(false);
+      delete globalThis.CloudSync;
+      eq(phraseCopieEnLigne(), '', 'sans synchronisation chargée, rien à dire');
+      globalThis.CloudSync = { isAvailable: () => false };
+      eq(phraseCopieEnLigne(), '', 'synchronisation indisponible, rien à dire');
+      globalThis.CloudSync = { isAvailable: () => true };
+      vrai(phraseCopieEnLigne().includes(trad(PHRASE)), 'synchronisation branchée : la phrase');
+      setModeDemo(true);
+      eq(phraseCopieEnLigne(), '', 'en exemple, rien ne part en ligne');
+    } finally {
+      setModeDemo(demo0);
+      if (cs0) Object.defineProperty(globalThis, 'CloudSync', cs0); else delete globalThis.CloudSync;
+    }
+  });
+
+  test('les trois confirmations qui remplacent tout l’appellent', () => {
+    const app = lireSource('assets/app.js');
+    const autour = (ancre, n) => { const i = app.indexOf(ancre); return i < 0 ? '' : app.slice(i, i + n); };
+    vrai(/remplacera toutes les données actuellement enregistrées dans ce navigateur\.'\)\}\$\{phraseCopieEnLigne\(\)\}/.test(app),
+      'l’import d’une sauvegarde');
+    vrai(/phraseCopieEnLigne\(\)/.test(autour("async 'restore-backup'(btn)", 700)), 'la restauration');
+    vrai(/phraseCopieEnLigne\(\)/.test(autour("async 'start-blank'()", 700)), 'et « Tout effacer »');
+    vrai(!!I18N.en[PHRASE], 'traduit');
+  });
+});
+
 finDePartieDeTests('tests/21-premier-ecran-patrimoine-abord.tests.js');

@@ -1164,8 +1164,8 @@ const Charts = (() => {
           const diff = target ? it.value - target : null;
           tip.hidden = false;
           tip.innerHTML = `<div class="tt-head">${esc(it.label)}</div>
-            <div class="tt-row">Dépensé<b>${fmtEUR0(it.value)}</b></div>
-            ${target && it.value > 0 ? `<div class="tt-row tt-total">vs objectif<b>${diff > 0 ? '+' : '−'}${fmtEUR0(Math.abs(diff))}</b></div>` : ''}
+            <div class="tt-row">${trad('Dépensé')}<b>${fmtEUR0(it.value)}</b></div>
+            ${target && it.value > 0 ? `<div class="tt-row tt-total">${trad('vs objectif')}<b>${diff > 0 ? '+' : '−'}${fmtEUR0(Math.abs(diff))}</b></div>` : ''}
             ${it.note ? `<div class="tt-note">${esc(it.note)}</div>` : ''}`;
           const cx = m.l + band * (+node.dataset.i) + band / 2;
           const r = el.querySelector('svg').getBoundingClientRect();

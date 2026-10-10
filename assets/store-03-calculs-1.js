@@ -191,6 +191,14 @@ function coursAsOf() {
   return heures.length ? Math.max(...heures) : null;
 }
 
+const sansCoursDeMarche = p => p.manual || !num(p.price);
+function causeSansVariation(j = dayPerformance()) {
+  const cotees = Store.state.positions.filter(p => !sansCoursDeMarche(p)).length;
+  return cotees && j.sansDonnee
+    ? trad('les cours de la veille ne sont pas encore connus')
+    : trad('aucune de tes lignes n’a de cours du marché');
+}
+
 function dayPerformance() {
   const lignes = [];
   let eur = 0, baseCotees = 0, sansDonnee = 0;
@@ -1127,9 +1135,18 @@ function moisVides(lignes, estVide) {
 }
 
 const trousReleves = () => moisVides(Store.state.monthly, rowIsEmpty);
-const trousDepenses = () => moisVides(
-  (Store.state.budget?.expenses || []).map(r => ({ date: r.month, v: r.v })),
-  r => !Object.values(r.v || {}).some(v => num(v) !== 0));
+/* Le mois clos est ecarte des trous de depenses, pour la raison qui ecarte le
+   mois en cours des releves : il a son rappel, `depensesEnAttente()`, qui
+   attend son jour et se repousse. Le compter ici aussi le reclamait deux fois,
+   et des le 1er, malgre l'attente. Il devient un trou quand le mois suivant se
+   clot a son tour. */
+const trousDepenses = () => {
+  const clos = moisPrecedentKey();
+  return moisVides(
+    (Store.state.budget?.expenses || []).map(r => ({ date: r.month, v: r.v })),
+    r => !Object.values(r.v || {}).some(v => num(v) !== 0))
+    .filter(m => m !== clos);
+};
 
 /* La date d'un `Date`, lue en heure locale.
 

@@ -4,6 +4,12 @@
  *  Source: https://github.com/pierrelouis-fetet/Longward-demo
  *  Distributed WITHOUT ANY WARRANTY. See the LICENSE file for the full terms.
  */
+function aideReleveEnAttente() {
+  return aUnRelevePatrimonial()
+    ? trad('« Enregistrer le relevé » y reprend d’un coup tous les montants actuels')
+    : trad('« Enregistrer ton premier relevé » y reprend d’un coup tous les montants actuels');
+}
+
 function healthChecks() {
   const out = [];
   let sujet = 'coherence';
@@ -322,15 +328,14 @@ function healthChecks() {
      de la barre du bas, mais pas cette ligne — ni la cloche qui la reprend.
      Un seul endroit decide qu'une saisie reclame quelque chose.
 
-     Le bouton « Snapshot du mois » n'existe plus : c'est le ⤒ de la ligne,
-     allume sur le mois qui attend. Une consigne qui nomme un bouton absent est
-     pire qu'une consigne vague. */
+     L'aide nomme le bouton que l'Historique montre : voir
+     `aideReleveEnAttente`. */
   /* La garde vit dans `currentMonthPending()`, avec les bandeaux de l'accueil :
      la poser ici aussi l'aurait laissee diverger de l'autre. */
   const relEnAttente = currentMonthPending();
   if (relEnAttente.missing) {
     add('action', `${trad('Relevé de')} ${relEnAttente.label} ${trad('à enregistrer')}`,
-      trad('Le bouton ⤒ de sa ligne y reprend tous les montants actuels'), 'history');
+      aideReleveEnAttente(), 'history');
   }
 
   sujet = 'budget';

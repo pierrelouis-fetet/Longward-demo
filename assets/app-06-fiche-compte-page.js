@@ -1363,7 +1363,7 @@ function viewBudget(section = 'depenses') {
         stats.average ? `${fmtSigned(stats.average - f.target)} ${trad('vs objectif')}` : ''}</span>
     </div>
     <p class="small muted" style="margin:12px 0 0">
-      ${trad('Vert sous l’objectif, orange au-dessus, rouge à partir de')} ${fmtPct(SEUIL_DEPASSEMENT_GRAVE * 100, 0)} ${trad('de dépassement. Survole une barre pour la note du mois.')}
+      ${trad('Vert sous l’objectif, orange au-dessus, rouge à partir de')} ${fmtPct(SEUIL_DEPASSEMENT_GRAVE * 100, 0)} ${trad('de dépassement. Touche ou survole une barre pour lire la note du mois.')}
     </p>
     <details class="data-view">
       <summary>${trad('Voir les données')}</summary>

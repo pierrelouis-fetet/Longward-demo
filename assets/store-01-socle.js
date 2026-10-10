@@ -42,6 +42,17 @@ function setModeDemo(on) {
 }
 const cleStockage = () => cleParUtilisateur(modeDemo() ? CLE_DEMO : CLE_REELLE);
 
+/* Ce que remplace un geste qui remplace tout. Importer une sauvegarde, en
+   restaurer une ou tout effacer passent par `Store.save()`, donc par l'envoi
+   au cloud quand il est branche : la confirmation qui ne parle que de "ce
+   navigateur" promet une limite que le geste n'a pas. La regle d'envoi est
+   celle de `save()` : jamais en exemple, et seulement si la synchronisation
+   repond. */
+function phraseCopieEnLigne() {
+  if (modeDemo() || typeof CloudSync === 'undefined' || !CloudSync.isAvailable()) return '';
+  return '\n\n' + trad('Si l’envoi réussit, la copie en ligne sera remplacée aussi, et tes autres appareils la reprendront à leur prochaine ouverture.');
+}
+
 /* La demonstration a-t-elle vieilli chez ce visiteur ?
 
    La graine ne joue qu'au premier lancement, donc un visiteur revenu garde sa
@@ -221,6 +232,13 @@ const BACKUP_KEY = 'wealth-dashboard:backups';
 const cleSauvegardes = () => cleParUtilisateur(BACKUP_KEY);
 const UNDO_LIMIT = 40;
 const BACKUP_LIMIT = 8;
+
+function horodatageApres(...dates) {
+  const connues = dates.map(d => Date.parse(d || '')).filter(Number.isFinite);
+  const plancher = connues.length ? Math.max(...connues) : -Infinity;
+  const t = Date.now();
+  return new Date(t > plancher ? t : plancher + 1).toISOString();
+}
 
 let ACCOUNTS = SEED_ACCOUNTS;
 let ACC = Object.fromEntries(ACCOUNTS.map(a => [a.id, a]));
