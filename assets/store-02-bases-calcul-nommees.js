@@ -2113,11 +2113,13 @@ const Store = {
 
     for (const a of s.accounts.filter(x => x.role === 'margin')) {
       const du = -num(s.now[a.id]);
-      /* `verifieLe` des la naissance : un capital restant du est le seul champ
-         qui devient faux sans que personne y touche, et la cloche le reclame au
-         bout de trois mois. Sans date de depart, elle le reclamait des la
-         premiere ouverture — une demonstration accueillait son visiteur par un
-         reproche. Le jour de la migration EST le jour ou l'on a lu ce montant. */
+      /* `verifieLe` des la naissance, pour la graine fictive seulement. Un
+         capital restant du devient faux sans que personne y touche, et la
+         cloche le reclame au bout de trois mois. La graine se lit le jour ou
+         elle se migre : sa dette est verifiee ce jour-la, et la demonstration
+         n'accueille pas son visiteur par un reproche. Un etat reel ou importe
+         n'a pas cette preuve, sa dette reste sans date, et la cloche demande
+         la verification, ce qui est vrai. */
       /* Le taux, l'assurance et le capital emprunte suivent quand le compte les
          declare. Sans eux, un pret migre n'avait aucun taux : la projection ne
          pouvait pas rejouer son amortissement, et la cloche ne pouvait pas
@@ -2128,7 +2130,7 @@ const Store = {
          champs d'affichage d'un compte (`group`, `short`, `broker`), qui n'ont
          aucun sens sur elle et que rien ne lirait. */
       if (du > 0) etabDe(a.broker).dettes.push({ id: 'd_' + a.id, libelle: a.label,
-        montant: du, note: '', verifieLe: todayISO(),
+        montant: du, note: '', ...(issuDeLaGraine(s) ? { verifieLe: todayISO() } : {}),
         ...(num(a.taux) ? { taux: num(a.taux) } : {}),
         ...(num(a.tauxAssurance) ? { tauxAssurance: num(a.tauxAssurance) } : {}),
         ...(num(a.initial) ? { initial: num(a.initial) } : {}) });

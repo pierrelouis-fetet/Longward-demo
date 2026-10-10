@@ -837,7 +837,7 @@ function renvoiPas(p) {
 }
 
 function carteBienvenue({ faits, total, premier, acquis }) {
-  const exemple = typeof SEED_VERSION !== 'undefined' && typeof modeDemo === 'function' && !modeDemo();
+  const exemple = exempleDisponible() && !modeDemo();
   return `
   <section class="card bienvenue">
     <p class="surtitre">${trad('Bienvenue dans Longward')}</p>

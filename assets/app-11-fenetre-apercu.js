@@ -261,7 +261,7 @@ function render() {
   /* L'etiquette de la demonstration publique, dans la barre du haut et dans la
      barre fixe du telephone : voir `etiquetteDemoVisible`. */
   for (const e of $$('.etiquette-demo')) e.hidden = !etiquetteDemoVisible();
-  const compte = !!(typeof CloudSync !== 'undefined' && CloudSync.getUser());
+  const compte = !!(typeof CloudSync !== 'undefined' && CloudSync.getUserId());
   for (const lien of $$('#nav a[data-view="profil"]')) lien.hidden = !compte;
   const sortie = $('#btnLogout');
   if (sortie) sortie.hidden = !compte;

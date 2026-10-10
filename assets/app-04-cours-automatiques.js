@@ -487,8 +487,6 @@ function viewAllocation() {
       + 'compte ou un placement.');
   }
   const poches = pochesPatrimoine({ financier: allocFinancier, net: true });
-  const byAsset = allocationByAsset({ credits: false, financier: allocFinancier });
-  const byAcct = allocationByAccount({ financier: allocFinancier });
   const byType = teinterParRang(byAccountType({ financier: allocFinancier }));
   const dispo = teinterParRang(allocationParDisponibilite({ financier: allocFinancier }));
   if (allocAngleNav !== navsInternes) { allocAngleNav = navsInternes; allocAngle = 'categorie'; }

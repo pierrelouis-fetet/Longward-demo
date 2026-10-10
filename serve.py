@@ -511,7 +511,9 @@ class Handler(SimpleHTTPRequestHandler):
             self._set_cookie = True
 
         if parsed.path == "/api/health":
-            return self._send_json({"ok": True, "service": "wealth-dashboard"})
+            # Pas de comptes sur le serveur local : le client le note et
+            # demarre ensuite sur ses donnees locales, sans attendre le reseau.
+            return self._send_json({"ok": True, "service": "wealth-dashboard", "accounts": False})
 
         if parsed.path == "/api/quotes":
             raw = (params.get("symbols") or [""])[0]

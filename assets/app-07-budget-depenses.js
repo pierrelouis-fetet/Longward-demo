@@ -151,13 +151,13 @@ function viewData() {
       <input type="file" id="importFile" class="fichier-cache"
              accept="application/json,.json,.csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
       <p class="small muted">${trad('Le JSON permet de restaurer entièrement Longward.')}${aide(trad('Le JSON restitue ton tableau de bord à l’identique : c’est celui à garder pour restaurer ou changer de machine. Importer remplace l’état enregistré dans ce navigateur, après confirmation, et une sauvegarde de l’état actuel est prise avant. Exporte d’abord si tu as un doute.'))}</p>
-      <div class="row demo-bascule">
+      ${exempleDisponible() ? `<div class="row demo-bascule">
         ${modeDemo()
           ? `<button class="btn sm ghost" data-action="quitter-demo">← ${trad('Revenir à mes données')}</button>
              <span class="sub">${trad('La démonstration reste disponible')}</span>`
           : `<button class="btn sm ghost" type="button" data-action="charger-demo">▷ ${trad('Voir la démonstration')}</button>
              <span class="sub">${trad('Des chiffres fictifs, sans toucher aux tiennes')}</span>`}
-      </div>
+      </div>` : ''}
     </div>
     <div class="donnees-section">
       <h2>${trad('Exporter pour analyse')}</h2>

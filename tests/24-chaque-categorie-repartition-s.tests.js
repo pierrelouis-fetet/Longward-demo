@@ -710,7 +710,8 @@ suite('La démonstration n’est jamais en retard', () => {
     vrai(/const demoEnCours = estDemoVivante\(\) \? demoAJour\(\) : null;/.test(src),
       'l’application ne demande les mois qu’à une copie de la graine');
     const store = lireSource('assets/store.js');
-    vrai(/typeof SEED_VERSION !== 'undefined'/.test(store.slice(store.indexOf('function estDemoVivante'))),
+    vrai(/return issuDeLaGraine\(Store\.state\);/.test(store.slice(store.indexOf('function estDemoVivante')))
+      && /const exempleDisponible = \(\) => typeof SEED_VERSION !== 'undefined';/.test(store),
       'et la garde lit la graine de la démonstration, absente du dépôt privé comme de la bêta');
   });
 

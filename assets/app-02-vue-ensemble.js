@@ -797,7 +797,7 @@ function tile(label, value, pct, color, meta, apercu, arg) {
 }
 
 function viewProfil() {
-  const adresse = CloudSync.getUser();
+  const adresse = CloudSync.getUserId() ? CloudSync.getUser() : null;
   if (!adresse) {
     return `<div class="card"><div class="card-head"><h2>${trad('Ton compte')}</h2></div>
       <p class="muted">${trad('Cette instance ne tient pas de comptes séparés : il n’y a pas de profil à afficher.')}</p>

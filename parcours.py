@@ -16,7 +16,9 @@ aides (`pause`, `attendre`, `cliquerVisible`) y sont posees avant lui. Les
 fenetres s'ouvrent par le bouton que la vue montre, jamais par un appel direct :
 un bouton absent ou mal branche doit faire echouer le parcours. Un titre
 d'onglet passe a l'echec pendant le geste est un echec, meme si le parcours a
-abouti : une erreur levee dans la vue ne doit pas passer.
+abouti : une erreur levee dans la vue ne doit pas passer. Un parcours propre a
+une sorte d'instance rend "SAUTE" ailleurs : il ne compte pas comme joue, et le
+lanceur dit combien ont ete sautes.
 
 Puis chaque route se rend a 390 px, en francais puis en anglais, et la page ne
 doit pas deborder en largeur. Un ecran qui pousse la page sur un telephone se
@@ -177,6 +179,31 @@ PARCOURS = [
         """],
     ),
     (
+        "Sans graine fictive, la démonstration ne s'ouvre pas et ne touche à rien",
+        "#/data", "data", 1280,
+        r"""
+        if (exempleDisponible()) return 'SAUTE';
+        const photo = () => {
+          const o = [];
+          for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); o.push([k, localStorage.getItem(k)]); }
+          return JSON.stringify(o.sort());
+        };
+        const avant = photo(), etat = JSON.stringify(Store.state);
+        /* Un garde absent ouvrirait la confirmation, et l'appel attendrait une
+           reponse qui ne vient pas : la course le dit au lieu de bloquer. */
+        for (const nom of ['charger-demo', 'recharger-demo']) {
+          const fini = await Promise.race([ACTIONS[nom]().then(() => true), pause(1500).then(() => false)]);
+          if (!fini || confirmeOuverte()) return `${nom} demande une réponse : son garde n’a pas joué`;
+        }
+        if (photo() !== avant) return 'le stockage local a changé';
+        if (JSON.stringify(Store.state) !== etat) return 'l’état en mémoire a changé';
+        if (modeDemo()) return 'le mode exemple s’est ouvert';
+        if (cleStockage() !== 'wealth-dashboard:v1') return 'la clé de stockage a basculé';
+        if (document.querySelector('#view .demo-bascule')) return 'Données montre la bascule de la démonstration';
+        return true;
+        """,
+    ),
+    (
         "Un état local illisible se montre, et sa copie se supprime",
         "#/data", "data", 1280,
         r"""
@@ -256,10 +283,16 @@ def _charger(onglet, base, route, vue, largeur):
     return onglet.js("document.title") or titre
 
 
+# Les parcours sautes au dernier `jouer()` : propres a une autre instance.
+SAUTES = []
+
+
 def jouer(base, cdp, routes):
     """Joue les parcours puis le controle de largeur sur `routes`, une liste de
-    (route, vue attendue). Rend (fautes, nombre de parcours joues)."""
+    (route, vue attendue). Rend (fautes, nombre de parcours joues) ; les noms
+    des parcours sautes restent dans `SAUTES`."""
     fautes, joues = [], 0
+    SAUTES.clear()
     o = _nouvel_onglet(cdp)
     onglet = captures.Onglet(o["webSocketDebuggerUrl"])
     try:
@@ -285,7 +318,10 @@ def jouer(base, cdp, routes):
                 if r is not True:
                     break
             apres = onglet.js("document.title") or ""
-            if r is not True:
+            if r == "SAUTE":
+                joues -= 1
+                SAUTES.append(nom)
+            elif r is not True:
                 fautes.append(f"{nom} : {r}")
             elif apres.startswith("✕"):
                 fautes.append(f"{nom} : une erreur est levée pendant le geste ({apres!r})")

@@ -257,7 +257,7 @@ suite('Les chiffres se lisent, les portes se trouvent', () => {
     const src = lireSource('assets/app.js') || '';
     vrai(/for \(const e of \$\$\('\.etiquette-demo'\)\) e\.hidden = !etiquetteDemoVisible\(\);/.test(src),
       'chaque rendu pose l’étiquette');
-    vrai(/const compte = !!\(typeof CloudSync !== 'undefined' && CloudSync\.getUser\(\)\);/.test(src)
+    vrai(/const compte = !!\(typeof CloudSync !== 'undefined' && CloudSync\.getUserId\(\)\);/.test(src)
       && /#nav a\[data-view="profil"\]'\)\) lien\.hidden = !compte;/.test(src)
       && /sortie\.hidden = !compte;/.test(src), 'Profil et la déconnexion suivent le compte, ensemble');
     eq(I18N.en['Exemple fictif'], 'Fictional example', 'et l’étiquette se traduit');

@@ -649,7 +649,7 @@ suite('Premier lancement : Longward prend vie sous les yeux', () => {
   test('6-8. le mode exemple : des données fictives, isolées, jamais envoyées', () => {
     const s = src();
     if (typeof modeDemo !== 'function') { vrai(!/data-action="charger-demo"/.test(lireSource('index.html')), 'sans mode démonstration, rien à proposer'); return; }
-    vrai(/typeof SEED_VERSION !== 'undefined' && typeof modeDemo === 'function' && !modeDemo\(\)/.test(s),
+    vrai(/const exemple = exempleDisponible\(\) && !modeDemo\(\);/.test(s),
       '« Voir un exemple » n’existe que là où une graine de démonstration existe, hors du mode lui-même');
     const action = s.slice(s.indexOf("async 'charger-demo'()"), s.indexOf("'quitter-demo'()"));
     vrai(/setModeDemo\(true\);\s*Store\.state = structuredClone\(SEED\);/.test(action), 'l’exemple est la graine, sous son propre mode');

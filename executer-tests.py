@@ -354,7 +354,9 @@ def main():
                     print("\nDes parcours échouent :\n  " + "\n  ".join(fautes), file=sys.stderr)
                     code = 1
                 else:
-                    print(f"{joues} parcours joués sans faute")
+                    print(f"{joues} parcours joués sans faute"
+                          + (f", {len(parcours.SAUTES)} propre(s) à une autre instance"
+                             if parcours.SAUTES else ""))
                     # Puis le SQL de l'etat contre un vrai SQLite : voir
                     # controle_sql.py.
                     fautes_sql, n_sql = controle_sql.verifier(os.path.dirname(os.path.abspath(__file__)))

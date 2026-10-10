@@ -33,7 +33,18 @@ const cleMode = () => cleParUtilisateur(MODE_KEY);
 const CLE_REELLE = 'wealth-dashboard:v1';
 const CLE_DEMO   = 'wealth-dashboard:demo';
 
+/* UNE INSTANCE QUI PORTE UNE GRAINE FICTIVE, ET UN ETAT QUI EN EST NE.
+   `SEED_VERSION` n'existe que dans la graine de la demonstration. Sans elle,
+   la graine est celle de vraies donnees : le mode exemple n'existe pas, et sa
+   clef ne bascule rien, meme posee a la main. Un etat ne de la graine porte
+   son numero, un entier positif ; un etat saisi ou importe n'en a pas, et un
+   zero ne prouve rien. Tous les gardes de la demonstration passent par ces
+   deux fonctions. */
+const exempleDisponible = () => typeof SEED_VERSION !== 'undefined';
+const issuDeLaGraine = s => exempleDisponible() && !!s && num(s.seedVersion) > 0;
+
 function modeDemo() {
+  if (!exempleDisponible()) return false;
   try { return localStorage.getItem(cleMode()) === 'demo'; } catch (e) { return false; }
 }
 function setModeDemo(on) {
@@ -67,9 +78,8 @@ function phraseCopieEnLigne() {
    n'est plus sur une demonstration. La proposition se fait par une banniere :
    on ne remplace jamais un etat sans le demander, la regle de la maison. */
 function demoPerimee() {
-  if (typeof SEED_VERSION === 'undefined') return false;
   const etat = Store.state;
-  if (!etat || !estDeclare(etat.seedVersion)) return false;
+  if (!issuDeLaGraine(etat)) return false;
   return num(etat.seedVersion) < SEED_VERSION;
 }
 
@@ -97,8 +107,7 @@ function rechargerDemo() {
    perd cette egalite, et la demonstration ne le touche plus. Un releve, lui,
    ne se reecrit jamais : seul un mois vide se remplit. */
 function estDemoVivante() {
-  return typeof SEED_VERSION !== 'undefined' && !!Store.state
-    && estDeclare(Store.state.seedVersion);
+  return issuDeLaGraine(Store.state);
 }
 
 /* L'ETIQUETTE « EXEMPLE FICTIF » : sur la demonstration publique seulement,

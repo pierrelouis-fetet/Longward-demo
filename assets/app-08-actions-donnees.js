@@ -6,6 +6,8 @@
  */
 Object.assign(ACTIONS, {
   async 'charger-demo'() {
+    /* Sans graine fictive, `SEED` porte de vraies donnees, jamais un exemple. */
+    if (!exempleDisponible()) return;
     if (modeDemo()) return;
     if (!await askConfirm(trad('Voir la démonstration ?') + '\n\n'
       + trad('Tes données ne sont pas touchées : elles restent enregistrées de leur côté, '
@@ -21,7 +23,7 @@ Object.assign(ACTIONS, {
   },
 
   async 'recharger-demo'() {
-    if (!demoPerimee()) return;
+    if (!exempleDisponible() || !demoPerimee()) return;
     if (!await askConfirm(trad('Recharger la démonstration ?') + '\n\n'
       + trad('Les données de démonstration reprennent leur dernière version. Ce que tu as modifié dans la démo est remplacé ; une sauvegarde est prise avant, et elle se restaure depuis Données.'),
       { ok: 'Recharger la démo' })) return;

@@ -1159,6 +1159,74 @@ suite('La démonstration propose sa nouvelle version', () => {
   });
 });
 
+/* --- Une instance sans graine fictive n'a pas de demonstration -------------
+   `SEED_VERSION` n'existe que dans la graine de la demonstration. Le meme code
+   tourne sur une instance qui tient de vraies donnees : la, le mode exemple ne
+   doit ni s'ouvrir, ni basculer la clef de stockage, ni dater une dette. */
+suite('Une instance sans graine fictive n’a pas de démonstration', () => {
+  /* store-01 evalue a part, `SEED_VERSION` passe en parametre : le parametre
+     masque la constante de la graine que cette page a deja chargee, et les
+     deux branches s'exercent ici, quelle que soit l'instance. */
+  const socle = version => {
+    const m = new Map([['wealth-dashboard:mode', 'demo']]);
+    const ls = { getItem: k => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)),
+                 removeItem: k => m.delete(k) };
+    return new Function('SEED_VERSION', 'localStorage', 'partieChargee',
+      lireSource('assets/store-01-socle.js') + '\nreturn { exempleDisponible, modeDemo, cleStockage };')(
+      version, ls, () => {});
+  };
+
+  test('sans graine fictive, la clé de mode ne bascule rien', () => {
+    const sans = socle(undefined);
+    eq(sans.exempleDisponible(), false, 'pas de graine fictive');
+    eq(sans.modeDemo(), false, 'la clé de mode posée à la main ne fait pas un mode exemple');
+    eq(sans.cleStockage(), 'wealth-dashboard:v1', 'les données réelles restent sous leur clé');
+    const avec = socle(6);
+    eq(avec.exempleDisponible(), true, 'avec la graine fictive, l’exemple existe');
+    eq(avec.modeDemo(), true, 'et la même clé ouvre le mode exemple');
+    eq(avec.cleStockage(), 'wealth-dashboard:demo', 'sous sa propre clé');
+  });
+
+  test('une dette migrée n’est datée que si l’état vient de la graine fictive', () => {
+    const ancien = version => ({
+      accounts: [{ id: 'marge', label: 'Marge', broker: 'Courtier A', role: 'margin', type: 'levier' }],
+      now: { marge: -2000 }, accountInfo: {}, ...(version !== undefined ? { seedVersion: version } : {}),
+    });
+    const dette = s => { Store.migrerModele(s); return s.etabs.flatMap(e => e.dettes)[0]; };
+    const importee = dette(ancien(undefined));
+    eq(importee.montant, 2000, 'le levier devient une dette');
+    vrai(!('verifieLe' in importee), 'un état saisi ou importé ne prétend aucune vérification');
+    vrai(!('verifieLe' in dette(ancien(0))), 'un numéro de graine nul ne prouve rien');
+    const issue = dette(ancien(1));
+    if (exempleDisponible()) eq(issue.verifieLe, todayISO(), 'la graine fictive se lit le jour où elle se migre');
+    else vrai(!('verifieLe' in issue), 'sans graine fictive, aucun état ne la reçoit');
+  });
+
+  test('les gestes et la porte de la démonstration demandent une graine fictive', () => {
+    const src = lireSource('assets/app.js');
+    const corps = nom => src.slice(src.indexOf(`async '${nom}'() {`) + `async '${nom}'() {`.length).replace(/^\s*\/\*[\s\S]*?\*\/\s*/, '');
+    vrai(/^\s*if \(!exempleDisponible\(\)\) return;/.test(corps('charger-demo')), 'charger : le garde est la première instruction');
+    vrai(/^\s*if \(!exempleDisponible\(\) \|\| !demoPerimee\(\)\) return;/.test(corps('recharger-demo')), 'recharger aussi');
+    vrai(/\$\{exempleDisponible\(\) \? `<div class="row demo-bascule">/.test(src), 'Données ne montre la bascule qu’avec un exemple');
+    vrai(/const exemple = exempleDisponible\(\) && !modeDemo\(\);/.test(src), 'les portes d’Actifs lisent le même prédicat');
+    eq((src.match(/typeof SEED_VERSION/g) || []).length, 0, 'aucune vue ne relit la graine en ligne');
+  });
+
+  test('le profil et la sortie suivent un compte de l’application, pas une adresse', () => {
+    const src = lireSource('assets/app.js');
+    vrai(/const adresse = CloudSync\.getUserId\(\) \? CloudSync\.getUser\(\) : null;/.test(src),
+      'derrière un accès protégé, une adresse sans compte n’ouvre pas de profil');
+    vrai(/const compte = !!\(typeof CloudSync !== 'undefined' && CloudSync\.getUserId\(\)\);/.test(src),
+      'le lien de profil et la sortie suivent le même compte');
+  });
+
+  test('le serveur local se dit sans comptes', () => {
+    const py = lireSource('serve.py');
+    const sante = py.slice(py.indexOf('if parsed.path == "/api/health":'), py.indexOf('if parsed.path == "/api/quotes":'));
+    vrai(/"accounts": False/.test(sante), 'le client démarre ensuite sur ses données locales');
+  });
+});
+
 
 
 /* ------------------------------------------------------------------
