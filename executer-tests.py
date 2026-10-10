@@ -46,6 +46,7 @@ import time
 import urllib.request
 
 import captures
+import parcours
 
 # La console Windows ecrit en cp1252 et etouffe sur la coche du verdict : le
 # script mourait apres avoir lu le bon resultat, ce qui est la pire facon
@@ -344,6 +345,15 @@ def main():
                 code = 1
             else:
                 print(f"{len(ROUTES)} routes rendues sans erreur")
+                # Puis les gestes de la vue, et la largeur de chaque route sur
+                # un telephone : voir parcours.py.
+                fautes, joues = parcours.jouer(
+                    BASE, f"http://127.0.0.1:{captures.PORT_CDP}", ROUTES)
+                if fautes:
+                    print("\nDes parcours échouent :\n  " + "\n  ".join(fautes), file=sys.stderr)
+                    code = 1
+                else:
+                    print(f"{joues} parcours joués sans faute")
     finally:
         chrome.terminate()
         if serveur:

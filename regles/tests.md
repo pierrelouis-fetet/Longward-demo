@@ -55,6 +55,14 @@ mode contrôle et dans le profil temporaire du lanceur : chaque onglet doit écr
 « ✓ rendu <vue> » dans son titre. Une partie absente, une exception ou une vue
 qui lève au rendu le rend rouge, avec le code 1.
 
+**Puis les parcours de `parcours.py`** : des gestes réels de la vue (« Annuler »,
+la fenêtre des dépenses, le relevé du mois, un état local illisible), joués dans
+le même profil temporaire, et chaque route mesurée à 390 px en français puis en
+anglais, sans débordement de la page. Un parcours rend `true` ou la phrase qui
+dit ce qui manque ; un échec, ou un titre passé à « ✕ » pendant le geste, rend
+le code 1. Un nouveau geste qui compte s'y ajoute : c'est le seul endroit où un
+clic s'exerce vraiment.
+
 `--suites` porte sur le **nom de la suite**, pas sur le sujet de chaque test
 qu'elle contient : un contrôle sur le périmètre du graphique vit dans une suite
 appelée « Deux réglages, deux questions », que `--suites périmètre` ne trouve

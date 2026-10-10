@@ -118,6 +118,25 @@ suite('Une source se lit une fois, et un vert partiel se dit', () => {
     vrai(/code = 0/.test(complet), 'et le zéro reste réservé au vert complet');
   });
 
+  test('une suite verte et complète joue aussi les parcours de la vue', () => {
+    /* La suite ne charge pas la vue : seuls les parcours de `parcours.py`
+       cliquent pour de vrai. Ils ne jouent qu'apres un vert complet et des
+       routes saines, et leur echec rend le code 1 : un geste casse ne passe
+       pas un push. */
+    const t = lireSource('executer-tests.py');
+    vrai(/^import parcours$/m.test(t), 'le lanceur charge les parcours');
+    const i = t.indexOf('routes rendues sans erreur');
+    const suite = t.slice(i, t.indexOf('finally:', i));
+    vrai(/parcours\.jouer\(/.test(suite), 'il les joue après des routes saines');
+    vrai(/if fautes:[\s\S]*?code = 1/.test(suite), 'et leur échec rend le code 1');
+    const p = lireSource('parcours.py');
+    vrai(p, 'parcours.py doit être lisible');
+    const n = (p.match(/^    \(\n        "/gm) || []).length;
+    vrai(n >= 4, `au moins quatre gestes sont joués, ${n} le sont`);
+    vrai(/for langue in \("fr", "en"\)/.test(p) && /_charger\(onglet, base, route, vue, 390\)/.test(p),
+      'et chaque route se mesure à 390 px, dans les deux langues');
+  });
+
   test('une option mal orthographiée se refuse au lieu de tout jouer', () => {
     /* Un `--touch` ignore en silence ferait tourner la suite entiere en
        laissant croire a un ciblage, ou l'inverse. Et il se refuse AVANT le
