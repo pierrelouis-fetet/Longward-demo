@@ -1868,7 +1868,7 @@ suite('Les animations s’éteignent, et se déclenchent au doigt', () => {
     vrai(/\.catch\(\(\) => null\)/.test(sonde), 'et l’abandon rend null, comme la panne');
     vrai(/garde\.signal\.aborted\) healthPromise = null/.test(sonde),
       'une réponse tardive ne se garde pas : le prochain appel resonde');
-    /* L'ordre du démarrage ne bouge pas : l'identité précède la lecture. */
+    /* L'ordre du demarrage ne bouge pas : l'identite precede la lecture. */
     const app = lireSource('assets/app.js');
     const di = app.indexOf('(async function init()');
     const boot = app.slice(di, di + 6000);

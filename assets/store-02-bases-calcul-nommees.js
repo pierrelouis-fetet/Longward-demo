@@ -1986,7 +1986,6 @@ const Store = {
     refreshAccounts();
   },
 
-  
   /* --- migration du champ « category » vers classe d'actif + role -------
      Idempotente de deux facons : elle sort tout de suite si le JSON porte
      deja la bonne version de schema, et la conversion ligne par ligne ne

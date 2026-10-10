@@ -1743,7 +1743,7 @@ suite('Une application vide dit quoi faire', () => {
 
        La cloche se taisait entierement sur un premier lancement, et c'etait la
        correction d'un defaut inverse : elle reclamait un releve a qui n'avait
-       aucun compte. Mais le silence complet avait son propre cout — elle ne
+       aucun compte. Mais le silence complet avait son propre cout : elle ne
        servait qu'a ceux dont l'application etait deja remplie, et le premier
        venu n'y lisait pas par ou commencer.
 
