@@ -1401,21 +1401,19 @@ function viewBudget(section = 'depenses') {
       </div>
     </div>
     <div class="chart" id="bCats"></div>
-    <details class="data-view">
-      <summary>${trad('Voir les données')}</summary>
-      <table>
-        <thead><tr><th>${trad('Catégorie')}</th><th>${trad('Total')}</th>
-          <th>${trad('/ mois')}</th><th>%</th></tr></thead>
+    <div class="hors-ecran"><table>
+        <caption>${trad('Dépenses par catégorie')}, ${year === 'all' ? trad('Toutes les années') : esc(year)}.
+          ${trad(depCatsParMois ? '% : part de la moyenne mensuelle' : '% : part du total de l’année')}</caption>
+        <thead><tr><th scope="col">${trad('Catégorie')}</th><th scope="col">${trad('Total')}</th>
+          <th scope="col">${trad('/ mois')}</th><th scope="col">%</th></tr></thead>
         <tbody>${cats.map(c => `<tr>
-          <td class="name">${esc(trad(c.label))}</td>
+          <th scope="row" class="name">${esc(trad(c.label))}</th>
           <td class="montant">${fmtEUR0(c.value)}</td>
           <td class="montant">${fmtEUR0(c.average)}</td>
           <td class="muted pct">${fmtPct(depCatsParMois ? c.partMoyenne : c.pct, 1)}</td></tr>`).join('')}</tbody>
-        <tfoot><tr><td>${trad('Total')}</td><td class="montant">${fmtEUR0(stats.total)}</td>
+        <tfoot><tr><th scope="row">${trad('Total')}</th><td class="montant">${fmtEUR0(stats.total)}</td>
           <td class="montant">${fmtEUR0(stats.average)}</td><td></td></tr></tfoot>
-      </table>
-      <p class="small muted">${trad(depCatsParMois ? '% : part de la moyenne mensuelle' : '% : part du total de l’année')}</p>
-    </details>
+    </table></div>
   </div>`}` : ''}
 
   ${!aDesDepensesSaisies() ? '' : `

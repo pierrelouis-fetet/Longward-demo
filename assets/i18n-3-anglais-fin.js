@@ -802,6 +802,7 @@ Object.assign(I18N.en, {
     "% : part du total de l’année": "%: share of the year’s total",
     "% : part de la moyenne mensuelle": "%: share of the monthly average",
     "Lecture des catégories": "Category reading",
+    "Dépenses par catégorie": "Spending by category",
     "Part": "Share",
     "Monde": "World",
     "Amérique du Nord": "North America",

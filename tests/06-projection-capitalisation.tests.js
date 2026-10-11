@@ -528,8 +528,15 @@ suite('Moyenne des dépenses', () => {
       'la fiche de la tuile suit la même moyenne et sa part');
     vrai(/fmtPct\(depCatsParMois \? c\.partMoyenne : c\.pct, 1\)/.test(src),
       'la part du tableau suit la lecture, comme celle des barres juste au-dessus');
-    vrai(/<p class="small muted">\$\{trad\(depCatsParMois \? '% : part de la moyenne mensuelle' : '% : part du total de l’année'\)\}<\/p>/.test(src),
-      'et sa base se lit sous le tableau, au toucher comme à la souris');
+    const carte = src.slice(src.indexOf('<div class="card cats-carte'), src.indexOf('</div>`}` : \'\'}', src.indexOf('<div class="card cats-carte')));
+    vrai(carte.length > 500 && !/<details/.test(carte) && !/Voir les données/.test(carte),
+      'pas de dépliant : le graphique et l’en-tête disent déjà tout ce qu’il répétait');
+    vrai(/<th scope="row" class="name">\$\{esc\(trad\(c\.label\)\)\}<\/th>/.test(carte) && /<th scope="col">%<\/th>/.test(carte),
+      'chaque montant se rattache à sa catégorie, cellule par cellule');
+    vrai(/<caption>\$\{trad\('Dépenses par catégorie'\)\}, \$\{year === 'all' \? trad\('Toutes les années'\) : esc\(year\)\}\./.test(carte),
+      'la légende nomme le tableau et son année');
+    vrai(/<div class="hors-ecran"><table>\s*<caption>[\s\S]{0,160}\$\{trad\(depCatsParMois \? '% : part de la moyenne mensuelle' : '% : part du total de l’année'\)\}<\/caption>/.test(carte),
+      'le tableau reste pour une synthèse vocale, hors de l’écran, et dit la base de la part');
     vrai(['% : part du total de l’année', '% : part de la moyenne mensuelle', 'Lecture des catégories'].every(k => !!I18N.en[k]),
       'les nouveaux libellés sont traduits');
   });
