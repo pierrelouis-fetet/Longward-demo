@@ -1741,6 +1741,7 @@ body.haut-cache .sous-onglets::before { content: ''; }
   }
   .card > table td.pct { white-space: nowrap; overflow-wrap: normal; }
   .card > table td.montant { white-space: nowrap; overflow-wrap: normal; }
+  .data-view > table td.pct, .data-view > table td.montant { white-space: nowrap; overflow-wrap: normal; }
 
   /* Tableau etroit tenu dans sa carte, sans conteneur defilant. Un champ de
      saisie porte une largeur intrinseque — vingt caracteres par defaut — que

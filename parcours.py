@@ -104,6 +104,43 @@ PARCOURS = [
         """,
     ),
     (
+        "La carte Par catégorie bascule entre l'année et la moyenne par mois",
+        "#/budget", "budget", 390,
+        r"""
+        /* Un etat et une date poses ici, pour que le geste prouve une bascule
+           reelle sur toute instance et en tout mois : juin et juillet clos aux
+           parts egales, aout en cours, qui ne pese que dans le total. L'etat,
+           la date, l'annee et la lecture d'avant reviennent, sans rien
+           enregistrer. */
+        const sauve = Store.state, annee0 = budgetYear, lecture0 = depCatsParMois, jour0 = window.todayISO;
+        try {
+          window.todayISO = () => '2026-08-05';
+          const s = structuredClone(sauve);
+          s.budget.categories = ['Courses', 'Voyages'];
+          s.budget.expenses = [
+            { month: '2026-06-01', v: { Courses: 100, Voyages: 300 }, note: '' },
+            { month: '2026-07-01', v: { Courses: 300, Voyages: 100 }, note: '' },
+            { month: '2026-08-01', v: { Courses: 1000 }, note: '' },
+          ];
+          Store.state = s; budgetYear = '2026'; depCatsParMois = false; render();
+          const lu = () => document.querySelector('#bCats')?.textContent || '';
+          if (!await attendre(() => lu().includes(fmtEUR0Texte(1400)) && lu().includes(fmtPct(1400 / 1800 * 100, 1))))
+            return 'la lecture Année ne montre pas le total et sa part';
+          if (!cliquerVisible('[data-action="dep-cats-lecture"][data-lecture="mois"]')) return 'aucun bouton Par mois visible';
+          if (!await attendre(() => lu().includes(fmtEUR0Texte(200)) && lu().includes(fmtPct(50, 1)) && !lu().includes(fmtEUR0Texte(1400))))
+            return 'le graphique ne passe pas à la moyenne des mois clos et à sa part';
+          const b = document.querySelector('#view [data-action="dep-cats-lecture"][data-lecture="mois"]');
+          if (b.getAttribute('aria-pressed') !== 'true') return 'le bouton Par mois ne se dit pas pressé';
+          if (!cliquerVisible('[data-action="dep-cats-lecture"][data-lecture="annee"]')) return 'le retour à l’année manque';
+          if (!await attendre(() => lu().includes(fmtEUR0Texte(1400)))) return 'le total de l’année ne revient pas';
+          return true;
+        } finally {
+          window.todayISO = jour0;
+          Store.state = sauve; budgetYear = annee0; depCatsParMois = lecture0; render();
+        }
+        """,
+    ),
+    (
         "Le relevé du mois reprend les montants actuels et s'enregistre",
         "#/history", "overview", 390,
         r"""

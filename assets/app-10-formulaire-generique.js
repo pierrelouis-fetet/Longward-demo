@@ -1354,7 +1354,9 @@ const APERCUS = {
       totalNote: st.average > budgetFrame().target
         ? `${fmtEUR0(st.average - budgetFrame().target)} ${trad('au-dessus de l’objectif')}`
         : `${fmtEUR0(budgetFrame().target - st.average)} ${trad('sous l’objectif')}`,
-      lignes: expenseByCategory(an).map(c => ({ label: c.label, meta: fmtPct(c.pct, 1), valeur: c.average })),
+      lignes: expenseByCategory(an).filter(c => Math.abs(c.average) > 0.005)
+        .sort((a, b) => b.average - a.average)
+        .map(c => ({ label: c.label, meta: fmtPct(c.partMoyenne, 1), valeur: c.average })),
       vue: 'budget', ancre: '', cta: trad('Voir le détail'),
     };
   },

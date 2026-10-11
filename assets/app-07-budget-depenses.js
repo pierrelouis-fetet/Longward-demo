@@ -32,7 +32,23 @@ function mountBudget() {
   /* Le conteneur n'existe pas quand les categories sont desactivees : la carte
      entiere ne se rend plus. `mount()` sort en silence dans ce cas, mais on ne
      l'appelle meme pas -- une carte absente n'a pas de graphique a monter. */
-  if ($('#bCats')) Charts.rankedBars($('#bCats'), { items: expenseByCategory(year) });
+  if ($('#bCats')) Charts.rankedBars($('#bCats'), barresCategories(year));
+}
+
+/* Les barres de la carte "Par categorie", dans la lecture choisie. En
+   lecture Par mois, chaque barre porte la moyenne et sa part sur les memes
+   mois, et l'infobulle la nomme ; sans champ `average`, elle ne la repete pas
+   sur une seconde ligne. En lecture Annee, l'infobulle garde sa ligne "Par
+   mois". */
+function barresCategories(year) {
+  const cats = expenseByCategory(year);
+  if (!depCatsParMois) return { items: cats.filter(c => Math.abs(c.value) > 0.005) };
+  return {
+    valueLabel: trad('Par mois'),
+    items: cats.filter(c => Math.abs(c.average) > 0.005)
+      .map(c => ({ label: c.label, value: c.average, pct: c.partMoyenne }))
+      .sort((a, b) => b.value - a.value),
+  };
 }
 
 function viewData() {

@@ -24,6 +24,12 @@ Object.assign(ACTIONS, {
     budgetYear = btn.dataset.year === 'all' ? 'all' : btn.dataset.year;
     render();
   },
+  'dep-cats-lecture'(btn) {
+    const voulu = btn.dataset.lecture === 'mois';
+    if (voulu === depCatsParMois) return;
+    depCatsParMois = voulu;
+    render();
+  },
   'toggle-revenus'() { if (!Store.state.budget.income.length) return ACTIONS['add-income'](); fenetreRevenus(); },
   'revenu-estime'(el) {
     const r = B().income[+el.dataset.i];

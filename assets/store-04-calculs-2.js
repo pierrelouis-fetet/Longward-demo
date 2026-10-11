@@ -960,6 +960,17 @@ const CLASSE_DEPASSEMENT = { sous: 'up', leger: 'tiede', grave: 'down' };
 const classeDepassement = (total, objectif) =>
   CLASSE_DEPASSEMENT[niveauDepassement(total, objectif)] || 'muted';
 
+/* LES MOIS D'UNE MOYENNE DE DEPENSES : les mois clos, ou tous les mois saisis
+   si le mois en cours est le seul. Une seule fonction, pour que la moyenne de
+   l'annee et celle de chaque categorie retiennent les memes mois : leurs
+   chiffres se comparent et s'additionnent. La raison d'ecarter le mois en
+   cours est dite dans `expenseYearStats`. */
+function moisDeLaMoyenne(rows) {
+  const enCours = currentMonthKey();
+  const clos = rows.filter(r => r.month !== enCours);
+  return clos.length ? clos : rows;
+}
+
 function expenseYearStats(year) {
   const rows = expenseSeries(year).filter(r => r.total > 0);
   const total = rows.reduce((s, r) => s + r.total, 0);
@@ -976,9 +987,7 @@ function expenseYearStats(year) {
      et n'a pas a mentir, et dans `months`, qui dit combien de mois portent
      une saisie. Si le mois courant est le seul renseigne, on le garde faute
      de mieux : une moyenne approximative vaut mieux que zero. */
-  const enCours = currentMonthKey();
-  const clos = rows.filter(r => r.month !== enCours);
-  const base = clos.length ? clos : rows;
+  const base = moisDeLaMoyenne(rows);
 
   const sousObjectif = base.filter(r => r.total <= target);
   const surObjectif = base.filter(r => r.total > target);
@@ -986,7 +995,7 @@ function expenseYearStats(year) {
   return {
     year, months: rows.length, total,
     moisRetenus: base.length,
-    moisEnCoursExclu: clos.length < rows.length && clos.length > 0,
+    moisEnCoursExclu: base.length < rows.length,
     average: base.length ? base.reduce((s, r) => s + r.total, 0) / base.length : 0,
     sousObjectif, surObjectif,
     under: sousObjectif.length,
@@ -1308,16 +1317,27 @@ function removeExpenseCategory(cat) {
   return true;
 }
 
+/* Par categorie, sur une annee : le total de l'annee entiere (`value`, et sa
+   part `pct`), et la moyenne mensuelle sur les mois que retient la moyenne de
+   l'annee (`average`, et sa part `partMoyenne`). Les memes mois des deux
+   cotes : la somme des moyennes par categorie fait la moyenne de l'annee.
+   Une categorie reste des qu'un de ses deux chiffres n'est pas nul, meme
+   negatif : un remboursement fait partie du compte, et sans lui les parts ne
+   feraient plus 100. */
 function expenseByCategory(year) {
   const rows = expenseSeries(year).filter(r => r.total > 0);
+  const base = moisDeLaMoyenne(rows);
   const grand = rows.reduce((s, r) => s + r.total, 0);
+  const grandBase = base.reduce((s, r) => s + r.total, 0);
   return expenseCategories()
     .map(c => {
       const value = rows.reduce((s, r) => s + num(r.v[c]), 0);
+      const surBase = base.reduce((s, r) => s + num(r.v[c]), 0);
       return { label: c, value, pct: grand ? value / grand * 100 : 0,
-               average: rows.length ? value / rows.length : 0 };
+               average: base.length ? surBase / base.length : 0,
+               partMoyenne: grandBase ? surBase / grandBase * 100 : 0 };
     })
-    .filter(c => c.value > 0)
+    .filter(c => Math.abs(c.value) > 0.005 || Math.abs(c.average) > 0.005)
     .sort((a, b) => b.value - a.value);
 }
 

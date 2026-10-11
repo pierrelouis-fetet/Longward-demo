@@ -1117,6 +1117,10 @@ let budgetYear = null;   // null = l'année en cours
    tableau du grand ecran — la liste de telephone reste chronologique, elle
    n'a pas d'en-tetes pour dire son ordre, et un ordre muet est un piege. */
 let depSort = null;
+/* La lecture de la carte "Par categorie" : le total de l'annee, ou la
+   moyenne par mois. Un reglage de lecture, qui vit le temps d'une session
+   comme `evoNet` et `evoFinancier`. */
+let depCatsParMois = false;
 
 function budgetAnnee() {
   const annees = expenseYears();
@@ -1381,8 +1385,16 @@ function viewBudget(section = 'depenses') {
   ${sansDistinction() ? '' : `
   <div class="card">
     <div class="card-head"><h2>${trad('Par catégorie')}</h2>
-      <div class="row">
-        <span class="hint">${fmtEUR0(stats.total)} ${trad('au total')}</span>
+      <div class="row cats-lecture">
+        <span class="hint">${depCatsParMois
+          ? `${fmtEUR0(stats.average)} ${trad('par mois en moyenne')}`
+          : `${fmtEUR0(stats.total)} ${trad('au total')}`}</span>
+        <span class="segmented seg-mini" role="group" aria-label="${esc(trad('Lecture des catégories'))}">
+          <button data-action="dep-cats-lecture" data-lecture="annee" class="${depCatsParMois ? '' : 'on'}"
+                  aria-pressed="${!depCatsParMois}">${trad('Année')}</button>
+          <button data-action="dep-cats-lecture" data-lecture="mois" class="${depCatsParMois ? 'on' : ''}"
+                  aria-pressed="${depCatsParMois}">${trad('Par mois')}</button>
+        </span>
         ${yearControl('budget-year', years, year)}
       </div>
     </div>
@@ -1394,12 +1406,13 @@ function viewBudget(section = 'depenses') {
           <th>${trad('/ mois')}</th><th>%</th></tr></thead>
         <tbody>${cats.map(c => `<tr>
           <td class="name">${esc(trad(c.label))}</td>
-          <td>${fmtEUR0(c.value)}</td>
-          <td>${fmtEUR0(c.average)}</td>
-          <td class="muted">${fmtPct(c.pct, 1)}</td></tr>`).join('')}</tbody>
-        <tfoot><tr><td>${trad('Total')}</td><td>${fmtEUR0(stats.total)}</td>
-          <td>${fmtEUR0(stats.average)}</td><td></td></tr></tfoot>
+          <td class="montant">${fmtEUR0(c.value)}</td>
+          <td class="montant">${fmtEUR0(c.average)}</td>
+          <td class="muted pct">${fmtPct(depCatsParMois ? c.partMoyenne : c.pct, 1)}</td></tr>`).join('')}</tbody>
+        <tfoot><tr><td>${trad('Total')}</td><td class="montant">${fmtEUR0(stats.total)}</td>
+          <td class="montant">${fmtEUR0(stats.average)}</td><td></td></tr></tfoot>
       </table>
+      <p class="small muted">${trad(depCatsParMois ? '% : part de la moyenne mensuelle' : '% : part du total de l’année')}</p>
     </details>
   </div>`}` : ''}
 

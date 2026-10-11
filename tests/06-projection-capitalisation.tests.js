@@ -439,6 +439,100 @@ suite('Moyenne des dépenses', () => {
     pres(st.average, 1000);
     eq(st.moisEnCoursExclu, false);
   });
+
+  /* Par categorie, la moyenne retient les memes mois que celle de l'annee :
+     les mois clos, ou le mois en cours s'il est seul. Date figee : juin et
+     juillet sont clos, aout est en cours. */
+  const parCat = annee => Object.fromEntries(expenseByCategory(annee).map(c => [c.label, c]));
+  const somme = (liste, champ) => liste.reduce((s, c) => s + c[champ], 0);
+
+  test('la moyenne par catégorie retient les mêmes mois que celle de l’année', () => {
+    auJour('2026-08-05', () => {
+      Fixture.poser(e => {
+        e.budget.expenses = [
+          { month: '2026-06-01', v: { Courses: 300, Voyages: 100 }, note: '' },
+          { month: '2026-07-01', v: { Courses: 500, Voyages: 300 }, note: '' },
+          { month: '2026-08-01', v: { Courses: 40 }, note: '' },
+        ];
+      });
+      const st = expenseYearStats('2026');
+      const cats = expenseByCategory('2026');
+      const c = parCat('2026');
+      pres(c.Courses.average, 400, 'juin et juillet, sans le mois en cours');
+      pres(c.Voyages.average, 200);
+      pres(somme(cats, 'average'), st.average, 'la somme des moyennes fait la moyenne de l’année');
+      pres(somme(cats, 'partMoyenne'), 100, 'et leurs parts font 100');
+      pres(c.Courses.partMoyenne, 400 / 600 * 100, 'la part se lit sur les mêmes mois');
+      pres(c.Courses.value, 840, 'le total de l’année garde le mois en cours');
+      pres(somme(cats, 'pct'), 100, 'comme sa part');
+    });
+  });
+
+  test('un mois en cours seul fait aussi la moyenne par catégorie', () => {
+    auJour('2026-08-05', () => {
+      Fixture.poser(e => { e.budget.expenses = [{ month: '2026-08-01', v: { Courses: 320 }, note: '' }]; });
+      const c = parCat('2026');
+      pres(c.Courses.average, 320, 'faute de mieux, comme la moyenne de l’année');
+      pres(c.Courses.partMoyenne, 100);
+    });
+  });
+
+  test('un remboursement compte, et une catégorie à total nul garde sa moyenne', () => {
+    auJour('2026-08-05', () => {
+      Fixture.poser(e => {
+        e.budget.expenses = [
+          { month: '2026-06-01', v: { Courses: 120, Voyages: -20 }, note: '' },
+          { month: '2026-07-01', v: { Courses: 120, Voyages: 60 }, note: '' },
+          { month: '2026-08-01', v: { Courses: 50, Voyages: -40 }, note: '' },
+        ];
+      });
+      const st = expenseYearStats('2026');
+      const cats = expenseByCategory('2026');
+      const c = parCat('2026');
+      vrai(!!c.Voyages, 'la catégorie remboursée reste listée');
+      pres(c.Voyages.value, 0, 'son total de l’année est nul');
+      pres(c.Voyages.average, 20, 'sa moyenne ne l’est pas');
+      pres(somme(cats, 'average'), st.average, 'la somme des moyennes tient');
+      pres(somme(cats, 'partMoyenne'), 100, 'et les parts aussi');
+    });
+  });
+
+  test('une catégorie négative reste dans le compte, et les parts font 100', () => {
+    auJour('2026-08-05', () => {
+      Fixture.poser(e => {
+        e.budget.expenses = [
+          { month: '2026-06-01', v: { Courses: 120, Voyages: -20 }, note: '' },
+          { month: '2026-07-01', v: { Courses: 120, Voyages: -20 }, note: '' },
+        ];
+      });
+      const st = expenseYearStats('2026');
+      const cats = expenseByCategory('2026');
+      pres(st.average, 100, 'la moyenne de l’année compte le remboursement');
+      pres(parCat('2026').Voyages.average, -20, 'la catégorie négative est listée');
+      pres(somme(cats, 'average'), st.average, 'la somme des moyennes fait la moyenne');
+      pres(somme(cats, 'partMoyenne'), 100, 'les parts font 100');
+      pres(somme(cats, 'pct'), 100, 'celles de l’année aussi');
+    });
+  });
+
+  test('la carte bascule entre l’année et le mois, sur les mêmes catégories', () => {
+    const src = lireSource('assets/app.js');
+    vrai(/data-action="dep-cats-lecture" data-lecture="annee"/.test(src)
+      && /data-action="dep-cats-lecture" data-lecture="mois"/.test(src), 'deux lectures dans l’en-tête de la carte');
+    vrai(/let depCatsParMois = false;/.test(src), 'l’année par défaut, le temps d’une session');
+    const i = src.indexOf('function barresCategories(');
+    const aide = src.slice(i, src.indexOf('\n}\n', i));
+    vrai(/value: c\.average, pct: c\.partMoyenne/.test(aide) && /valueLabel: trad\('Par mois'\)/.test(aide),
+      'en lecture Par mois, la barre porte la moyenne, sa part et son nom');
+    vrai(/lignes: expenseByCategory\(an\)[\s\S]{0,200}fmtPct\(c\.partMoyenne, 1\), valeur: c\.average/.test(src),
+      'la fiche de la tuile suit la même moyenne et sa part');
+    vrai(/fmtPct\(depCatsParMois \? c\.partMoyenne : c\.pct, 1\)/.test(src),
+      'la part du tableau suit la lecture, comme celle des barres juste au-dessus');
+    vrai(/<p class="small muted">\$\{trad\(depCatsParMois \? '% : part de la moyenne mensuelle' : '% : part du total de l’année'\)\}<\/p>/.test(src),
+      'et sa base se lit sous le tableau, au toucher comme à la souris');
+    vrai(['% : part du total de l’année', '% : part de la moyenne mensuelle', 'Lecture des catégories'].every(k => !!I18N.en[k]),
+      'les nouveaux libellés sont traduits');
+  });
 });
 
 /* ------------------------------------------------------------------
