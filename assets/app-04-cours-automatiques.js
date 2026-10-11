@@ -65,10 +65,10 @@ function majEtatCours(etat) {
 
   /* Hors seance, la pastille dit "hors seance" plutot qu'un age.
 
-     Elle affichait "il y a 11 h" juste apres une actualisation qui venait de
-     dire "5 cours mis a jour". Deux signaux qui semblent se contredire, et le
-     second a l'air d'annoncer une panne : on a clique, quelque chose s'est
-     passe, le repere n'a pas bouge.
+     Un age comme "il y a 11 h", juste apres une actualisation qui vient de
+     dire "5 cours mis a jour", ferait deux signaux qui semblent se
+     contredire, et le second aurait l'air d'annoncer une panne : on a clique,
+     quelque chose s'est passe, le repere n'a pas bouge.
 
      Donc ni "a l'instant" ni un age : la raison. Quand aucune ligne n'a cote
      depuis minuit, la place est fermee, et "hors seance" est a la fois vrai et
@@ -403,7 +403,7 @@ function tableauPortefeuille(pf) {
 }
 
 /* Ce que le classement par poids montre sans le dire : une ligne pese un tiers
-   de tout, et il fallait lire l'axe pour s'en apercevoir.
+   de tout, et il faut lire l'axe pour s'en apercevoir.
 
    La phrase se pose sous les barres, la ou le classement se lit, et pas en tete
    de carte : c'est une lecture du graphique, pas un chiffre de plus.
@@ -777,26 +777,21 @@ function viewRebalance() {
   })();
 
   /* Profondeur libre : une classe decoupee porte sa cible en
-     `classes.actions.core`, soit trois niveaux. L'ancienne version en lisait
-     deux et rendait zero au troisieme. */
+     `classes.actions.core`, soit trois niveaux ; une lecture limitee a deux
+     niveaux rendrait zero au troisieme. */
   const valeurCible = chemin =>
     num(chemin.split('.').reduce((o, k) => (o == null ? o : o[k]), tg));
 
   /* `r.cash` vaut null quand la tresorerie est sortie du reequilibrage : elle
      ne figure alors ni dans les mouvements, ni dans la phrase "ta tresorerie
-     disponible en couvre tant". Trois lectures la supposaient presente, et la
-     page tombait des qu'on la retirait. */
+     disponible en couvre tant". Aucune lecture ne doit la supposer presente,
+     sinon la page tombe des qu'on la retire. */
   const mouvements = mouvementsDuPlan(r);
   const alleger   = mouvements.filter(c => c.montant < 0).sort((x, y) => x.montant - y.montant);
   const renforcer = mouvements.filter(c => c.montant > 0).sort((x, y) => y.montant - x.montant);
   const totalAchat = renforcer.reduce((s, c) => s + c.montant, 0);
   const tresoPlan = mouvements.find(c => c.cle === CLE_TRESORERIE);
   const dispo = tresoPlan && tresoPlan.montant < 0 ? -tresoPlan.montant : 0;
-
-  /* `dansLaPhrase()` est partie avec la phrase de tete de la carte : elle ne
-     servait qu'a mettre un intitule de tableau au milieu d'une phrase, et il n'y
-     a plus de phrase. Une fonction sans appelant est du code mort, et c'est la
-     moitie qu'on oublie en retirant un affichage. */
 
   const listeMvt = (lignes, sens) => lignes.map(c =>
     `<li><b>${esc(c.label)}</b> <span class="montant-plan${sens > 0 ? ' renfort' : ''}">${
@@ -1143,7 +1138,7 @@ function carteRythme() {
 function viewHistory() {
   const annees = historyYears();
   const anneeCourante = todayISO().slice(0, 4);
-  if (historyYear === 'all') historyYear = null;   // le cran a quitte le selecteur
+  if (historyYear === 'all') historyYear = null;   // le selecteur n'a pas de cran "all" : retour a l'annee du dernier releve
 
   /* Dans l'ordre des dates, comme les caps : la marque d'un cap et l'ecart de
      la meme ligne lisent la meme chronologie, quel que soit l'ordre de
@@ -1195,9 +1190,6 @@ function viewHistory() {
             .replace('{n}', lignes.length).replace('{a}', esc(String(annee)))}</span>` : ''}
       </div>
       ${lignes.some(x => x.mois > 0) ? (() => {
-          /* Un seul calcul, lu deux fois : la couleur et le montant venaient de
-             deux `reduce` identiques, et deux ecritures d'un meme nombre
-             finissent par diverger le jour ou l'une est modifiee seule. */
           const variation = lignes.reduce((s, x) => s + x.dlt, 0);
           return `<div class="tete-variation">
         <span>${trad('Variation {a}').replace('{a}', esc(String(annee)))}</span>

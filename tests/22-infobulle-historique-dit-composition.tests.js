@@ -798,10 +798,11 @@ suite('Aucun commentaire ne part dans le balisage', () => {
   test('la règle est écrite là où on la lira', () => {
     /* Le piege se double de son jumeau : un commentaire HTML dans un gabarit ne
        casse rien, mais il part jusqu'au DOM du visiteur. Les deux regles se
-       lisent au meme endroit. */
-    const a = lireSource('assets/app.js');
-    vrai(/dans le gabarit, `<!-- -->` ; dans le code,/.test(a),
-      'la règle des deux formes vit dans le fichier qu’elle protège');
+       lisent au meme endroit, dans les regles d'ecriture, que tout agent lit
+       avant d'ecrire un commentaire. Le controle du dessus garde le code. */
+    const r = lireSource('regles/ecriture.md');
+    vrai(/Dans un gabarit, `<!-- -->` ; dans le code, un commentaire de bloc\./.test(r),
+      'la règle des deux formes vit dans les règles d’écriture');
   });
 });
 

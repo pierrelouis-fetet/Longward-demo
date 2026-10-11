@@ -116,10 +116,10 @@ suite('Les gestes se nettoient, les appuis s’accusent une fois', () => {
     }
   });
 
-  test('la hauteur du détail du jour reste animée, et la mesure le dit', () => {
+  test('la hauteur du détail du jour reste animée', () => {
     const a = app();
-    vrai(/ANIMER LA HAUTEUR COUTE PEU, ET C'EST MESURE\./.test(a), 'la raison est écrite');
-    vrai(/La peinture de\s*\n\s*ce qui descend, elle, n'a pas ete mesuree\./.test(a), 'et ce qui n’a pas été mesuré aussi');
+    vrai(/\[\{ height: `\$\{hAvant\}px` \}, \{ height: `\$\{hApres\}px` \}\],\s*\{ duration: JOUR_DEROULE_MS, easing: JOUR_DEROULE_COURBE \}/.test(a),
+      'le détail se déroule par une animation de sa hauteur, à la durée et à la courbe nommées');
   });
 });
 

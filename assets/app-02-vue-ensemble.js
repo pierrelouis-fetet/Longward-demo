@@ -87,12 +87,11 @@ function viewOverview() {
      rend `null` quand la base de comparaison est nulle, negative, ou que le
      patrimoine a traverse zero entre les deux dates. L'euro, lui, reste exact
      dans tous les cas. */
-  /* --- "SUR {n} MOIS GLISSANTS", ET LE NOMBRE EST LE VRAI -----------------
+  /* --- LA FENETRE GLISSE, ET LE NOMBRE DE MOIS EST LE VRAI ------------------
 
-     La fenetre est bien GLISSANTE : elle se termine aujourd'hui et remonte vers
-     le releve le plus proche d'il y a douze mois, jamais vers un 1er janvier.
-     C'est ce que "glissants" dit, et c'est ce qui la distingue d'une annee
-     civile.
+     La fenetre se termine aujourd'hui et remonte vers le releve le plus proche
+     d'il y a douze mois, jamais vers un 1er janvier : c'est ce qui la distingue
+     d'une annee civile.
 
      MAIS ELLE NE FAIT PAS TOUJOURS DOUZE MOIS, et le libelle ne le pretend
      jamais. `variationAn()` retient le releve le plus proche de douze mois dans
@@ -103,19 +102,19 @@ function viewOverview() {
      de sept. 25 . 12 mois", ou quinze quand il en a quinze.
 
      CE N'EST PAS UN RENDEMENT, et la bulle le dit en toutes lettres. Un
-     "+127,7 %" se lit spontanement comme une performance de placement ; celui
-     -ci contient les versements, les retraits et le capital rembourse sur les
-     credits. Le pourcentage ne change pas, son nom non plus : c'est la bulle
-     qui porte la distinction, parce qu'un second intitule dans la carte
-     encombrerait le seul chiffre qu'on vient lire.
+     pourcentage pose a cote d'un montant se lit spontanement comme une
+     performance de placement ; celui-ci contient les versements, les retraits
+     et le capital rembourse sur les credits. Le pourcentage reste sans
+     intitule : c'est la bulle qui porte la distinction, parce qu'un second
+     intitule dans la carte encombrerait le seul chiffre qu'on vient lire.
 
      ET LE GRAND CHIFFRE PERD SES CENTIMES, comme la carte de composition juste
      dessous. Trente-quatre centimes sous un patrimoine de cinquante mille euros
      n'ajoutent aucune information et coutent deux caracteres au plus grand
      nombre de l'application. Rien n'est arrondi dans les donnees : `nowTotals()`
-     rend ce qu'il rendait, et les ecrans qui ont besoin du centime le gardent.
-     La variation, elle, n'en a jamais porte -- `fmtSigned` formate deja a zero
-     decimale -- et le pourcentage garde la sienne. */
+     garde ses centimes, et les ecrans qui en ont besoin les affichent. La
+     variation n'en porte pas non plus -- `fmtSigned` formate a zero decimale
+     -- et le pourcentage garde la sienne. */
   const varAn = variationAn(todayISO(), evoNet);
   const blocVariation = !varAn ? '' : `
     <div class="hero-deltas">
@@ -514,7 +513,7 @@ function carteTitresResume() {
              mesure : `causeSansVariation` dit pourquoi, faute de cours du
              marche ou faute de cloture de la veille. Ou toutes ont des cours
              d'avant minuit : "hors seance", et sans cette phrase la carte
-             annoncait "+0 EUR, +0,00 %" sur une journee qui n'avait pas encore
+             annoncerait "+0 EUR, +0,00 %" sur une journee qui n'a pas encore
              de cours. */
           if (!j.lignes.length || j.toutHorsSeance) return `
         <p class="pf-jour-muet">${trad('Aujourd’hui')}${deuxPoints()} ${j.lignes.length
@@ -576,8 +575,8 @@ function mountOverview() {
     if (!v) return;
     /* `labels` ALLUME L'EXPLORATION, et c'est tout ce qu'il faut : `sparkline()`
        porte deja le curseur, l'infobulle, le choix du point le plus proche et
-       le `touch-action: pan-y` qui laisse la page defiler. Le code dormait
-       faute d'etiquettes a montrer.
+       le `touch-action: pan-y` qui laisse la page defiler, et ne les active
+       qu'avec des etiquettes a montrer.
 
        Le point retenu est un releve reel ou la photo du jour : le doigt prend
        le point d'abscisse la plus proche, aucun patrimoine intermediaire n'est
@@ -610,9 +609,8 @@ function monterRythme() {
    ou ce chiffre se modifie reellement. */
 
 /* Les memes cinq boutons partout, dans le meme ordre, quelle que soit la
-   profondeur des donnees. Trois graphiques s'en servent -- l'evolution du
-   patrimoine, le rythme d'accumulation et les ventes realisees -- et ils
-   passent tous par ici : le geste est le meme sur les trois.
+   profondeur des donnees. Les graphiques d'historique qui s'en servent passent
+   tous par ici : le geste est le meme partout.
 
    Un cran plus long que l'historique trace la meme courbe que "Tout". On le
    laisse quand meme, comme le font les applications boursieres : une echelle
@@ -620,8 +618,8 @@ function monterRythme() {
    pas. `limitRange` elargit d'elle-meme quand une fenetre ne retient qu'un
    point, donc aucun cran ne peut donner un graphique vide.
 
-   La liste deroulante "..." a disparu avec les durees calculees. Un selecteur
-   ne se justifiait que pour des crans en nombre variable. */
+   Pas de liste deroulante de durees : un selecteur ne se justifierait que pour
+   des crans en nombre variable. */
 function rangeControl(action, courant, annees = []) {
   const surAnnee = estAnnee(courant);
   const connu = HISTORY_RANGES.some(r => r.id === courant);
@@ -660,16 +658,16 @@ function pastilleTeinte(couleur) {
 }
 
 function aide(texte) {
-  /* Un `<span>` et non un `<button>`, et c'est la correction d'un vrai defaut.
+  /* Un `<span>` et non un `<button>`.
 
      Un `<label>` sans `for` designe le premier element etiquetable qu'il
-     contient, et un `<button>` en est un. Le navigateur renvoyait donc au "?"
-     tout clic tombe sur l'intitule, et lui donnait le focus a la place du champ :
-     la bulle s'ouvrait sur toute la ligne. Les treize intitules qui portent un
-     "?" etaient concernes, pas seulement celui qu'on a vu.
+     contient, et un `<button>` en est un. Le navigateur renverrait donc au "?"
+     tout clic tombe sur l'intitule, et lui donnerait le focus a la place du
+     champ : la bulle s'ouvrirait sur toute la ligne, pour chaque intitule qui
+     porte un "?".
 
-     Un `<span>` n'est pas etiquetable : le label ne le voit plus. `role` et
-     `tabindex` lui rendent ce qu'un bouton donnait, et `monteAides` ecoute
+     Un `<span>` n'est pas etiquetable : le label ne le voit pas. `role` et
+     `tabindex` lui donnent ce qu'un bouton donnerait, et `monteAides` ecoute
      Entree et Espace, qu'un span ne convertit pas en clic tout seul. */
   return `<span class="aide" role="button" data-aide="${esc(texte)}"
                 aria-label="Explication" tabindex="0">?</span>`;
@@ -735,12 +733,12 @@ function monteAides() {
     const gauche = place < largeur + 20
       ? Math.max(8, r.left - largeur - 10)
       : r.right + 10;
-    /* Plus de `window.scrollY` dans ce calcul, et c'est le deuxieme defaut du
-       lot : le panneau est en `fixed`, donc en coordonnees de fenetre, comme
-       `getBoundingClientRect()`. L'addition etait deja fausse des qu'une fenetre
-       etait ouverte -- `gelerFond()` met le corps en `position: fixed`, le
-       document n'a plus rien a faire defiler, `scrollY` retombe a zero, et la
-       bulle se serait posee la ou la page etait avant le gel.
+    /* Pas de `window.scrollY` dans ce calcul : le panneau est en `fixed`, donc
+       en coordonnees de fenetre, comme `getBoundingClientRect()`. Elles restent
+       justes quand une fenetre est ouverte : `gelerFond()` met alors le corps en
+       `position: fixed`, `scrollY` retombe a zero, et un placement en
+       coordonnees de document poserait la bulle la ou la page etait avant le
+       gel.
        Et elle ne sort pas par le bas : dans une feuille qui monte du bas, le
        "?" d'une derniere ligne est a quelques pixels du bord. */
     panneau.style.left = `${gauche}px`;
@@ -1121,13 +1119,12 @@ Object.defineProperty(window, 'projHorizon', {
 
 /* Le selecteur d'horizon, ecrit une fois pour ses deux portes.
 
-   Une seule valeur, donc, et deux endroits qui l'ecrivent. C'est le motif deja
-   retenu pour l'annee du journal : deux portes sur un meme champ sont saines,
-   puisqu'il n'y a qu'une valeur et que changer l'une deplace l'autre. Ce qui
-   serait fautif, ce sont deux valeurs rangees separement -- et c'est ce qu'on
-   vient de retirer.
+   Une seule valeur, et deux endroits qui l'ecrivent. C'est le motif de l'annee
+   du journal : deux portes sur un meme champ sont saines, puisqu'il n'y a
+   qu'une valeur et que changer l'une deplace l'autre. Ce qui serait fautif, ce
+   sont deux valeurs rangees separement.
 
-   Rien n'est perdu de la ligne libre : `capitalisation()` ajoute toujours
+   La ligne libre du tableau passe par lui : `capitalisation()` ajoute toujours
    l'horizon courant a ses jalons, donc choisir 60 ans fait apparaitre la ligne
    60 ans dans le tableau, a sa place chronologique, et le graphique et le total
    de la premiere carte y vont avec. */
@@ -1153,8 +1150,8 @@ const carteObjectif = () => {
     /* Pas d'objectif declare, pas de carte : une ligne, et de quoi en poser un.
 
        Rendue avec un objectif a zero, la carte se tromperait : zero donne
-       `remaining = total`, donc un montant positif, et elle annoncerait
-       "+30 500 EUR de depassement . Objectif atteint" sur un cap que personne
+       `remaining = total`, donc un montant positif, et elle annoncerait tout le
+       patrimoine "de depassement . Objectif atteint" sur un cap que personne
        n'a fixe. Une carte qui se felicite d'un objectif inexistant est pire
        qu'une carte qu'on ne veut pas.
 
@@ -1236,21 +1233,20 @@ function viewObjective() {
     return options.map(o =>
       `<option value="${o}" ${o === v ? 'selected' : ''}>${format(o)}</option>`).join('');
   };
-  /* L'explication passe dans l'info-bulle du libelle, plus sous le selecteur.
+  /* L'explication passe dans l'info-bulle du libelle, pas sous le selecteur.
 
-     Les cinq reglages portaient chacun une phrase en dessous, dont deux de
-     trois lignes. Le depliant faisait donc quinze lignes de prose pour cinq
-     menus : on ne voyait plus les reglages, seulement le texte qui les entoure.
-     Et ces phrases se lisent une fois -- la premiere -- puis encombrent toutes
-     les visites suivantes.
+     Une phrase sous chaque reglage ferait du depliant un mur de prose : on ne
+     verrait plus les reglages, seulement le texte qui les entoure. Et ces
+     phrases se lisent une fois -- la premiere -- puis encombrent toutes les
+     visites suivantes.
 
-     Le "?" les garde a portee sans les imposer. C'est le motif deja employe
-     partout ailleurs sur les titres de cartes, et depuis peu sur les intitules
-     de colonnes du tableau du jour.
+     Le "?" les garde a portee sans les imposer. C'est le motif employe
+     partout ailleurs, sur les titres de cartes comme sur les intitules de
+     colonnes.
 
      `aideTexte` et non `aide` en parametre : le second nom est celui de la
-     fonction appelee juste dessous, et le masquer ici aurait rendu le champ
-     muet sans qu'aucune erreur ne le signale. */
+     fonction appelee juste dessous, et le masquer ici rendrait le champ muet
+     sans qu'aucune erreur ne le signale. */
   /* `sous` : une ligne d'annotation sous le controle, pour dire d'ou vient une
      valeur que l'application a calculee. Le "?" du libelle explique la notion,
      cette ligne dit la provenance -- deux questions differentes, et celle de la
@@ -1322,19 +1318,6 @@ function viewObjective() {
       { label: trad('Ce que ton crédit rembourse'), value: rembourse,
         couleur: 'var(--series-4)', apercu: 'immobilierNet',
         aide: trad('La part de tes mensualités qui efface du capital. Elle ne s’investit pas : elle fait monter ton patrimoine net en faisant baisser ta dette.') },
-      /* Une seule ligne de rendement, et c'est un choix.
-
-         Elle s'est coupee en deux, puis en trois, a mesure que les poches se
-         multipliaient -- et la ligne "Rendement du non cote" portait en fait le
-         non cote PLUS le capital garanti PLUS les liquidites, parce qu'elle
-         lisait `gainsAutres`. Un intitule qui nomme une poche et en somme trois
-         est pire qu'un intitule general.
-
-         Le detail par poche existe, et a sa place : le depliant des hypotheses
-         donne un taux par poche, et "Ce que tu as deja" donne un montant par
-         poche avec le taux qui lui est applique. Cette carte-ci repond a une
-         autre question -- depart, versements, rendement -- et trois parts y
-         suffisent. */
       { label: trad('Ce que le rendement ajoute'), value: dernier.gains,
         couleur: S2(), apercu: 'horizon',
         aide: trad('Chaque poche capitalise à son propre taux : déplie « Personnaliser les hypothèses » pour les voir') },
@@ -1410,8 +1393,8 @@ function viewObjective() {
                   + 'parti avec la mensualité, donc il n’est pas disponible à '
                   + 'investir.'),
                 s.monthly,
-                /* La condition suit `monthlyAuto` et non la valeur : depuis que
-                   zero veut dire zero, un versement fige a 0 est un choix. */
+                /* La condition suit `monthlyAuto` et non la valeur : zero veut dire
+                   zero, et un versement fige a 0 est un choix. */
                 (() => {
                   const suggere = suggestedMonthly();
                   const calcul = `<button type="button" class="mois-lien" data-action="apercu"
@@ -1466,12 +1449,11 @@ function viewObjective() {
                 v => `${fmtPct(v, 0)} ${trad('par an')}`,
                 `${fmtEUR0(capitalisation({ years: 1 }).poches.marche)} ${trad('de portefeuille financier coté, auquel Longward applique le rendement du scénario. La crypto, les métaux précieux, le non coté et la pierre papier sont regroupés dans l’hypothèse « Autres actifs », juste en dessous.')} `
                 + trad('C’est une hypothèse de travail : aucun rendement n’est garanti'),
-                /* Le taux EN VIGUEUR, et non celui qui dort dans l'etat.
-                   Ces trois champs lisaient `meta.projRate` et compagnie, alors
-                   que c'est le scenario qui gouverne : "Dynamique" affichait
-                   8 % sur son pave et "0 % par an" dans le champ juste en
-                   dessous. Un reglage qui montre autre chose que ce qu'il
-                   commande n'est pas un reglage, c'est un piege. */
+                /* Le taux EN VIGUEUR, et non celui qui dort dans l'etat : c'est le
+                   scenario qui gouverne, et `meta.projRate` peut dire autre
+                   chose que le pave allume juste au-dessus. Un reglage qui
+                   montre autre chose que ce qu'il commande n'est pas un
+                   reglage, c'est un piege. */
                 s.rate)}
         ${champ('Rendement des autres actifs', 'meta.projRateAutres', paliers(20, 1),
                 v => `${fmtPct(v, 0)} ${trad('par an')}`,
@@ -1517,9 +1499,9 @@ function viewObjective() {
               + `${trad('au lieu de')} ${fmtEUR0(s.monthly)}`);
             /* Le levier ne touche QUE le taux des actifs de marche :
                `targetRequirements` rejoue le moteur avec `rate` modifie et laisse
-               les autres poches telles quelles. Sans le dire, "obtenir 8,4 %
-               par an" se lisait comme un rendement du patrimoine entier, et
-               personne n'aurait su quel reglage bouger. */
+               les autres poches telles quelles. Sans le dire, "obtenir X % par
+               an" se lirait comme un rendement du patrimoine entier, et
+               personne ne saurait quel reglage bouger. */
             if (req.rate != null) lignes.push(`${trad('obtenir')} <b>${fmtPct(req.rate, 1)} ${trad('par an')}</b> `
               + `${trad('sur les actifs de marché, au lieu de')} ${fmtPct(s.rate, 1)}`);
             return `⚠ <span>${trad('Avec ces hypothèses, la cible de')} <b>${fmtEUR0(s.target)}</b>
@@ -1567,22 +1549,19 @@ function viewObjective() {
            "ton immobilier" a quelqu'un qui n'en a pas.
 
            `immoDirect` et non `immo` : la classe couvre aussi la pierre papier,
-           qui n'est plus gelee. Sans ca, quelqu'un dont tout l'immobilier est en
-           SCPI lisait "Ton immobilier est porte a sa valeur d'aujourd'hui" sous
-           une courbe ou cette SCPI n'a jamais ete portee a plat. */
+           qui n'est pas portee a plat. Sans ca, quelqu'un dont tout l'immobilier
+           est en SCPI lirait "Ton immobilier est porte a sa valeur d'aujourd'hui"
+           sous une courbe ou cette SCPI ne l'est pas. */
         const aImmo = num(t0.immoDirect) > 0.005, aBiens = num(t0.biens) > 0.005;
         const sujet = aImmo && aBiens ? trad('Ton immobilier et tes biens sont portés à leur')
                     : aBiens ? trad('Tes biens de valeur sont portés à leur')
                     : trad('Ton immobilier est porté à sa');
         if (!plat && !dettes) return '';
         const note = txt => `<p class="small muted" style="margin:12px 0 0">${txt}</p>`;
-        /* La note affirmait que "le capital que tes mensualites remboursent
-           chaque mois" n'est pas projete. C'etait vrai d'une version anterieure
-           du moteur, et c'est faux depuis : `moteurProjection` amortit les
-           credits mois par mois et ajoute le capital rendu a la part plate, qui
-           monte donc toute seule. Un texte qui dit le contraire de ce que le
-           calcul fait est pire qu'un texte absent : il fait douter du chiffre
-           juste.
+        /* `moteurProjection` amortit les credits mois par mois et ajoute le capital
+           rendu a la part plate, qui monte donc toute seule : la note le dit. Un
+           texte qui dit le contraire de ce que le calcul fait est pire qu'un
+           texte absent : il fait douter du chiffre juste.
 
            `dettesAmortissables()` decide, et il ne prend pas tout : un credit
            sans taux ni mensualite declares, ou dont la mensualite ne couvre pas

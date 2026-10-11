@@ -19,6 +19,12 @@ Détail de la règle 7 de l'index, `AGENTS.md` : les commentaires et le texte af
   commit, le récit dans `ETAT.md`.
   Nettoyage fait une fois, 185 paragraphes et phrases retirés, `index.html`
   allégé de 43 % : ne pas le refaire une deuxième fois.
+- **Dans un gabarit, `<!-- -->` ; dans le code, un commentaire de bloc.** Un
+  `/* */` posé dans le texte d'un littéral de gabarit n'est pas un commentaire :
+  il s'affiche. Un commentaire HTML y est valide, mais il part jusqu'au DOM du
+  visiteur : le raisonnement se place donc au-dessus du gabarit, en commentaire
+  de bloc. Un commentaire HTML de gabarit ne porte jamais de backtick ni de
+  `${`, qui fermeraient ou rouvriraient la chaîne.
 
 - **On développe en deux langues, français et anglais, dans le même geste.**
   Toute chaîne affichée naît enveloppée de `trad()` avec sa clé dans
