@@ -30,7 +30,7 @@ function healthChecks() {
      La cloche ne disait que des rappels d'exploitation : actualiser des cours,
      enregistrer un releve, saisir des depenses. Elle s'adressait donc a
      quelqu'un dont l'application est deja remplie, et le premier venu la
-     trouvait en train de reclamer « le releve de septembre » avant meme
+     trouvait en train de reclamer "le releve de septembre" avant meme
      d'avoir declare un compte. Un rappel qui suppose ce qui manque envoie vers
      un geste impossible.
 
@@ -107,14 +107,14 @@ function healthChecks() {
   }
 
   sujet = 'credits';
-  /* --- un capital restant dû négatif ---
+  /* --- un capital restant du negatif ---
      Il ne peut plus se saisir : les trois portes passent par
      `validerCreditSaisi`. Mais une regle neuve ne repare pas un fichier deja
-     ecrit, et celui-ci compte a l'envers — la dette s'additionne en negatif,
+     ecrit, et celui-ci compte a l'envers -- la dette s'additionne en negatif,
      donc elle AJOUTE au patrimoine net. Rien ne le trahit, puisque le total
      penche du bon cote.
 
-     Il ne se corrige pas tout seul : personne ne peut savoir si « −12 000 »
+     Il ne se corrige pas tout seul : personne ne peut savoir si "-12 000"
      voulait dire 12 000 ou zero, et choisir a la place du detenteur ecrirait
      un chiffre invente. Le controle le montre, la fiche le corrige. */
   for (const e of ETABS()) {
@@ -288,15 +288,15 @@ function healthChecks() {
   }
 
   sujet = 'coherence';
-  /* Les cibles vivent dans `targets.classes` depuis que le rééquilibrage
-     raisonne par classe d'actif. Ce contrôle additionnait encore `coreEtf`,
-     `satellites` et `gold`, disparus à la migration : trois `undefined` font
-     un NaN, et l'alerte réclamait donc 100 % en permanence à quelqu'un qui les
-     avait déjà. Même définition que `rebalanceRows()` — une classe mise hors
-     jeu ne compte pas, son encours a quitté la base. */
+  /* Les cibles vivent dans `targets.classes` depuis que le reequilibrage
+     raisonne par classe d'actif. Ce controle additionnait encore `coreEtf`,
+     `satellites` et `gold`, disparus a la migration : trois `undefined` font
+     un NaN, et l'alerte reclamait donc 100 % en permanence a quelqu'un qui les
+     avait deja. Meme definition que `rebalanceRows()` -- une classe mise hors
+     jeu ne compte pas, son encours a quitte la base. */
   const sum = sommeCibles();
-  /* `rebalanceRows().base` et non le brut : le commentaire ci-dessus dit « tant
-     qu'aucun euro n'est place », et le brut compte le cash. Quelqu'un qui venait
+  /* `rebalanceRows().base` et non le brut : le commentaire ci-dessus dit "tant
+     qu'aucun euro n'est place", et le brut compte le cash. Quelqu'un qui venait
      de declarer son compte courant recevait donc un avertissement sur des cibles
      par defaut qu'il n'avait jamais choisies, le premier jour. La base des cibles
      est ce que ces cibles repartissent : c'est elle qui dit s'il y a matiere. */
@@ -308,15 +308,15 @@ function healthChecks() {
   sujet = 'coherence';
   /* --- trous dans les deux historiques ---
 
-     Ce contrôle ne cherchait que les trous **encadrés** par deux mois remplis :
-     il parcourait les index des lignes non vides et signalait les écarts. Sauter
-     juillet et août alors qu'on est en septembre n'en produit aucun — rien ne
-     suit — donc le cas le plus courant passait au travers. `moisVides()` part de
-     l'autre bout : tous les mois passés vides depuis le premier rempli.
+     Ce controle ne cherchait que les trous **encadres** par deux mois remplis :
+     il parcourait les index des lignes non vides et signalait les ecarts. Sauter
+     juillet et aout alors qu'on est en septembre n'en produit aucun -- rien ne
+     suit -- donc le cas le plus courant passait au travers. `moisVides()` part de
+     l'autre bout : tous les mois passes vides depuis le premier rempli.
 
-     Les dépenses ont désormais le leur. Elles n'en avaient pas, alors que la
-     moyenne des dépenses sert de coût de la vie à l'autonomie financière et à la
-     cible d'épargne de précaution : un mois manquant y pèse deux fois. */
+     Les depenses ont desormais le leur. Elles n'en avaient pas, alors que la
+     moyenne des depenses sert de cout de la vie a l'autonomie financiere et a la
+     cible d'epargne de precaution : un mois manquant y pese deux fois. */
   for (const [trous, quoi, vue] of [
     [trousReleves(), 'Trou dans l’historique des relevés', 'history'],
     [trousDepenses(), 'Trou dans l’historique des dépenses', 'budget'],
@@ -333,8 +333,8 @@ function healthChecks() {
   sujet = 'saisies';
   /* Le releve du mois en cours, et il passe par `currentMonthPending` : un
      rappel repousse ou tu pour le mois ne doit pas ressortir ici. Ce controle
-     lisait l'etat brut, donc « Plus tard » eteignait le bandeau et la pastille
-     de la barre du bas, mais pas cette ligne — ni la cloche qui la reprend.
+     lisait l'etat brut, donc "Plus tard" eteignait le bandeau et la pastille
+     de la barre du bas, mais pas cette ligne -- ni la cloche qui la reprend.
      Un seul endroit decide qu'une saisie reclame quelque chose.
 
      L'aide nomme le bouton que l'Historique montre : voir
@@ -367,22 +367,22 @@ function healthChecks() {
         .replace('{t}', fmtEUR0(f.target)).replace('{a}', fmtEUR0(f.available)), 'budget');
 
   sujet = 'budget';
-  /* « 0 mois d'autonomie, 0 € pour 0 € de coût mensuel » etait la caricature de
+  /* "0 mois d'autonomie, 0 EUR pour 0 EUR de cout mensuel" etait la caricature de
      la regle que ce projet s'est donnee : la cloche ne parle que de ce qui existe
      chez celui qui la regarde.
 
      La garde ne porte pas sur `burn` : celui-ci retombe sur l'objectif de
      depenses, pose par defaut, et vaut donc 1 000 EUR chez quelqu'un qui n'a
      rien saisi. Elle porte sur le revenu declare, comme le rappel des depenses
-     et pour la meme raison — c'est lui qui donne un cadre aux mois. */
+     et pour la meme raison -- c'est lui qui donne un cadre aux mois. */
   const rw = runway();
   if (!pasAFaire('revenus') && rw.burn > 0.005 && rw.immediateMonths < 3)
-    /* Le montant cité est celui qui sert au calcul — le palier « disponible
-       tout de suite ». Le message affichait `nowByGroup().cash`, qui compte
-       aussi le cash posé chez un courtier : il annonçait donc une somme dont
-       les mois affichés ne tenaient pas compte, et l'écart s'est creusé le
-       jour où ce cash a rejoint les liquidités.
-       Et `toFixed(1)` écrivait « 0.7 mois », seul point décimal d'une
+    /* Le montant cite est celui qui sert au calcul -- le palier "disponible
+       tout de suite". Le message affichait `nowByGroup().cash`, qui compte
+       aussi le cash pose chez un courtier : il annoncait donc une somme dont
+       les mois affiches ne tenaient pas compte, et l'ecart s'est creuse le
+       jour ou ce cash a rejoint les liquidites.
+       Et `toFixed(1)` ecrivait "0.7 mois", seul point decimal d'une
        application qui met des virgules partout ailleurs. */
     add('warn', `${trad('Épargne de précaution')}${deuxPoints()} ${fmtNombre(Math.round(rw.immediateMonths * 10) / 10)} ${trad('mois')}`,
       `${trad('Disponible tout de suite')} ${fmtEUR0(rw.immediate)} ${trad('pour')} ${fmtEUR0(rw.burn)} ${trad('de coût mensuel, la règle courante est 3 à 6 mois')}`, 'overview');
@@ -391,20 +391,20 @@ function healthChecks() {
 }
 
 /*   `perfAnnualisee()` et `perfAnnualiseePortefeuille()` vivaient ici. Elles
-   étalaient la plus-value d'une ligne sur la durée depuis sa date d'achat, ce
-   qui ne tient que si l'argent est arrivé d'un coup.
+   etalaient la plus-value d'une ligne sur la duree depuis sa date d'achat, ce
+   qui ne tient que si l'argent est arrive d'un coup.
 
-   Une case « alimentée régulièrement » a été envisagée puis écartée : elle
-   aurait demandé du travail pour que l'application cesse de mentir, et sur un
-   portefeuille où les grosses lignes sont justement celles qu'on alimente, elle
-   aurait éteint le chiffre là où il portait la valeur.
+   Une case "alimentee regulierement" a ete envisagee puis ecartee : elle
+   aurait demande du travail pour que l'application cesse de mentir, et sur un
+   portefeuille ou les grosses lignes sont justement celles qu'on alimente, elle
+   aurait eteint le chiffre la ou il portait la valeur.
 
-   Ce qui reste dit vrai : l'écart en euros et en pourcentage, qui ne dépend pas
-   de la façon dont la ligne s'est constituée. Une durée de détention l'a
-   remplacé sur la fiche, comme un fait plutôt que comme un taux, puis elle est
+   Ce qui reste dit vrai : l'ecart en euros et en pourcentage, qui ne depend pas
+   de la facon dont la ligne s'est constituee. Une duree de detention l'a
+   remplace sur la fiche, comme un fait plutot que comme un taux, puis elle est
    partie aussi : elle n'apportait pas de quoi payer sa place.
 
-   `dateAchat` reste, et sert toujours : c'est elle qui empêche l'écart du jour
+   `dateAchat` reste, et sert toujours : c'est elle qui empeche l'ecart du jour
    de compter une baisse d'avant l'achat. Un champ qui pilote un calcul n'a pas
    besoin de s'afficher. */
 
@@ -419,7 +419,7 @@ function fmtDureeMois(mois) {
 
 /* Le meme calcul que `latentPnl()`, au mot pres : valeur des positions, prix de
    revient, ecart, pourcentage. Deux exemplaires d'une meme somme finissent par
-   dire deux choses — celui-ci rendait encore 0 % sur une base nulle quand
+   dire deux choses -- celui-ci rendait encore 0 % sur une base nulle quand
    l'autre se taisait, et le meme ecran pouvait porter les deux. Le nom reste,
    huit appelants le connaissent, mais il n'y a plus qu'un calcul.
 

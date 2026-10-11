@@ -72,7 +72,7 @@ const CloudSync = (() => {
   let comptes = litComptes();
   /* LE CHEMIN LOCAL D'ABORD N'EST OUVERT QU'A QUI S'EST DEJA PRESENTE COMME SANS
      COMPTES. `'0'` n'est ecrit que par une sonde qui a repondu ; un drapeau
-     absent — premiere visite, ou site qui ne repond jamais — laisse `app.js` sur
+     absent -- premiere visite, ou site qui ne repond jamais -- laisse `app.js` sur
      le chemin prudent, l'identite avant toute lecture. Une demonstration
      publique revient donc ici a chaque visite apres la premiere ; une instance a
      comptes n'y passe jamais, son drapeau vaut '1'. */
@@ -81,10 +81,10 @@ const CloudSync = (() => {
   };
   let probed = false;
 
-  let available = false;        // /api/state répond
+  let available = false;        // /api/state repond
   let user = null;              // email Cloudflare Access
   let timer = null;
-  let lastPayload = null;       // évite les écritures identiques
+  let lastPayload = null;       // evite les ecritures identiques
   /* Les corps confies a `sendBeacon`, tant qu'aucune reponse ne dit s'ils sont
      arrives : le beacon part sans retour. Une liste et non un seul : deux
      fermetures de suite confient deux corps, et le premier peut arriver quand
@@ -146,8 +146,8 @@ const CloudSync = (() => {
   /* Un seul envoi en vol a la fois.
 
      Rien ne l'empechait, et l'envoi immediat a chaque geste rendait le defaut
-     atteignable : deux clics rapproches lançaient deux `PUT` concurrents, et
-     c'est le plus lent qui arrivait en dernier — donc potentiellement un etat
+     atteignable : deux clics rapproches lancaient deux `PUT` concurrents, et
+     c'est le plus lent qui arrivait en dernier -- donc potentiellement un etat
      plus ancien, ecrit par-dessus le plus recent. Sur un reseau mobile ou les
      latences varient d'un facteur trois, ce n'est pas une hypothese d'ecole.
 
@@ -183,8 +183,8 @@ const CloudSync = (() => {
     /* L'horodatage de CE qu'on envoie, releve au moment de la serialisation.
 
        `markSynced(Store.state.meta.savedAt)` le lisait apres la reponse du
-       reseau. Une frappe pendant l'aller-retour — et il y en a, l'application
-       ecrit a chaque caractere — et l'on marquait comme synchronise un etat plus
+       reseau. Une frappe pendant l'aller-retour -- et il y en a, l'application
+       ecrit a chaque caractere -- et l'on marquait comme synchronise un etat plus
        recent que celui reellement envoye. La modification suivante devenait donc
        invisible au conflit, et pouvait etre ecrasee sans un mot. */
     const envoyeAt = Store.state?.meta?.savedAt;
@@ -234,7 +234,7 @@ const CloudSync = (() => {
             return pushMaintenant({ force });
           }
         }
-        status.conflict = d;                 // une version plus récente existe en ligne
+        status.conflict = d;                 // une version plus recente existe en ligne
         status.error = null;
         onConflit(d);
         return { conflict: d };
@@ -264,7 +264,7 @@ const CloudSync = (() => {
          telephone, suffisait a la laisser en arriere-plan pendant des heures.
 
          Un seul reessai arme, et non une boucle : si le reseau est vraiment
-         coupe, c'est l'evenement `online` qui reprendra la main — insister
+         coupe, c'est l'evenement `online` qui reprendra la main -- insister
          toutes les quinze secondes ne ferait que vider la batterie. Le repere
          est pose avant l'attente, pour que deux echecs de suite n'arment pas
          deux minuteurs. */
@@ -288,14 +288,14 @@ const CloudSync = (() => {
   /* QUI GAGNE AU DEMARRAGE, ET POURQUOI. Fonction pure, sans reseau ni
      stockage : c'est la seule forme sous laquelle cette regle se teste pour de
      bon. Tant qu'elle vivait dissoute dans `init()`, la suite ne pouvait
-     qu'affirmer que telle ligne etait bien ecrite — elle n'a jamais joue une
+     qu'affirmer que telle ligne etait bien ecrite -- elle n'a jamais joue une
      seule rencontre entre deux appareils, et le defaut ci-dessous a vecu des
      semaines sous un vert complet.
 
      TROIS DATES, ET LA TROISIEME EST CELLE QUI COMPTE. `localAt` et `remoteAt`
      disent quand chaque cote a ete ecrit ; `syncedAt` dit ou cet appareil avait
      laisse le cloud la derniere fois qu'il l'a lu ou ecrit. Comparer les deux
-     premieres ne repond qu'a « qui porte l'estampille la plus fraiche », ce qui
+     premieres ne repond qu'a "qui porte l'estampille la plus fraiche", ce qui
      n'est pas la question posee.
 
      Car une estampille fraiche ne prouve aucun contenu frais. `Store.save()`
@@ -307,7 +307,7 @@ const CloudSync = (() => {
      `syncedAt` tranche parce qu'il parle de filiation et non d'heure : si le
      cloud n'est plus la ou nous l'avions laisse, quelqu'un d'autre a ecrit
      depuis, et cet ecart-la est un conflit quel que soit le sens des horloges.
-     La regle du detenteur s'y applique alors comme partout ailleurs — la
+     La regle du detenteur s'y applique alors comme partout ailleurs -- la
      version en ligne, avec une sauvegarde et un message. */
   /* `memesCorps` : le corps local est-il, caractere pour caractere, celui qu'on
      vient de lire ? Deux corps identiques sont alignes quelles que soient les
@@ -347,7 +347,7 @@ const CloudSync = (() => {
     /* Rien en ligne. Le repere de synchronisation est efface avant l'envoi :
        il designe une version que le cloud n'a plus, donc le declarer ferait
        refuser l'ecriture qu'on veut justement faire. Sans lui, l'envoi part
-       sans base, et c'est le serveur qui arbitre — il n'insere que s'il n'y a
+       sans base, et c'est le serveur qui arbitre -- il n'insere que s'il n'y a
        toujours rien. Un `force` faisait la meme chose en supprimant l'arbitrage
        au lieu de le laisser se tenir : si ce 204 etait une fausse lecture, il
        ecrasait un patrimoine entier sans un mot. */
@@ -375,11 +375,11 @@ const CloudSync = (() => {
       return { available: true, newer: true, at: remoteAt, data: remote, revision: revisionLue, user, localAt };
     }
 
-    /* Le repère ne se pose que sur une égalité vraie.
+    /* Le repere ne se pose que sur une egalite vraie.
 
-       `markSynced(localAt)` était appelé aussi quand le local était en avance,
-       sans qu'aucune écriture n'ait eu lieu : le repère disait « cet état est
-       aligné avec le cloud » alors qu'il n'avait jamais été envoyé, et la
+       `markSynced(localAt)` etait appele aussi quand le local etait en avance,
+       sans qu'aucune ecriture n'ait eu lieu : le repere disait "cet etat est
+       aligne avec le cloud" alors qu'il n'avait jamais ete envoye, et la
        modification suivante devenait invisible au conflit. */
     if (verdict === 'aligne') {
       /* DATES EGALES, CORPS DIFFERENTS : QUI A LU QUOI ?
@@ -421,13 +421,13 @@ const CloudSync = (() => {
     /* `envoyer` : cet appareil porte une modification jamais partie ET le cloud
        est reste exactement la ou il l'avait laisse. Il n'y a donc rien a perdre
        en ligne, et l'envoi part au demarrage plutot que d'attendre la frappe
-       suivante — c'est cette attente qui perdait la saisie quand l'application
+       suivante -- c'est cette attente qui perdait la saisie quand l'application
        passait en veille avant l'envoi differe. */
     if (verdict === 'envoyer') markSyncedRev(revisionLue);
     return { available: true, ready: true, user, aEnvoyer: verdict === 'envoyer' };
   }
 
-  /* Écrit ce qui reste en attente quand l'onglet s'en va.
+  /* Ecrit ce qui reste en attente quand l'onglet s'en va.
 
      `sendBeacon` et non `fetch` : le navigateur le prend en charge et le poste
      apres la fermeture, ce qu'une requete ordinaire ne survit pas.
@@ -456,7 +456,7 @@ const CloudSync = (() => {
         + parametresEcriture(false, `&user=${encodeURIComponent(userId || '')}`),
         new Blob([payload], { type: 'application/json' }));
       if (parti) beacons.push({ payload, at: Store.state?.meta?.savedAt || '' });
-    } catch (e) { /* rien à faire de plus au moment de la fermeture */ }
+    } catch (e) { /* rien a faire de plus au moment de la fermeture */ }
   }
 
   function reprendre() {

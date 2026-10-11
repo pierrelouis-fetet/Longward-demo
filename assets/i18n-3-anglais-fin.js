@@ -390,9 +390,9 @@ Object.assign(I18N.en, {
     "Aucune charge fixe déclarée.": "No fixed cost declared.",
     "de plus-value": "in capital gains",
     "sur.investis": "on",
-    /* « 7 ventes sur 11 » : ici « sur » compte une part d'un ensemble, donc
-       « of ». La clef `sur.investis` rendait « on », juste devant un montant
-       investi, et le journal affichait « 7 sales on 11 ». */
+    /* "7 ventes sur 11" : ici "sur" compte une part d'un ensemble, donc
+       "of". La clef `sur.investis` rendait "on", juste devant un montant
+       investi, et le journal affichait "7 sales on 11". */
     "sur.total": "of",
     "investis": "invested",
     "vente gagnante sur": "winning sale out of",
@@ -1695,12 +1695,12 @@ function t(cle, repli) {
 
    `t()` est le passage oblige de toute chaine affichee : une etiquette de champ
    qui dit son unite y passe forcement. Elle l'ecrit `{dev}`, et le signe arrive
-   au moment du rendu — donc changer de devise repeint tous les libelles sans
+   au moment du rendu -- donc changer de devise repeint tous les libelles sans
    qu'aucun d'eux ne connaisse la devise.
 
-   La marque est explicite, jamais devinee. Remplacer tout « € » rencontre
-   aurait touche les phrases qui parlent de l'euro lui-meme : « 22 950 € pour un
-   PER », un plafond de la loi francaise, n'est pas une unite d'affichage et ne
+   La marque est explicite, jamais devinee. Remplacer tout "EUR" rencontre
+   aurait touche les phrases qui parlent de l'euro lui-meme : "22 950 EUR pour un
+   PER", un plafond de la loi francaise, n'est pas une unite d'affichage et ne
    devient jamais un dollar.
 
    La garde `typeof` n'est pas decorative : ce fichier se charge le premier, et
@@ -1716,9 +1716,9 @@ function uniteMonetaire(s) {
 
    Pourquoi un second nom plutot que `t()` : `t` est deja une variable locale
    dans une trentaine de portees d'`app.js`, ou elle porte les totaux
-   (`t.brut`, `t.net`, `t.label`). Ecrire `t('Liquidités')` a cote de
+   (`t.brut`, `t.net`, `t.label`). Ecrire `t('Liquidites')` a cote de
    `num(t.bourse)` appelle l'objet des totaux comme une fonction, et la portee
-   decide laquelle des deux gagne — donc une enveloppe posee au mauvais endroit
+   decide laquelle des deux gagne -- donc une enveloppe posee au mauvais endroit
    casse sans qu'on voie pourquoi. `trad` n'entre en collision avec rien.
 
    `t()` reste pour les clefs pointees (`nav.*`, `view.*`), et un test refuse
@@ -1727,7 +1727,7 @@ const trad = (phrase, repli) => t(phrase, repli !== undefined ? repli : phrase);
 const deuxPoints = () => trad(' :');
 /* Un seul argument, et c'est le point. `trad(phrase, repli)` rend le REPLI en
    francais et la traduction de la CLEF en anglais : passer ':' en repli
-   ecraserait donc precisement le cas francais, et « tout est compte: 30 250 EUR »
+   ecraserait donc precisement le cas francais, et "tout est compte: 30 250 EUR"
    perdrait son espace. Sans repli, la clef sert des deux cotes : ' :' en
    francais, sa traduction ':' en anglais. */
 
@@ -1767,14 +1767,14 @@ const FR = {
   'view.overview.projection.sub': "Où tes hypothèses mènent ton patrimoine",
   'view.overview.aujourdhui.sub': 'Photo instantanée de ton patrimoine',
   /* Trois sous-titres qui ne se sont jamais affiches. Ils s'appelaient
-     `view.performance.sub`, `view.history.sub` et `view.rebalance.sub` — des
+     `view.performance.sub`, `view.history.sub` et `view.rebalance.sub` -- des
      noms de route, herites du temps ou ces ecrans etaient des vues a part
      entiere. Le rendu, lui, cherche `view.<vue>.<onglet>.sub`, donc il ne les
      trouvait pas et servait le sous-titre du parent : l'onglet Performance
-     s'annonçait « Tes lignes de titres, en direct », et Releves aussi.
+     s'annoncait "Tes lignes de titres, en direct", et Releves aussi.
 
      Les textes etaient justes, c'est leur nom qui ne l'etait pas. Deux d'entre
-     eux avaient meme deja un double correctement nomme — la copie route est
+     eux avaient meme deja un double correctement nomme -- la copie route est
      partie, pas le texte. */
   'view.positions.performance.sub': 'Plus-values latentes et encaissées',
   'view.budget': 'Budget',
@@ -1813,18 +1813,18 @@ const FR = {
   'range.years': '{n} ans',
 };
 
-/* Applique les traductions aux libellés statiques d'index.html.
+/* Applique les traductions aux libelles statiques d'index.html.
 
-   Les attributs se traduisent par leur valeur, sans balise à poser : le
-   français qui s'y trouve EST la clef, comme partout ailleurs. Douze titres et
-   intitulés pour lecteur d'écran vivaient dans le balisage statique, donc hors
-   d'atteinte de `trad()`, et restaient français sur toutes les pages, dans les
+   Les attributs se traduisent par leur valeur, sans balise a poser : le
+   francais qui s'y trouve EST la clef, comme partout ailleurs. Douze titres et
+   intitules pour lecteur d'ecran vivaient dans le balisage statique, donc hors
+   d'atteinte de `trad()`, et restaient francais sur toutes les pages, dans les
    deux langues. Marquer chacun d'un `data-i18n-title` aurait fait deux endroits
-   à tenir d'accord pour un seul fait.
+   a tenir d'accord pour un seul fait.
 
-   `trad()` rend sa clef inchangée quand le dictionnaire ne la connaît pas : un
-   attribut déjà anglais, une valeur qui n'est pas une phrase, un second passage
-   sur le même élément ne changent rien. */
+   `trad()` rend sa clef inchangee quand le dictionnaire ne la connait pas : un
+   attribut deja anglais, une valeur qui n'est pas une phrase, un second passage
+   sur le meme element ne changent rien. */
 const ATTRS_TRADUITS = ['title', 'aria-label', 'placeholder'];
 function translateStatic() {
   for (const el of document.querySelectorAll('[data-i18n]')) {

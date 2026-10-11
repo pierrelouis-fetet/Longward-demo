@@ -10,13 +10,13 @@ function champSomme(html) {
     aria-label="${trad('Additionner un autre montant dans ce champ')}">+</button></span>`;
 }
 
-/* Le « + » s'ajoute à la fin, jamais au curseur : le gestionnaire de focus
-   sélectionne le champ entier à l'entrée, donc `selectionStart` vaut 0, et une
-   insertion au curseur aurait soit refusé d'écrire, soit remplacé le montant.
-   C'est de toute façon le sens du bouton — un autre montant s'ajoute à la suite.
+/* Le "+" s'ajoute a la fin, jamais au curseur : le gestionnaire de focus
+   selectionne le champ entier a l'entree, donc `selectionStart` vaut 0, et une
+   insertion au curseur aurait soit refuse d'ecrire, soit remplace le montant.
+   C'est de toute facon le sens du bouton -- un autre montant s'ajoute a la suite.
 
-   Deux refus, pour ne jamais rendre la saisie invalide : rien à additionner à un
-   champ vide, et pas de « + » sur un « + ». */
+   Deux refus, pour ne jamais rendre la saisie invalide : rien a additionner a un
+   champ vide, et pas de "+" sur un "+". */
 function insererPlus(champ) {
   if (!champ) return;
   const texte = String(champ.value).replace(/\s+$/, '');
@@ -27,9 +27,9 @@ function insererPlus(champ) {
     try { champ.setSelectionRange(q, q); } catch (e) {}
     champ.scrollLeft = champ.scrollWidth;
   };
-  /* Passer après le gestionnaire de focus global, qui sélectionne tout une image
-     après la prise de focus : sans ce décalage le chiffre suivant effaçait la
-     somme. Inutile quand le champ a déjà le focus, ce que `onmousedown` garantit
+  /* Passer apres le gestionnaire de focus global, qui selectionne tout une image
+     apres la prise de focus : sans ce decalage le chiffre suivant effacait la
+     somme. Inutile quand le champ a deja le focus, ce que `onmousedown` garantit
      dans le cas courant. */
   if (document.activeElement === champ) placerCurseur();
   else { champ.focus(); requestAnimationFrame(() => requestAnimationFrame(placerCurseur)); }
@@ -46,7 +46,7 @@ function cablerSommePlus(racine) {
 function ecrireDepensesMois(index, saisi) {
   const r = Store.state.budget.expenses[index];
   if (!r || !saisi) return null;
-  /* `v: null` veut dire « garde ce que l'etat porte » : le retour du decoupage
+  /* `v: null` veut dire "garde ce que l'etat porte" : le retour du decoupage
      vient de le reecrire, et renvoyer la saisie d'avant l'ecraserait. */
   if (saisi.v != null) r.v = saisi.v;
   r.note = saisi.note;
@@ -71,7 +71,7 @@ async function nePlusDetaillerPartout({ index = null, saisie = null } = {}) {
   Store.addBackup('avant regroupement des dépenses');
   const garde = neePlusDetailler();
   /* `regrouperMois` garde le decoupage d'avant sur la ligne, avec son total :
-     c'est ce qui permet a « Reprendre le detail » de rendre les montants. */
+     c'est ce qui permet a "Reprendre le detail" de rendre les montants. */
   if (ligne) regrouperMois(ligne, garde);
   Store.save();
   return { garde, total };
@@ -157,16 +157,16 @@ function askExpenseMonth(index) {
 
     const champs = $$('#modalBody [data-cat]');
     const champDe = cat => champs.find(c => c.dataset.cat === cat);
-    /* Un « + » sans rien après est un geste inachevé, pas une saisie invalide :
-       on l'ignore au lieu de rejeter le champ entier. Deux conséquences, et la
-       seconde est grave. Le total tombait à zéro entre le clic sur « + » et la
-       frappe du second montant. Et surtout, un « 157+ » laissé en place valait
-       zéro à l'enregistrement : `saisie()` fait `if (!t) continue`, donc la
-       catégorie quittait `v`, et le 157 déjà saisi était perdu sans un mot. Le
-       bouton qui met le « + » à portée d'un doigt rendait cette perte facile.
+    /* Un "+" sans rien apres est un geste inacheve, pas une saisie invalide :
+       on l'ignore au lieu de rejeter le champ entier. Deux consequences, et la
+       seconde est grave. Le total tombait a zero entre le clic sur "+" et la
+       frappe du second montant. Et surtout, un "157+" laisse en place valait
+       zero a l'enregistrement : `saisie()` fait `if (!t) continue`, donc la
+       categorie quittait `v`, et le 157 deja saisi etait perdu sans un mot. Le
+       bouton qui met le "+" a portee d'un doigt rendait cette perte facile.
 
-       `parseSomme()` n'est pas touchée : elle continue de rejeter ce qui est
-       vraiment invalide, et ce rejet ne devient jamais un zéro ici. */
+       `parseSomme()` n'est pas touchee : elle continue de rejeter ce qui est
+       vraiment invalide, et ce rejet ne devient jamais un zero ici. */
     const valeurChamp = el => parseSomme(String(el.value).replace(/[+\s]+$/, ''))?.total ?? 0;
 
     const majTotal = () => {
@@ -194,12 +194,12 @@ function askExpenseMonth(index) {
     if ($('#depRemettreDetail')) $('#depRemettreDetail').onclick = remettreDetailIci;
     /* Le bouton n'existe pas quand les categories sont desactivees : le garder
        cable sans garde aurait leve sur un `null` au premier rendu du mode
-       « une seule case ». Ses deux voisins portaient deja ce garde. */
+       "une seule case". Ses deux voisins portaient deja ce garde. */
     if ($('#depNouvelleCat')) $('#depNouvelleCat').onclick = async () => {
-      /* La saisie se relève **avant** d'ouvrir la question par-dessus : les
-         deux fenêtres partagent le même corps, et `saisie()` cherchait le
+      /* La saisie se releve **avant** d'ouvrir la question par-dessus : les
+         deux fenetres partagent le meme corps, et `saisie()` cherchait le
          champ de note dans un panneau qu'`askText` venait de remplacer. Elle
-         échouait en silence, la fenêtre se fermait et rien ne revenait. */
+         echouait en silence, la fenetre se fermait et rien ne revenait. */
       const etat = saisie();
       const nom = await askText('Nouvelle catégorie de dépenses',
         'Elle devient une colonne du tableau, vide sur tous les autres mois.', 'ex. Abonnements');
@@ -253,8 +253,8 @@ function askExpenseMonth(index) {
     /* L'etat de depart, releve par la fonction meme qui enregistre.
 
        Comparer deux `saisie()` plutot que poser un drapeau sur chaque champ :
-       il y a ici trois sortes de saisie — les montants de categorie, le detail
-       ligne a ligne, la note du mois — et un drapeau se serait tot ou tard
+       il y a ici trois sortes de saisie -- les montants de categorie, le detail
+       ligne a ligne, la note du mois -- et un drapeau se serait tot ou tard
        oublie sur la troisieme. Ce qui compte n'est pas qu'on ait touche un
        champ, c'est que ce qui partirait soit different de ce qui est arrive :
        taper 40 par-dessus 40 ne salit rien. */
@@ -262,7 +262,7 @@ function askExpenseMonth(index) {
 
        Il valait l'etat d'ouverture, une fois pour toutes. Enregistrer en cours
        de saisie l'aurait laisse en arriere, et fermer ensuite aurait redemande
-       « modifications non enregistrees » pour des montants deja ecrits. Il
+       "modifications non enregistrees" pour des montants deja ecrits. Il
        marque desormais le dernier etat mis a l'abri, ouverture comprise. */
     let depart = JSON.stringify(saisie());
     const sale = () => JSON.stringify(saisie()) !== depart;
@@ -295,7 +295,7 @@ function askExpenseMonth(index) {
    Le calendrier ouvre les douze mois de l'annee en cours et de chaque annee
    deja presente, mais pas ceux d'une annee qu'on n'a jamais touchee : rattraper
    un mois de 2019 ou preparer janvier prochain demande donc une ligne. Un seul
-   endroit la cree, et il garde la table triee — la variation d'un mois se lit
+   endroit la cree, et il garde la table triee -- la variation d'un mois se lit
    sur son voisin de gauche, un releve insere a la fin la fausserait.
 
    La cle est celle des lignes du releve, le premier du mois. */
@@ -412,14 +412,14 @@ function askMonthlySnapshot(index) {
     $('#modalBody').innerHTML = `
       ${/* Le mois du releve, et il se change ici.
 
-            « Ajouter un relevé » propose le mois en cours : c'est le cas
+            "Ajouter un releve" propose le mois en cours : c'est le cas
             quatre-vingt-dix-neuf fois sur cent. Le choix sert aux trois autres,
-            tous nommes — rattraper un mois oublie, importer un ancien
+            tous nommes -- rattraper un mois oublie, importer un ancien
             historique, corriger une periode passee. Il vit donc DANS la fenetre
             plutot que dans une etape avant elle : une etape de plus aurait fait
             payer un clic au cas courant pour un choix qu'il ne fait pas.
 
-            Deux menus et non un champ de type « month » : Safari de bureau ne
+            Deux menus et non un champ de type "month" : Safari de bureau ne
             le connait pas et y rend une zone de texte libre, dans laquelle on
             peut ecrire n'importe quoi. */''}
       ${choixMois ? `
@@ -438,7 +438,7 @@ function askMonthlySnapshot(index) {
       ${/* Ton patrimoine est-il complet ? Une NOTE, pas une question : elle
             informe et ne bloque pas. Elle ne parait qu'au premier releve, et
             seulement si l'inventaire n'a pas deja ete declare complet dans le
-            guide — repondre la-bas repond ici. Au premier releve enregistre,
+            guide -- repondre la-bas repond ici. Au premier releve enregistre,
             la question s'eteint d'elle-meme (inventaireDeclareComplet). */''}
       ${premier && !notifsMasquees().includes(CLE_INVENTAIRE) ? `
       <p class="avert" style="margin:0 0 14px"><b>${trad('Ton patrimoine est-il complet ?')}</b>
@@ -449,9 +449,9 @@ function askMonthlySnapshot(index) {
       ${/* Le bouton de photo est l'action principale, et il ne l'etait pas.
 
             Il est donc plein, pleine largeur, et son libelle dit ce qu'il fait
-            plutot que de se nommer : « Reprendre les montants actuels » et le
+            plutot que de se nommer : "Reprendre les montants actuels" et le
             total qu'il va ecrire. La phrase en dessous degrade les champs a ce
-            qu'ils sont vraiment — une surface de correction — et emploie les
+            qu'ils sont vraiment -- une surface de correction -- et emploie les
             memes mots que le depliant de la page, pour que les deux ecrans
             racontent la meme chose.
 
@@ -463,8 +463,8 @@ function askMonthlySnapshot(index) {
       ${photo && revolu ? `
       <button class="btn pleine" id="relPhoto" type="button"
               >${icone('importer')} ${trad('Préremplir avec les montants actuels')} · ${fmtEUR0(photo)}</button>
-      ${/* La phrase d'aide redisait le bouton avec d'autres mots (« remplir
-            automatiquement ») : deux formulations pour un geste. Elle dit
+      ${/* La phrase d'aide redisait le bouton avec d'autres mots ("remplir
+            automatiquement") : deux formulations pour un geste. Elle dit
             maintenant ce que le bouton ne dit pas, d'ou viennent les valeurs,
             et qu'on peut corriger avant d'enregistrer. */''}
       <p class="hint" style="margin:6px 0 14px; text-align:center">${
@@ -568,7 +568,7 @@ function askMonthlySnapshot(index) {
 
     let ouverte = true;
     const fermer = v => {
-      if (!ouverte) return;    // le premier releve ferme depuis « enregistrer », puis « quitter » repasse ici
+      if (!ouverte) return;    // le premier releve ferme depuis "enregistrer", puis "quitter" repasse ici
       ouverte = false;
       masquerModal(m);      $('#modalClose').onclick = null;
       if (apresFete) {
@@ -583,7 +583,7 @@ function askMonthlySnapshot(index) {
       const v = {};
       for (const [k, val] of Object.entries(r.v || {})) if (!montres.has(k)) v[k] = val;
       /* LE CHAMP VIDE SE TAIT, LE ZERO SE DECLARE. Le test portait sur le
-         MONTANT — `if (num(c.value))` — donc un zero tape a la main ne
+         MONTANT -- `if (num(c.value))` -- donc un zero tape a la main ne
          s'ecrivait jamais : le compte qu'on vient de vider ressortait comme un
          compte auquel on n'a pas repondu, et le releve entier passait pour vide
          s'il n'y avait que ca. C'est la seule saisie capable de declarer un
@@ -790,7 +790,7 @@ const APERCUS = {
         /* Le meme pli anime que les groupes de la page Actifs, et le meme
            bouton pour les mener tous : `.cpt-pli` passe sa rangee de 0fr a 1fr,
            seule facon d'animer une hauteur inconnue. `<details>` tenait ce role
-           et ne s'anime pas — et surtout il n'offrait aucune prise pour un geste
+           et ne s'anime pas -- et surtout il n'offrait aucune prise pour un geste
            collectif, alors que c'est precisement ce qu'on vient faire ici :
            replier les usages pour comparer leurs totaux d'un coup d'oeil. */
         sousAction: nbGroupes > 1
@@ -1029,7 +1029,7 @@ const APERCUS = {
        Tout passe par `html` plutot que par `champs` et `lignes` : la fenetre
        generique pose ses champs AVANT ses lignes, donc au milieu du suivi. Les
        champs gardent leur `data-path`, et donc le regime differe de la fenetre :
-       rien n'entre dans l'etat avant « Enregistrer ». */
+       rien n'entre dans l'etat avant "Enregistrer". */
     const avancement = p.etat === 'inconnu' ? ''
       : p.etat === 'atteinteAuDepart' ? trad('cible déjà atteinte au départ')
       : p.etat === 'atteint' ? trad('objectif atteint')
@@ -1104,8 +1104,8 @@ const APERCUS = {
     const plat = num(p.plat);
     /* Toutes les poches qui capitalisent, rendues par `pochesProjection` :
        ecrire la somme ici a la main laissait une poche dehors des qu'une
-       nouvelle arrivait, et la difference se retrouvait dans « ce que tu
-       verses », qui annonçait des versements jamais faits. */
+       nouvelle arrivait, et la difference se retrouvait dans "ce que tu
+       verses", qui annoncait des versements jamais faits. */
     const base = p.poches.placees;
     const verses = Math.max(0, j.contributed - base - plat);
     return {
@@ -1175,7 +1175,7 @@ const APERCUS = {
          dit rien. */
       /* Une ligne par poche de la projection, et la liste ne se recopie pas :
          chaque valeur vient de `pochesProjection`, celle-la meme que le moteur
-         lit. Six lignes nommaient des classes — cryptomonnaies, non cote — que
+         lit. Six lignes nommaient des classes -- cryptomonnaies, non cote -- que
          la projection ne distingue plus ; elles en font une, sous le nom de la
          poche et avec le taux qu'elle recoit vraiment. */
       lignes: [
@@ -1201,9 +1201,9 @@ const APERCUS = {
       /* Les comptes que le perimetre financier ecarte, et eux seuls : c'est
          mot pour mot ce que `partPlate()` gele, donc les lignes font le total.
          Le filtre portait sur la CLASSE de la ligne, et cette fiche listait donc
-         une SCPI sous « ton immobilier net » alors que la projection ne la gele
+         une SCPI sous "ton immobilier net" alors que la projection ne la gele
          plus : le total et ses parts ne se seraient plus accordes. Les biens de
-         valeur restent ici avec l'immobilier — une montre comptee dans le total
+         valeur restent ici avec l'immobilier -- une montre comptee dans le total
          sans ligne en face etait deja le defaut qu'on repare. */
       if (!estHorsPerimetreFinancier(c)) continue;
       for (const l of (c.lignes || [])) {
@@ -1302,7 +1302,7 @@ const APERCUS = {
   /* Cette fiche s'ouvre depuis Allocation, et de nulle part ailleurs : elle
      herite donc du perimetre de cette page. Sans cet heritage, la carte
      annoncait un montant hors immobilier et la fiche en rendait un autre, murs
-     compris — le meme intitule, deux montants a un clic d'ecart.
+     compris -- le meme intitule, deux montants a un clic d'ecart.
 
      La note du haut prend la base du perimetre, pas le patrimoine entier : un
      pourcentage calcule sur une base plus large que la liste qu'il surmonte ne
@@ -1363,7 +1363,7 @@ const APERCUS = {
 
   chargesFixes: () => {
     const postes = (Store.state.budget.fixedCharges || [])
-      /* `v` est l'equivalent MENSUEL de ce qui est debite — c'est le total du
+      /* `v` est l'equivalent MENSUEL de ce qui est debite -- c'est le total du
          panneau, et il doit valoir celui de la carte qui l'ouvre. `facture`
          reste le montant tel qu'il est facture : c'est lui qu'on relit sur
          l'avis. */
@@ -1412,8 +1412,8 @@ const APERCUS = {
 
   /* Le detail d'une vente.
 
-     Ce que trois tuiles disaient pour toute la page — produit encaisse, prix de
-     revient cede, taux de reussite — appartient a chaque vente : ce sont des
+     Ce que trois tuiles disaient pour toute la page -- produit encaisse, prix de
+     revient cede, taux de reussite -- appartient a chaque vente : ce sont des
      faits de celle-la, pas des totaux d'ecran. Deux d'entre eux se relisaient
      deja en tete de page, ou la plus-value encaissee porte son pourcentage et son
      compte de ventes gagnantes.
@@ -1675,12 +1675,12 @@ const APERCUS = {
      est une passe, pas une fiche par fiche. On ouvre, on recopie ce que disent la
      banque et le courtier, on enregistre.
 
-     Il ne remplace pas la fenetre d'un credit — celle-la porte le taux, la
+     Il ne remplace pas la fenetre d'un credit -- celle-la porte le taux, la
      mensualite, le preteur, tout ce qui ne change qu'une fois. Ici il n'y a que le
      chiffre qui vieillit. Un seul champ, deux portes, comme partout ailleurs.
 
      Et l'enregistrement pose la date de verification sur chaque credit : appuyer
-     sur « Enregistrer » ici, c'est precisement affirmer les avoir regardes, ce qui
+     sur "Enregistrer" ici, c'est precisement affirmer les avoir regardes, ce qui
      remet le rappel des trois mois a zero. Voir `apercu-enregistrer`. */
   credits: () => {
     const cr = creditsEnCours();
@@ -1746,7 +1746,7 @@ const APERCUS = {
 
   /* Les lignes suivent la CLASSE du total, pas le groupe d'ecran : le groupe
      `pe` rassemble aussi l'immobilier et les biens de valeur, et la fenetre
-     listait donc des comptes pour bien plus que son total — un studio a
+     listait donc des comptes pour bien plus que son total -- un studio a
      120 000 EUR sous un titre qui annonce le non cote. La valeur par compte
      est celle de ses lignes non cotees seulement, et la somme des parts
      refait le total. */

@@ -9,22 +9,22 @@ const Quotes = (() => {
 
   const BASE = location.protocol === 'file:' ? 'http://127.0.0.1:8765' : '';
 
-  let online = null;          // null = pas encore testé
-  let healthPromise = null;   // mutualisé : un seul appel réseau au démarrage
+  let online = null;          // null = pas encore teste
+  let healthPromise = null;   // mutualise : un seul appel reseau au demarrage
 
   /* LA SONDE NE RETIENT PLUS LE DEMARRAGE. `init()` l'attend avant de lire le
-     stockage local — l'identite precede toute lecture — et une requete sans
+     stockage local -- l'identite precede toute lecture -- et une requete sans
      limite laissait l'ecran de lancement a l'infini des que le reseau pendait :
      portail captif, tunnel, serveur muet. Au-dela de 2,5 s la reponse vaut
-     « pas de serveur », exactement ce qu'un `catch` rendait deja : l'application
-     s'ouvre sur ce qu'elle a en local, le pied du menu dit « Sauvegarde
-     localement », et sur une instance a comptes l'ecran « Session a reverifier »
+     "pas de serveur", exactement ce qu'un `catch` rendait deja : l'application
+     s'ouvre sur ce qu'elle a en local, le pied du menu dit "Sauvegarde
+     localement", et sur une instance a comptes l'ecran "Session a reverifier"
      propose de recharger. Aucun chemin nouveau : le retard emprunte celui de
      la panne.
 
      Une reponse tardive ne se garde pas en cache. Le prochain appel resonde,
      parce que le serveur a pu revenir ; la synchronisation, elle, a deja
-     tranche pour cette page — `probe()` ne se rejoue pas — et c'est voulu :
+     tranche pour cette page -- `probe()` ne se rejoue pas -- et c'est voulu :
      adopter le cloud apres que l'ecran s'est ouvert sur le local serait la
      course que ce demarrage evite. */
   const DELAI_SONDE_MS = 2500;
@@ -200,7 +200,7 @@ const Quotes = (() => {
     Store.state.quotes = { lastRun: new Date().toISOString(), fx, fxBase: base, changes, resolved };
     /* `derive` : un cours vient du marche, pas du detenteur. L'enregistrer ne
        doit pas dater l'etat, sinon ouvrir l'application suffit a faire passer
-       cet appareil pour porteur d'une modification — et c'est ainsi qu'un
+       cet appareil pour porteur d'une modification -- et c'est ainsi qu'un
        ordinateur rouvert apres plusieurs jours imposait son contenu perime au
        telephone sur lequel on avait reellement saisi. */
     Store.save({ derive: true });
@@ -224,11 +224,11 @@ const Quotes = (() => {
       ['^N225',     'Nikkei'],
       /* Le VIX ferme la famille, et il n'y est pas un indice de plus : il ne
          mesure pas un marche mais ce que ce marche ANTICIPE comme amplitude de
-         variation. Sa tuile le dit autrement — voir `NIVEAUX_VIX` dans app.js.
+         variation. Sa tuile le dit autrement -- voir `NIVEAUX_VIX` dans app.js.
 
          Il passe par la meme passerelle et le meme cache que les cinq autres :
          un systeme parallele pour un seul symbole couterait une seconde source
-         de fraicheur, et deux facons de dire « donnee indisponible ». */
+         de fraicheur, et deux facons de dire "donnee indisponible". */
       ['^VIX',      'VIX'],
     ]],
     ['metaux', trad('Métaux'), [
@@ -259,7 +259,7 @@ const Quotes = (() => {
   const cacheReperes = new Map();
 
   /* Un seul chemin pour redemander : `oublierReperes()`. Cette fonction
-     acceptait un `{ force: true }` que PERSONNE ne lui passait — un drapeau mort
+     acceptait un `{ force: true }` que PERSONNE ne lui passait -- un drapeau mort
      qui donnait a lire un cablage inexistant, et c'est exactement ce qui a
      retarde le diagnostic quand le ruban restait fige. Deux portes pour un seul
      besoin, dont une fermee : il n'en reste qu'une. */
@@ -277,8 +277,8 @@ const Quotes = (() => {
       const prix = Number(x.price), veille = Number(x.previousClose);
       const utilisable = Number.isFinite(prix) && Number.isFinite(veille) && veille !== 0;
       /* La meme garde que sur une ligne de titres, et pour la meme raison : un
-         cours qui date d'avant minuit ne fait pas la « variation du jour ».
-         Sans elle, le ruban a deja affiche le S&P 500 a −0,17 % sous un
+         cours qui date d'avant minuit ne fait pas la "variation du jour".
+         Sans elle, le ruban a deja affiche le S&P 500 a -0,17 % sous un
          soleil : c'etait le mouvement de la veille, et rien ne le disait. La
          regle avait ete ecrite pour les positions seulement, alors qu'elle
          vaut pour tout ce qui compare un prix a une cloture.
@@ -292,7 +292,7 @@ const Quotes = (() => {
                horsSeance,
                /* L'etat de la place et les horaires de seance arrivaient dans
                   la reponse et etaient jetes ici. `marketStatus()` sait deja
-                  les lire — c'est ce qui allume le soleil ou la lune sur la
+                  les lire -- c'est ce qui allume le soleil ou la lune sur la
                   tuile. Bitcoin et l'EUR/USD n'ont pas besoin d'un cas
                   particulier : Yahoo les annonce ouverts, ils le sont. */
                marketState: x.marketState || null,
@@ -309,8 +309,8 @@ const Quotes = (() => {
      `reperes()` acceptait `{ force: true }` depuis le debut, et personne ne le
      lui passait : le drapeau etait du code mort, et le ruban gardait donc ses
      cinq minutes quoi qu'on fasse. Un appui sur la pastille des cours mettait
-     les lignes detenues a jour, annoncait « 6 cours mis a jour », et laissait
-     les indices sur leurs anciens chiffres — deux signaux qui se contredisent
+     les lignes detenues a jour, annoncait "6 cours mis a jour", et laissait
+     les indices sur leurs anciens chiffres -- deux signaux qui se contredisent
      dans la meme seconde.
 
      Oublier plutot que forcer : l'appelant ne sait pas quelle famille est
@@ -320,7 +320,7 @@ const Quotes = (() => {
     cacheReperes.clear();
   }
 
-  /* Ce qui est en route, pour que l'ecran ne dise pas « jamais actualises »
+  /* Ce qui est en route, pour que l'ecran ne dise pas "jamais actualises"
      pendant qu'une actualisation tourne. `suivre` compte aussi une attente qui
      precede l'appel, celle de la sonde de la passerelle. */
   let enVol = 0;

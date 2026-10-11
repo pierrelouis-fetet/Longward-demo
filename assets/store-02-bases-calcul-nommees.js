@@ -7,12 +7,12 @@
 /* `financier` : la meme boucle, sans les murs ni les objets.
 
    Le filtre porte sur le CONTENANT, et il portait sur la classe de la ligne.
-   « Cette ligne est-elle de classe immobilier ? » n'est pas la question :
+   "Cette ligne est-elle de classe immobilier ?" n'est pas la question :
    `immobilier` couvre l'appartement et la SCPI, et la seconde est un placement
    qu'on arbitre. Un compte detenu en direct sort donc tout entier, cash compris,
-   et rien d'autre ne sort — voir `estHorsPerimetreFinancier`.
+   et rien d'autre ne sort -- voir `estHorsPerimetreFinancier`.
 
-   C'est aussi ce qui fait disparaitre le palier « le logement que tu habites »
+   C'est aussi ce qui fait disparaitre le palier "le logement que tu habites"
    tout seul, sans qu'une seule ligne le nomme ici. */
 function poches({ financier = false } = {}) {
   const p = { courant: 0, precaution: 0, projet: 0, investir: 0,
@@ -51,15 +51,15 @@ function dettesTotal() {
    La tentation est de le redresser a la lecture, par un plancher a zero dans le
    total. Ce serait cacher la saisie au lieu de l'empecher : le chiffre reste
    faux dans le fichier, l'export l'emporte, et chaque nouvelle lecture doit se
-   souvenir de le redresser — une regle qui vit a N endroits en oublie un.
+   souvenir de le redresser -- une regle qui vit a N endroits en oublie un.
 
    La regle vit donc a l'ENTREE, une seule fois, et les trois portes qui
    saisissent un credit l'appellent : la creation d'un bien finance, l'ajout
    depuis un etablissement, et l'edition. Elle rend la clef du champ fautif et
    sa phrase, ou `null` si tout va bien : la forme exacte qu'attend `valide`.
 
-   Les noms de champs different d'une porte a l'autre — la creation appelle
-   `credit` ce que les deux autres appellent `montant` — donc la table des clefs
+   Les noms de champs different d'une porte a l'autre -- la creation appelle
+   `credit` ce que les deux autres appellent `montant` -- donc la table des clefs
    se passe en argument plutot que de dupliquer la regle.
 
    Ce qui existe deja dans les fichiers ne s'efface pas pour autant : une regle
@@ -123,8 +123,8 @@ const mensualiteAmortissante = d => mensualiteCredit(d) * partCredit(d);
 /* --- la charge fixe qui rembourse un credit ------------------------------
    Une mensualite de pret etait saisie deux fois : en charge fixe, parce que
    c'est de l'argent qui sort tous les mois et que le budget doit le savoir, et
-   sur le credit, « pour memoire », pour projeter l'amortissement. Deux endroits
-   pour un seul fait, et rien qui garantisse qu'ils s'accordent — le defaut que
+   sur le credit, "pour memoire", pour projeter l'amortissement. Deux endroits
+   pour un seul fait, et rien qui garantisse qu'ils s'accordent -- le defaut que
    ce projet corrige sans arret.
 
    La charge porte donc `creditId`, et c'est elle qui detient le montant : le
@@ -132,8 +132,8 @@ const mensualiteAmortissante = d => mensualiteCredit(d) * partCredit(d);
    lui, lit la mensualite de la charge rattachee. Un seul champ, deux lectures.
 
    Sens du lien choisi a dessein : une charge peut exister sans credit, un credit
-   peut exister sans charge — on ne rembourse pas une marge de courtier par
-   mensualites — mais une mensualite ne peut pas exister sans sortir du budget.
+   peut exister sans charge -- on ne rembourse pas une marge de courtier par
+   mensualites -- mais une mensualite ne peut pas exister sans sortir du budget.
    C'est donc la charge qui est la source. */
 function chargeDuCredit(id) {
   if (!id) return null;
@@ -149,8 +149,8 @@ function chargeDuCredit(id) {
 
    LA DETTE, ELLE, NE SE PARTAGE PAS. Un credit dans Longward est la dette
    PERSONNELLE : le capital restant du et le capital emprunte se saisissent deja
-   au niveau du detenteur, et les multiplier par une part de depense — ou par la
-   quote-part du bien — les compterait deux fois. Ce qui rembourse cette dette
+   au niveau du detenteur, et les multiplier par une part de depense -- ou par la
+   quote-part du bien -- les compterait deux fois. Ce qui rembourse cette dette
    est `mensualiteAmortissante`, la part declaree de la facture.
 
    Sans charge liee, la mensualite notee sur le credit fait foi, comme avant. */
@@ -194,15 +194,15 @@ function progressionCredit(d) {
    second de se taire. */
 const apportDeclare = compte => estDeclare(compte?.apport) ? num(compte.apport) : null;
 
-/* --- un capital restant dû se calcule, il ne se retient pas -------------
-   Le seul champ d'un crédit qui vieillit tout seul. Personne n'ouvre son
+/* --- un capital restant du se calcule, il ne se retient pas -------------
+   Le seul champ d'un credit qui vieillit tout seul. Personne n'ouvre son
    application pour corriger de 348 EUR une ligne qui n'a pas bouge a l'ecran, et
    un capital restant du fige pendant huit mois fausse le patrimoine net de
-   plusieurs milliers d'euros, silencieusement — le pire genre d'erreur.
+   plusieurs milliers d'euros, silencieusement -- le pire genre d'erreur.
 
    Plutot que de compter sur la memoire, on projette. La mensualite et le taux
    sont deja connus : le tableau d'amortissement se rejoue mois par mois depuis la
-   derniere verification. Le resultat n'ecrit rien — il se propose, et c'est le
+   derniere verification. Le resultat n'ecrit rien -- il se propose, et c'est le
    detenteur qui tranche, parce qu'un remboursement anticipe ou une renegociation
    invalide la projection sans que l'application puisse le savoir.
 
@@ -225,7 +225,7 @@ function projectionCredit(d) {
   /* Un seul calcul pour les deux sens.
      `capital + interets - mensualite` : avec une mensualite plus grosse que les
      interets, la dette descend, c'est un pret qui s'amortit. Sans mensualite, il
-     ne reste que les interets et elle monte — c'est le levier d'un courtier, qui
+     ne reste que les interets et elle monte -- c'est le levier d'un courtier, qui
      ne se rembourse pas par echeances et grossit tout seul. Le meme piege que le
      rappel du releve mensuel : le chiffre le plus faux est celui qu'on croit
      stable. */
@@ -291,7 +291,7 @@ function echeancierCredit(d) {
   const mens = mensualiteAmortissante(d);
   const assurance = assuranceMensuelleCredit(d);
   /* Un taux ABSENT n'est pas un taux nul. Sans taux on ne sait pas departager le
-     capital des interets, et annoncer « zero de capital » sur une mensualite de
+     capital des interets, et annoncer "zero de capital" sur une mensualite de
      620 EUR serait faux dans l'autre sens : `capitalDuMois` vaut alors `null`,
      et les lecteurs se taisent plutot que d'inventer.
 
@@ -360,14 +360,14 @@ function finCredit(d) {
   return { mois, interets, derniere, finLe };
 }
 
-/* --- les crédits, tous ensemble ----------------------------------------
+/* --- les credits, tous ensemble ----------------------------------------
    Une dette vit sur l'etablissement qui l'a consentie, et se lisait donc un
    etablissement a la fois : la fiche du bien, celle du courtier, le groupe de la
    page Comptes. Personne ne les voyait toutes, et le patrimoine net soustrayait
    un total qui ne s'affichait nulle part en detail.
 
    `rembourse` et `part` n'existent que si le capital emprunte est connu : il est
-   facultatif, et deduire « rien de rembourse » d'un champ vide serait faux — un
+   facultatif, et deduire "rien de rembourse" d'un champ vide serait faux -- un
    vieux pret dont on a oublie le montant initial est presque paye.
 
    Le total est celui de `dettesTotal()`, pas un second calcul : c'est le meme
@@ -388,7 +388,7 @@ function creditsEnCours() {
         reste, initial: initial || null,
         /* `tauxCreditDeclare` et non `num(d.taux) || null` : un pret familial a
            0 % perdait son taux et s'affichait comme un pret dont on ignore le
-           taux — deux etats tres differents a l'ecran. */
+           taux -- deux etats tres differents a l'ecran. */
         mensualite: mensualiteCredit(d) || null, taux: tauxCreditDeclare(d),
         charge: (() => {
           const lien = chargeDuCredit(d.id);
@@ -398,7 +398,7 @@ function creditsEnCours() {
         rembourse: initial > 0 ? Math.max(0, initial - reste) : null,
         part: initial > 0 ? Math.min(100, Math.max(0, (initial - reste) / initial * 100)) : null,
         /* L'echeancier porte deja toute la regle : il rend `null` sans taux
-           declare, et des nombres justes avec — zero pour cent compris. Le
+           declare, et des nombres justes avec -- zero pour cent compris. Le
            filtre `num(d.taux) &&` qui gardait ces deux lignes ecartait donc le
            pret a 0 %, dont la mensualite rembourse pourtant du capital. */
         interets: echeancierCredit(d)?.interetsDuMois ?? null,
@@ -434,11 +434,11 @@ function patrimoine() {
   return { ...p, brut, dettes, net: brut - dettes };
 }
 
-/* Dérivée de la même table que `couleurClasse` : deux listes écrites à la
-   main finissent par diverger, et une couleur qui change de sens d'un écran à
+/* Derivee de la meme table que `couleurClasse` : deux listes ecrites a la
+   main finissent par diverger, et une couleur qui change de sens d'un ecran a
    l'autre ne veut plus rien dire. */
 const CLASSE_COULEURS = new Proxy({}, {
-  /* Une clé inconnue rend `undefined` et non une couleur par défaut : le
+  /* Une cle inconnue rend `undefined` et non une couleur par defaut : le
      `|| CLASSE_COULEURS.nonCote` des appelants doit pouvoir jouer. */
   get: (_, k) => (typeof k === 'string' && (CLASSES_ALIAS[k] || k) in TEINTE_CLASSE)
     ? couleurClasse(k) : undefined,
@@ -459,12 +459,12 @@ const CLASSE_COULEURS = new Proxy({}, {
    carte le montre plutot que de le masquer.
 
    Allocation ne change pas : elle n'a pas de commutateur et declare une base
-   unique. Deux pages, deux bases, chacune nommee — c'est le motif autorise ici,
+   unique. Deux pages, deux bases, chacune nommee -- c'est le motif autorise ici,
    celui qu'un total muet violait. */
 /* Le patrimoine financier : tout sauf les murs et les objets.
 
    Un appartement ecrase le reste. Mesure sur le jeu de demonstration : 81,2 % du
-   brut, et quatre classes sur six tombent sous 2 % — des traits invisibles sur un
+   brut, et quatre classes sur six tombent sous 2 % -- des traits invisibles sur un
    camembert. La page cesse alors de montrer ce qu'on pilote, alors que c'est sa
    seule raison d'exister : personne ne reequilibre un mur.
 
@@ -472,7 +472,7 @@ const CLASSE_COULEURS = new Proxy({}, {
    loue, la montre, la voiture. Une liste de CLASSES a exclure vivait ici, et
    elle disait autre chose : `['immobilier', 'bienValeur']` sortait aussi la
    pierre papier et le support immobilier d'une assurance-vie, qui sont du
-   placement. Le non cote restait, lui, par la meme logique qu'on lui refusait —
+   placement. Le non cote restait, lui, par la meme logique qu'on lui refusait --
    on choisit d'y remettre ou non, alors qu'on ne vend pas trois metres carres de
    salon. La constante est partie plutot que d'etre corrigee : elle repondait a
    la mauvaise question, et une constante qui ment coute plus qu'elle ne sert.
@@ -482,7 +482,7 @@ const CLASSE_COULEURS = new Proxy({}, {
 
    Les DETTES de cette vue se choisissent, elles aussi, et par le lien qu'elles
    portent : voir `detteLieeBienDirect`. Un credit rattache a un mur part avec le
-   mur ; toute autre dette reste — celle d'une SCPI comme celle d'une marge —
+   mur ; toute autre dette reste -- celle d'une SCPI comme celle d'une marge --
    et le net financier la retranche. */
 
 /* Les poches que la COURBE D'HISTORIQUE ecarte, et elles ne recouvrent pas
@@ -537,14 +537,14 @@ function totalFinancier() {
 }
 
 /* Ce que la vue financiere retire, en un nombre. `totalFinancier()` dit ce qui
-   reste ; celui-ci dit ce qui part. Les deux existent parce que « place » ne se
+   reste ; celui-ci dit ce qui part. Les deux existent parce que "place" ne se
    filtre pas par classe : il vaut le brut moins le cash, et sa version
    financiere est donc une soustraction, pas un filtre.
 
    DEUX CALCULS INDEPENDANTS, et non l'un moins l'autre : celui-ci somme la
    valeur des comptes qui sortent, `totalFinancier()` somme les classes des
    comptes qui restent, et un test exige que les deux fassent le brut. Une
-   soustraction ne prouverait rien — elle serait vraie meme si les deux cotes
+   soustraction ne prouverait rien -- elle serait vraie meme si les deux cotes
    s'accordaient sur un perimetre faux. */
 function horsFinancierTotal() {
   return comptesOuverts()
@@ -557,18 +557,18 @@ function horsFinancierTotal() {
    La vue financiere ecarte les murs et les objets de valeur. Elle ecartait AUSSI
    toutes les dettes, sous un raisonnement juste sur un seul cas : le pret finance
    le bien, le bien est deja dehors, donc retrancher le pret retirerait deux fois
-   la meme chose. Vrai d'un credit immobilier. Faux de tout le reste — une marge
+   la meme chose. Vrai d'un credit immobilier. Faux de tout le reste -- une marge
    de courtier, un pret personnel, un emprunt pris pour investir : ceux-la ne
    financent aucun mur, et ils disparaissaient entierement de la lecture
    financiere. Une dette qui ne se voit nulle part est le pire des chiffres faux.
 
-   LA PREUVE DU LIEN EST LE LIEN, jamais un libelle. Ni « pret immobilier », ni le
+   LA PREUVE DU LIEN EST LE LIEN, jamais un libelle. Ni "pret immobilier", ni le
    nom du preteur, ni le montant, ni la presence d'un appartement quelque part :
    `bienId` existe pour ca, et lui seul dit ce qu'un credit finance.
 
    `estBienEnDirect` et non `bienImmo` : une SCPI porte le premier drapeau et pas
-   le second. Elle reste dans le perimetre financier — on choisit d'y remettre ou
-   non, alors qu'on ne vend pas trois metres carres de salon — donc un credit qui
+   le second. Elle reste dans le perimetre financier -- on choisit d'y remettre ou
+   non, alors qu'on ne vend pas trois metres carres de salon -- donc un credit qui
    la financerait reste avec elle.
 
    Un `bienId` qui ne designe plus rien ne fait pas sortir la dette : elle ne
@@ -583,8 +583,8 @@ function detteLieeBienDirect(d) {
 /* Les dettes que le perimetre financier porte : toutes celles qui ne sont pas
    parties avec un mur.
 
-   Une dette ambigue — sans `bienId`, chez quelqu'un qui possede deux
-   appartements — en fait partie, et c'est volontairement conservateur : une
+   Une dette ambigue -- sans `bienId`, chez quelqu'un qui possede deux
+   appartements -- en fait partie, et c'est volontairement conservateur : une
    dette reelle ne s'efface pas parce que sa destination est inconnue. Rien ne la
    devine ici, et rien ne la migre. */
 function dettesFinancieresTotal() {
@@ -651,10 +651,10 @@ function dettesDesBiensDirects() {
    toutes les repartitions, et elle le reste : une dette ne se range dans aucun
    compte, dans aucune classe d'actif, dans aucun palier de disponibilite. La
    ventiler au prorata inventerait un endroit ou elle n'est pas, et ferait bouger
-   la quantite d'actions qu'on « devrait » posseder.
+   la quantite d'actions qu'on "devrait" posseder.
 
    `netFinancier()` dit ce que ce perimetre vaut une fois ses dettes payees. Il
-   peut etre negatif — trente mille de marge sur vingt mille d'avoirs — et il le
+   peut etre negatif -- trente mille de marge sur vingt mille d'avoirs -- et il le
    reste : un plancher a zero cacherait exactement la situation qu'il faut voir. */
 function netFinancier() {
   return totalFinancier() - dettesFinancieresTotal();
@@ -666,8 +666,8 @@ function repartitionClasses({ net = false, financier = false } = {}) {
   const base = financier ? totalFinancier() : num(p.brut) - (avecDettes ? num(p.dettes) : 0);
   const dest = avecDettes ? dettesParDestination() : { classes: {}, nonAffectees: 0 };
   const classes = financier ? poches({ financier: true }).classes : p.classes;
-  /* `brut` et `dettes` voyagent avec la part : la vue dit « apres tant de
-     credit » sans refaire le calcul. Une classe reste tant qu'elle a une valeur
+  /* `brut` et `dettes` voyagent avec la part : la vue dit "apres tant de
+     credit" sans refaire le calcul. Une classe reste tant qu'elle a une valeur
      OU une dette : un bien a zero finance par un pret est une part negative, pas
      une absence. */
   const lignes = Object.entries(CLASSES_ACTIFS)
@@ -721,7 +721,7 @@ function syntheseRepartition(parts, n = CATEGORIES_EN_TETE) {
    n'a rien change, et revenir a l'ordre par defaut efface la clef : un profil
    qui n'a rien personnalise suit donc le defaut, y compris celui de demain.
 
-   « A retenir » se masquait deja, par son menu et par les Preferences, sur
+   "A retenir" se masquait deja, par son menu et par les Preferences, sur
    `meta.retenirMasquee`. Sa visibilite reste sur cette clef : trois portes, un
    seul fait, et aucune ne peut contredire les autres. */
 const CARTES_APERCU = ['retenir', 'repartition', 'evolution', 'changements', 'titres',
@@ -803,8 +803,8 @@ function echangerAvecVoisine(ordre, id, sens) {
    titre restent fixes : ce sont la situation et les outils de la page, pas des
    lectures. Le reste se deplace et se masque.
 
-   LE RESULTAT DES VENTES VIT DANS LEUR JOURNAL. Les graphiques « Realisee » et
-   « Cumul » sont partis : le journal dit chaque resultat et le total net de la
+   LE RESULTAT DES VENTES VIT DANS LEUR JOURNAL. Les graphiques "Realisee" et
+   "Cumul" sont partis : le journal dit chaque resultat et le total net de la
    periode, et le selecteur de periode se pose au-dessus de lui.
 
    Les deux journaux ferment la page : ce sont des archives d'operations, lues
@@ -913,13 +913,13 @@ function refreshAccounts() {
     const projetes = s.comptes.map(c => {
       const t = typeCompte(c.type);
       /* `group` pilote les calculs, `gAff` l'affichage : l'immobilier partage
-         la poche « non cote » pour les regles metier, mais merite sa propre
-         bande dans le graphique — 150 000 EUR de studio noyes dans du
+         la poche "non cote" pour les regles metier, mais merite sa propre
+         bande dans le graphique -- 150 000 EUR de studio noyes dans du
          crowdfunding ne se lisent pas. */
-      /* `bienImmo` et non « peut porter de l'immobilier ». La nuance decide de
+      /* `bienImmo` et non "peut porter de l'immobilier". La nuance decide de
          la bande du graphique et de la poche de projection : une enveloppe qui
          accepte une SCPI parmi cinq classes s'affichait entierement en
-         immobilier, ETF compris, et sa valeur quittait la poche « marche » pour
+         immobilier, ETF compris, et sa valeur quittait la poche "marche" pour
          celle des biens. Un contrat de 50 000 EUR d'ETF monde comptait comme de
          la pierre sur toute la page d'accueil.
          C'est le meme drapeau que `comptesBiens()` et `estBien()` : ce type EST
@@ -927,8 +927,8 @@ function refreshAccounts() {
       const gAff = t.bienImmo ? 'immo'
                  : t.classes.includes('crypto') ? 'crypto'
                  /* Une montre n'est pas du non cote : la ranger dans la poche
-                    `pe` ferait porter au libelle « Non coté » un objet qui n'a
-                    ni emetteur ni parts — le mensonge que CLASSES_ACTIFS
+                    `pe` ferait porter au libelle "Non cote" un objet qui n'a
+                    ni emetteur ni parts -- le mensonge que CLASSES_ACTIFS
                     refuse deja. Sa poche d'affichage lui appartient. */
                  : t.classes.includes('bienValeur') ? 'biens'
                  : t.groupe;
@@ -936,16 +936,16 @@ function refreshAccounts() {
       /* UN SEUL NOM, ET C'EST CELUI QU'ON A TAPE.
 
          La projection en portait deux : `label`, le nom du compte, et `short`,
-         un nom court herite des anciennes donnees — `c.court`, que AUCUN ecran
+         un nom court herite des anciennes donnees -- `c.court`, que AUCUN ecran
          ne permet de modifier depuis le passage au modele actuel. Treize
          endroits affichaient le second, et il gagnait des qu'il existait : un
-         portefeuille nomme « Crypto wallet TR » se lisait « Crypto » sous
+         portefeuille nomme "Crypto wallet TR" se lisait "Crypto" sous
          chacune de ses lignes de titres, ce qui ne dit meme pas de quel compte
          il s'agit quand il y en a deux.
 
          La decision avait deja ete prise pour le menu de choix d'un compte, avec
-         ce motif exact — « Crypto ne dit pas si c'est le portefeuille de
-         cryptomonnaies ou autre chose ». Elle n'avait ete appliquee qu'a un
+         ce motif exact -- "Crypto ne dit pas si c'est le portefeuille de
+         cryptomonnaies ou autre chose". Elle n'avait ete appliquee qu'a un
          endroit. Deux champs pour un meme fait finissent toujours par diverger ;
          il n'en reste qu'un.
 
@@ -974,7 +974,7 @@ function refreshAccounts() {
    La garde n'est pas une precaution de style : `rowTotal` se derive de
    `rowGroups`, qui parcourt ACCOUNTS. Retirer un compte qu'un releve mentionne
    retrancherait donc son montant du TOTAL de ce mois-la, sans que rien ne le
-   dise — et les mois suivants se compareraient a un passe qui a maigri.
+   dise -- et les mois suivants se compareraient a un passe qui a maigri.
 
    Deux sortes de comptes clos, et la meme regle vaut pour les deux : un compte
    archive, qui vit dans `comptes` avec `statut: 'archive'`, et une entree
@@ -1011,8 +1011,8 @@ function comptesClosDetaches() {
    Les deux sont hors de tous les totaux, les deux se suppriment. Seul le
    premier se restaure, et c'est la seule difference que l'ecran ait a montrer.
 
-   Chaque entree porte ce qui la retient — les mois qui la nomment, la valeur
-   qu'elle porte encore — parce que la confirmation de suppression doit pouvoir
+   Chaque entree porte ce qui la retient -- les mois qui la nomment, la valeur
+   qu'elle porte encore -- parce que la confirmation de suppression doit pouvoir
    le dire avant de detruire quoi que ce soit. */
 const MOTIFS_ARCHIVE = [
   ['transfert', 'Transfert vers un autre compte suivi'],
@@ -1152,7 +1152,7 @@ function comptesAnciens() {
 
    Les identifiants sont OBLIGATOIRES, et c'est un garde-fou : la suppression se
    demande compte par compte, depuis la ligne de ce compte. Un appel sans
-   argument aurait un sens — « tous ceux que rien ne retient » — et c'est
+   argument aurait un sens -- "tous ceux que rien ne retient" -- et c'est
    justement le geste global qu'on ne veut plus offrir.
 
    ON FIGE AVANT DE RETIRER. Un releve ancien ne porte que des montants par
@@ -1200,7 +1200,7 @@ function retirerComptesClos(ids) {
    Ce n'est pas la bonne porte pour un geste d'ecran. Un compte ARCHIVE est mis
    de cote pour etre garde, et il se rouvre ; un compte CLOS est fini, et il ne
    se rouvre pas. Offrir la suppression sur le premier revient a proposer de
-   detruire ce qu'on a justement choisi de conserver — et le garde-fou ne peut
+   detruire ce qu'on a justement choisi de conserver -- et le garde-fou ne peut
    pas etre l'absence d'un bouton, qui ne protege que ce qu'on voit.
 
    La condition est `restaurable`, la donnee du modele : elle dit s'il reste une
@@ -1310,7 +1310,7 @@ const OEIL_MASQUE = '<svg class="oeil-masque" viewBox="0 0 24 24" role="img"'
    les montants saisis : un solde, une mensualite, un budget, un objectif.
 
    CE QU'ELLE N'EST PAS. Ce n'est pas un moteur multi-devises. Changer de
-   devise ne convertit rien, et c'est deliberе : convertir demanderait un taux
+   devise ne convertit rien, et c'est deliberU+0435 : convertir demanderait un taux
    et une date, donc inventer deux nombres que personne n'a declares. Cent
    mille euros deviennent cent mille dollars, le nombre ne bouge pas, seule son
    unite change. L'interface le dit avant de le faire.
@@ -1364,29 +1364,29 @@ const masque = devise => `${OEIL_MASQUE} ${symboleDevise(devise)}`;
 /* Le meme masque en texte pur. Deux endroits l'exigent, et pour la meme
    raison : une balise n'y est pas du balisage.
 
-   Dans un `<text>` SVG — etiquettes d'axe, valeurs posees sur les barres —
-   elle s'imprimerait telle quelle. Dans un ATTRIBUT — `title`, `aria-label` —
-   c'est pire : le masque porte lui-meme un `aria-label="montant masqué"`, dont
+   Dans un `<text>` SVG -- etiquettes d'axe, valeurs posees sur les barres --
+   elle s'imprimerait telle quelle. Dans un ATTRIBUT -- `title`, `aria-label` --
+   c'est pire : le masque porte lui-meme un `aria-label="montant masque"`, dont
    le guillemet ferme l'attribut hote, et la fin de la balise se deverse en
-   texte visible dans la page. C'est ce qui affichait un `€">` nu a cote de
+   texte visible dans la page. C'est ce qui affichait un `EUR">` nu a cote de
    l'objectif mensuel. Tout montant pose dans un attribut passe donc par ici. */
 const masqueTexte = devise => '••• ' + symboleDevise(devise);
 
 /* --- un seul signe moins dans toute l'application -----------------------
-   `Intl` rend « -13 500,00 € » avec un trait d'union ASCII, alors que
+   `Intl` rend "-13 500,00 EUR" avec un trait d'union ASCII, alors que
    l'application ecrit ses negatifs a la main avec le vrai signe moins :
-   « −96 000,00 € » pour une dette, « −1 250 € » pour un ecart. Sans ce
+   "-96 000,00 EUR" pour une dette, "-1 250 EUR" pour un ecart. Sans ce
    remplacement, le meme ecran porterait les deux, le grand chiffre en tete avec
    le trait d'union et les lignes en dessous avec le signe. L'ecart se voit : le
    trait d'union est plus
    court, plus haut, et il ne s'aligne pas sur la barre du plus.
 
    Le remplacement ne s'applique qu'aux formateurs de nombres, ou aucun tiret
-   n'est legitime — une date ou un identifiant passe par d'autres chemins. */
+   n'est legitime -- une date ou un identifiant passe par d'autres chemins. */
 /* LE SEPARATEUR DES MILLIERS SE VOIT. `Intl` groupe le francais par une
    espace fine insecable (U+202F) ; Segoe UI, sous Windows, la dessine sur un
-   ou deux pixels, et l'approche serree des grands chiffres l'efface : « 1639 »
-   au lieu de « 1 639 ». L'espace insecable ordinaire garde le groupe sur une
+   ou deux pixels, et l'approche serree des grands chiffres l'efface : "1639"
+   au lieu de "1 639". L'espace insecable ordinaire garde le groupe sur une
    ligne et se voit a toutes les tailles. Les deux corrections vivent ensemble
    parce que tous les formateurs de nombres passent par ici. */
 const moinsTypographique = s => String(s).replace(/-/g, '−').replace(/\u202f/g, '\u00a0');
@@ -1439,7 +1439,7 @@ function arrondirParts(valeurs, total = null) {
 }
 
 /* Un nombre de mois suit les separateurs de la langue. `toFixed(1)` ecrivait
-   « 0.8 mois » au milieu d'une interface qui met des virgules partout. */
+   "0.8 mois" au milieu d'une interface qui met des virgules partout. */
 const fmtMois = v => new Intl.NumberFormat(locale(),
   { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(num(v));
 const fmtEUR0Texte = v => montantsMasques ? masqueTexte(deviseBase()) : fmtEUR0(v);
@@ -1470,7 +1470,7 @@ const fmtNombre = v => moinsTypographique(num(v).toLocaleString(locale(), { maxi
    que `deltas()` et `poidsPoches()` appliquent deja, et elle a deux raisons
    qu'aucun garde-fou local ne remplace : un total nul divise par zero, et une
    base negative retourne tous les signes -- un patrimoine net de -20 000 EUR
-   ferait afficher « -43 % » a une poche qui pese pourtant quelque chose.
+   ferait afficher "-43 %" a une poche qui pese pourtant quelque chose.
    `null` et non zero : la part n'est pas nulle, elle n'existe pas.
 
    UNE VALEUR NEGATIVE SUR UNE BASE POSITIVE GARDE SON SIGNE. Le trace net impute
@@ -1502,7 +1502,7 @@ const fmtDelaiMois = v => {
    Une poche a trois dixiemes de pourcent rend une barre de moins d'un pixel :
    0,3 % de 311 px font 0,93 px, que l'arrondi du navigateur et le rayon de la
    pastille effacent tout a fait. La ligne porte alors un nom, un montant, un
-   pourcentage, et une barre vide — le dessin dement le chiffre.
+   pourcentage, et une barre vide -- le dessin dement le chiffre.
 
    LE PLANCHER EST EN PIXELS, ET C'EST VOULU. C'est une question de dessin et
    non de comptabilite : ce qui compte est qu'il reste quelque chose a voir, et
@@ -1512,7 +1512,7 @@ const fmtDelaiMois = v => {
    IL NE VAUT QUE POUR UNE PART STRICTEMENT POSITIVE. Une poche a zero garde une
    barre vide, et c'est une information : zero n'est pas trois dixiemes.
 
-   ET IL NE TOUCHE PAS AU CHIFFRE. La ligne continue d'afficher « 0,3 % ». Le
+   ET IL NE TOUCHE PAS AU CHIFFRE. La ligne continue d'afficher "0,3 %". Le
    plancher est graphique, il ne remonte nulle part, et il ne rend pas une part
    de 0,3 % comparable a une part de 5 % : au-dela d'environ un pour cent, c'est
    la proportion qui l'emporte, exactement comme avant.
@@ -1523,15 +1523,15 @@ const fmtDelaiMois = v => {
 const largeurPart = pct => num(pct) > 0 ? `max(3px, ${Math.min(100, num(pct)).toFixed(1)}%)` : '0%';
 
 const fmtSigned = v => (v >= 0 ? '+' : '−') + fmtEUR(Math.abs(v), 0);
-/* Un montant signe, sauf a zero : « +250 € », « −300 € », et « 0 € » plutot que
-   « +0 € ». Un plus devant un zero se lit comme une addition qui n'a pas eu
+/* Un montant signe, sauf a zero : "+250 EUR", "-300 EUR", et "0 EUR" plutot que
+   "+0 EUR". Un plus devant un zero se lit comme une addition qui n'a pas eu
    lieu ; il fait douter de la ligne au lieu de l'expliquer.
 
    Le formateur se passe en argument parce qu'il y a deux sorties pour un meme
-   montant : `fmtEUR0` rend du BALISAGE quand les montants sont masques — un
-   oeil barre en SVG — et c'est ce qu'il faut a l'ecran. Dans un ATTRIBUT, celui
+   montant : `fmtEUR0` rend du BALISAGE quand les montants sont masques -- un
+   oeil barre en SVG -- et c'est ce qu'il faut a l'ecran. Dans un ATTRIBUT, celui
    d'une aide par exemple, ce balisage s'affiche en clair : `fmtEUR0Texte` y rend
-   « ••• € ». Deux fonctions jumelles ecrites a la main auraient fini par ne plus
+   "*** EUR". Deux fonctions jumelles ecrites a la main auraient fini par ne plus
    signer pareil. */
 const montantSigne = (v, f = fmtEUR0) =>
   Math.abs(v) < 0.005 ? f(0) : (v >= 0 ? '+' : '−') + f(Math.abs(v));
@@ -1574,16 +1574,16 @@ function fmtJourMois(iso) {
 /* Quand ce cours a-t-il ete imprime par la place ? En secondes, comme
    `quoteTime` l'arrive de la passerelle.
 
-   Elle vit ici et non dans `app.js` parce que quatre ecrans la posent — la
-   pastille du haut, la carte du jour, son apercu et la fiche d'une ligne — et
+   Elle vit ici et non dans `app.js` parce que quatre ecrans la posent -- la
+   pastille du haut, la carte du jour, son apercu et la fiche d'une ligne -- et
    qu'une phrase recopiee quatre fois finit par dire quatre choses. Le harnais
    de tests peut aussi l'appeler : il ne charge que `store.js`.
 
-   Elle rend sa preposition avec elle — « de 11:05 », « d'hier a 22:00 »,
-   « du 1 août a 17:30 » — parce que les trois branches n'appellent pas la
-   meme, et que ses appelants ecrivent tous « cours … » ou « date … ». Sans
-   ça, chacun d'eux porterait sa propre elision, et le premier oubli donnerait
-   « cours de hier ». C'est ce qu'affichait la premiere version, vue a
+   Elle rend sa preposition avec elle -- "de 11:05", "d'hier a 22:00",
+   "du 1 aout a 17:30" -- parce que les trois branches n'appellent pas la
+   meme, et que ses appelants ecrivent tous "cours ..." ou "date ...". Sans
+   ca, chacun d'eux porterait sa propre elision, et le premier oubli donnerait
+   "cours de hier". C'est ce qu'affichait la premiere version, vue a
    l'ecran. */
 function fmtCoursQuand(secondes) {
   const t = num(secondes);
@@ -1593,7 +1593,7 @@ function fmtCoursQuand(secondes) {
   const jour = isoLocal(d);
   if (jour === todayISO()) return enAnglais() ? `from ${heure}` : `de ${heure}`;
   /* La veille se derive de `todayISO()` et non de `new Date()` : c'est le seul
-     repere que le harnais peut deplacer, et « hier » doit suivre le jour
+     repere que le harnais peut deplacer, et "hier" doit suivre le jour
      suppose, sans quoi un test joue a une date et lit une phrase calee sur une
      autre. Midi, pour ne pas glisser d'un jour au changement d'heure. */
   const veille = new Date(todayISO() + 'T12:00:00');
@@ -1718,14 +1718,14 @@ const Store = {
     }
     /* La graine passe par la migration comme un etat relu, et pour la meme
        raison : elle est ecrite dans l'ancien modele, un compte par ligne de
-       relevé. C'est la migration qui en tire les etablissements, les comptes,
+       releve. C'est la migration qui en tire les etablissements, les comptes,
        leurs poches de cash et leurs credits.
 
        Elle ne l'etait pas, et le premier lancement rendait donc un etat a
        moitie construit : `comptes` absent, et tout ce qui en descend a zero.
        Le patrimoine s'affichait a 0 EUR sur une page qui portait pourtant ses
-       huit cartes. Le defaut ne se voyait qu'une fois — la sauvegarde qui
-       suivait le premier geste passait l'etat par la migration — donc jamais
+       huit cartes. Le defaut ne se voyait qu'une fois -- la sauvegarde qui
+       suivait le premier geste passait l'etat par la migration -- donc jamais
        pendant qu'on developpe, avec un stockage deja rempli. Il ne se voyait
        qu'a la seule visite qui compte pour une demonstration : la premiere. */
     this.state = structuredClone(SEED);
@@ -1791,48 +1791,48 @@ const Store = {
     }
     if (!s.budget.reglesImport || typeof s.budget.reglesImport !== 'object'
         || Array.isArray(s.budget.reglesImport)) s.budget.reglesImport = {};
-    /* Le calendrier des DÉPENSES, et lui seul.
+    /* Le calendrier des DEPENSES, et lui seul.
 
-       Il reste parce qu'il est la seule porte vers un mois passé : le tableau du
-       détail mensuel affiche ses douze lignes, et c'est en cliquant l'une d'elles
-       qu'on saisit février de l'an dernier. Le retirer sans lui donner un
-       remplaçant — un sélecteur de mois dans la fenêtre de saisie, comme celui du
-       relevé — fermerait cette porte.
+       Il reste parce qu'il est la seule porte vers un mois passe : le tableau du
+       detail mensuel affiche ses douze lignes, et c'est en cliquant l'une d'elles
+       qu'on saisit fevrier de l'an dernier. Le retirer sans lui donner un
+       remplacant -- un selecteur de mois dans la fenetre de saisie, comme celui du
+       releve -- fermerait cette porte.
 
-       Les RELEVÉS n'en ont plus besoin : le journal n'affiche que les mois
-       renseignés, et « Ajouter un relevé » choisit son mois et son année, en
-       créant la ligne à la demande (`indexReleve`). Douze lignes vides par an
+       Les RELEVES n'en ont plus besoin : le journal n'affiche que les mois
+       renseignes, et "Ajouter un releve" choisit son mois et son annee, en
+       creant la ligne a la demande (`indexReleve`). Douze lignes vides par an
        dans le stockage ne servaient plus rien, et le point 19 les refuse.
 
-       Les lignes vides déjà créées restent : elles ne portent aucun montant,
+       Les lignes vides deja creees restent : elles ne portent aucun montant,
        mais elles peuvent porter une note, et rien ici ne supprime ce que
-       quelqu'un a écrit. */
+       quelqu'un a ecrit. */
     ensureCalendarMonths(s.budget.expenses, 'month', 'note');
     s.accountTypes = s.accountTypes || structuredClone(SEED.accountTypes);
     s.accounts = s.accounts || structuredClone(SEED.accounts);
     s.typesPerso = s.typesPerso || [];
 
-    /* Le détail d'une catégorie de dépenses est retiré, et son champ avec.
+    /* Le detail d'une categorie de depenses est retire, et son champ avec.
 
-       Il vivait dans `d`, à côté du total : « Restos 146, dont TR 110 et Bourso
-       36 ». Deux surfaces d'édition pour une seule valeur, et tout le mal venait
-       de les réconcilier — retaper le total effaçait les libellés, et le champ
-       principal ne pouvait pas être à la fois un total et une porte. Quelqu'un qui
-       veut suivre deux choses séparément fait deux catégories : c'est ce que les
-       catégories sont.
+       Il vivait dans `d`, a cote du total : "Restos 146, dont TR 110 et Bourso
+       36". Deux surfaces d'edition pour une seule valeur, et tout le mal venait
+       de les reconcilier -- retaper le total effacait les libelles, et le champ
+       principal ne pouvait pas etre a la fois un total et une porte. Quelqu'un qui
+       veut suivre deux choses separement fait deux categories : c'est ce que les
+       categories sont.
 
-       La purge est ici et non à l'enregistrement d'un mois : un champ que plus
-       aucun écran ne lit deviendrait invisible sans disparaître, et il sortirait
-       encore dans les sauvegardes. Idempotente par construction — elle supprime
-       une clé absente au second passage. */
-    /* Le zero qui voulait dire « automatique ».
+       La purge est ici et non a l'enregistrement d'un mois : un champ que plus
+       aucun ecran ne lit deviendrait invisible sans disparaitre, et il sortirait
+       encore dans les sauvegardes. Idempotente par construction -- elle supprime
+       une cle absente au second passage. */
+    /* Le zero qui voulait dire "automatique".
 
        `projMonthly: 0` etait le sentinelle de la graine : zero etant faux en
        JavaScript, la projection retombait sur l'epargne du budget. Maintenant
        que zero veut dire zero, ces etats-la verraient leur courbe s'aplatir
        sans que personne l'ait demande. La clef s'en va donc, ce qui redonne
-       exactement le comportement d'avant — et la clef absente est desormais le
-       seul moyen de dire « automatique ».
+       exactement le comportement d'avant -- et la clef absente est desormais le
+       seul moyen de dire "automatique".
 
        A un coup, et c'est necessaire : sans le drapeau, un utilisateur qui
        choisit vraiment 0 verrait son choix efface au chargement suivant. */
@@ -1920,14 +1920,14 @@ const Store = {
       if (p.symbol === undefined) p.symbol = guessSymbol(p.ticker);
       if (p.currency === undefined) p.currency = (num(p.fx) && num(p.fx) !== 1) ? 'USD' : 'EUR';
       if (p.isin === undefined) p.isin = '';
-      /* Fige le PRU au taux d'achat — mais jamais a 1 sur une ligne en devise :
+      /* Fige le PRU au taux d'achat -- mais jamais a 1 sur une ligne en devise :
          ce 1 est la valeur par defaut de la creation, pas un taux, et il faisait
-         compter des dollars comme des euros. Remis a vide, il sera figé au premier
+         compter des dollars comme des euros. Remis a vide, il sera fige au premier
          taux connu ; d'ici la, `tauxAchat()` prend le taux courant. Idempotent :
          rejouer la migration sur un etat deja repare ne change rien. */
       /* `fxBuy` ne sert plus a convertir : les deux jambes prennent le taux du
-         jour. Le champ part des positions — il portait le taux du premier
-         rafraichissement, pas celui d'un achat — mais reste sur les ventes
+         jour. Le champ part des positions -- il portait le taux du premier
+         rafraichissement, pas celui d'un achat -- mais reste sur les ventes
          enregistrees, ou il est un fait date de la transaction. */
       if (p.fxBuy !== undefined) delete p.fxBuy;
     }
@@ -1936,23 +1936,23 @@ const Store = {
     poserEspeces(s);
     this.migrerClassesActifs(s);
     this.migrerCibles(s);
-    /* --- les contenants restés vides d'avant le correctif -------------------
-       Supprimer le dernier compte d'un établissement emporte désormais
-       l'établissement (`supprimer-compte`), parce qu'un contenant sans compte
-       n'apparaît plus sur aucun écran : la liste des comptes saute les
-       établissements vides. Il ne ressortait qu'à l'étape 2 d'un ajout, où la
-       règle propose les vides sous n'importe quel type — d'où l'impression
-       d'une mémoire résiduelle, un bien supprimé qui revient proposer de s'y
-       rattacher, y compris dans la fenêtre « Assureur ou courtier ».
+    /* --- les contenants restes vides d'avant le correctif -------------------
+       Supprimer le dernier compte d'un etablissement emporte desormais
+       l'etablissement (`supprimer-compte`), parce qu'un contenant sans compte
+       n'apparait plus sur aucun ecran : la liste des comptes saute les
+       etablissements vides. Il ne ressortait qu'a l'etape 2 d'un ajout, ou la
+       regle propose les vides sous n'importe quel type -- d'ou l'impression
+       d'une memoire residuelle, un bien supprime qui revient proposer de s'y
+       rattacher, y compris dans la fenetre "Assureur ou courtier".
 
-       Le correctif ne valait que pour les suppressions à venir. Les contenants
-       déjà orphelins sont restés dans les données, invisibles et
-       indéboulonnables : aucun écran ne les montre, donc aucun écran ne permet
-       de les retirer. Un correctif qui ne regarde que l'avenir laisse le défaut
-       en place chez ceux qui l'ont déjà subi.
+       Le correctif ne valait que pour les suppressions a venir. Les contenants
+       deja orphelins sont restes dans les donnees, invisibles et
+       indeboulonnables : aucun ecran ne les montre, donc aucun ecran ne permet
+       de les retirer. Un correctif qui ne regarde que l'avenir laisse le defaut
+       en place chez ceux qui l'ont deja subi.
 
-       Un établissement qui porte une dette reste, lui, même sans compte : le
-       contrôle de cohérence « Crédit sans bien » a besoin de le nommer, et
+       Un etablissement qui porte une dette reste, lui, meme sans compte : le
+       controle de coherence "Credit sans bien" a besoin de le nommer, et
        cette dette se soustrait toujours du patrimoine net. La supprimer ici
        effacerait un chiffre au lieu de le signaler.
 
@@ -1964,7 +1964,7 @@ const Store = {
     /* Le lien credit -> bien, pour les etats d'avant.
 
        Un etablissement qui ne tient qu'UN bien ne laisse aucun doute : tous ses
-       credits le financent, et poser le lien ne change aucun chiffre — c'est
+       credits le financent, et poser le lien ne change aucun chiffre -- c'est
        deja ce que le repli de lecture rend. Des qu'il en tient deux, on ne
        devine pas : le lien reste vide, `creditsARattacher()` les nomme, et
        l'ecran demande. Rattacher au hasard mettrait 180 000 EUR de dette sur un
@@ -1986,7 +1986,7 @@ const Store = {
     refreshAccounts();
   },
 
-  /* --- migration du champ « category » vers classe d'actif + role -------
+  /* --- migration du champ "category" vers classe d'actif + role -------
      Idempotente de deux facons : elle sort tout de suite si le JSON porte
      deja la bonne version de schema, et la conversion ligne par ligne ne
      s'applique qu'aux lignes qui portent encore l'ancien champ. Relancer la
@@ -2057,7 +2057,7 @@ const Store = {
   },
 
   migrerModele(s) {
-    if (Array.isArray(s.comptes)) return;        // déjà migré
+    if (Array.isArray(s.comptes)) return;        // deja migre
     s.etabs = [];
     s.comptes = [];
     const slug = nom => String(nom).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'etab';
@@ -2070,7 +2070,7 @@ const Store = {
     const infos = s.accountInfo || {};
 
     for (const a of s.accounts) {
-      if (a.role === 'cash' || a.role === 'margin') continue;   // absorbés plus bas
+      if (a.role === 'cash' || a.role === 'margin') continue;   // absorbes plus bas
       const e = etabDe(a.broker);
       const i = infos[a.id] || {};
       let type = a.type;
@@ -2107,7 +2107,7 @@ const Store = {
       const memeEtab = etabDe(a.broker).id;
       const cible = s.comptes.find(c => c.etabId === memeEtab && c.type === a.type && c.statut === 'ouvert');
       if (cible && montant) cible.cash.push({ montant, affectation: 'investir' });
-      s.now[a.id] = 0;                          // l'argent a déménagé
+      s.now[a.id] = 0;                          // l'argent a demenage
     }
 
     for (const a of s.accounts.filter(x => x.role === 'margin')) {
@@ -2122,7 +2122,7 @@ const Store = {
       /* Le taux, l'assurance et le capital emprunte suivent quand le compte les
          declare. Sans eux, un pret migre n'avait aucun taux : la projection ne
          pouvait pas rejouer son amortissement, et la cloche ne pouvait pas
-         proposer un capital restant du a jour — les deux mecanismes existaient
+         proposer un capital restant du a jour -- les deux mecanismes existaient
          et ne servaient a rien sur la seule dette du jeu de demonstration.
 
          Copies un a un et non par etalement : une dette ne doit pas heriter des
@@ -2159,7 +2159,7 @@ const Store = {
       if (this._undo.length > UNDO_LIMIT) this._undo.shift();
       this._lastPush = now;
     }
-    /* L'HORODATAGE DIT « QUELQU'UN A DECIDE QUELQUE CHOSE ICI », ET RIEN
+    /* L'HORODATAGE DIT "QUELQU'UN A DECIDE QUELQUE CHOSE ICI", ET RIEN
        D'AUTRE. Il arbitre les conflits de synchro : le poser, c'est affirmer
        que cet appareil porte une intention que les autres n'ont pas.
 
@@ -2177,7 +2177,7 @@ const Store = {
     /* UN ECHEC D'ECRITURE NE PEUT PAS RESTER SILENCIEUX.
 
        Il ne l'etait qu'a moitie : `flashSaved()` vit dans le `try`, donc
-       « Sauvegardé ✓ » ne s'affichait pas a tort. Mais rien ne s'affichait non
+       "Sauvegarde U+2713" ne s'affichait pas a tort. Mais rien ne s'affichait non
        plus. Quota plein, navigation privee restrictive, stockage refuse par le
        navigateur : la modification vivait en memoire, l'ecran ne disait rien, et
        elle disparaissait au rechargement. Le pire des silences est celui qui
@@ -2197,21 +2197,21 @@ const Store = {
       this.signalerEchecEcriture();
     }
 
-    /* Le cloud reçoit tout de suite, sauf pendant une frappe.
+    /* Le cloud recoit tout de suite, sauf pendant une frappe.
 
-       C'était l'inverse : chaque `save()` armait un minuteur, donc un clic sur
-       « Enregistrer » attendait deux secondes et demie avant de partir. Le geste
-       le plus explicite de l'application — celui par lequel on dit « c'est
-       bon » — était traité comme une frappe au clavier, et c'est pendant cette
-       attente que l'écran se verrouillait.
+       C'etait l'inverse : chaque `save()` armait un minuteur, donc un clic sur
+       "Enregistrer" attendait deux secondes et demie avant de partir. Le geste
+       le plus explicite de l'application -- celui par lequel on dit "c'est
+       bon" -- etait traite comme une frappe au clavier, et c'est pendant cette
+       attente que l'ecran se verrouillait.
 
        Le regroupement garde sa raison, mais elle ne vaut que pour la saisie
-       caractère par caractère : taper « 12500 » produit cinq écritures, et
-       Cloudflare KV n'accepte qu'une écriture par seconde sur une même clé. Les
-       deux écouteurs de frappe passent donc `differe`, et eux seuls.
+       caractere par caractere : taper "12500" produit cinq ecritures, et
+       Cloudflare KV n'accepte qu'une ecriture par seconde sur une meme cle. Les
+       deux ecouteurs de frappe passent donc `differe`, et eux seuls.
 
-       Le défaut est ainsi le comportement sûr, et le regroupement devient une
-       exception qu'on demande là où elle se justifie. */
+       Le defaut est ainsi le comportement sur, et le regroupement devient une
+       exception qu'on demande la ou elle se justifie. */
     /* Verrouille, rien ne part en ligne non plus : l'etat en memoire est la
        graine, et l'envoyer remplacerait la vraie version en ligne. La
        suspension, elle, se garde dans l'envoi meme (`envoiSuspendu`), parce

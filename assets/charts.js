@@ -28,20 +28,20 @@ const Charts = (() => {
 
      Le souvenir vit ici et non chez l'appelant. `monterEvolution()` aurait pu
      garder les points precedents dans une variable de module, mais il aurait
-     fallu qu'il sache aussi l'echelle, le tableau des bandes et leur ordre —
+     fallu qu'il sache aussi l'echelle, le tableau des bandes et leur ordre --
      soit la moitie de l'etat interne du graphique, recopiee dans la vue. La
-     vue dit « anime cette transition », le graphique sait d'ou il vient.
+     vue dit "anime cette transition", le graphique sait d'ou il vient.
 
      **Range par identifiant, et surtout pas par element.** Une `WeakMap` clefee
      sur le noeud etait le premier reflexe, et elle ne retenait rien : `render()`
      reecrit le `innerHTML` de la vue entiere, donc le `<div id="chartEvo">` du
      rendu suivant est un AUTRE noeud. La clef n'existait plus au moment de la
      lire, `get()` rendait `undefined`, et la transition se posait d'un coup sans
-     erreur ni message — mesuree a l'image pres, elle etait deja arrivee a 13 ms.
+     erreur ni message -- mesuree a l'image pres, elle etait deja arrivee a 13 ms.
      Un conteneur sans identifiant ne se souvient donc de rien, et n'anime pas :
      c'est le cas de tous les graphiques sauf celui-ci.
 
-     Ce que ca retient est minuscule — sept tableaux d'une douzaine de nombres —
+     Ce que ca retient est minuscule -- sept tableaux d'une douzaine de nombres --
      et jamais un noeud du DOM, donc rien qui empeche une page de se liberer. */
   const dernierTrace = new Map();
   const cleTrace = el => el.id || null;
@@ -53,7 +53,7 @@ const Charts = (() => {
      choisi de ne pas rendre. Sans cette garde, chaque graphique lisait
      `el.clientWidth` sur `null` et l'exception remontait jusqu'a `render()` :
      l'ecran restait a moitie peint. Le cas se produit des qu'une vue masque une
-     carte selon l'etat — un premier lancement, par exemple, ou aucune des six
+     carte selon l'etat -- un premier lancement, par exemple, ou aucune des six
      cartes de l'accueil n'a de quoi tracer quoi que ce soit.
 
      Un montage silencieux plutot qu'un appelant qui verifie : il y a une
@@ -82,7 +82,7 @@ const Charts = (() => {
   /* Toutes les infobulles des graphiques, pour pouvoir les refermer d'ailleurs.
 
      Les six graphiques cachaient la leur sur `mouseleave`. Cet evenement
-     n'existe pas au doigt : rien ne « quitte » l'ecran quand on leve le doigt,
+     n'existe pas au doigt : rien ne "quitte" l'ecran quand on leve le doigt,
      et l'infobulle restait donc collee jusqu'au prochain rendu de la page. Sur
      telephone, elle recouvrait la moitie de la courbe sans aucun moyen de la
      faire partir.
@@ -175,7 +175,7 @@ const Charts = (() => {
     /* `pointercancel` ne ferme pas une infobulle deja ouverte.
 
        Le graphique porte `touch-action: pan-y`, donc le navigateur
-       annule le pointeur des qu'il reclame le geste — l'infobulle partait au
+       annule le pointeur des qu'il reclame le geste -- l'infobulle partait au
        moindre tremblement, alors qu'on tenait le doigt en place pour lire.
 
        Tant qu'elle n'est pas ouverte, en revanche, l'annulation est le signal
@@ -205,8 +205,8 @@ const Charts = (() => {
      sur l'une d'elles.
 
      `niceTicks` part de zero et monte : c'est tout ce qu'il faut tant qu'aucun
-     total n'est negatif. Un patrimoine net peut l'etre — un achat recent finance
-     a credit — et l'aire empilee se dessinait alors sous le cadre, invisible,
+     total n'est negatif. Un patrimoine net peut l'etre -- un achat recent finance
+     a credit -- et l'aire empilee se dessinait alors sous le cadre, invisible,
      avec un axe qui commencait a zero au-dessus de la courbe.
 
      Quand le minimum est positif ou nul, cette fonction rend exactement ce que
@@ -256,11 +256,11 @@ const Charts = (() => {
   }
 
   /* Le compact d'axe suit la devise du profil, et le signe se place comme la
-     langue le veut : `Intl` met « 125 k € » en francais et « €125K » en
+     langue le veut : `Intl` met "125 k EUR" en francais et "EUR125K" en
      anglais. On lui demande donc de formater l'unite de millier elle-meme,
      plutot que de coller un signe a la main du cote ou il ne va pas. */
   const kEur = v => {
-    if (masqueActif()) return '•••';   // les axes chiffrés trahiraient le total
+    if (masqueActif()) return '•••';   // les axes chiffres trahiraient le total
     const a = Math.abs(v);
     const dev = { style: 'currency', currency: deviseBase(), currencyDisplay: 'narrowSymbol',
                   maximumFractionDigits: a >= 1000 ? 1 : 0 };
@@ -295,7 +295,7 @@ const Charts = (() => {
     mount(el, () => {
       /* `bande: { min, max }` : deux cles a lire sur chaque point, tracees en
          zone translucide derriere les bandes. Sert aux scenarios de la
-         Projection — le meme calcul a deux points de rendement d'ecart. Une
+         Projection -- le meme calcul a deux points de rendement d'ecart. Une
          courbe unique a l'air d'une promesse ; la bande dit l'incertitude
          sans un mot. */
       const { points, series, guide, bande } = opts;
@@ -332,7 +332,7 @@ const Charts = (() => {
          image par frame, avec d'autres valeurs et une autre echelle : deux
          ecritures du meme empilement auraient fini par ne plus empiler pareil,
          et le defaut ne se verrait que pendant le demi-seconde de la
-         transition — donc jamais vraiment.
+         transition -- donc jamais vraiment.
 
          `valeur(i, cle)` plutot que les points directement : c'est le seul
          point ou l'animation differe, elle interpole entre deux etats. `topC`
@@ -363,7 +363,7 @@ const Charts = (() => {
       series.forEach((sr, k) => {
         const b = geo.bandes[k];
         /* `data-bande` : l'animation retrouve la bande de chaque poche sans
-           compter les enfants, ce qu'un trait absent fausserait — une bande
+           compter les enfants, ce qu'un trait absent fausserait -- une bande
            trop mince en pose deux de moins que sa voisine. */
         const trait = b.epaisseur >= HAUTEUR_TRAIT
           ? `<polyline points="${b.haut}" fill="none" stroke="${c.surface}" stroke-width="2"
@@ -542,7 +542,7 @@ const Charts = (() => {
 
          Reste a ne pas poser le nouveau dessin d'un coup. Le balayage de gauche
          a droite existe deja pour l'arrivee sur la vue : c'est le meme geste,
-         dans le sens du temps, et il ne raconte rien de faux — il ne pretend pas
+         dans le sens du temps, et il ne raconte rien de faux -- il ne pretend pas
          qu'une valeur s'est deplacee, il decouvre une periode.
 
          Plus court qu'a l'arrivee, et sans retard : ici on vient d'appuyer sur
@@ -553,7 +553,7 @@ const Charts = (() => {
         if (!trace) return;
         trace.classList.add('chart-rejoue');
         /* LA CLASSE SE RETIRE, ET PAR DEUX CHEMINS. Sans retrait, un second
-           changement de plage ne rejouerait rien — la classe serait deja la.
+           changement de plage ne rejouerait rien -- la classe serait deja la.
            Et `animationend` n'arrive pas toujours : un onglet en arriere-plan ne
            fait pas avancer ses animations, et l'evenement n'est jamais emis. Le
            minuteur est donc la deuxieme porte, un peu apres la duree declaree. */
@@ -581,8 +581,8 @@ const Charts = (() => {
            les dates. Les applications de courtage le font toutes, et c'est la
            moitie de la sensation.
 
-           Au changement d'index seulement — un tic par image donnerait une
-           vibration continue — et jamais a la souris, ou il n'y a rien a sentir
+           Au changement d'index seulement -- un tic par image donnerait une
+           vibration continue -- et jamais a la souris, ou il n'y a rien a sentir
            et ou `navigator.vibrate` ferait trembler un telephone pose a cote. */
         if (i !== iPrecedent) {
           if (iPrecedent !== null && ev.pointerType === 'touch') retourHaptique();
@@ -604,11 +604,11 @@ const Charts = (() => {
         /* Une bande a zero sur ce mois-la ne se dit pas. `seriesUtiles()` garde
            une serie des qu'elle porte quelque chose QUELQUE PART, ce qui est
            juste pour la legende : sans cela une poche disparaitrait de la pile
-           le mois ou elle se vide. Mais point par point, « Capital garanti 0 € »
+           le mois ou elle se vide. Mais point par point, "Capital garanti 0 EUR"
            sur douze mois est une ligne qui n'apprend rien et qui fait douter,
            l'infobulle du mois dit ce qu'il y avait ce mois-la, et rien n'y
            etait. Une poche absente n'y entre donc pas, et elle n'y entre pas
-           davantage pour montrer « 0,0 % ». */
+           davantage pour montrer "0,0 %". */
         const lignes = series.filter(sr => Math.abs(Number(p[sr.key]) || 0) > 0.005);
 
         /* --- LE POIDS DE CHAQUE POCHE DANS LE TOTAL DE CETTE DATE ------------
@@ -623,7 +623,7 @@ const Charts = (() => {
            UN POURCENTAGE N'EXISTE QUE SUR UNE BASE STRICTEMENT POSITIVE. C'est
            la regle du projet, celle que `deltas()` et `poidsPoches()` appliquent
            deja. Un total nul diviserait par zero ; un patrimoine net negatif
-           retournerait tous les signes, et « 43 % » sur une base de -20 000 ne
+           retournerait tous les signes, et "43 %" sur une base de -20 000 ne
            veut rien dire. Dans ces deux cas la colonne ne parait pas du tout et
            l'infobulle redevient celle d'avant : c'est ce que font les six autres
            endroits de l'application ou une part indisponible ne s'ecrit pas.
@@ -634,7 +634,7 @@ const Charts = (() => {
            telle quelle. La masquer ferait un total qui ne vaudrait plus la somme
            de ses parts, et c'est la regle cardinale de ce projet.
 
-           LA LIGNE TOTAL DIT « 100 % » SANS DECIMALE, et les autres en portent
+           LA LIGNE TOTAL DIT "100 %" SANS DECIMALE, et les autres en portent
            une. Ce n'est pas une incoherence : cent n'est pas une mesure arrondie
            ici, c'est la definition de la base. Les lignes, elles, peuvent
            totaliser 99,9 ou 100,1 apres arrondi, et rien ne corrige la derniere
@@ -659,7 +659,7 @@ const Charts = (() => {
         tip.style.top = '8px';
       }
       /* Evenements pointeur et non souris : au doigt, `mousemove` est bien
-         synthetise a l'appui — l'infobulle apparaissait donc — mais aucun
+         synthetise a l'appui -- l'infobulle apparaissait donc -- mais aucun
          `mouseleave` ne suit, et elle ne partait plus. Ici l'appui montre, le
          glissement suit le doigt, et lever la main la referme.
 
@@ -682,10 +682,10 @@ const Charts = (() => {
 
          Car ce delai etait un `setTimeout` que rien n'annulait. Deux appuis
          rapproches, et le minuteur du premier fermait l'infobulle du second, en
-         plein milieu — d'ou « la plupart du temps », qui est la signature d'un
+         plein milieu -- d'ou "la plupart du temps", qui est la signature d'un
          minuteur en retard et non d'une regle. Le supprimer regle les deux d'un
          coup : plus de disparition inexpliquee, et le geste devient celui qu'on
-         attend — ça s'affiche tant que le doigt est la, ça part quand il se leve.
+         attend -- ca s'affiche tant que le doigt est la, ca part quand il se leve.
 
          Le minuteur d'armement, lui, est annule partout : a la levee, a la
          sortie, a l'annulation du pointeur et au debut du geste suivant. C'est
@@ -697,12 +697,12 @@ const Charts = (() => {
   /* LE CENTRE SAIT PASSER A LA LIGNE, et c'est au dessin de le savoir.
 
      Un `<text>` SVG ne se replie pas : un libelle plus large que le trou sort
-     de l'anneau et se lit par-dessus les tranches. « Tes investissements de
-     marche » debordait des deux cotes.
+     de l'anneau et se lit par-dessus les tranches. "Tes investissements de
+     marche" debordait des deux cotes.
 
      La coupe se fait a l'espace le PLUS PROCHE DU MILIEU, jamais au premier qui
-     deborde : celui-la laisserait « Tes » seul sur une ligne au-dessus de tout
-     le reste. Deux lignes au plus — au-dela, le centre mangerait l'anneau — et
+     deborde : celui-la laisserait "Tes" seul sur une ligne au-dessus de tout
+     le reste. Deux lignes au plus -- au-dela, le centre mangerait l'anneau -- et
      aucun mot n'est coupe : un nom tronque ne dit plus ce qu'il nomme, mieux
      vaut une ligne un peu large qu'un mot en morceaux.
 
@@ -799,8 +799,8 @@ const Charts = (() => {
 
          Jamais en meme temps que la transition de perimetre : celle-ci part des
          montants d'avant, un remplissage partirait de zero, et les deux se
-         disputeraient les memes arcs. Le cas ne se presente pas — changer de
-         perimetre n'est pas arriver sur la vue — mais l'ecrire vaut mieux que
+         disputeraient les memes arcs. Le cas ne se presente pas -- changer de
+         perimetre n'est pas arriver sur la vue -- mais l'ecrire vaut mieux que
          le supposer. */
       if (entree === null) entree = !!(el.closest && el.closest('.vue-entre, .angle-entre'));
       if (entree && !anime && !mouvementRefuse()) remplir();
@@ -1010,7 +1010,7 @@ const Charts = (() => {
           /* Le haut suit la ligne survolee, et c'est la seule infobulle des
              graphiques dans ce cas : les autres s'epinglent en tete, donc rien
              ne pouvait les faire sortir. Celle-ci n'avait aucune borne basse, et
-             sur les dernieres lignes elle depassait sa carte — les deux
+             sur les dernieres lignes elle depassait sa carte -- les deux
              dernieres valeurs, le montant et la part, tombaient hors du cadre.
              Elle est posee en absolu dans le conteneur du graphique, donc c'est
              la hauteur de ce conteneur qui la retient.
@@ -1269,15 +1269,15 @@ const Charts = (() => {
          Le cadrage sur min/max donne toujours toute la hauteur a l'ecart
          existant, quel qu'il soit. Mesure faite sur le trace : `[100 000,
          110 000]` et `[100 000, 100 012]` rendent exactement le meme dessin,
-         « 0,32 200,4 ». Douze euros de mouvement se lisaient donc comme dix
-         mille, et c'est sur deux points — le cas de qui commence — que le
+         "0,32 200,4". Douze euros de mouvement se lisaient donc comme dix
+         mille, et c'est sur deux points -- le cas de qui commence -- que le
          malentendu est le plus fort, puisqu'aucune forme ne vient le nuancer.
 
          Sous un demi pour cent du niveau, l'echelle s'ouvre donc a ce demi
          pour cent AUTOUR DU MILIEU. La ligne ne ment plus dans les deux sens :
          un patrimoine immobile se pose au milieu du cadre au lieu de se coller
-         au bord bas — `(max - min) || 1` envoyait toutes les valeurs egales sur
-         la meme ligne, celle du plancher — et un mouvement negligeable reste
+         au bord bas -- `(max - min) || 1` envoyait toutes les valeurs egales sur
+         la meme ligne, celle du plancher -- et un mouvement negligeable reste
          visiblement negligeable. Rien n'est cache pour autant : le montant
          exact et son pourcentage sont ecrits juste a cote.
 
@@ -1290,7 +1290,7 @@ const Charts = (() => {
          inventee ; mais lier l'encre au drapeau donnait pire, et c'est une
          mesure au seuil qui l'a montre : a +500 sur 100 000, l'ecart passe tout
          juste sous le plancher, l'echelle s'ouvre a peine et le trait monte
-         donc de presque toute la hauteur — en gris. Une pente franche peinte
+         donc de presque toute la hauteur -- en gris. Une pente franche peinte
          comme une ligne morte.
 
          Le critere est donc geometrique et se suffit : on mesure ce que le
@@ -1338,7 +1338,7 @@ const Charts = (() => {
         curseur.setAttribute('cy', y(values[i]));
         /* LA DATE AU-DESSUS, LE MONTANT EN DESSOUS. En ligne, separes d'un point
            median, les deux se disputaient la meme lecture et c'est la date qui
-           gagnait — elle finissait la phrase. Empiles, l'oeil prend le montant
+           gagnait -- elle finissait la phrase. Empiles, l'oeil prend le montant
            d'un coup et la date le situe. `tt-head` est le meme intitule que la
            bulle de la courbe d'evolution : petites capitales, encre secondaire,
            aucune couleur nouvelle. */
@@ -1369,13 +1369,13 @@ const Charts = (() => {
       /* Meme regle que la courbe d'evolution, et pour les memes raisons : le doigt
          garde la main sur toute la hauteur, un appui qui commence un defilement
          n'ouvre rien, et ce qui ferme est sa levee, sans minuteur. Celui qui
-         vivait ici — 1 200 ms, jamais annule — fermait l'infobulle du deuxieme
+         vivait ici -- 1 200 ms, jamais annule -- fermait l'infobulle du deuxieme
          appui avec le retard du premier.
 
-         Cable sur le `svg` et non sur `el`, contrairement aux `on…` qui
+         Cable sur le `svg` et non sur `el`, contrairement aux `on...` qui
          vivaient ici : `mount` rejoue ce rendu a chaque redimensionnement, et
          des `addEventListener` poses sur le conteneur, qui lui survit, se
-         seraient empiles a chaque fois. Les proprietes `on…` s'ecrasaient et
+         seraient empiles a chaque fois. Les proprietes `on...` s'ecrasaient et
          masquaient donc ce piege. Le `svg`, lui, est refait a chaque rendu par
          l'`innerHTML` ci-dessus : rien ne s'empile, et c'est deja ce que fait
          la courbe d'evolution. */

@@ -6,8 +6,8 @@
  */
 
 /* Deux participations dans la meme societe s'ecrivent souvent sous deux noms :
-   une premiere levee, puis une seconde, soit deux lignes « X shares » et
-   « X shares 2 ». Chacune reste une ligne a part dans sa fiche, dans ses
+   une premiere levee, puis une seconde, soit deux lignes "X shares" et
+   "X shares 2". Chacune reste une ligne a part dans sa fiche, dans ses
    operations et dans les donnees enregistrees : elles n'ont ni le meme prix ni
    la meme date. Mais l'analyse de concentration mesure une exposition, et
    l'exposition a une societe est la somme de ce qu'on y detient.
@@ -26,8 +26,8 @@ const NOM_SOCIETE_MAX = 40;
 const societesDeclarees = () => Store.state.societes || [];
 const societeParId = id => (id && societesDeclarees().find(s => s.id === id)) || null;
 
-/* UNE PARTICIPATION EST UNE PART DE CAPITAL, et seul le type « Parts de
-   societe » en porte. La classe `nonCote` ne suffit pas : elle range aussi les
+/* UNE PARTICIPATION EST UNE PART DE CAPITAL, et seul le type "Parts de
+   societe" en porte. La classe `nonCote` ne suffit pas : elle range aussi les
    fonds non cotes, dont la societe de gestion porte des dizaines de lignes, et
    les prets participatifs, qui sont une creance et non du capital. Leur donner
    une societe sous-jacente dirait une exposition qui n'existe pas. */
@@ -304,7 +304,7 @@ function dissocierParticipation(cle) {
   return true;
 }
 
-/* « Meme societe » sur deux entites. Deux lignes seules forment une societe
+/* "Meme societe" sur deux entites. Deux lignes seules forment une societe
    nouvelle, sous le nom donne ; une ligne rejoint la societe de l'autre ; deux
    societes n'en font plus qu'une, celle de `a`, sous son nom. L'ecran demande
    une confirmation qui nomme les deux avant ce dernier cas. */

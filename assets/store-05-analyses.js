@@ -20,9 +20,9 @@ function runway() {
   const contenants = trad('comptes courants, livrets, espèces');
   /* Les libelles viennent de `MOBILISABLE_LABEL`, ils ne se reecrivent pas ici.
 
-     Cette carte et « Par disponibilite » decoupent le meme argent selon les
-     memes cinq paliers, et chacune avait sa propre liste de mots : « En
-     quelques jours » d'un cote, « Disponible sous quelques jours » de l'autre,
+     Cette carte et "Par disponibilite" decoupent le meme argent selon les
+     memes cinq paliers, et chacune avait sa propre liste de mots : "En
+     quelques jours" d'un cote, "Disponible sous quelques jours" de l'autre,
      pour la meme poche. Deux ecrans qu'on ne regarde pas en meme temps, donc
      personne ne pouvait le voir. Une liste se derive, elle ne se recopie pas.
 
@@ -81,7 +81,7 @@ function runway() {
    qu'on saisit tous les mois les deux coincident, et c'est pour ca que le
    defaut a tenu. Un mois saute, et ils divergent : un releve de janvier a
    100 000 et un d'avril a 106 000 font UN intervalle de +6 000, donc une
-   « moyenne mensuelle » de 6 000 EUR pour un rythme reel de 2 000. Le chiffre
+   "moyenne mensuelle" de 6 000 EUR pour un rythme reel de 2 000. Le chiffre
    sert de rythme d'accumulation, il nourrit la trajectoire vers l'objectif et
    l'ecart au budget : trois lectures triplees d'un coup, du cote flatteur.
 
@@ -90,9 +90,9 @@ function runway() {
    mensuelles, datees du premier du mois, et compter en jours donnerait une
    precision que la donnee n'a pas. Un intervalle vaut au moins un mois.
 
-   `count` reste le nombre d'ecarts mesures : c'est lui que « mois en hausse »
+   `count` reste le nombre d'ecarts mesures : c'est lui que "mois en hausse"
    compte, et deux releves separes de trois mois ne donnent qu'une hausse
-   observee — les deux mois du milieu, personne ne sait. */
+   observee -- les deux mois du milieu, personne ne sait. */
 function statsRythme(points) {
   const n = points.length;
   const somme = points.reduce((s, p) => s + p.delta, 0);
@@ -104,7 +104,7 @@ function statsRythme(points) {
      Un point porte l'ecart entre deux releves, et sa date est celle du second :
      l'intervalle qu'il couvre commence donc au releve d'avant. Borner la fenetre
      a la date du premier point laissait dehors tout ce qui etait entre pendant
-     son propre intervalle — une succession du 15 mars ne comptait pas dans le
+     son propre intervalle -- une succession du 15 mars ne comptait pas dans le
      point du 30 avril, et le rythme continuait de la prendre pour de l'epargne.
      C'est `depuis` que chaque point porte pour cela. */
   const debut = n ? String(points[0].depuis || points[0].date) : null;
@@ -124,13 +124,13 @@ function statsRythme(points) {
 
 /* Combien de mois separent deux releves, au sens du calendrier.
 
-   Les dates sont des clefs de mois — le premier du mois pour une ligne du
-   calendrier — et la difference se lit donc sur l'annee et le mois. Compter les
+   Les dates sont des clefs de mois -- le premier du mois pour une ligne du
+   calendrier -- et la difference se lit donc sur l'annee et le mois. Compter les
    jours donnerait 89 ou 92 selon les mois traverses pour la meme reponse
-   « trois mois », une precision que la donnee n'a pas.
+   "trois mois", une precision que la donnee n'a pas.
 
-   Un minimum d'un mois : deux photos du meme mois — une cloture au 31/12 a cote
-   du releve de decembre — ne doivent pas diviser par zero. `monthlyPace` ecarte
+   Un minimum d'un mois : deux photos du meme mois -- une cloture au 31/12 a cote
+   du releve de decembre -- ne doivent pas diviser par zero. `monthlyPace` ecarte
    deja ce doublon, la borne est une ceinture. */
 function moisEntre(a, b) {
   const [ya, ma] = String(a).slice(0, 7).split('-').map(Number);
@@ -588,9 +588,9 @@ function sellPosition({ index, qty, price, fxSell, cashAccount, cashPart, date, 
    POURQUOI CETTE PORTE EXISTE. Une ligne cotee se vendait ; tout le reste ne
    pouvait que s'archiver, et archiver ne dit rien de l'argent. La valeur
    quittait le patrimoine, le produit encaisse se retapait a la main en rentree,
-   et la plus-value realisee n'entrait nulle part — ni au journal, ni dans la
-   performance. Sur la courbe, la baisse tombait dans « ce qui ne vient pas du
-   budget », c'est-a-dire dans la case de ce qu'on n'explique pas. Un total
+   et la plus-value realisee n'entrait nulle part -- ni au journal, ni dans la
+   performance. Sur la courbe, la baisse tombait dans "ce qui ne vient pas du
+   budget", c'est-a-dire dans la case de ce qu'on n'explique pas. Un total
    egale la somme de ses parts, et une sortie de quinze mille euros ne peut pas
    etre une difference inexpliquee.
 
@@ -599,7 +599,7 @@ function sellPosition({ index, qty, price, fxSell, cashAccount, cashPart, date, 
    c'est l'evenement dont on veut le plus garder la trace, et il n'avait rien.
 
    TROIS NATURES, UNE SEULE MECANIQUE. Ce qui change est le mot et ce que le
-   detenteur sait dire ; le calcul, lui, ne change jamais — un produit encaisse,
+   detenteur sait dire ; le calcul, lui, ne change jamais -- un produit encaisse,
    un investi qui s'en va, la difference au journal.
 
      `vente`         des parts de societe, un fonds non cote, un bien detenu en
@@ -616,7 +616,7 @@ function sellPosition({ index, qty, price, fxSell, cashAccount, cashPart, date, 
 
    ET C'EST LE MEME JOURNAL QUE LES VENTES DE TITRES. Deux journaux auraient
    demande deux ecrans, deux totaux annuels et deux facons de compter une
-   plus-value — donc, tot ou tard, deux chiffres qui se contredisent. La
+   plus-value -- donc, tot ou tard, deux chiffres qui se contredisent. La
    difference se dit par un mot porte sur l'enregistrement, pas par une seconde
    liste. */
 function apercuCession(l, t, { parts, produit, capital } = {}) {
@@ -660,7 +660,7 @@ function apercuCession(l, t, { parts, produit, capital } = {}) {
 /* Applique la cession : journalise, credite le cash, reduit ou retire la ligne.
 
    L'ORDRE N'EST PAS LIBRE. On lit la ligne AVANT de la reduire, et le journal
-   emporte de quoi tout defaire — pour une cession totale, la ligne elle-meme.
+   emporte de quoi tout defaire -- pour une cession totale, la ligne elle-meme.
    C'est ce que fait deja `sellPosition()` avec la quantite et le prix de
    revient : un enregistrement qui ne porte pas de quoi s'annuler oblige a
    deviner, et deviner un patrimoine ne se fait pas. */
@@ -1050,15 +1050,15 @@ function annulerVenteBienSansVerifier(i, v) {
 
 /*   C'est la reponse au chantier note dans ETAT.md : noter une vente sur un
    PEA cloture demandait de recreer le compte, la ligne, de vendre, puis
-   d'archiver — quatre gestes pour fabriquer un fait passe. Ici la vente
+   d'archiver -- quatre gestes pour fabriquer un fait passe. Ici la vente
    entre au journal telle qu'on s'en souvient, et n'ecrit RIEN d'autre :
    pas de position reduite (on ne la detient plus), pas de cash credite
    (il est arrive sur le compte il y a des annees), pas un euro de
-   patrimoine — un test le verifie.
+   patrimoine -- un test le verifie.
 
    Elle porte `declaree: true` : l'ecran la marque, et l'annulation sait
-   qu'elle n'a rien a rendre. Deux montants saisis — l'encaisse et le
-   resultat — et le prix de revient s'en derive : c'est ce qu'on sait
+   qu'elle n'a rien a rendre. Deux montants saisis -- l'encaisse et le
+   resultat -- et le prix de revient s'en derive : c'est ce qu'on sait
    encore d'une vente d'il y a trois ans. */
 function declarerVente({ date, name, gross, realised, note }) {
   const erreur = verifierDeclaration({ date, name, gross, realised });
@@ -1090,7 +1090,7 @@ function annulerVente(i) {
 
   /* Une cession de non cote ne rend pas des titres : elle rend une ligne de
      placement, ou une part de celle-ci. Derouler la suite pousserait une
-     position fantome dans `positions` — un actif non cote apparaissant comme
+     position fantome dans `positions` -- un actif non cote apparaissant comme
      une ligne de titres cotee, avec un prix et un cours. */
   const erreur = verifierAnnulation(i);
   if (erreur) return { erreur };
@@ -1203,10 +1203,10 @@ function rangeStart(range) {
 
 /* Les totaux d'une liste de ventes, quelle qu'elle soit.
 
-   Extrait de `salesStats`, qui commençait par choisir ses ventes sur une plage
-   glissante. Le journal les choisit désormais par année, et refaire ces cinq
-   sommes à côté aurait donné deux façons de compter la même chose — celle qu'on
-   oublie de corriger finit par contredire l'autre. Le filtre reste à l'appelant,
+   Extrait de `salesStats`, qui commencait par choisir ses ventes sur une plage
+   glissante. Le journal les choisit desormais par annee, et refaire ces cinq
+   sommes a cote aurait donne deux facons de compter la meme chose -- celle qu'on
+   oublie de corriger finit par contredire l'autre. Le filtre reste a l'appelant,
    le calcul est ici. */
 const estNombre = x => x !== null && x !== undefined && x !== '' && isFinite(Number(x));
 const encaisseNetVente = v => (v && v.typeActif === 'bien' ? num(v.encaisse) : num(v && v.gross));
@@ -1241,7 +1241,7 @@ function statsDesVentes(ventes) {
     partiel: fiables.length < ventes.length,
     gross: ventes.reduce((s, v) => s + num(v.gross), 0),
     /* `null` et non 0 : sans vente, ou sans prix de revient sur celles qui
-       existent, il n'y a pas de base. Le zero s'affichait « +0,00 % » sur une
+       existent, il n'y a pas de base. Le zero s'affichait "+0,00 %" sur une
        plage vide, ce qui affirme une performance nulle la ou il n'y a rien eu.
        La regle de la maison, deja tenue par `deltas()` : un pourcentage
        n'existe que sur une base positive, et l'ecran se contente de l'euro. */
@@ -1381,16 +1381,16 @@ function repartitionPortefeuille() {
   /* CE QU'ELLE COUVRE EST EXACTEMENT LA BASE DU PORTEFEUILLE, ni plus ni moins.
 
      `basePortefeuilleMarches()` additionne trois choses : les positions cotees,
-     les lignes manuelles des comptes de marche — un fonds d'assurance-vie n'a
-     pas de cours, il n'en est pas moins detenu — et le cash qui attend d'etre
+     les lignes manuelles des comptes de marche -- un fonds d'assurance-vie n'a
+     pas de cours, il n'en est pas moins detenu -- et le cash qui attend d'etre
      investi. N'en prendre qu'une aurait donne au meme nom deux montants sur
-     deux ecrans, ce que ce projet traque partout ailleurs : « Liquidites » a
+     deux ecrans, ce que ce projet traque partout ailleurs : "Liquidites" a
      deja valu deux choses sur deux pages, les deux totaux justes.
 
      LE CASH EST UNE PART, PAS UN OUBLI. Quelqu'un dont un cinquieme du
      portefeuille dort en attendant un point d'entree doit le VOIR sur son
      anneau : c'est une allocation, pas un detail comptable. Et il ne se fait
-     jamais absorber par « Autres » — il n'est pas une ligne plus petite que les
+     jamais absorber par "Autres" -- il n'est pas une ligne plus petite que les
      autres, c'est la part qui n'est pas investie. */
   const lignes = [
     ...Store.state.positions.map(p => ({
@@ -1485,7 +1485,7 @@ function latentPnl(ps = Store.state.positions) {
 
    Une carte a part, et jamais un total commun avec les titres cotes. La raison
    n'est pas la prudence, c'est la nature du chiffre : une plus-value cotee est
-   **constatee** — un cours l'a fixee, un tiers la publie — tandis qu'une
+   **constatee** -- un cours l'a fixee, un tiers la publie -- tandis qu'une
    plus-value non cotee est **declaree**, c'est le detenteur qui a ecrit la valeur
    du jour. Les additionner produirait une performance dont une part est une
    opinion, sans que rien ne le signale, et le jour ou une valorisation bouge de
@@ -1499,7 +1499,7 @@ function latentNonCote() {
   for (const c of comptesOuverts()) {
     for (const l of lignesDe(c)) {
       /* Les lignes de marche ont leur propre carte : `marche` les designe, et non
-         une liste de classes ecrite ici — un ETF immobilier est cote. */
+         une liste de classes ecrite ici -- un ETF immobilier est cote. */
       if (l.marche) continue;
       const invested = num(l.prixDeRevient);
       if (!(invested > 0)) continue;          // sans prix paye, aucun ecart a dire
@@ -1530,18 +1530,18 @@ function salesYears() {
 
 const PROJECTION_HORIZONS = [3, 5, 10, 15, 20];
 
-/* Horizons proposés dans la liste déroulante : les repères du tableau, puis des
-   paliers de cinq ans jusqu'à 80 — de quoi couvrir une vie d'épargne entière.
+/* Horizons proposes dans la liste deroulante : les reperes du tableau, puis des
+   paliers de cinq ans jusqu'a 80 -- de quoi couvrir une vie d'epargne entiere.
 
-   Les cinq repères en étaient exclus, au motif qu'ils figuraient déjà dans le
+   Les cinq reperes en etaient exclus, au motif qu'ils figuraient deja dans le
    tableau. Le raisonnement se tenait sur la redondance et ratait l'essentiel :
-   choisir un horizon ne désigne pas une ligne, il change toute la page — le
-   total en tête, la courbe, et la ligne mise en avant, qui suit `projHorizon`.
-   Le menu commençait donc à vingt-cinq ans, et tout le monde n'a pas
+   choisir un horizon ne designe pas une ligne, il change toute la page -- le
+   total en tete, la courbe, et la ligne mise en avant, qui suit `projHorizon`.
+   Le menu commencait donc a vingt-cinq ans, et tout le monde n'a pas
    vingt-cinq ans devant soi.
 
-   La liste se dérive des repères, elle ne les recopie pas : deux listes écrites
-   à la main pour une seule vérité finissent par se contredire, et c'est celle
+   La liste se derive des reperes, elle ne les recopie pas : deux listes ecrites
+   a la main pour une seule verite finissent par se contredire, et c'est celle
    qu'on oublie de changer qui ment. */
 const PROJECTION_CHOICES = [...new Set([
   ...PROJECTION_HORIZONS,
@@ -1550,12 +1550,12 @@ const PROJECTION_CHOICES = [...new Set([
 
 /* Trois jeux d'hypotheses nommes, et un quatrieme qui n'en est pas un.
 
-   Personne ne sait quel rendement la bourse fera. Demander « quel rendement
-   annuel pour les actifs de marche ? » a quelqu'un qui ouvre l'application, c'est
+   Personne ne sait quel rendement la bourse fera. Demander "quel rendement
+   annuel pour les actifs de marche ?" a quelqu'un qui ouvre l'application, c'est
    lui demander de deviner a notre place : il repondra au hasard, et lira ensuite
    sa reponse comme une prevision. Un scenario nomme dit exactement ce que c'est
-   — une hypothese de travail, prudente, centrale ou dynamique — et deplace la
-   question de « combien ? » a « plutot prudent ou plutot optimiste ? », a
+   -- une hypothese de travail, prudente, centrale ou dynamique -- et deplace la
+   question de "combien ?" a "plutot prudent ou plutot optimiste ?", a
    laquelle tout le monde peut repondre.
 
    Les valeurs sont NOMINALES et annuelles. L'inflation se retire ensuite, une
@@ -1564,14 +1564,14 @@ const PROJECTION_CHOICES = [...new Set([
    Le non cote reste a zero dans les trois. Une participation dans une societe ne
    progresse pas de 8 % par an parce que la bourse le fait ; sa valeur ne bouge
    qu'au prochain tour de table ou a la revente, dates qu'aucun calcul ne connait.
-   Zero ne veut pas dire « ça ne vaudra rien de plus », mais « l'application ne
-   suppose rien ». C'est le seul cote ou se tromper est sans consequence.
+   Zero ne veut pas dire "ca ne vaudra rien de plus", mais "l'application ne
+   suppose rien". C'est le seul cote ou se tromper est sans consequence.
 
    Les liquidites aussi : un livret non declare remunere ne rapporte rien, et le
    supposer gonflerait un patrimoine sans qu'on l'ait demande.
 
    Le capital garanti, lui, rapporte quelque chose de connu d'avance a un ordre
-   de grandeur pres — un fonds euros, un livret regemente. Il suit donc le
+   de grandeur pres -- un fonds euros, un livret regemente. Il suit donc le
    scenario, plus prudemment que le marche.
 
    Ces valeurs se modifient ici, et nulle part ailleurs. */
@@ -1588,7 +1588,7 @@ const SCENARIO_DEFAUT = 'central';
    L'inflation n'en fait pas partie, et ce n'est pas un oubli : aucune entree de
    SCENARIOS_PROJECTION ne la porte, elle vit dans `meta.projInflation` et se
    regle seule. La regler ne doit donc pas faire basculer en personnalise --
-   sinon quelqu'un qui passe l'inflation a 3 % quitterait « Central » sans avoir
+   sinon quelqu'un qui passe l'inflation a 3 % quitterait "Central" sans avoir
    touche a un seul rendement.
 
    Ecrire la liste a la main aurait suffi aujourd'hui, et aurait menti le jour ou
@@ -1616,13 +1616,13 @@ const PHRASE_SCENARIO = {
 
 /* D'OU viennent les taux, et non a quoi ils ressemblent. Les deux questions ont
    vecu sous un seul nom, et c'est ce qui rendait le retour impossible : remettre
-   6 % sur le marche laissait « personnalise » enfonce alors que les quatre
+   6 % sur le marche laissait "personnalise" enfonce alors que les quatre
    valeurs etaient exactement celles de Central. `detecteScenario()` repond a la
    seconde question, celle que l'ecran pose.
 
    Celle-ci decide du calcul : la table d'un scenario nomme, ou l'etat. Et la
    migration silencieuse qu'il ne faut pas faire -- un etat qui porte deja des
-   taux saisis a la main precede les scenarios. Lui appliquer « central »
+   taux saisis a la main precede les scenarios. Lui appliquer "central"
    changerait sa courbe sans qu'il ait rien demande, et c'est exactement ce
    qu'une projection ne doit jamais faire. Ces etats-la lisent donc leurs propres
    chiffres, intacts. Les autres partent sur le scenario central. */
@@ -1657,15 +1657,15 @@ function dateNaissance() {
 /* Annees completes et mois supplementaires entre deux dates.
 
    Le calcul se fait sur les composantes, jamais sur un ecart de millisecondes :
-   « 365 jours = un an » se trompe d'un jour tous les quatre ans, et « 30 jours
-   = un mois » se trompe tout le temps. On compare les annees, les mois, puis les
+   "365 jours = un an" se trompe d'un jour tous les quatre ans, et "30 jours
+   = un mois" se trompe tout le temps. On compare les annees, les mois, puis les
    jours, et on emprunte quand l'anniversaire du mois n'est pas encore passe.
 
    LE 29 FEVRIER. Quelqu'un ne d'un 29 fevrier a son anniversaire le 1er mars les
    annees non bissextiles : au 28 fevrier il lui manque un jour, donc un mois
    entier n'est pas revolu, et il a encore l'age de la veille. C'est la convention
    la plus repandue, et c'est celle qui tombe directement de la comparaison des
-   jours — aucune regle speciale a ecrire.
+   jours -- aucune regle speciale a ecrire.
 
    Rend `null` plutot que zero quand la date manque ou qu'elle est posterieure a
    la cible : un age inconnu n'est pas un age nul. */
@@ -1727,8 +1727,8 @@ function projectionSettings() {
     monthly: regle ? num(m.projMonthly) : suggestedMonthly(),
     monthlyAuto: !regle,
     rate: poches.marche,
-    /* Le rendement des « autres actifs » : crypto, metaux precieux, non cote.
-       Zero par defaut, et c'est le pivot de tout le dispositif — personne ne
+    /* Le rendement des "autres actifs" : crypto, metaux precieux, non cote.
+       Zero par defaut, et c'est le pivot de tout le dispositif -- personne ne
        voit ses chiffres bouger, l'application ne suggere aucun rendement sur ce
        qu'elle ne sait pas projeter, et le gel qu'on appliquait devient le cas
        particulier taux = 0. C'est a l'utilisateur de l'affirmer, pas a nous.
@@ -1757,7 +1757,7 @@ function repartitionVersement(s = projectionSettings()) {
   return { ...nul, [connue ? s.versementVers : 'marche']: 1 };
 }
 
-/* Versement mensuel proposé par défaut : le cash que ton budget laisse
+/* Versement mensuel propose par defaut : le cash que ton budget laisse
    vraiment, et rien d'autre.
 
    `investable` et non `theoretical` : le capital rembourse sur un credit
@@ -1771,13 +1771,13 @@ function repartitionVersement(s = projectionSettings()) {
    plus loin. `realPerMonth` mesure la VARIATION DU PATRIMOINE d'un mois sur
    l'autre : elle porte les gains de marche, la reevaluation d'un bien et le
    capital rembourse. La reinjecter comme versement mensuel faisait capitaliser
-   la croissance sur elle-meme — une hausse de marche de 900 EUR devenait
+   la croissance sur elle-meme -- une hausse de marche de 900 EUR devenait
    900 EUR verses chaque mois, qui produisaient a leur tour du rendement. La
    projection s'emballait d'autant plus que le patrimoine avait monte, ce qui est
    exactement l'inverse d'une prevision prudente.
 
-   Sans budget, la suggestion vaut donc zero, et l'ecran le dit : « aucune
-   capacite d'epargne positive connue ». Un zero annonce vaut mieux qu'un nombre
+   Sans budget, la suggestion vaut donc zero, et l'ecran le dit : "aucune
+   capacite d'epargne positive connue". Un zero annonce vaut mieux qu'un nombre
    dont personne ne peut dire d'ou il vient. `realPerMonth` reste rendu par
    `savingsReconciliation` : la carte du budget le montre comme rythme observe,
    ce qu'il est, et le compare a l'epargne theorique. */
@@ -1810,7 +1810,7 @@ function suggestedMonthly() {
    face, ou un bien qui vaut moins que son pret. C'est honnete, et ca evite
    surtout de faire fondre une dette au rythme des marches. */
 /* Les biens de valeur y rejoignent l'immobilier : une montre ne capitalise
-   pas, elle est posee — la faire fructifier au taux du non cote serait le
+   pas, elle est posee -- la faire fructifier au taux du non cote serait le
    mensonge que cette poche refuse a un compte courant. Et sans elle nulle
    part, la somme des poches de projection cessait de faire le patrimoine
    net, la regle que ce fichier teste.
@@ -1827,8 +1827,8 @@ function partPlate(t = nowTotals()) {
 
 /* La meme part, dite en deux lignes, et son total ne change pas d'un centime.
 
-   Toutes les dettes restent a plat — les faire capitaliser avec l'actif
-   qu'elles financent les ferait fondre au rythme des marches — mais elles ne
+   Toutes les dettes restent a plat -- les faire capitaliser avec l'actif
+   qu'elles financent les ferait fondre au rythme des marches -- mais elles ne
    sont pas toutes de l'immobilier. `biensNets` porte les biens detenus en
    direct moins les credits qui les financent, `autresDettes` tout le reste :
    un pret pour des parts de societe, un pret personnel, une dette sans
@@ -1845,12 +1845,12 @@ function partPlateDetail(t = nowTotals()) {
 
    Un seul taux s'appliquait a tout, et il ne decrivait qu'une partie de ce
    qu'il touchait : chez un patrimoine ou le non cote pese 38 % de la base,
-   « rendement annuel attendu » faisait capitaliser au taux des actions des
+   "rendement annuel attendu" faisait capitaliser au taux des actions des
    parts illiquides sans prix de marche, et un compte courant qui ne rapporte
    rien. Trois poches, et chacune dit ce qu'elle est.
 
    - `marche` : ce qui se cote. Les actifs de marche, la crypto, et le cash
-     « a investir » — celui-la n'est pas encore place mais il va l'etre, c'est
+     "a investir" -- celui-la n'est pas encore place mais il va l'etre, c'est
      sa definition. Les versements mensuels le rejoignent, pour la meme raison.
    - `autres` : ce qui est pose sans se coter. Le non cote, le compte courant,
      l'epargne de precaution. Un taux propre, zero par defaut.
@@ -1863,9 +1863,9 @@ function partPlateDetail(t = nowTotals()) {
 /* La valeur des metaux precieux cotes, calculee a part et seulement pour ici.
 
    `POCHE_DE_CLASSE` fait `metaux -> actions`, donc `nowByGroup().bourse` les
-   compte avec les actions. C'est juste partout ailleurs — un ETC or se vend en
+   compte avec les actions. C'est juste partout ailleurs -- un ETC or se vend en
    seance comme un ETF, et Allocation, l'autonomie financiere et l'historique en
-   dependent — et faux dans la projection, ou cela revenait a supposer 6 % l'an
+   dependent -- et faux dans la projection, ou cela revenait a supposer 6 % l'an
    sur de l'or parce qu'il se negocie sur un marche.
 
    Rien ne bouge dans les autres ecrans : cette fonction lit la classe fine, et
@@ -1873,7 +1873,7 @@ function partPlateDetail(t = nowTotals()) {
 
    Les metaux n'existent qu'en position de marche : `CLASSES_ACTIFS`, la table
    des lignes saisies a la main, n'a pas cette classe. Le drapeau `projet` est
-   teste quand meme — une position n'en porte pas aujourd'hui, et le jour ou elle
+   teste quand meme -- une position n'en porte pas aujourd'hui, et le jour ou elle
    en portera, `projetParPoche.bourse` retirerait ces euros une seconde fois. */
 function valeurMetaux() {
   const ouverts = new Set(comptesOuverts().map(c => c.id));
@@ -1890,7 +1890,7 @@ function pochesProjection(t = nowTotals()) {
   return {
     /* Chaque poche est amputee de ce qu'elle a de reserve : sans cela le total
        compterait ces euros deux fois, ici et dans `projet`. La regle de la
-       maison, litteralement — un total egale la somme de ses parts. */
+       maison, litteralement -- un total egale la somme de ses parts. */
     marche: num(t.bourse) - num(t.projetParPoche?.bourse) - metaux,
     autres: num(t.crypto) - num(t.projetParPoche?.crypto)
           + num(t.pe) - num(t.projetParPoche?.nonCote)
@@ -1913,13 +1913,13 @@ function pochesProjection(t = nowTotals()) {
    propre formule fermee d'annuite, qui faisait progresser TOUT le patrimoine
    financier au taux des actifs de marche : 10 000 EUR de non cote a 0 % et
    15 000 EUR de liquidites y rapportaient 6 % l'an. Elle annoncait donc un
-   versement plus faible que celui qu'il faut vraiment, et la phrase « il
-   faudrait verser X » contredisait la courbe affichee juste au-dessus.
+   versement plus faible que celui qu'il faut vraiment, et la phrase "il
+   faudrait verser X" contredisait la courbe affichee juste au-dessus.
    `targetReachedAt()` interpolait entre deux points annuels.
 
    Un seul noyau desormais, et les trois questions passent par lui. Une methode
-   numerique coute quelques milliers d'operations flottantes — le prix d'un seul
-   rendu — et supprime la seule chose qu'une formule fermee ne peut pas garantir
+   numerique coute quelques milliers d'operations flottantes -- le prix d'un seul
+   rendu -- et supprime la seule chose qu'une formule fermee ne peut pas garantir
    ici : dire la meme chose que la courbe. */
 
 function configProjection(opts = {}) {
@@ -1963,8 +1963,8 @@ function configProjection(opts = {}) {
 /* Les dettes que la projection sait amortir, et leur echeancier mensuel.
 
    Le capital rembourse chaque mois augmente le patrimoine net : le bien ne
-   bouge pas, la dette baisse. Ce n'est pas un versement financier — cet argent
-   n'arrive sur aucun compte — donc il ne capitalise a aucun taux. Il entre dans
+   bouge pas, la dette baisse. Ce n'est pas un versement financier -- cet argent
+   n'arrive sur aucun compte -- donc il ne capitalise a aucun taux. Il entre dans
    `contributed`, comme un euro mis de cote, et jamais dans les gains.
 
    Une dette sans taux DECLARE ou sans mensualite reste constante : sans taux on
@@ -1973,8 +1973,8 @@ function configProjection(opts = {}) {
 
    UN ZERO DECLARE EST UN TAUX. `num(d.taux)` rendait zero pour un pret familial
    a 0 % comme pour un pret dont personne n'a dit le taux, et le test `!taux`
-   confondait les deux : le pret le plus simple a projeter — pas d'interets, la
-   mensualite entiere en capital — etait le seul que la projection laissait
+   confondait les deux : le pret le plus simple a projeter -- pas d'interets, la
+   mensualite entiere en capital -- etait le seul que la projection laissait
    constant. Sa dette ne descendait jamais, et le patrimoine net de dix ans
    plus tard etait faux de tout le capital rembourse.
 
@@ -2021,7 +2021,7 @@ function moteurProjection(c) {
      Il etait ecrit a la main, et il portait donc quatre champs quand ses voisins
      en portent treize : ni `mois`, ni `plat`, ni `poches`, ni le detail des gains
      par poche. Une serie dont le premier point n'a pas la forme des suivants est
-     un piege pose pour le prochain lecteur — une infobulle qui ventile la
+     un piege pose pour le prochain lecteur -- une infobulle qui ventile la
      composition ne trouve rien a l'annee zero, et rien ne le dit avant l'ecran.
 
      `pointDe(0)` rend exactement les memes nombres : aucun mois n'a tourne, le
@@ -2081,7 +2081,7 @@ function moteurProjection(c) {
            + (garanti - misGaranti) + (liquidites - misLiquides),
       /* Un gain par poche, chacun sous le nom de sa poche. `gainsAutres`
          designait le non cote PLUS le garanti PLUS les liquidites, et la vue
-         l'affichait sous l'intitule « Rendement du non cote » : le rendement
+         l'affichait sous l'intitule "Rendement du non cote" : le rendement
          d'un fonds euros se lisait donc comme celui de parts non cotees. Quatre
          noms exacts valent mieux qu'un raccourci qui se trompe. */
       gainsMarche: marche - misMarche,
@@ -2114,7 +2114,7 @@ function jalonsProjection(points, annees) {
 }
 
 const RECHERCHE_PAS = 40;          // 40 bissections : l'intervalle est divise par 2^40
-const RECHERCHE_ANNEES_MAX = 60;   // au-dela, « attendre » n'est plus une reponse
+const RECHERCHE_ANNEES_MAX = 60;   // au-dela, "attendre" n'est plus une reponse
 const RECHERCHE_TAUX_MAX = 60;     // en % par an
 const RECHERCHE_VERSEMENT_MAX = 1e7;
 
@@ -2132,8 +2132,8 @@ function targetRequirements({ target, years, opts = {} } = {}) {
 
   /* Les poches de depart, nommees une par une : la somme du moteur, pas une
      seconde definition. Une poche renommee sans cette ligne rendait `undefined`,
-     donc NaN, donc « cible non atteignable » sur un patrimoine qui la depasse
-     deja — et rien a l'ecran pour le dire. */
+     donc NaN, donc "cible non atteignable" sur un patrimoine qui la depasse
+     deja -- et rien a l'ecran pour le dire. */
   if (base.marche + base.autres + base.garanti + base.liquidites + base.plat >= T) {
     out.reachable = true;
     return out;
@@ -2176,7 +2176,7 @@ function monthsToObjective() {
 
 function objectiveProjection() {
   const g = objectiveStatus();
-  const pace = paceRecent();          // même fenêtre que la brique Épargne
+  const pace = paceRecent();          // meme fenetre que la brique Epargne
   const rec = savingsReconciliation();
   const monthsLeft = monthsToObjective();
 
@@ -2199,14 +2199,14 @@ function objectiveProjection() {
 }
 
 /* --- ce que la cloche annonce -------------------------------------------
-   Les contrôles de cohérence, rangés par ce qui presse. Ils vivaient enterrés
-   au bas de la page Données, là où personne ne les cherchait.
+   Les controles de coherence, ranges par ce qui presse. Ils vivaient enterres
+   au bas de la page Donnees, la ou personne ne les cherchait.
 
-   Une seule source, et c'est le point : j'ai d'abord ajouté ici les deux
-   saisies en attente, avant de voir que `healthChecks` les portait déjà — deux
-   listes du même fait, dont une seule respectait « Plus tard ». Les deux
-   contrôles passent maintenant par `currentMonthPending` et
-   `depensesEnAttente`, qui décident seuls qu'une saisie réclame quelque chose.
+   Une seule source, et c'est le point : j'ai d'abord ajoute ici les deux
+   saisies en attente, avant de voir que `healthChecks` les portait deja -- deux
+   listes du meme fait, dont une seule respectait "Plus tard". Les deux
+   controles passent maintenant par `currentMonthPending` et
+   `depensesEnAttente`, qui decident seuls qu'une saisie reclame quelque chose.
 
    `action` d'abord : ce sur quoi on peut agir tout de suite, avant les chiffres
    qu'il faut comprendre pour corriger. */
@@ -2297,7 +2297,7 @@ const SOLDE_VIEUX_JOURS = 31;
    en plus `ouvre`, la fenetre de sa ligne par son rang. Un capital restant du va
    sur la fiche du compte qu'il finance quand le lien existe, sur celle de
    l'etablissement sinon. `date` vaut null quand la valeur n'a pas de date, et
-   c'est un etat a part entiere : « sans date » ne se confond pas avec « vieux ».
+   c'est un etat a part entiere : "sans date" ne se confond pas avec "vieux".
    Les sans date passent devant, une premiere saisie les datera ; les autres
    suivent, du plus ancien au plus recent.
 

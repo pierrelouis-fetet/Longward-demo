@@ -25,7 +25,7 @@ function appliquerDiffere(bloc = $('#modalBody')) {
    Elle etait ecrite deux fois, a l'ouverture du panneau et a chaque mise a jour
    `live`. Deux copies d'une meme phrase finissent par diverger : celle-ci
    vouvoyait des deux cotes, et corriger le premier exemplaire seul aurait fait
-   dire « vos avoirs » a l'ouverture et « tes avoirs » a la premiere frappe. */
+   dire "vos avoirs" a l'ouverture et "tes avoirs" a la premiere frappe. */
 /* `calcule` : le total est la somme des lignes de la fenetre, et la note le dit,
    pour qu'on ne le prenne pas pour un montant a corriger. */
 const noteApercu = a => a.totalNote
@@ -39,8 +39,8 @@ function openApercu(cle, arg) {
   apercuArg = arg;
   $('#modalTitle').textContent = a.titre;
   /* `sousAction` : une commande de lecture posee au bout du sous-titre. Elle
-     n'est pas echappee — c'est du balisage que le panneau fournit, comme `html`
-     juste en dessous — et le sous-titre, lui, l'est toujours. */
+     n'est pas echappee -- c'est du balisage que le panneau fournit, comme `html`
+     juste en dessous -- et le sous-titre, lui, l'est toujours. */
   $('#modalSub').innerHTML = escMontant(a.sous) + (a.sousAction || '');
   $('#modalSub').classList.toggle('avec-action', !!a.sousAction);
   $('#modalBody').classList.remove('tout-voir');
@@ -72,20 +72,20 @@ function openApercu(cle, arg) {
       <button type="button" class="btn sm ghost" data-action="apercu-voir-tout">${
         trad('Voir les {n} autres').replace('{n}', a.lignes.length - a.montrer)}</button>
     </td></tr>` : ''}</tbody></table>`}`);
-  /* Une fenetre ou l'on saisit porte « Enregistrer », et rien n'entre dans
+  /* Une fenetre ou l'on saisit porte "Enregistrer", et rien n'entre dans
      l'etat avant le clic.
 
      Le mecanisme est celui de la fiche d'une ligne : `data-differe` sur le corps,
      les deux ecouteurs de champs le respectent, `appliquerDiffere()` applique tout
-     au clic. Le bouton « aller ailleurs » ne s'affiche donc plus quand il y a des
+     au clic. Le bouton "aller ailleurs" ne s'affiche donc plus quand il y a des
      champs : deux boutons pleins cote a cote, l'un qui enregistre et l'autre qui
      s'en va, se seraient disputes le meme geste.
 
      Un panneau sans champ garde son renvoi : il n'y a rien a enregistrer. */
   /* On demande au DOM, pas a la description du panneau : un apercu peut poser ses
-     champs par `champs`, par `lignes[].champ`, ou dans son propre `html` — et
+     champs par `champs`, par `lignes[].champ`, ou dans son propre `html` -- et
      c'est ce troisieme cas qui portait les liquidites, si bien que le test sur les
-     deux premiers rendait faux et que « Enregistrer » n'apparaissait pas. Le
+     deux premiers rendait faux et que "Enregistrer" n'apparaissait pas. Le
      balisage est la seule source qui connaisse les trois. */
   const saisissable = $$('#modalBody [data-path]').length > 0;
   $('#modalBody').dataset.differe = saisissable ? 'propre' : '';
@@ -97,9 +97,9 @@ function openApercu(cle, arg) {
      ${ailleurs ? `<button class="btn" data-action="goto" data-view="${a.vue}" data-anchor="${a.ancre}">${esc(a.cta)} →</button>` : ''}`;
   /* `montrerModal` et non `hidden = false` : c'est elle qui gele le fond, et
      l'apercu passait a cote. La page derriere restait donc libre de defiler, et
-     le `focus()` ci-dessous la ramenait en haut — un panneau fixe qui prend le
-     focus fait remonter le document. C'etait le defaut : « la page derriere
-     revient tout en haut », sur toutes les fenetres qui passaient par ici.
+     le `focus()` ci-dessous la ramenait en haut -- un panneau fixe qui prend le
+     focus fait remonter le document. C'etait le defaut : "la page derriere
+     revient tout en haut", sur toutes les fenetres qui passaient par ici.
 
      `preventScroll` en plus, ceinture et bretelles : le focus reste utile au
      clavier, il n'a pas a deplacer quoi que ce soit. */
@@ -131,18 +131,18 @@ function ficheDeBarre(d) {
   };
 }
 
-/* L'intitulé d'une ligne d'aperçu, cliquable ou non.
+/* L'intitule d'une ligne d'apercu, cliquable ou non.
 
-   `route` mène à une page — la fiche d'un compte, celle d'un établissement.
-   `ouvre` déclenche une action, parce que tout ce qui s'ouvre n'est pas une
-   page : la fiche d'une ligne de titres est une fenêtre. Sans ce second
-   chemin, cliquer « Meta » dans les actifs de marché menait au compte qui
-   l'héberge, pas à Meta. */
+   `route` mene a une page -- la fiche d'un compte, celle d'un etablissement.
+   `ouvre` declenche une action, parce que tout ce qui s'ouvre n'est pas une
+   page : la fiche d'une ligne de titres est une fenetre. Sans ce second
+   chemin, cliquer "Meta" dans les actifs de marche menait au compte qui
+   l'heberge, pas a Meta. */
 function nomLigneApercu(l) {
   if (l.ouvre) {
     /* `donnees` : les attributs que l'action attend, quels qu'ils soient. Seul
        `data-i` etait prevu, parce que la seule ligne ouvrante visait une position
-       par son index — un credit, lui, se designe par son etablissement ET son
+       par son index -- un credit, lui, se designe par son etablissement ET son
        rang chez lui. Une action qui a besoin de deux cles ne doit pas demander
        qu'on en invente une troisieme. */
     const donnees = Object.entries(l.ouvre.donnees || { i: l.ouvre.i })
@@ -191,7 +191,7 @@ function closeApercu() {
   apercuOuvert = null;
 }
 
-/* Ancre demandée par une tuile, consommée au prochain rendu. `pendingFocus`
+/* Ancre demandee par une tuile, consommee au prochain rendu. `pendingFocus`
    l'accompagne quand la tuile vient corriger une valeur : le champ marque
    `data-anchor-focus` de la cible prend alors le curseur, sans second geste. */
 let pendingAnchor = null;
@@ -201,7 +201,7 @@ function focusAnchor() {
   if (!pendingAnchor) return;
   /* `data-anchor` sert a deux choses : dire ou aller, sur le bouton qui
      declenche `goto`, et marquer la destination. Un bouton porte donc la meme
-     valeur que sa cible, et il etait trouve en premier : on « defilait » vers
+     valeur que sa cible, et il etait trouve en premier : on "defilait" vers
      un element deja sous les yeux, sans que rien ne bouge. Une destination
      n'est jamais un declencheur. */
   const cibles = $$(`[data-anchor="${CSS.escape(pendingAnchor)}"]`)
@@ -210,7 +210,7 @@ function focusAnchor() {
   pendingAnchor = null;
   if (!el) { pendingFocus = false; return; }
   /* La marge vient de la feuille de style : `scroll-padding-top` sur `html` y
-     dit, pour l'ecran courant, ce qui reste cloue en haut — barre du haut,
+     dit, pour l'ecran courant, ce qui reste cloue en haut -- barre du haut,
      sous-onglets compris sur telephone. Ce code portait 70 et 90, deux nombres
      qui approchaient ces bandes sans les lire ; la barre de l'ordinateur en
      fait 91, et l'ancre se posait un pixel dessous. */
@@ -254,7 +254,7 @@ function render() {
   const titre = viewTitle(v.cle);
   $('#viewTitle').textContent = titre;
   $('#viewSub').textContent = propre('.sub') || viewSub(v.cle);
-  $('#brandView').textContent = titre;              // barre fixe, écran replié
+  $('#brandView').textContent = titre;              // barre fixe, ecran replie
   document.body.dataset.vue = key;
   const bandeau = $('#bandeauDemo');
   if (bandeau) bandeau.hidden = !modeDemo();
@@ -272,18 +272,18 @@ function render() {
   const graine = $('#bandeauGraine');
   if (graine) graine.hidden = !demoPerimee();
 
-  /* Le retour de l'en-tête. Deux sortes d'écrans le portent, et leur retour n'est
-     pas le même.
+  /* Le retour de l'en-tete. Deux sortes d'ecrans le portent, et leur retour n'est
+     pas le meme.
 
-     Une fiche a un parent : sa clé désigne une autre vue — `ficheCompte` porte
-     `cle: 'accounts'`. La règle vit donc dans le registre et non dans une liste
-     de routes tenue à côté : une fiche ajoutée demain aura son retour sans qu'on
-     y pense. Son chevron remonte à ce parent, toujours au même endroit.
+     Une fiche a un parent : sa cle designe une autre vue -- `ficheCompte` porte
+     `cle: 'accounts'`. La regle vit donc dans le registre et non dans une liste
+     de routes tenue a cote : une fiche ajoutee demain aura son retour sans qu'on
+     y pense. Son chevron remonte a ce parent, toujours au meme endroit.
 
-     Les pages du tiroir — Données, Préférences, Notifications — n'ont pas de
+     Les pages du tiroir -- Donnees, Preferences, Notifications -- n'ont pas de
      parent : elles ne sont dans aucun onglet, et le tiroir qui les ouvre n'est
-     pas un écran. Leur chevron revient donc d'où l'on vient, ce qui est la seule
-     réponse juste : on y entre depuis n'importe quelle page.
+     pas un ecran. Leur chevron revient donc d'ou l'on vient, ce qui est la seule
+     reponse juste : on y entre depuis n'importe quelle page.
 
      L'accueil, lui, n'en porte pas : c'est le premier onglet de la barre, il n'y
      a rien au-dessus. */
@@ -314,17 +314,17 @@ function render() {
   /* Arriver sur une vue, ou la redessiner : les deux ne veulent pas la meme
      position de defilement, et c'est cette distinction qui manquait.
 
-     Un re-rendu garde la position, evidemment — `render()` tourne a chaque frappe
+     Un re-rendu garde la position, evidemment -- `render()` tourne a chaque frappe
      dans un champ. Mais une arrivee la gardait aussi, si bien que la position de
      l'ecran qu'on quitte s'appliquait a celui qu'on ouvre : descendu au bas
-     d'Allocation, on arrivait au bas de Budget. Aucun systeme ne fait ça — iOS
-     garde une position par onglet, Android remet en haut — et appliquer celle du
+     d'Allocation, on arrivait au bas de Budget. Aucun systeme ne fait ca -- iOS
+     garde une position par onglet, Android remet en haut -- et appliquer celle du
      voisin n'est ni l'un ni l'autre.
 
      Chaque vue retient donc la sienne, et la retrouve en y revenant. Une vue
      jamais visitee s'ouvre en haut, ce qui est le seul defaut acceptable. La
      memoire vit en memoire vive : un rechargement de page la vide, et c'est
-     voulu — on rouvre l'application en haut de l'ecran d'accueil. */
+     voulu -- on rouvre l'application en haut de l'ecran d'accueil. */
   const arrivee = signatureVue !== derniereVueRendue;
   const changeOnglet = arrivee && derniereCleRendue === key;
   if (arrivee) {
@@ -361,8 +361,8 @@ function render() {
      temps d'une image, le temps de donner un point de depart a la transition.
 
      L'autre issue etait de sortir cette barre de `#view`, comme la barre du bas
-     et le bandeau de demonstration. C'est plus juste sur le fond — une barre de
-     navigation n'est pas du contenu — mais cela touche le routage et les quatre
+     et le bandeau de demonstration. C'est plus juste sur le fond -- une barre de
+     navigation n'est pas du contenu -- mais cela touche le routage et les quatre
      vues qui l'appellent. A garder pour le jour ou cette barre posera un second
      probleme. */
   const lavisAvant = (() => {
@@ -374,8 +374,8 @@ function render() {
 
   /* UNE PAGE QUI ECHOUE LE DIT. Une exception dans le rendu d'une vue remontait
      jusqu'au gestionnaire de `hashchange` et s'y perdait : l'ecran precedent
-     restait en place, l'adresse avait change, et rien ne disait pourquoi — sur un
-     telephone, sans console, cela se lit « le bouton ne marche plus ». Le message
+     restait en place, l'adresse avait change, et rien ne disait pourquoi -- sur un
+     telephone, sans console, cela se lit "le bouton ne marche plus". Le message
      s'affiche la ou l'on est, et la page reste utilisable. */
   let html;
   try { html = collerAides(v.render()); }
@@ -436,7 +436,7 @@ function render() {
   else window.scrollTo(0, arrivee ? (positionsVues.get(signatureVue) || 0) : scroll);
 }
 let retourHautDemande = false;
-/* La vue rendue, sous-onglet exclu — `derniereVueRendue` porte la signature
+/* La vue rendue, sous-onglet exclu -- `derniereVueRendue` porte la signature
    complete. Les deux sont necessaires : c'est leur difference qui distingue un
    changement d'onglet du bas d'un changement de sous-onglet. */
 let derniereCleRendue = null;
@@ -505,7 +505,7 @@ function basculeNotifs() {
      La barre porte `overflow-y: auto`, et une seule valeur d'overflow suffit a
      rogner les DEUX axes : un panneau plus large qu'elle y etait coupe net. Il
      passe donc en position fixe sur grand ecran, ce qui l'affranchit de ce
-     cadre — mais une position fixe ne suit plus son bouton, et la barre peut
+     cadre -- mais une position fixe ne suit plus son bouton, et la barre peut
      defiler sous lui.
 
      Sa hauteur se lit donc sur la cloche au moment ou l'on ouvre, pas une fois
@@ -522,7 +522,7 @@ function basculeNotifs() {
 
    Il disparaissait pour qui n'avait aucune ligne cotee. Le motif tenait a
    moitie : une page de zeros n'est pas un resultat. Mais un onglet absent ne
-   s'explique pas, et il ne se cherche pas non plus — on ne peut pas vouloir ce
+   s'explique pas, et il ne se cherche pas non plus -- on ne peut pas vouloir ce
    dont on ignore l'existence. Quelqu'un qui ouvre un tableau de bord de
    patrimoine cherche justement ou poser ses titres ; lui retirer l'entree
    repond qu'il n'y a pas d'endroit.
@@ -572,8 +572,8 @@ function majOnglets() {
     rel.missing ? `${rel.label} : ${trad('relevé pas encore enregistré')}` : '');
 
   /* La cloche s'allume pour tout ce qui demande une action ou signale un chiffre
-     faux — les saisies en attente comme les contrôles de cohérence. Un rappel
-     repoussé n'en fait pas partie : `notifications()` s'appuie sur `missing`. */
+     faux -- les saisies en attente comme les controles de coherence. Un rappel
+     repousse n'en fait pas partie : `notifications()` s'appuie sur `missing`. */
   const n = notifications();
   pastille('#pastilleCloche', n.length,
     n.length === 1 ? n[0].title : trad('{n} points à regarder').replace('{n}', n.length));
@@ -601,11 +601,11 @@ function renderSidebar() {
     void netWorth.offsetWidth;
     netWorth.classList.add('valeur-maj');
   }
-  /* `innerHTML` et non `textContent` : masqué, un montant n'est pas du texte
-     mais l'œil barré, une balise <svg> que nous produisons nous-mêmes.
-     Posée en texte, elle s'imprimait en clair — le patrimoine devenait un
-     pavé de balisage au milieu du menu. Rien d'extérieur ne passe ici :
-     `fmtEUR0` rend soit un nombre formaté, soit cette icône. */
+  /* `innerHTML` et non `textContent` : masque, un montant n'est pas du texte
+     mais l'oeil barre, une balise <svg> que nous produisons nous-memes.
+     Posee en texte, elle s'imprimait en clair -- le patrimoine devenait un
+     pave de balisage au milieu du menu. Rien d'exterieur ne passe ici :
+     `fmtEUR0` rend soit un nombre formate, soit cette icone. */
   netWorth.innerHTML = montant;
   const netTiroir = $('#navNetWorth');
   if (netTiroir) netTiroir.innerHTML = montant;
@@ -638,27 +638,27 @@ function monteGlissementFermeture(fenetre) {
   if (!panneau) return;
 
   let depart = null, delta = 0;
-  const SEUIL = 90;          // en deçà, la fenêtre revient en place
+  const SEUIL = 90;          // en deca, la fenetre revient en place
 
   const fermable = () => {
     const croix = fenetre.querySelector('#modalClose, #confirmNo');
     return croix || null;
   };
 
-  /* Le geste de fermeture doit se retirer devant le défilement. Il écrivait
-     `transform` et `opacity` à chaque événement tactile, sans trame
-     d'animation et sans verrou de direction : sur une fenêtre longue — les
-     dépenses du mois en portent une par catégorie — chaque doigt posé en haut
-     de la liste tirait le panneau au lieu de la faire défiler, et le moindre
-     retour vers le haut le replaquait d'un coup, sans transition. D'où une
+  /* Le geste de fermeture doit se retirer devant le defilement. Il ecrivait
+     `transform` et `opacity` a chaque evenement tactile, sans trame
+     d'animation et sans verrou de direction : sur une fenetre longue -- les
+     depenses du mois en portent une par categorie -- chaque doigt pose en haut
+     de la liste tirait le panneau au lieu de la faire defiler, et le moindre
+     retour vers le haut le replaquait d'un coup, sans transition. D'ou une
      page qui accroche.
 
      Trois corrections. Le verrou de direction : on observe les huit premiers
-     pixels sans rien bouger, et on tranche une fois pour toutes entre défiler
-     et fermer. La trame : une seule écriture de style par image, au lieu
-     d'une par événement. Et l'opacité rejoint la même écriture — animée
-     séparément sur un panneau flouté, elle repeignait tout le fond. */
-  let axe = null;                      // null = indécis, 'ferme' ou 'defile'
+     pixels sans rien bouger, et on tranche une fois pour toutes entre defiler
+     et fermer. La trame : une seule ecriture de style par image, au lieu
+     d'une par evenement. Et l'opacite rejoint la meme ecriture -- animee
+     separement sur un panneau floute, elle repeignait tout le fond. */
+  let axe = null;                      // null = indecis, 'ferme' ou 'defile'
   let departX = 0, trame = 0;
 
   const peindre = () => {
@@ -696,7 +696,7 @@ function monteGlissementFermeture(fenetre) {
      C'est ce qui manquait : un ecouteur passif ne peut pas appeler
      `preventDefault`, donc le navigateur gardait la main sur le geste et faisait
      glisser ce qu'il trouvait derriere. `body { overflow: hidden }` ne suffit
-     pas — iOS laisse le document rebondir malgre lui — et
+     pas -- iOS laisse le document rebondir malgre lui -- et
      `overscroll-behavior: contain` sur le corps ne s'applique que s'il defile
      vraiment, ce qui est faux precisement dans le cas qui posait probleme.
 
@@ -751,8 +751,8 @@ function monteGlissementFermeture(fenetre) {
 /* -------------------------------------------------------------
    Tirer vers le bas pour rafraichir les cours
 
-   Ce projet a retire un geste de tirage il y a peu — celui qui ramenait a
-   l'accueil — et la lecon merite d'etre reprise, parce qu'elle explique pourquoi
+   Ce projet a retire un geste de tirage il y a peu -- celui qui ramenait a
+   l'accueil -- et la lecon merite d'etre reprise, parce qu'elle explique pourquoi
    celui-ci est different. L'ancien s'armait a `scrollY === 0` et menait a une
    destination : au sommet d'une page, un doigt qui descend etait alors ambigu,
    il pouvait vouloir naviguer ou defiler, et aucun seuil ne levait l'ambiguite.
@@ -796,7 +796,7 @@ function monteTirerRafraichir() {
 
      La premiere version ne bougeait que le disque, au-dessus d'un contenu
      rigide : le disque paraissait flotter devant une page qui ne participait
-     pas. Un tirage se sent parce que la matiere resiste et revient — c'est le
+     pas. Un tirage se sent parce que la matiere resiste et revient -- c'est le
      meme principe que les feuilles de l'application, qui suivent le doigt avant
      de se remettre en place, et le meme que le geste natif du systeme.
 
@@ -849,7 +849,7 @@ function monteTirerRafraichir() {
   hote.addEventListener('touchstart', e => {
     /* `.view` est le meme noeud pour toutes les vues : seul son contenu change
        d'un rendu a l'autre. Les ecouteurs sont donc poses une fois et vivent
-       ensuite sous Budget comme sous Marches — c'est ici qu'on decide, pas au
+       ensuite sous Budget comme sous Marches -- c'est ici qu'on decide, pas au
        montage. Le garde du montage ne fait qu'eviter de les empiler. */
     if (!VUES_TIRER.has(currentView())) return;
     if (enCours || e.touches.length !== 1) return;
@@ -922,7 +922,7 @@ function monteTirerRafraichir() {
    absence : elles laissent croire que le sujet est traite. Elles sont donc
    parties, et cette note reste a leur place.
 
-   Ce qui porte l'appui sur iOS est donc entierement visuel — le tassement de la
+   Ce qui porte l'appui sur iOS est donc entierement visuel -- le tassement de la
    barre, la pastille qui glisse, la page qui suit le doigt. C'est la raison
    d'avoir fait ces animations avant de chercher l'haptique, et non apres.
    ------------------------------------------------------------- */
@@ -956,20 +956,20 @@ function monteVideChamp() {
 
   let cible = null;
 
-  /* Ce que couvre ce mecanisme — la croix qui vide, et la selection a l'arrivee.
+  /* Ce que couvre ce mecanisme -- la croix qui vide, et la selection a l'arrivee.
 
      Il ne visait que les champs a `data-path`. Or les depenses d'un mois se
      saisissent dans des champs a `data-cat`, et les fenetres de vente et d'achat
      dans des champs a identifiant : ni la croix ni la selection ne les
      atteignaient, alors que ce sont exactement ceux qu'on retape le plus.
-     « Rentrer un chiffre dans liquidite ou autre » — le « ou autre » etait la
+     "Rentrer un chiffre dans liquidite ou autre" -- le "ou autre" etait la
      moitie manquante.
 
      Trois portes, donc : le chemin d'etat, la categorie de depense, et
      l'appartenance a une fenetre. La troisieme est la plus large et la plus
      juste : dans une fenetre, un champ de texte ou de nombre est toujours une
      valeur qu'on vient poser ou remplacer. Les champs de date en sont exclus
-     par leur type — on n'y tape pas par-dessus, le navigateur y met son propre
+     par leur type -- on n'y tape pas par-dessus, le navigateur y met son propre
      selecteur. */
   const eligible = el => el instanceof HTMLInputElement
     && (el.type === 'text' || el.type === 'number')
@@ -1022,7 +1022,7 @@ function monteVideChamp() {
 
        Le geste demande tient en un appui, et il n'a besoin d'aucun bouton : ce
        qu'on veut n'est pas un champ vide, c'est de ne pas avoir a effacer. Un
-       contenu selectionne disparait au premier caractere tape — c'est la meme
+       contenu selectionne disparait au premier caractere tape -- c'est la meme
        chose, en un geste au lieu de deux, et sans rien poser a droite de
        soixante-treize champs.
 
@@ -1071,20 +1071,20 @@ function monteVideChamp() {
   });
 }
 
-/* Le geste « repousser la page pour revenir a la vue d'ensemble » vivait ici,
+/* Le geste "repousser la page pour revenir a la vue d'ensemble" vivait ici,
    sur cent-soixante-dix lignes. Il est parti, et c'etait la bonne decision.
 
    Il dupliquait une destination qui a un bouton permanent : Apercu est le
    premier onglet de la barre du bas, toujours a un appui. Un geste qui ne fait
    gagner aucun geste mais qui peut se tromper est un solde negatif.
 
-   Il s'armait au sommet de la page, quand `scrollY` valait zero — exactement
+   Il s'armait au sommet de la page, quand `scrollY` valait zero -- exactement
    la condition ambigue qui a coute quatre tentatives sur la feuille des fiches,
    ou un doigt qui descend peut vouloir defiler ou fermer. Meme maladie, meme
    application.
 
-   Et il portait une liste d'exclusions ecrite a la main — champs de saisie,
-   tableaux defilants, ruban de reperes, lignes de compte, listes mobiles —
+   Et il portait une liste d'exclusions ecrite a la main -- champs de saisie,
+   tableaux defilants, ruban de reperes, lignes de compte, listes mobiles --
    qu'il fallait etendre a chaque nouveau composant qui defile ou qui glisse.
    Le prochain aurait vu son geste vole en silence. Ce depot a deja supprime
    plusieurs listes de ce genre, toujours pour la meme raison.
@@ -1094,7 +1094,7 @@ function monteVideChamp() {
 
 function bindGlobal() {
   /* Chaque changement d'adresse compte : c'est ce qui permet au retour des pages
-     sans parent de savoir s'il y a un « avant » dans l'application. Un signet
+     sans parent de savoir s'il y a un "avant" dans l'application. Un signet
      ouvert directement n'en a pas, et `history.back()` sortirait du site. */
   window.addEventListener('hashchange', () => { navsInternes++; render(); });
 
@@ -1112,46 +1112,46 @@ function bindGlobal() {
      sur la taille des champs. Un blocage qui ne supprime pas le symptome est un
      blocage faux. */
 
-  /* La barre du haut se retire quand on descend, et revient après un battement.
+  /* La barre du haut se retire quand on descend, et revient apres un battement.
 
-     Le défaut que ça corrige n'est pas théorique : en lisant, on remonte sans
-     arrêt de quelques dizaines de pixels — pour relire une ligne, pour revoir un
-     total qu'on vient de dépasser. Chacune de ces corrections faisait retomber
+     Le defaut que ca corrige n'est pas theorique : en lisant, on remonte sans
+     arret de quelques dizaines de pixels -- pour relire une ligne, pour revoir un
+     total qu'on vient de depasser. Chacune de ces corrections faisait retomber
      la barre sur le contenu, et elle repartait au geste suivant. Une barre qui
-     entre et sort à ce rythme se remarque plus que ce qu'elle contient.
+     entre et sort a ce rythme se remarque plus que ce qu'elle contient.
 
-     Le battement est donc une distance **cumulée** vers le haut, un tiers de la
-     hauteur de l'écran, et toute reprise vers le bas la remet à zéro. C'est ce
+     Le battement est donc une distance **cumulee** vers le haut, un tiers de la
+     hauteur de l'ecran, et toute reprise vers le bas la remet a zero. C'est ce
      qui distingue une correction de lecture d'une vraie intention de revenir en
-     haut : la première fait quarante pixels et s'arrête, la seconde est un
-     lancer. On garde donc l'essentiel de `enterAlways` — la barre revient sans
-     qu'on ait à atteindre le sommet, sans quoi la cloche et le profil se
-     paieraient d'un retour complet — mais elle ne suit plus le bruit.
+     haut : la premiere fait quarante pixels et s'arrete, la seconde est un
+     lancer. On garde donc l'essentiel de `enterAlways` -- la barre revient sans
+     qu'on ait a atteindre le sommet, sans quoi la cloche et le profil se
+     paieraient d'un retour complet -- mais elle ne suit plus le bruit.
 
-     Un tiers de l'écran et non un nombre de pixels : sur un iPhone SE et sur une
-     tablette, le même geste couvre une fraction d'écran comparable, pas une
-     distance comparable. Relu à chaque événement, donc juste après une rotation.
+     Un tiers de l'ecran et non un nombre de pixels : sur un iPhone SE et sur une
+     tablette, le meme geste couvre une fraction d'ecran comparable, pas une
+     distance comparable. Relu a chaque evenement, donc juste apres une rotation.
 
-     Les autres garde-fous ne bougent pas, chacun pour un défaut qu'on obtient
+     Les autres garde-fous ne bougent pas, chacun pour un defaut qu'on obtient
      sans lui.
 
      Le seuil : sous 64 px on est encore en haut de page, et la barre y reste.
-     Sinon le moindre geste vers le bas la ferait disparaître alors qu'on n'a rien
-     gagné à la cacher — la page n'a pas encore de contenu au-dessus. C'est aussi
+     Sinon le moindre geste vers le bas la ferait disparaitre alors qu'on n'a rien
+     gagne a la cacher -- la page n'a pas encore de contenu au-dessus. C'est aussi
      lui qui court-circuite le battement : arriver au sommet rend la barre sans
-     rien avoir à cumuler, sinon la page du haut pourrait rester décapitée.
+     rien avoir a cumuler, sinon la page du haut pourrait rester decapitee.
 
-     Le pas : un doigt posé tremble de deux ou trois pixels, et une barre qui joue
+     Le pas : un doigt pose tremble de deux ou trois pixels, et une barre qui joue
      sur ce bruit clignote. Six pixels, c'est un geste.
 
-     Les fenêtres : `gelerFond()` met le corps en `position: fixed`, ce qui
-     déclenche un événement de défilement au moment où l'on ouvre et un autre à la
+     Les fenetres : `gelerFond()` met le corps en `position: fixed`, ce qui
+     declenche un evenement de defilement au moment ou l'on ouvre et un autre a la
      fermeture. Ni l'un ni l'autre n'est un geste de lecture, et sans ce test la
-     barre se retirait à l'ouverture d'une fenêtre pour rester cachée derrière
+     barre se retirait a l'ouverture d'une fenetre pour rester cachee derriere
      elle.
 
-     Une sous-page ne cache jamais la sienne : c'est là qu'un « retour » vit, et
-     iOS fait la même exception. */
+     Une sous-page ne cache jamais la sienne : c'est la qu'un "retour" vit, et
+     iOS fait la meme exception. */
   (() => {
     const SEUIL = 64, PAS = 6;
     const battement = () => Math.round(window.innerHeight / 3);
@@ -1199,10 +1199,10 @@ function bindGlobal() {
 
      Toute l'application ecrit a chaque frappe : c'est ce qui permet de corriger
      un montant sans rien valider, et la barre laterale suit. Une fiche de ligne
-     de titres, elle, se relit avant de compter — on y change une quantite apres
+     de titres, elle, se relit avant de compter -- on y change une quantite apres
      un achat, et rien ne disait si c'etait pris en compte. Elle porte donc
      `data-differe`, et ses champs n'entrent dans l'etat qu'au clic sur
-     « Enregistrer ». Fermer sans enregistrer les abandonne, et le demande. */
+     "Enregistrer". Fermer sans enregistrer les abandonne, et le demande. */
   document.addEventListener('input', e => {
     const f = e.target.closest('[data-path]');
     if (!f) return;
@@ -1212,7 +1212,7 @@ function bindGlobal() {
     Store.save({ differe: true });
     marquerEcrit(f);
     renderSidebar();
-    majApercu();                       // les totaux de la fenêtre suivent
+    majApercu();                       // les totaux de la fenetre suivent
   });
   /* Un routeur pour les listes deroulantes, comme il en existe un pour les clics.
 
@@ -1239,7 +1239,7 @@ function bindGlobal() {
   });
 
   /* L'ecouteur des listes de duree est parti avec elles : l'echelle des plages
-     est fixe, cinq boutons, plus aucun « ⋯ » a ouvrir. Il ne restait qu'un
+     est fixe, cinq boutons, plus aucun "..." a ouvrir. Il ne restait qu'un
      `change` a l'ecoute d'un selecteur que plus rien ne produit. */
 
   document.addEventListener('change', e => {
@@ -1249,7 +1249,7 @@ function bindGlobal() {
     if (fn) fn({ dataset: { year: sel.value, type: sel.value } });
   });
 
-  /* Renommer un bien renomme son contenant du même coup : ils ne désignent
+  /* Renommer un bien renomme son contenant du meme coup : ils ne designent
      qu'une chose, ils ne doivent porter qu'un nom. Une SCPI, non : voir
      `nommerPlacementImmo`. */
   document.addEventListener('change', e => {
@@ -1293,7 +1293,7 @@ function bindGlobal() {
       if (f.dataset.path !== 'meta.projRateGaranti') m.projRateGaranti = tauxAvant.rateGaranti;
       m.projScenario = 'perso';
     }
-    /* `change` clot une saisie — une liste choisie, un champ quitte — donc rien a
+    /* `change` clot une saisie -- une liste choisie, un champ quitte -- donc rien a
        regrouper : l'envoi part tout de suite. Seul `input`, caractere par
        caractere, a besoin du delai. */
     Store.save();
@@ -1302,10 +1302,10 @@ function bindGlobal() {
 
        Le rendu du focus existe pour les champs de texte : `render()` reconstruit
        le balisage a chaque frappe, et sans lui le curseur sauterait du champ des
-       qu'on tape un chiffre. Sur une liste, il fait l'inverse de ce qu'on veut —
+       qu'on tape un chiffre. Sur une liste, il fait l'inverse de ce qu'on veut --
        on vient de choisir, le selecteur natif se referme, et lui rendre le focus
        le rouvre. Sur iPhone la liste restait donc ouverte apres le choix :
-       « ça force a cliquer 2 fois ».
+       "ca force a cliquer 2 fois".
 
        Le `blur()` avant le rendu est la seconde moitie : sans lui, le selecteur
        natif survit a la destruction du `<select>` qui le portait, et flotte
@@ -1332,17 +1332,17 @@ function bindGlobal() {
     ACTIONS['undo']();
   });
 
-  /* Pas de « Entrée ajoute la ligne suivante » dans le tableau des charges
-     fixes : il a existé une heure, et il est parti avec les champs qu'il visait.
+  /* Pas de "Entree ajoute la ligne suivante" dans le tableau des charges
+     fixes : il a existe une heure, et il est parti avec les champs qu'il visait.
 
-     Le tableau du bureau éditait ces lignes en place, et Entrée y enchaînait les
-     saisies. Le tableau passe maintenant par la fenêtre, comme celui des mois de
-     dépenses, donc il n'y a plus de champ où enchaîner quoi que ce soit. Un
-     écouteur qui cherche un `data-path` disparu ne se plaint pas, il ne fait
-     simplement plus rien — c'est pourquoi il est retiré plutôt que laissé là.
+     Le tableau du bureau editait ces lignes en place, et Entree y enchainait les
+     saisies. Le tableau passe maintenant par la fenetre, comme celui des mois de
+     depenses, donc il n'y a plus de champ ou enchainer quoi que ce soit. Un
+     ecouteur qui cherche un `data-path` disparu ne se plaint pas, il ne fait
+     simplement plus rien -- c'est pourquoi il est retire plutot que laisse la.
 
-     Le geste survit là où il a un sens, dans le détail d'une catégorie de
-     dépenses : cette fenêtre porte de vraies lignes de saisie. */
+     Le geste survit la ou il a un sens, dans le detail d'une categorie de
+     depenses : cette fenetre porte de vraies lignes de saisie. */
 
   document.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -1376,22 +1376,22 @@ function bindGlobal() {
     if (sel && document.activeElement === sel) sel.blur();
   }, { passive: true, capture: true });
 
-  /* --- tiroir : burger sur tablette, logo sur téléphone ---------------------
-     L'onglet « Plus » ouvrait ce tiroir ; sa place dans la barre est passée à
-     Comptes. Sous 768 px, c'est donc le logo qui l'ouvre — la seule largeur où
-     le burger est masqué, et celle où « retour à l'accueil » ne servait à rien,
-     Aperçu étant le premier onglet.
+  /* --- tiroir : burger sur tablette, logo sur telephone ---------------------
+     L'onglet "Plus" ouvrait ce tiroir ; sa place dans la barre est passee a
+     Comptes. Sous 768 px, c'est donc le logo qui l'ouvre -- la seule largeur ou
+     le burger est masque, et celle ou "retour a l'accueil" ne servait a rien,
+     Apercu etant le premier onglet.
 
-     Le lien garde son `href` : au-dessus de 768 px il mène à la vue d'ensemble,
-     et sans JavaScript il y mène toujours. La largeur est relue à chaque appui
-     plutôt que mémorisée, sinon une rotation d'écran laisserait le geste de
-     l'orientation précédente. */
+     Le lien garde son `href` : au-dessus de 768 px il mene a la vue d'ensemble,
+     et sans JavaScript il y mene toujours. La largeur est relue a chaque appui
+     plutot que memorisee, sinon une rotation d'ecran laisserait le geste de
+     l'orientation precedente. */
   const burger = $('#burger'), backdrop = $('#navBackdrop'), profil = $('#btnProfil');
   const setNav = open => {
     document.body.classList.toggle('nav-open', open);
     /* Ouvrir le tiroir rend la barre du haut. Deux raisons, et la seconde est un
        garde-fou : le tiroir monte du bas de la fenetre, mais il est un enfant de
-       cette barre — un `transform` sur elle en ferait le bloc conteneur du tiroir,
+       cette barre -- un `transform` sur elle en ferait le bloc conteneur du tiroir,
        qui s'ouvrirait alors hors de l'ecran. Et sur le fond, un menu qu'on ouvre
        n'a pas de raison de cohabiter avec une barre a moitie partie. */
     if (open) document.body.classList.remove('haut-cache');
@@ -1409,16 +1409,16 @@ function bindGlobal() {
 
   /* L'appui sur le logo se voit aussi au doigt.
 
-     Safari sur iOS n'applique pas `:active` au toucher tant qu'aucun écouteur
-     tactile ne vit sur l'élément : la règle d'appui existait et ne jouait jamais
-     là où elle comptait. Le halo de survol, lui, a été rangé sous
-     `@media (hover: hover)` — à raison, il restait allumé après un appui — si
-     bien que le téléphone n'avait plus aucun retour.
+     Safari sur iOS n'applique pas `:active` au toucher tant qu'aucun ecouteur
+     tactile ne vit sur l'element : la regle d'appui existait et ne jouait jamais
+     la ou elle comptait. Le halo de survol, lui, a ete range sous
+     `@media (hover: hover)` -- a raison, il restait allume apres un appui -- si
+     bien que le telephone n'avait plus aucun retour.
 
-     Le seuil de 160 ms est ce qui rend un tap visible : posée et retirée au
+     Le seuil de 160 ms est ce qui rend un tap visible : posee et retiree au
      rythme du doigt, la classe pouvait vivre 40 ms et l'animation ne se voyait
-     pas. Au-delà du seuil, c'est la levée du doigt qui commande — un appui long
-     garde donc le logo enfoncé, ce qui est le comportement d'une touche. */
+     pas. Au-dela du seuil, c'est la levee du doigt qui commande -- un appui long
+     garde donc le logo enfonce, ce qui est le comportement d'une touche. */
   const marque = $('.brand');
   if (marque) {
     let debut = 0, fin = null;
@@ -1471,12 +1471,12 @@ function bindGlobal() {
     if (lien.getAttribute('href') !== location.hash) rejouerClasse(e.currentTarget, 'tape', 400);
 
     setNav(false);
-    /* « Deja sur place » se juge sur l'adresse, pas sur la vue.
+    /* "Deja sur place" se juge sur l'adresse, pas sur la vue.
 
        Laisser le lien naviguer suffit a tout regler : `currentView()` remet le
        premier sous-onglet des qu'on arrive sur l'adresse de base, et c'est deja
        la regle ecrite pour le menu lateral. Le rebond et le retour en haut
-       restent pour le seul cas qu'ils visaient — reappuyer sur l'onglet ou l'on
+       restent pour le seul cas qu'ils visaient -- reappuyer sur l'onglet ou l'on
        est deja, ou l'adresse ne bouge pas et ou rien ne se produirait. */
     const quitteEdition = apercuEdition;
     apercuEdition = false;
@@ -1497,8 +1497,8 @@ function bindGlobal() {
     fermeNotifs();
   }, true);
   document.addEventListener('keydown', e => { if (e.key === 'Escape') fermeNotifs(); });
-  /* Tout ce qui navigue depuis le panneau le referme : `goto` ferme les fenêtres
-     d'aperçu, pas celui-ci. La croix, elle, le laisse ouvert — on masque souvent
+  /* Tout ce qui navigue depuis le panneau le referme : `goto` ferme les fenetres
+     d'apercu, pas celui-ci. La croix, elle, le laisse ouvert -- on masque souvent
      deux lignes de suite. */
   $('#panneauNotifs')?.addEventListener('click', e => {
     if (e.target.closest('[data-action="goto"]')) fermeNotifs();
@@ -1604,10 +1604,10 @@ const themeEffectif = choix => choix === 'system' ? themeSysteme() : (choix || '
 
    Changer l'attribut suffit a repeindre la barre laterale, les cartes, les
    textes, les graphiques : tout suit les variables. Tout, sauf le fond du corps.
-   Mesure sur ce navigateur, thème passe en clair sans rechargement :
+   Mesure sur ce navigateur, theme passe en clair sans rechargement :
    `getComputedStyle(document.documentElement)` rend bien #f7f9fb, la variable
    `--page` lue sur le corps rend #f7f9fb, un element cree a l'instant avec
-   `background: var(--page)` rend #f7f9fb — et le corps, lui, reste peint en
+   `background: var(--page)` rend #f7f9fb -- et le corps, lui, reste peint en
    #08090b. Il ne se repeint qu'au rechargement suivant. On obtenait donc des
    cartes claires posees sur une page noire, jusqu'a ce que quelqu'un recharge.
 
@@ -1645,7 +1645,7 @@ async function lookupSymbol(i) {
     if (q.currency) p.currency = q.currency;
     if (!p.name || p.name === 'Nouvelle ligne') p.name = q.name || p.symbol;
     Store.save();
-    await Quotes.refresh();          // cours et taux de change cohérents
+    await Quotes.refresh();          // cours et taux de change coherents
     render();
     toast(`${q.name || p.symbol} · ${q.price} ${q.currency || ''}`);
   } catch (e) {
@@ -1783,7 +1783,7 @@ partieChargee('assets/app-11-fenetre-apercu.js');
   const demoEnCours = estDemoVivante() ? demoAJour() : null;
   if (demoEnCours) await Promise.race([demoEnCours.mois, patienter(2500)]);
   Store.autoBackup();
-  translateStatic();          // libellés du menu, avant le premier rendu
+  translateStatic();          // libelles du menu, avant le premier rendu
   bindGlobal();
   $('#btnLogout')?.addEventListener('click', async e => {
     e.preventDefault();
@@ -1868,15 +1868,15 @@ partieChargee('assets/app-11-fenetre-apercu.js');
     }
     majTemoinEnregistrement();
     if (cloud.adopted) {
-      /* Cet appareil était simplement en retard, sans modification locale :
+      /* Cet appareil etait simplement en retard, sans modification locale :
          on prend la version en ligne sans rien demander.
 
-         Avec une sauvegarde, désormais. Cette branche remplace tout l'état sur
-         la foi d'un repère, et le repère a déjà menti — voir la note de
+         Avec une sauvegarde, desormais. Cette branche remplace tout l'etat sur
+         la foi d'un repere, et le repere a deja menti -- voir la note de
          `init()` dans cloudsync.js. Le remplacement se fait sans question par
-         construction, donc la seule chose qui rende l'erreur réparable est un
-         point de retour : Données → sauvegardes. Elle ne coûte rien et elle
-         couvre le jour où ce raisonnement se trompera encore. */
+         construction, donc la seule chose qui rende l'erreur reparable est un
+         point de retour : Donnees -> sauvegardes. Elle ne coute rien et elle
+         couvre le jour ou ce raisonnement se trompera encore. */
       await prendreVersionEnLigne(cloud.data, cloud.at, 'Données à jour depuis le cloud', cloud.revision);
     } else if (cloud.newer) {
       await prendreVersionEnLigne(cloud.data, cloud.at,
@@ -1884,13 +1884,13 @@ partieChargee('assets/app-11-fenetre-apercu.js');
     } else if (cloud.aEnvoyer) {
       /* Cet appareil porte une modification jamais partie, et le cloud est
          reste exactement la ou il l'avait laisse. Elle part maintenant, sans
-         attendre la prochaine frappe — c'est cette attente qui la perdait quand
-         l'application passait en veille avant l'envoi différé.
+         attendre la prochaine frappe -- c'est cette attente qui la perdait quand
+         l'application passait en veille avant l'envoi differe.
 
          SANS `force`, ET C'EST TOUT L'OBJET DU CORRECTIF. Il etait passe ici au
          motif que l'arbitrage venait d'etre rendu : `init()` avait lu le cloud
          et l'avait trouve plus ancien, donc la base ne pouvait pas correspondre.
-         Le raisonnement tenait sur une premisse fausse — qu'une estampille plus
+         Le raisonnement tenait sur une premisse fausse -- qu'une estampille plus
          fraiche designe un contenu plus frais. Le rafraichissement des cours
          datait l'etat a chaque ouverture, si bien qu'un ordinateur qu'on rouvre
          apres plusieurs jours se croyait en avance sur un telephone qui, lui,
@@ -1906,7 +1906,7 @@ partieChargee('assets/app-11-fenetre-apercu.js');
       await CloudSync.push();
     } else if (cloud.empty) {
       /* Premier envoi : rien en ligne, donc rien a perdre. Sans `force` non
-         plus — `init()` a efface le repere, l'ecriture part sans base, et c'est
+         plus -- `init()` a efface le repere, l'ecriture part sans base, et c'est
          le serveur qui n'insere que s'il n'y a toujours rien. Si cette lecture
          a vide etait fausse, un refus vaut mieux qu'un patrimoine efface. Rien
          en ligne ne pouvant etre remplace, une suspension n'a plus d'objet. */
@@ -1936,7 +1936,7 @@ partieChargee('assets/app-11-fenetre-apercu.js');
        `pagehide` ne suffit pas sur telephone : verrouiller l'ecran ou passer a
        une autre application ne decharge pas la page, elle est gelee puis
        restauree. L'evenement n'arrive donc jamais, le minuteur d'envoi differe ne
-       tire pas non plus — un onglet gele n'execute rien — et la modification
+       tire pas non plus -- un onglet gele n'execute rien -- et la modification
        reste dans le seul `localStorage`. Elle se perd au premier appareil qui
        pousse ensuite.
 
@@ -1985,7 +1985,7 @@ partieChargee('assets/app-11-fenetre-apercu.js');
      donc le S&P 500 fige pour la soiree, Wall Street ouverte. Le ruban ne parle
      pas de ce qu'on detient, il parle du marche : il se juge sur SES lignes.
 
-     Elles sont deja en main — `REPERES_AFFICHES` porte celles du dernier rendu,
+     Elles sont deja en main -- `REPERES_AFFICHES` porte celles du dernier rendu,
      avec l'etat de leur place. Aucune table d'horaires a tenir. */
   const repereOuvert = () => REPERES_AFFICHES.some(ouverte);
 

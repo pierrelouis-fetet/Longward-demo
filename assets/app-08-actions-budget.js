@@ -88,7 +88,7 @@ Object.assign(ACTIONS, {
     ecrireDepensesMois(i, saisi);
     if (saisi.rouvrir) { render(); return ACTIONS['edit-expense-month'](btn); }
     if (saisi.versTableau) {
-      budgetYear = String(r.month).slice(0, 4);   // sinon le mois quitté serait filtré
+      budgetYear = String(r.month).slice(0, 4);   // sinon le mois quitte serait filtre
       pendingAnchor = 'detail-mensuel';
       if (currentView() === 'budget') render(); else location.hash = '#/budget';
       return;
@@ -99,7 +99,7 @@ Object.assign(ACTIONS, {
   /* LES DEUX ACTES QUI GERAIENT LES PERSONNES ONT DISPARU.
 
      Une charge fixe vaut ce qui est DEBITE du compte. Ce que quelqu'un reverse
-     est une entree, saisie une fois avec le salaire — et c'est le seul endroit
+     est une entree, saisie une fois avec le salaire -- et c'est le seul endroit
      ou elle doit vivre. Enregistrer sa part ici en plus la comptait deux fois,
      et les deux saisies divergeaient. `budget.contributors` et les `shares`
      restent dans les donnees, sans que rien ne les lise. */
@@ -156,10 +156,10 @@ Object.assign(ACTIONS, {
     Store.save(); render();
     toast(`${trad('Colonne')} ${guill(cat)} ${trad('supprimée')}`);
   },
-  /* « add-expense-month » est partie avec son bouton : elle ouvrait douze lignes
+  /* "add-expense-month" est partie avec son bouton : elle ouvrait douze lignes
      vides pour l'annee suivante, et une annee doit apparaitre quand des donnees
      existent, non parce qu'on a appuye. Les mois se creent a la demande, la ou
-     l'on saisit -- « saisir-mois-courant » et « saisir-mois-en-attente » posent
+     l'on saisit -- "saisir-mois-courant" et "saisir-mois-en-attente" posent
      la ligne du mois vise si le calendrier ne la porte pas.
      Une action sans bouton pour l'appeler est du code mort, et le balayage de
      verification cherche justement les `data-action` qui ne menent a rien. */
@@ -244,7 +244,7 @@ Object.assign(ACTIONS, {
   },
 
   /* On en saisit rarement une seule. Depuis que le tableau passe par la fenetre,
-     poser dix charges demandait dix allers-retours par « + Ligne » : le bouton
+     poser dix charges demandait dix allers-retours par "+ Ligne" : le bouton
      d'enchainement enregistre et rouvre une fenetre vide, curseur sur le poste.
 
      La boucle vit ici et non dans `askForm` parce que c'est ici qu'on sait quoi
@@ -429,7 +429,7 @@ Object.assign(ACTIONS, {
     if (!v) { rafraichirRevenus(); return; }
     /* `estime` ne s'ecrit que s'il est vrai : un faux pose partout alourdirait
        l'etat sans rien dire de plus que son absence, et c'est deja la convention
-       de la case de la liste. La periode, elle, s'ecrit toujours — c'est un
+       de la case de la liste. La periode, elle, s'ecrit toujours -- c'est un
        choix qu'on vient de faire, et `chargePeriode()` retombe sur le mois pour
        tout ce qu'elle ne connait pas. */
     Store.state.budget.income.push({ label: v.label, amount: v.amount,
@@ -442,7 +442,7 @@ Object.assign(ACTIONS, {
      Elle ne s'editait qu'en place, dans la liste des revenus : un loyer affiche
      sur la fiche de son bien n'avait donc aucune porte, et rien a l'ecran ne
      disait ou aller le corriger. La page Budget garde ses champs en place, c'est
-     sa nature — on y saisit en serie. Cette fenetre est la seconde porte sur le
+     sa nature -- on y saisit en serie. Cette fenetre est la seconde porte sur le
      meme champ, pas un second champ : les deux ecrivent `budget.income[i]`.
 
      Meme forme que sa jumelle des charges fixes, case de suppression comprise :

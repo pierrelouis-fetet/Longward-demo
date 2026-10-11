@@ -1775,7 +1775,10 @@ suite('Aucun dialogue ne parle français en dur', () => {
   };
 
   test('chaque confirmation et chaque avis passent par trad()', () => {
-    const src = lireSource('assets/app.js');
+    /* Un commentaire n'est pas un appel : ses guillemets egareraient la
+       recherche de la parenthese fermante. Aucune chaine d'app ne porte de
+       delimiteur de bloc, le retrait est donc sans risque. */
+    const src = lireSource('assets/app.js').replace(/\/\*[\s\S]*?\*\//g, ' ');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
     for (const nom of ['askConfirm', 'toast']) {
       const fautifs = appelsFautifs(src, nom);

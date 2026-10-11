@@ -86,19 +86,19 @@ const currencySign = c => CURRENCY_SIGNS[c] || c || '€';
    plus d'appelant. */
 
 let evoRange = '1y';
-/* Net ou brut : une seule notion, un seul réglage, et désormais un seul
+/* Net ou brut : une seule notion, un seul reglage, et desormais un seul
    commutateur.
 
-   Le grand chiffre et la courbe ont d'abord eu chacun le leur, et deux états :
-   on pouvait afficher le titre en brut au-dessus d'une courbe tracée en net, sur
-   le même écran, sans que rien ne le signale. Ils ont ensuite commandé la même
-   variable, ce qui réglait le mensonge sans régler la question posée — deux
-   boutons identiques à deux endroits laissent croire qu'ils font deux choses.
+   Le grand chiffre et la courbe ont d'abord eu chacun le leur, et deux etats :
+   on pouvait afficher le titre en brut au-dessus d'une courbe tracee en net, sur
+   le meme ecran, sans que rien ne le signale. Ils ont ensuite commande la meme
+   variable, ce qui reglait le mensonge sans regler la question posee -- deux
+   boutons identiques a deux endroits laissent croire qu'ils font deux choses.
 
    Il n'en reste qu'un, dans la grande carte, et il gouverne toute la page. La
-   place libérée sous le graphique porte le seul réglage qui lui appartienne en
-   propre : le périmètre, `evoFinancier` juste dessous. Deux questions, deux
-   commandes, chacune à un seul endroit. */
+   place liberee sous le graphique porte le seul reglage qui lui appartienne en
+   propre : le perimetre, `evoFinancier` juste dessous. Deux questions, deux
+   commandes, chacune a un seul endroit. */
 let evoNet = true;    // valorisation de toute la page Aujourd'hui
 /* Le perimetre de la seule courbe d'evolution, et rien d'autre sur la page.
 
@@ -131,7 +131,7 @@ let evoFinancier = true;
 let evoTransition = false;
 let paceRange = '1y';        // rythme d'accumulation
 let journalOuvert = false;
-/* La ligne « Revenus » de la carte « Ou va ce que tu gagnes » ouvre ses sources.
+/* La ligne "Revenus" de la carte "Ou va ce que tu gagnes" ouvre ses sources.
    L'etat vit ici, comme les autres replis de vue : un `details` natif se
    refermerait a chaque rendu, et le rendu suit chaque frappe dans un champ. */
 let revenusOuvert = false;
@@ -148,8 +148,8 @@ function periodeTransactions() {
   if (r != null && estAnnee(r) && anneesDesTransactions().map(String).includes(String(r))) return String(r);
   return anneeParDefautTransactions();
 }
-/* « Toutes les annees » pour 'all' : sur cette barre, on choisit des annees.
-   `rangeLabel` garde son « Tout » pour les autres plages. */
+/* "Toutes les annees" pour 'all' : sur cette barre, on choisit des annees.
+   `rangeLabel` garde son "Tout" pour les autres plages. */
 const libellePeriodeTransactions = p => (p === 'all' ? trad('Toutes les années') : String(p));
 /* L'annee du journal des ventes, distincte de la plage glissante ci-dessus.
 
@@ -177,7 +177,7 @@ let journalDeroule = false;
    dans `meta`, il suit l'etat partout ou il va, synchronisation comprise.
 
    ET SON DEFAUT EST LA VALEUR DECROISSANTE. L'ordre de saisie ne repond a
-   aucune question ; « qu'est-ce qui pese le plus » est la premiere qu'on se
+   aucune question ; "qu'est-ce qui pese le plus" est la premiere qu'on se
    pose devant une liste de positions. */
 const TRI_POSITIONS_DEFAUT = { key: 'value', dir: 'desc' };
 const TRI_POSITIONS_CHOIX = [
@@ -255,7 +255,7 @@ function sortPositions(entries) {
     /* UNE DONNEE ABSENTE PASSE DERNIERE, DANS LES DEUX SENS. `posPerfEur()` et
        `posPerfPct()` rendent null quand la ligne n'a pas de prix de revient, et
        c'est voulu : une plus-value sans base n'existe pas. Mais `null - 5` vaut
-       -5, donc le tri les rangeait comme des zeros — au milieu des pertes en
+       -5, donc le tri les rangeait comme des zeros -- au milieu des pertes en
        decroissant, en tete en croissant. Une ligne sans mesure n'est ni la
        meilleure ni la pire, elle est hors classement. */
     const aVide = va == null, bVide = vb == null;
@@ -271,23 +271,23 @@ function sortPositions(entries) {
 
 /* --- listes de telephone ------------------------------------------------
    Un tableau de plus de trois colonnes est un piege a defilement sur un
-   ecran de 375 px : dans « Lignes de titres », on voyait Nom, ISIN et
+   ecran de 375 px : dans "Lignes de titres", on voyait Nom, ISIN et
    Symbole, pendant que la valeur, la performance et le poids restaient hors
    champ. Or la fenetre de detail existe deja pour chacun de ces tableaux :
    le tableau ne faisait que dupliquer ce qu'un clic ouvre en entier.
 
    La liste montre donc les deux ou trois chiffres qu'on vient chercher, et
-   toute la ligne s'ouvre — la ligne entiere plutot qu'un bouton « details » :
+   toute la ligne s'ouvre -- la ligne entiere plutot qu'un bouton "details" :
    la cible est vingt fois plus grande au pouce.
 
    Les deux rendus coexistent, le CSS montre l'un ou l'autre selon la largeur.
    La liste ne porte aucun champ de saisie : deux elements partageant le meme
    `data-path` embrouilleraient le re-rendu qui suit une modification. */
 /* `ancre` et `classe` : la liste doit pouvoir porter les memes reperes que la
-   ligne de tableau qu'elle remplace — l'ancre visee par « Aller a la ligne »,
+   ligne de tableau qu'elle remplace -- l'ancre visee par "Aller a la ligne",
    et le fond du mois en cours. */
 /* `barre` a vecu ici : un dessin pose sous la ligne, qui empilait les poches du
-   mois sous chaque releve. Le journal patrimonial n'en veut plus — douze barres
+   mois sous chaque releve. Le journal patrimonial n'en veut plus -- douze barres
    dont l'immobilier occupe les quatre cinquiemes se ressemblent toutes, et la
    composition d'un mois se lit dans la fenetre de ce mois. Un parametre sans
    appelant est la moitie qu'on oublie : il part avec ses trois regles CSS. */
@@ -377,10 +377,10 @@ function ligneListe({ action, index, titre, sous, valeur, second, classeSecond, 
 
 /* Une en-tete triable, et sa bulle d'aide a cote plutot que dessus.
 
-   `suffixe` porte l'unite (« dev. »), qui fait partie de l'intitule et reste
+   `suffixe` porte l'unite ("dev."), qui fait partie de l'intitule et reste
    donc dans la zone cliquable. */
-/* Repliee par defaut, et sur tous les ecrans. Le doublon avec « Lignes de
-   titres » existe aussi sur grand ecran : y derouler neuf lignes parce qu'il y
+/* Repliee par defaut, et sur tous les ecrans. Le doublon avec "Lignes de
+   titres" existe aussi sur grand ecran : y derouler neuf lignes parce qu'il y
    a la place ne repond a aucune question.
 
    Une variable de vue et rien d'autre : l'etat ne va pas dans `Store`, il ne se
@@ -459,8 +459,8 @@ function sectionJour() {
                 la variation et l'effet.
              -->${l.depuisAchat ? `<span class="jl-quand">${trad('acheté aujourd’hui')}</span>` : ''}<!--
                 Les deux faits sont vrais, et cote a cote ils se contredisent
-                — sans cette mention, « ouvert · +0,00 % » se lit « le titre
-                ne bouge pas ».-->${l.horsSeance ? `<span class="jl-quand">${l.quoteTime
+                -- sans cette mention, "ouvert . +0,00 %" se lit "le titre
+                ne bouge pas".-->${l.horsSeance ? `<span class="jl-quand">${l.quoteTime
                  ? `${trad('cours')} ${esc(fmtCoursQuand(l.quoteTime))}`
                  : trad('pas coté aujourd’hui')}</span>` : ''}</span>
           </div>`).join('')}
@@ -477,7 +477,7 @@ function sectionJour() {
 
    LA HAUTEUR EST MESUREE DES DEUX COTES, et c'est le seul moyen ici. La vue se
    redessine entierement a chaque geste : l'element d'avant n'existe plus, donc
-   aucune transition CSS ne peut le suivre — elle a besoin d'un meme noeud qui
+   aucune transition CSS ne peut le suivre -- elle a besoin d'un meme noeud qui
    change de valeur. On releve donc la hauteur AVANT le rendu, on pose celle
    d'apres, et la transition relie les deux sur un noeud neuf.
 
@@ -499,7 +499,7 @@ function sectionJour() {
    l'oeil.
 
    Les LIGNES, elles, gardent leurs images-clefs CSS : une animation, au
-   contraire d'une transition, joue sur un element qui vient d'apparaitre —
+   contraire d'une transition, joue sur un element qui vient d'apparaitre --
    c'est deja ce que fait l'entree des reperes.
 
    ANIMER LA HAUTEUR COUTE PEU, ET C'EST MESURE. A 375 px, sur la vue
@@ -529,7 +529,7 @@ function deroulerJour(hAvant) {
   const anim = box.animate(
     [{ height: `${hAvant}px` }, { height: `${hApres}px` }],
     { duration: JOUR_DEROULE_MS, easing: JOUR_DEROULE_COURBE });
-  /* `finished` rejette quand l'animation est annulee — un second clic pendant
+  /* `finished` rejette quand l'animation est annulee -- un second clic pendant
      le mouvement, ou la vue qui change. Dans les deux cas le nettoyage doit
      avoir lieu quand meme, sans quoi la carte resterait rognee. */
   anim.finished.catch(() => {}).then(() => box.classList.remove('jl-deroule'));
@@ -868,7 +868,7 @@ function viewPositions() {
      somme de ce compte-la, pas celle de tout le portefeuille sous ses lignes.
      `pnl`, lui, reste celui de tout le portefeuille, pour la carte du haut.
 
-     « Positions » et non « compte » : le cash d'un compte n'est pas une ligne,
+     "Positions" et non "compte" : le cash d'un compte n'est pas une ligne,
      et ce total ne se compare pas a la valeur du compte, qui l'inclut. */
   const vus = latentPnl(ps);
   const libelleVus = `${trad('Total des positions affichées')}${aide(trad(
@@ -1055,7 +1055,7 @@ function viewPositions() {
     /* LA PLUS-VALUE NE COUVRE QUE LES LIGNES QUI ONT UN PRIX D'ACHAT, et le
        modele le dit lui-meme : `latentPnl()` rend `sansBase` et son pourcentage
        vaut null quand aucune base n'existe. Une base absente ne se remplace
-       jamais par zero — elle rendrait une plus-value egale a la valeur entiere,
+       jamais par zero -- elle rendrait une plus-value egale a la valeur entiere,
        et le chiffre le plus faux de l'application serait aussi le plus gros.
        La garde s'ecrit contre l'impression, et non plus haut : un controle
        cherche `pnl.pct == null` dans les deux cents caracteres qui precedent
@@ -1102,22 +1102,22 @@ function salesCard() {
 
   const st = salesStats(periodeTransactions());
 
-  /* La carte porte le bouton qui l'alimente, et elle se rend même vide.
+  /* La carte porte le bouton qui l'alimente, et elle se rend meme vide.
 
-     « Ajouter une vente plus facilement. » Le seul chemin était le bouton
-     « − Vendre » de la carte « Lignes de titres », dans Marchés — si loin que
-     cette page l'écrivait noir sur blanc : « Le bouton "Vendre une ligne" se
-     trouve dans Marchés ». Quand une page doit donner l'itinéraire vers son
-     propre geste, c'est le geste qui est mal placé.
+     "Ajouter une vente plus facilement." Le seul chemin etait le bouton
+     "- Vendre" de la carte "Lignes de titres", dans Marches -- si loin que
+     cette page l'ecrivait noir sur blanc : "Le bouton "Vendre une ligne" se
+     trouve dans Marches". Quand une page doit donner l'itineraire vers son
+     propre geste, c'est le geste qui est mal place.
 
-     C'est une deuxième porte sur la même action, pas un deuxième mécanisme :
+     C'est une deuxieme porte sur la meme action, pas un deuxieme mecanisme :
      les deux appellent `sell-position`, qui demande la ligne. Ce qui serait
      fautif, ce serait deux saisies de vente.
 
-     Et la carte ne disparaît plus faute de ventes : elle se rendait seulement
-     s'il y en avait déjà, donc le bouton n'aurait jamais été là pour la
-     première. C'est le cas qu'on ne voit pas en développant sur un jeu de
-     données bien rempli. */
+     Et la carte ne disparait plus faute de ventes : elle se rendait seulement
+     s'il y en avait deja, donc le bouton n'aurait jamais ete la pour la
+     premiere. C'est le cas qu'on ne voit pas en developpant sur un jeu de
+     donnees bien rempli. */
   return `
   <div class="card" data-anchor="ventes">
     <div class="card-head">
@@ -1175,13 +1175,13 @@ function lignesJournalVentes(j) {
     const part = r.fiable && plusGrand ? Math.abs(r.montant) / plusGrand * 100 : 0;
     const teinte = r.fiable && r.montant >= 0 ? 'var(--good)' : 'var(--critical)';
     /* Une vente declaree n'a ni quantite ni prix : son sous-titre dit d'ou
-       elle vient plutot que d'afficher « 0 × 0 € ».
+       elle vient plutot que d'afficher "0 x 0 EUR".
 
        ET LA QUESTION SE POSE A LA DONNEE, PAS AU DRAPEAU. Elle se posait
        a `declaree`, ce qui revenait a supposer que tout le reste se
-       compte en titres. La cession d'un placement non cote sans parts —
-       un fonds, un pret, un bien — n'en a pas davantage, et le journal
-       affichait « 0 × 0,00 € » sous son nom : deux zeros qui se lisent
+       compte en titres. La cession d'un placement non cote sans parts --
+       un fonds, un pret, un bien -- n'en a pas davantage, et le journal
+       affichait "0 x 0,00 EUR" sous son nom : deux zeros qui se lisent
        comme des faits alors qu'ils ne sont que des cases vides. */
     return ligneListe({
       action: 'open-sale', index: j.rang.get(v),
@@ -1202,10 +1202,10 @@ function lignesJournalVentes(j) {
 }
 
 /* Soleil ou lune, selon que la place cote ou dort. Le cours d'un marche ferme
-   est celui de la derniere cloture : sans ce signe, « +0,70 % » se lit comme
+   est celui de la derniere cloture : sans ce signe, "+0,70 %" se lit comme
    un mouvement en cours alors qu'il est fige depuis des heures.
 
-   Rien du tout quand l'etat est inconnu — `marketStatus()` rend `null` plutot
+   Rien du tout quand l'etat est inconnu -- `marketStatus()` rend `null` plutot
    que de supposer, et une lune posee a tort serait pire que pas de lune. Les
    seances etendues gardent le soleil, en ambre : ca cote, mais hors de la
    seance principale. */
@@ -1245,7 +1245,7 @@ const AIDE_PERIMETRE = 'Financier : tes placements et tes liquidités. Global : 
 
 const estVix = l => String(l?.symbole || '') === '^VIX';
 /* `null` plutot qu'un libelle par defaut : sans valeur utilisable, la tuile ne
-   doit rien affirmer. C'est la meme regle que le « hors seance » des autres
+   doit rien affirmer. C'est la meme regle que le "hors seance" des autres
    reperes, qui se tait plutot que d'afficher la variation de la veille. */
 function niveauVix(v) {
   const n = Number(v);
@@ -1337,7 +1337,7 @@ async function mountReperes() {
   box.scrollLeft = 0;
 }
 
-/* Pose par l'action « ajouter une ligne », consomme par `render()` : la carte
+/* Pose par l'action "ajouter une ligne", consomme par `render()` : la carte
    de recherche n'existe pas encore au moment du clic si l'on arrive d'une
    autre vue. */
 let ouvrirRechercheApresRendu = false;
@@ -1350,14 +1350,14 @@ function mountPositions() {
   monterJournal('achats', $('#pliAchats'), ouvert => { achatsDeroules = ouvert; });
 
   /* La recherche se monte meme sans aucune ligne, et c'est le correctif : l'etat
-     vide porte le bouton « + Un titre coté » et desormais la carte qu'il ouvre.
+     vide porte le bouton "+ Un titre cote" et desormais la carte qu'il ouvre.
      Le montage sortait avant, donc le champ restait inerte au moment precis ou
      l'on n'a rien et ou l'on vient tout ajouter. `mountSymbolSearch()` se tait
-     de lui-meme si la carte n'est pas la — c'est le cas sans compte capable de
+     de lui-meme si la carte n'est pas la -- c'est le cas sans compte capable de
      porter un titre. */
   mountSymbolSearch();
   /* La recherche demandee depuis l'en-tete du tableau : on s'y rend, on donne
-     le focus. `focusChamp` se tait sur ecran tactile, ce qui est voulu — le
+     le focus. `focusChamp` se tait sur ecran tactile, ce qui est voulu -- le
      clavier ne doit pas recouvrir la carte a laquelle on vient d'arriver. */
   if (ouvrirRechercheApresRendu) {
     ouvrirRechercheApresRendu = false;

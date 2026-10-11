@@ -16,7 +16,7 @@ function paliersCible(courant) {
    pour l'objectif de depenses. Elle est partie avec la liste. Un objectif se
    saisit maintenant a l'euro, parce que quelqu'un qui vit avec 640 EUR par mois
    doit pouvoir viser juste, et que les paliers ronds ne servaient qu'a essayer
-   des hypotheses — un champ libre le fait aussi bien. */
+   des hypotheses -- un champ libre le fait aussi bien. */
 
 function mountBudget() {
   const year = budgetAnnee();
@@ -268,9 +268,9 @@ function mountData() {
     /* LIRE, VALIDER, SAUVEGARDER L'ANCIEN, PUIS SEULEMENT REMPLACER.
 
        L'ordre etait l'inverse : `Store.state = data` s'executait avant
-       `Store.migrate()`, et un fichier qui passait la garde sommaire —
-       `{ positions: [], monthly: [] }` la passe — faisait echouer la migration
-       APRES avoir remplace l'etat. L'ecran annonçait « Import impossible » et
+       `Store.migrate()`, et un fichier qui passait la garde sommaire --
+       `{ positions: [], monthly: [] }` la passe -- faisait echouer la migration
+       APRES avoir remplace l'etat. L'ecran annoncait "Import impossible" et
        le patrimoine etait deja perdu : zero compte, zero releve, zero euro.
 
        La migration s'execute donc sur un candidat, l'etat courant revient si
@@ -320,7 +320,7 @@ function download(filename, content, type = 'application/json') {
 const stamp = () => new Date().toISOString().slice(0, 10);
 
 /* Une cellule de tableur est du texte affiche : sans `trad()`, l'export d'une
-   application en anglais sortait « Quotidien » et « Non cote ». La fonction
+   application en anglais sortait "Quotidien" et "Non cote". La fonction
    plutot qu'un objet constant, parce que la langue peut changer entre deux
    exports dans la meme session. */
 const POCKET = () => ({
@@ -630,7 +630,7 @@ async function proposerTransitionLoyer() {
   /* La ligne quitte le budget COURANT, et lui seul. Les mois deja saisis vivent
      dans `budget.expenses` et dans les releves : rien ici ne les approche, et il
      n'y a pas de fausse chronologie a fabriquer. `Store.save()` empile l'etat
-     d'avant, donc la porte de sortie rend la charge entiere — son montant, sa
+     d'avant, donc la porte de sortie rend la charge entiere -- son montant, sa
      periode, son organisme, ses parts. */
   Store.state.budget.fixedCharges.splice(cible.i, 1);
   Store.save(); render();
@@ -677,7 +677,7 @@ function makeDeleter(listKey, what, nameOf) {
 /* Les credits proposables au rattachement d'une charge fixe.
 
    Hors de l'objet ACTIONS : ce n'est pas une action, et une declaration `const`
-   dans un litteral d'objet ne se parse pas — le fichier entier tombait.
+   dans un litteral d'objet ne se parse pas -- le fichier entier tombait.
 
    Un credit deja rembourse par une autre charge n'y figure pas : deux charges sur
    le meme credit doubleraient la mensualite lue, et la premiere trouvee
@@ -723,11 +723,11 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
   const publiee = !!(type && type.vl);
   /* `estValeurEstimee` et non `estDetenuEnDirect` : une part de societe se
      valorise soi-meme autant qu'une montre, et c'est deja ce que dit la liste
-     des comptes en ecrivant « estimation actuelle » sous son montant. Restreinte
-     au direct, la question « depuis quand ce chiffre tient-il ? » ne se posait
-     pas la ou elle se pose le plus — une valeur de part vieillit entre deux
+     des comptes en ecrivant "estimation actuelle" sous son montant. Restreinte
+     au direct, la question "depuis quand ce chiffre tient-il ?" ne se posait
+     pas la ou elle se pose le plus -- une valeur de part vieillit entre deux
      levees, et rien a l'ecran ne disait depuis quand.
-     Un seul predicat pour un seul fait : celui qui decide du mot « estimation »
+     Un seul predicat pour un seul fait : celui qui decide du mot "estimation"
      decide aussi de la date qui l'accompagne. */
   const estime = estValeurEstimee(type);
   /* `releve` : le support saisi d'un contrat mixte, dont la valeur se lit sur
@@ -762,7 +762,7 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
     { cle: 'prixDeRevient', label: trad('Montant investi ({dev})'), type: 'nombre',
       /* Le COUT EFFECTIF, et non le seul champ legacy : une ligne creee avec
          prix, frais et travaux (un ancien bien de valeur) montrait ici un champ
-         vide, et ce qu'on y tapait ne changeait rien — `acquisitionLigne`
+         vide, et ce qu'on y tapait ne changeait rien -- `acquisitionLigne`
          prefere le detail complet. Voir `litPlacement`, qui l'efface alors. */
       valeur: l && coutAcquisition(l) !== null ? coutAcquisition(l) : '', exemple: '0',
       aide: trad('facultatif, il donne la plus-value'),

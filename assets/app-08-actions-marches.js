@@ -205,7 +205,7 @@ Object.assign(ACTIONS, {
     toast(`${guill(r.achat.name)} ${trad('modifié')}`);
   },
   'filtrer-role'(btn) { posRole = btn.dataset.role; render(); },
-  /* Deux routeurs de `change` visent ce selecteur — le generique, et celui des
+  /* Deux routeurs de `change` visent ce selecteur -- le generique, et celui des
      `select.annee` dont il porte la classe pour l'habillage et la garde des
      16 px. Le second appel arrive avec la meme valeur : on ne re-rend pas. */
   'filtrer-compte-titres'(sel) {
@@ -336,17 +336,17 @@ Object.assign(ACTIONS, {
     }
   },
 
-  /* « add-supplement » et « del-supplement » sont partis avec la carte
-     « Autres depenses ». Une action sans bouton pour l'appeler est du code
+  /* "add-supplement" et "del-supplement" sont partis avec la carte
+     "Autres depenses". Une action sans bouton pour l'appeler est du code
      mort, et le balayage de verification cherche justement des `data-action`
-     qui ne mènent à rien : autant ne pas lui laisser l'inverse a trouver. */
+     qui ne menent a rien : autant ne pas lui laisser l'inverse a trouver. */
 
-  /* « add-month » est partie avec le calendrier : elle ouvrait douze lignes
-     vides pour l'année suivante, ce qui n'a plus de sens depuis que le journal
-     n'affiche que les relevés renseignés — elle n'aurait plus rien ajouté de
-     visible. Rien n'en dépendait : `ensureCalendarMonths()` ouvre l'année en
-     cours à chaque migration, et « Ajouter un relevé » crée la ligne du mois
-     demandé, quelle que soit son année. */
+  /* "add-month" est partie avec le calendrier : elle ouvrait douze lignes
+     vides pour l'annee suivante, ce qui n'a plus de sens depuis que le journal
+     n'affiche que les releves renseignes -- elle n'aurait plus rien ajoute de
+     visible. Rien n'en dependait : `ensureCalendarMonths()` ouvre l'annee en
+     cours a chaque migration, et "Ajouter un releve" cree la ligne du mois
+     demande, quelle que soit son annee. */
   async 'resolve-row'(btn) {
     const p = Store.state.positions[+btn.dataset.i];
     if (!p) return;
@@ -390,7 +390,7 @@ Object.assign(ACTIONS, {
       /* Les lignes dont le cours a REELLEMENT bouge, avant le rendu qui les
          affiche. `changes` porte deja le `from` et le `to` de chaque ligne : la
          donnee existait, elle etait jetee. Un rafraichissement qui ne change
-         rien n'allume donc rien — c'est ce qui separe « ce chiffre est frais »
+         rien n'allume donc rien -- c'est ce qui separe "ce chiffre est frais"
          d'un appui sur un bouton. */
       coursFraichis = new Set(changes
         .filter(c => !c.error && Math.abs(num(c.to) - num(c.from)) > 1e-9)

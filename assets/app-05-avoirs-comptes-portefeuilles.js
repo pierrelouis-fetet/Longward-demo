@@ -26,7 +26,7 @@ let relanceGraphes = false;
 /* La base de cette page, en un seul endroit.
 
    Elle se recopiait a sept endroits sous la forme d'un ternaire, et le huitieme
-   a ete oublie : le centre de l'anneau annonçait 354,6 k EUR « Tes avoirs » au
+   a ete oublie : le centre de l'anneau annoncait 354,6 k EUR "Tes avoirs" au
    milieu de parts qui totalisaient 66 551. Un total qui n'egale pas la somme de
    ses parts, sur la carte meme, et le pire des defauts de cette base de code
    puisqu'il rassure. Le preambule et la carte des usages avaient le meme.
@@ -42,7 +42,7 @@ const valeurAvoirsAlloc = () => (allocFinancier ? totalFinancier() : patrimoine(
 const partsAllocLisibles = () => valeurBaseAlloc() > 0.005;
 let compteRecherche = '';
 /* L'etat vit dans `meta`, pas dans une variable qui le recopie : le `Set`
-   etait construit au chargement du script, donc avant que le store soit lu —
+   etait construit au chargement du script, donc avant que le store soit lu --
    il partait toujours vide et le repli memorise ne s'appliquait jamais. Une
    seule source, interrogee au moment du rendu. */
 const cleLiqPli = aff => `liq:${aff}`;
@@ -82,13 +82,13 @@ function variationCompte(id) {
    Elle etait un hachage du nom du groupe vers les huit teintes de serie. Trois
    choses en decoulaient, toutes mauvaises.
 
-   Le hachage collisionne : « t-courant » et « t-cto » tombaient tous deux sur
+   Le hachage collisionne : "t-courant" et "t-cto" tombaient tous deux sur
    `series-6`, soit deux groupes de la meme couleur dans la meme liste, ce qui est
    exactement ce que la couleur etait censee eviter.
 
    Il pioche dans un vocabulaire qui veut dire autre chose. Dans toute
    l'application, `series-1` est le bleu des liquidites et `series-2` le vert des
-   actifs de marche — c'est teste, « un actif porte la meme couleur partout ».
+   actifs de marche -- c'est teste, "un actif porte la meme couleur partout".
    Un etablissement de banque heritait donc du vert des actifs de marche, un
    courtier du bleu des liquidites : un faux signal, dans une langue que le reste de l'app s'applique a
    tenir juste. Pire que pas de couleur du tout.
@@ -106,8 +106,8 @@ function teinteGroupe() {
 
 /* `avecEtab` : quand la liste est deja groupee par etablissement, le repeter
    sur chaque ligne n'apprend rien et pousse le type du compte sur deux
-   lignes. « le courtier · Portefeuille de cryptomonnaies » devient
-   « Portefeuille de cryptomonnaies ». */
+   lignes. "le courtier . Portefeuille de cryptomonnaies" devient
+   "Portefeuille de cryptomonnaies". */
 function sousTitreCompte(c, avecEtab = true) {
   const nom = nomCompteV2(c);
   return [avecEtab ? nomEtabDe(c) : '', trad(typeCompte(c.type).label)]
@@ -134,12 +134,12 @@ function ligneCompte(c, avecEtab = true, nomRepete = false) {
   const dateEstimee = estimee
     ? phraseDateValeur(datesDuCompte(c).find(x => x.genre === 'estimation' || x.genre === 'retrait') || { genre: '' }) : '';
   const v = estimee ? null : variationCompte(c.id);
-  /* « +0 € depuis aout » : un changement nul n'apprend rien, et il prenait la
-     place d'une information sur chaque ligne d'un compte qui n'a pas bouge —
+  /* "+0 EUR depuis aout" : un changement nul n'apprend rien, et il prenait la
+     place d'une information sur chaque ligne d'un compte qui n'a pas bouge --
      un livret, un compte courant releve au meme montant. Une variation ne
      s'ecrit que si elle en est une ; sinon la place reste, vide, pour que les
      rangees gardent leur hauteur. Le seuil suit ce que le format montre :
-     `fmtSigned` arrondit a l'euro, et −0,30 € s'ecrivait « −0 € ». */
+     `fmtSigned` arrondit a l'euro, et -0,30 EUR s'ecrivait "-0 EUR". */
   const bouge = v && Math.abs(v.eur) >= 0.5;
   const idx = Store.state.comptes.indexOf(c);
   return `
@@ -166,17 +166,17 @@ function espaceTerminal(c, idx, t, seule) {
   /* LA MEME CARTE POUR LES QUATRE, ET C'EST LA LIGNE QUI S'EFFACE, PAS LA CARTE.
 
      Deux presentations cohabitaient. Les actifs comptes en parts avaient une
-     liste cle-valeur ; les autres — pret participatif, bien de valeur —
+     liste cle-valeur ; les autres -- pret participatif, bien de valeur --
      recevaient `lignePlacement`, qui est une LIGNE DE LISTE promue carte : un
      nom, une pastille, un montant et un gain colles en rangee, avec les faits du
      pret entasses dans un sous-titre en gris. Cote a cote, deux placements non
-     cotes du meme portefeuille ne se lisaient pas de la meme façon, et l'un
-     n'avait ni « Prix d'achat », ni « Valeur actuelle », ni « Plus-value »
+     cotes du meme portefeuille ne se lisaient pas de la meme facon, et l'un
+     n'avait ni "Prix d'achat", ni "Valeur actuelle", ni "Plus-value"
      nommes.
 
-     Le motif qui justifiait la separation — « ils n'ont ni parts ni prix
-     unitaire » — n'en etait pas un : le gabarit ne rend deja QUE les lignes qui
-     ont un objet. Un pret sans parts n'affiche pas « Parts detenues », il
+     Le motif qui justifiait la separation -- "ils n'ont ni parts ni prix
+     unitaire" -- n'en etait pas un : le gabarit ne rend deja QUE les lignes qui
+     ont un objet. Un pret sans parts n'affiche pas "Parts detenues", il
      affiche son prix d'achat en totalite ; un actif en parts fait l'inverse.
      Une seule carte, et chacun y trouve ses lignes. */
   return detailsPlacement(c, idx, t, seule);
@@ -254,8 +254,8 @@ function detailsPlacement(c, idx, t, l) {
 
    Deux cartes la posent : celle d'un placement en parts (`detailsPlacement`) et
    celle des autres actifs terminaux (`lignePlacement`). Seule la seconde offrait
-   le menu, donc une part de societe affichait « Bloque » sans qu'aucun ecran ne
-   permette de le dementir — et c'est precisement le cas que le reglage existe
+   le menu, donc une part de societe affichait "Bloque" sans qu'aucun ecran ne
+   permette de le dementir -- et c'est precisement le cas que le reglage existe
    pour couvrir : un non cote qui se revend sur un marche secondaire n'est pas
    bloque, et c'est le placement qui sait, pas le type.
 
@@ -283,7 +283,7 @@ function champMobilite(l, compte, editable) {
 
 /* `sansNom` A DISPARU AVEC SON SEUL APPELANT. Ce quatrieme argument servait a
    promouvoir une ligne de liste en carte, sur la fiche d'un actif terminal :
-   elle y taisait son nom — deja ecrit deux fois plus haut — et prenait celui de
+   elle y taisait son nom -- deja ecrit deux fois plus haut -- et prenait celui de
    sa classe. Ces fiches rendent maintenant la meme carte cle-valeur que les
    actifs en parts, donc plus rien ne demande ce mode, et un mode d'affichage que
    personne n'exerce finit par mentir sans qu'on le sache. */
@@ -292,9 +292,9 @@ function lignePlacement(l, compte, editable = false) {
   /* La disponibilite se lit comme une pastille, pas comme un menu deroulant.
 
      Elle en etait un, large, sur chaque ligne : la moitie de la largeur utile
-     pour un reglage qu'on touche une fois dans la vie de l'application — la
-     regle du type de compte est juste presque toujours. Et « Auto, Quelques
-     jours » est une valeur, pas un intitule : rien ne disait de quoi il
+     pour un reglage qu'on touche une fois dans la vie de l'application -- la
+     regle du type de compte est juste presque toujours. Et "Auto, Quelques
+     jours" est une valeur, pas un intitule : rien ne disait de quoi il
      s'agissait.
 
      C'est donc la pastille compacte, la meme que partout ailleurs, avec le menu
@@ -342,8 +342,8 @@ function lignePlacement(l, compte, editable = false) {
 
      Toute la ligne ne peut pas devenir le bouton : elle porte deja un `<select>`
      pour la disponibilite, et un bouton dans un bouton n'existe pas. C'est donc
-     un « Modifier » explicite au bout de la rangee, la ou la fiche du compte pose
-     deja le sien pour la carte « Informations ». Le meme mot au meme endroit. */
+     un "Modifier" explicite au bout de la rangee, la ou la fiche du compte pose
+     deja le sien pour la carte "Informations". Le meme mot au meme endroit. */
   const modifiable = editable && !l.marche && l.ref != null;
   const corps = `
     <span class="cpt-nom">${esc(libelle)}
@@ -375,7 +375,7 @@ function lignePlacement(l, compte, editable = false) {
 
 /* Deux listes, une par pays de contexte (`paysContexte()`, cote store : la
    devise choisie, la langue avant ce choix). Tout type reste accessible par
-   « Autre… » ; il s'agit de mettre en premier ce qu'un lecteur de ce pays a le
+   "Autre..." ; il s'agit de mettre en premier ce qu'un lecteur de ce pays a le
    plus de chances de posseder. Un Americain ouvre un 401(k) et un Roth IRA
    plus souvent qu'un PEA. */
 const FAMILLES_EN_VUE = {
@@ -471,12 +471,12 @@ function viewAccounts() {
   const ouverts = comptesOuverts().filter(correspondAuCompte);
   const archives = COMPTES().filter(c => c.statut === 'archive' && correspondAuCompte(c));
 
-  /* `teinte` : la couleur d'un groupe n'est tirée de son nom que faute de
+  /* `teinte` : la couleur d'un groupe n'est tiree de son nom que faute de
      mieux. Quand le groupe *est* une classe d'actif, il porte la couleur que
-     la classe a déjà partout ailleurs — le camembert de l'accueil, la légende
-     de la courbe, la répartition. Liquidités bleu, actifs de marché vert,
-     immobilier jaune : la même chose se reconnaît à la même couleur d'un écran
-     à l'autre, sinon la couleur ne veut plus rien dire. */
+     la classe a deja partout ailleurs -- le camembert de l'accueil, la legende
+     de la courbe, la repartition. Liquidites bleu, actifs de marche vert,
+     immobilier jaune : la meme chose se reconnait a la meme couleur d'un ecran
+     a l'autre, sinon la couleur ne veut plus rien dire. */
   const enveloppeGroupes = html => html.trim() ? `<div class="cpt-groupes">${html}</div>` : '';
   const groupe = (cle, titre, sousTitre, corps, total, lien = '', teinte = null) => {
     if (!corps.trim()) return '';
@@ -642,16 +642,16 @@ function viewAccounts() {
     const vus = [...anciens.archives.filter(x => x.compte && correspondAuCompte(x.compte)),
                  ...anciens.clos.filter(x => correspond(x.label) || correspond(x.etab))];
     if (!vus.length) return '';
-    /* Aucun montant sur un compte archivé, ni ici ni dans sa fiche.
+    /* Aucun montant sur un compte archive, ni ici ni dans sa fiche.
 
-       Le total du groupe affichait « 0,00 € », et c'était pire qu'un vide :
-       `valeurCompte` rend zéro sur un compte sorti des totaux, donc le chiffre
-       ne disait pas ce que le compte contient — il disait ce qu'il pèse, c'est
-       à dire rien. « Compte archivé, il n'y a pas de montant, enlever tout
-       montant y compris dans la fiche. Là c'est écrit 0. »
+       Le total du groupe affichait "0,00 EUR", et c'etait pire qu'un vide :
+       `valeurCompte` rend zero sur un compte sorti des totaux, donc le chiffre
+       ne disait pas ce que le compte contient -- il disait ce qu'il pese, c'est
+       a dire rien. "Compte archive, il n'y a pas de montant, enlever tout
+       montant y compris dans la fiche. La c'est ecrit 0."
 
-       Un zéro affiché se lit comme un solde. Le sous-titre dit déjà que ces
-       comptes sont hors totaux ; il n'y a pas de somme à en tirer. */
+       Un zero affiche se lit comme un solde. Le sous-titre dit deja que ces
+       comptes sont hors totaux ; il n'y a pas de somme a en tirer. */
     return (sectionsAffichees ? titreSection('Archivés', 'hors de tous les totaux') : '')
       + `
     <section class="cpt-groupe" style="--teinte:${teinteGroupe()}">
@@ -690,15 +690,15 @@ function viewComptesArchives() {
 
      La poubelle se posait sur toutes les lignes, et la restauration seulement
      sur celles qui l'acceptent : un compte archive portait donc les deux. Or
-     « Restaurer » a cote d'une poubelle demande de choisir entre garder et
+     "Restaurer" a cote d'une poubelle demande de choisir entre garder et
      detruire au meme endroit, sur un compte qu'on a justement mis de cote pour
      le garder. Les deux etats cessent de se distinguer des qu'ils partagent
      leurs gestes.
 
-     Le partage se fait sur `restaurable`, la donnee du modele — jamais sur le
+     Le partage se fait sur `restaurable`, la donnee du modele -- jamais sur le
      titre de la section, qui est un intitule et non un etat.
 
-     La poubelle porte un nom lisible a la voix : « Supprimer » seul, repete
+     La poubelle porte un nom lisible a la voix : "Supprimer" seul, repete
      douze fois, ne dit pas lequel des douze. */
   const motif = x => {
     const c = x.compte;
@@ -765,8 +765,8 @@ function mountAccounts() {
 
 const estBien = t => !!t.bienImmo;
 
-/* Les crédits qui financent ce compte. Le modèle les range sur l'établissement
-   qui porte le bien — c'est là que la valeur nette se lit — donc on remonte à
+/* Les credits qui financent ce compte. Le modele les range sur l'etablissement
+   qui porte le bien -- c'est la que la valeur nette se lit -- donc on remonte a
    lui, avec les index dont `data-path` a besoin pour les rendre modifiables. */
 function creditsDuCompte(c) {
   const idxEtab = ETABS().findIndex(e => e.id === c.etabId);
@@ -774,7 +774,7 @@ function creditsDuCompte(c) {
   if (!etab) return { idxEtab: -1, etab: null, dettes: [], total: 0 };
   /* Les credits de CE bien, pas ceux de l'etablissement : deux biens chez la
      meme banque se partageaient chaque credit. Le rang, lui, reste celui du
-     tableau des dettes de l'etablissement — c'est par lui qu'on ecrit, et un
+     tableau des dettes de l'etablissement -- c'est par lui qu'on ecrit, et un
      rang pris dans la liste filtree modifierait le credit du voisin.
      Comparaison par identite plutot que par `id` : un credit d'un etat ancien
      peut ne pas en porter. */
@@ -786,7 +786,7 @@ function creditsDuCompte(c) {
 
 /* L'invite d'un premier pas : un bouton, et la phrase qui dit pourquoi.
 
-   La forme vient de la carte des flux, qui portait deja « Déclarer tes revenus »
+   La forme vient de la carte des flux, qui portait deja "Declarer tes revenus"
    suivi d'une ligne d'explication. Elle est reprise telle quelle plutot
    qu'inventee a cote : trois invites de trois formes differentes auraient donne
    trois apprentissages au lieu d'un.
@@ -814,14 +814,14 @@ let guideDeplie = false;
 
 /* LE RENVOI SUIT CE QU'IL Y A A VOIR, PAS LA BRANCHE QUI L'AFFICHE.
 
-   Il n'a d'abord existe que sous la question « as-tu tout mis ? ». Or un pas
+   Il n'a d'abord existe que sous la question "as-tu tout mis ?". Or un pas
    franchi qu'on rouvre pour verifier montre sa consigne et son bouton d'ajout,
    dans l'AUTRE branche du rendu : il perdait donc le seul chemin vers la liste
    au moment precis ou l'on venait la relire. Deux branches, un seul besoin.
 
    La condition est desormais la meme des deux cotes, et c'est la bonne : des
    qu'un premier element existe, il y a quelque chose a regarder. Tant qu'il n'y
-   en a aucun, la liste serait vide et le lien n'apprendrait rien — c'est
+   en a aucun, la liste serait vide et le lien n'apprendrait rien -- c'est
    exactement la question a laquelle `pasAFaire` repond deja, on ne lui en
    ecrit pas une seconde.
 
@@ -856,7 +856,7 @@ function carteBienvenue({ faits, total, premier, acquis }) {
 }
 
 /* UN APERCU VERROUILLE : ce que la page montrera, sans rien inventer. Un titre,
-   une phrase qui dit quelle donnee le debloque, et une silhouette — des traits,
+   une phrase qui dit quelle donnee le debloque, et une silhouette -- des traits,
    pas des chiffres. Aucun montant, aucun pourcentage, aucune courbe pretendument
    calculee : une donnee inconnue reste inconnue. La carte disparait avec
    l'accueil vierge, des le premier compte, remplacee par les vraies cartes et
@@ -951,8 +951,8 @@ function carteDemarrage() {
 }
 
 /* `secondaire` : le meme bouton, en fantome. Une page vierge ne porte qu'une
-   action pleine ; quand deux invites se suivent — les depenses puis les
-   revenus, sur Budget — la seconde le dit par sa forme. */
+   action pleine ; quand deux invites se suivent -- les depenses puis les
+   revenus, sur Budget -- la seconde le dit par sa forme. */
 function invitePremierPas(cle, { secondaire = false } = {}) {
   const p = PAS_PAR_CLE[cle];
   if (!p || !pasAFaire(cle)) return '';
@@ -1000,7 +1000,7 @@ const periodeDite = p => p !== 'mois' ? trad(CHARGE_PERIODE_LABEL[p]) : '';
    libelle du revenu, celui de la charge et le mode devient plus long a lire que
    les six lignes qu'il economise.
 
-   « Frais » et non « Charge » : le mot du bouton decide de ce qu'on croit devoir
+   "Frais" et non "Charge" : le mot du bouton decide de ce qu'on croit devoir
    saisir, et la liste qu'il ouvre ne connait aucun poste de logement. */
 function boutonsPierrePapier(c) {
   return `
@@ -1024,7 +1024,7 @@ function boutonsRattachement(c, usage) {
 
    Le nom porte l'action plutot qu'un crayon a cote : c'est le nom qu'on lit et
    qu'on veut corriger, et un second element a viser sur un telephone est un
-   second element a manquer. `.lien-nu` existe pour ca — un vrai bouton, puisque
+   second element a manquer. `.lien-nu` existe pour ca -- un vrai bouton, puisque
    ce n'est pas une navigation, qui n'en garde que le souligne.
 
    Un montant qui s'affiche sans porte pour le corriger oblige a chercher sa
@@ -1035,7 +1035,7 @@ function boutonsRattachement(c, usage) {
    `signe: 0` pour une sortie qu'il n'y a pas a juger. La mensualite d'une
    residence principale n'est pas une perte, c'est le prix du logement : la
    peindre en rouge moraliserait une depense choisie. La couleur reste pour ce
-   qui a un sens — un cash-flow, un gain, une alerte. */
+   qui a un sens -- un cash-flow, un gain, une alerte. */
 function ligneSource({ nom, montant, signe, action, donnees, sub = '', aideTxt = '' }) {
   const attrs = Object.entries(donnees).map(([k, v]) => `data-${k}="${esc(String(v))}"`).join(' ');
   const teinte = signe > 0 ? 'up' : signe < 0 ? 'dette' : '';
@@ -1090,7 +1090,7 @@ function blocCapitalRembourse(co) {
   /* `== null` et non une simple verite JS : ZERO EST UNE REPONSE ici.
 
      Un credit dont la mensualite ne couvre meme pas ses interets ne rembourse
-     rien du tout — c'est le levier d'un courtier, ou un differe — et c'est
+     rien du tout -- c'est le levier d'un courtier, ou un differe -- et c'est
      precisement ce qu'il faut dire. Faire disparaitre le bloc laissait croire
      que la question ne se posait pas, alors que la reponse etait connue et
      valait zero. Inconnu et nul ne se confondent pas. */
@@ -1164,8 +1164,8 @@ function carteResidence(c, idx, cf, usage) {
       <dt><b>${trad('À ta charge')}</b>${aide(trad('Ce que ce bien fait sortir de ton compte chaque mois : la mensualité des crédits rattachés, plus les charges que tu paies en tant que propriétaire.'))}</dt>
         <dd><b>${fmtEUR(co.totalSorties)} ${trad('/ mois')}</b></dd>
       ${ligneMensualite(cf, 0)}
-      ${/* « Autres charges » et non « Charges proprietaire » : sur un logement
-            qu'on habite, le mot designe un statut qui n'apprend rien — on est
+      ${/* "Autres charges" et non "Charges proprietaire" : sur un logement
+            qu'on habite, le mot designe un statut qui n'apprend rien -- on est
             proprietaire de tout ce qui est sur cette fiche. Il garde son sens
             sur un locatif, ou il distingue ce qui reste au bailleur de ce que
             le locataire rembourse. */ ''}
@@ -1224,16 +1224,16 @@ function carteLocatif(c, idx, cf) {
       ${/* TROIS RENDEMENTS, ET PAS UN DE PLUS.
 
             Le rendement sur apport a quitte cette carte. Il etait juste, et il
-            reste calcule par le modele — mais quatre pourcentages sous une
+            reste calcule par le modele -- mais quatre pourcentages sous une
             cascade de sept lignes font une carte qu'on ne parcourt plus, et
             celui-la repondait a une question d'INVESTISSEUR quand les trois
-            autres decrivent le bien. L'apport se lit dans « Financement », ou il
+            autres decrivent le bien. L'apport se lit dans "Financement", ou il
             se saisit.
 
             L'aide du troisieme est partie aussi : elle decrivait un taux
             applique au loyer moins les charges, ce qui n'est plus vrai depuis
-            que la fiscalite peut etre un montant annuel declare — et la ligne
-            « Fiscalite estimee » de la cascade porte deja ce concept, une fois,
+            que la fiscalite peut etre un montant annuel declare -- et la ligne
+            "Fiscalite estimee" de la cascade porte deja ce concept, une fois,
             au bon endroit. */ ''}
       ${cf.rendementNetNet == null ? '' : ligneRendement({
         nom: 'Rendement après fiscalité', valeur: cf.rendementNetNet })}

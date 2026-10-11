@@ -26,7 +26,7 @@ function litPlacement(v, base, t) {
   };
   /* Un montant investi tape par-dessus un detail (prix, frais, travaux) le
      remplace : sans ca, `acquisitionLigne` continuait de lire le detail et la
-     correction n'existait nulle part. Inchange, le detail reste — un zero
+     correction n'existait nulle part. Inchange, le detail reste -- un zero
      declare aux trois postes n'est pas un champ vide. */
   const DETAIL = ['prixAchat', 'fraisAcquisition', 'travauxInitiaux'];
   const tape = estDeclare(v.prixDeRevient) ? num(v.prixDeRevient) : null;
@@ -98,7 +98,7 @@ const ACTIONS = {
     toast(trad('Montants enregistrés'));
   },
   'notifications'() { retourHaptique(); basculeNotifs(); },
-  /* Revenir d'où l'on vient, sauf si l'on vient de nulle part : un signet ouvert
+  /* Revenir d'ou l'on vient, sauf si l'on vient de nulle part : un signet ouvert
      directement n'a pas d'histoire dans l'application, et `history.back()`
      sortirait du site. L'accueil sert alors de sortie. */
   'retour-arriere'() {
@@ -231,7 +231,7 @@ const ACTIONS = {
   /* L'interrupteur bascule ce qu'il trouve, il ne recoit plus une valeur.
      C'etait un `data-action-change` sur une liste deroulante, qui lisait
      `sel.value` ; c'est un bouton, et l'etat vit dans les reglages. Lire l'etat
-     plutot que le recevoir supprime la question « et si les deux divergent ». */
+     plutot que le recevoir supprime la question "et si les deux divergent". */
   'famille-notif'(btn) {
     const cle = btn.dataset.cle;
     const actif = !reglagesNotifs()[cle];
@@ -243,8 +243,8 @@ const ACTIONS = {
       (FAMILLES_NOTIF.find(f => f[0] === cle) || [, cle])[1].toLowerCase()}`);
   },
   /* Une tuile peut viser une carte de la fiche (`data-anchor`) et y poser le
-     curseur (`data-focus="1"`) : c'est la porte de la liste « À mettre à
-     jour », qui mene au bon compte ET au bon champ. */
+     curseur (`data-focus="1"`) : c'est la porte de la liste "A mettre a
+     jour", qui mene au bon compte ET au bon champ. */
   'aller-fiche'(btn) {
     closeApercu();
     pendingAnchor = btn.dataset.anchor || null;
@@ -273,7 +273,7 @@ const ACTIONS = {
 
      Ils ne passent pas par `render()` : le panneau porte des champs de saisie,
      et le reconstruire sous les doigts perdrait le focus et la frappe en cours.
-     L'etat vit donc dans le DOM du panneau, qui ne survit pas a sa fermeture —
+     L'etat vit donc dans le DOM du panneau, qui ne survit pas a sa fermeture --
      c'est voulu, une fenetre s'ouvre repliee ou depliee de la meme facon a
      chaque fois, sans se souvenir d'un geste fait la fois d'avant. */
   'apercu-voir-tout'() {
@@ -300,7 +300,7 @@ const ACTIONS = {
   },
   /* Le perimetre de la courbe. Il ne touche a rien d'autre : le grand chiffre,
      la repartition et les autres cartes lisent le patrimoine complet, et c'est
-     voulu — voir `evoFinancier`.
+     voulu -- voir `evoFinancier`.
 
      `evo-base` vivait ici, jumeau de `hero-base` : deux commandes pour une seule
      variable. Elle est partie avec la bascule Net / Brut du graphique. */
@@ -312,10 +312,10 @@ const ACTIONS = {
     render();
   },
   'proj-scenario'(btn) {
-    /* La case « Personnalise » n'applique rien : elle ouvre le depliant, et
+    /* La case "Personnalise" n'applique rien : elle ouvre le depliant, et
        c'est tout. Lui faire enregistrer `projScenario = 'perso'` aurait fige les
        taux du scenario en cours sous un autre nom, sans qu'un seul chiffre
-       change a l'ecran — un etat qui ne veut rien dire, et un pave enfonce que
+       change a l'ecran -- un etat qui ne veut rien dire, et un pave enfonce que
        l'utilisateur n'a pas choisi. Le preset reconnu reste donc allume jusqu'a
        ce qu'une hypothese bouge vraiment.
 
@@ -333,10 +333,10 @@ const ACTIONS = {
     Store.state.meta.projScenario = btn.dataset.scenario;
     Store.save(); render();
   },
-  /* Le seul commutateur Net / Brut de la page, et il la gouverne entière : le
-     grand chiffre, la répartition qui le décompose, et la courbe plus bas. Son
-     jumeau `evo-base` vivait sur le graphique, sur la même variable ; il est
-     parti, la courbe hérite. */
+  /* Le seul commutateur Net / Brut de la page, et il la gouverne entiere : le
+     grand chiffre, la repartition qui le decompose, et la courbe plus bas. Son
+     jumeau `evo-base` vivait sur le graphique, sur la meme variable ; il est
+     parti, la courbe herite. */
   'hero-base'(btn) {
     const voulu = !!btn.dataset.net;
     if (voulu === evoNet) return;
@@ -345,8 +345,8 @@ const ACTIONS = {
     relanceGraphes = true;
     render();
   },
-  /* On change d'adresse, pas d'état : `hashchange` déclenche le rendu, et le
-     bouton retour du navigateur ramène au sous-onglet précédent. */
+  /* On change d'adresse, pas d'etat : `hashchange` declenche le rendu, et le
+     bouton retour du navigateur ramene au sous-onglet precedent. */
   'taire-rappel'(btn) {
     const genre = btn.dataset.genre;
     const p = genre === 'depenses' ? depensesEnAttente() : currentMonthPending();
@@ -373,11 +373,11 @@ const ACTIONS = {
     tapeSousOnglets = true;
     location.hash = '#/' + btn.dataset.route;
   },
-  /* « proj-extra-clear » est parti avec la ligne libre du tableau « Par
-     horizon » : les deux sélecteurs de la page écrivent désormais le même
-     réglage, il n'y a plus de ligne surnuméraire à retirer. Une action sans
-     bouton pour l'appeler est du code mort, et le balayage de vérification
-     cherche justement les `data-action` qui ne mènent à rien. */
+  /* "proj-extra-clear" est parti avec la ligne libre du tableau "Par
+     horizon" : les deux selecteurs de la page ecrivent desormais le meme
+     reglage, il n'y a plus de ligne surnumeraire a retirer. Une action sans
+     bouton pour l'appeler est du code mort, et le balayage de verification
+     cherche justement les `data-action` qui ne menent a rien. */
   'toggle-masque'() { setMasque(!masqueActif()); render(); },
   'pace-range'(btn) { paceRange = btn.dataset.range; render(); },
 };

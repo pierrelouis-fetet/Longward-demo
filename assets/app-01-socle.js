@@ -111,15 +111,15 @@ function toast(msg, action) {
 
    L'interface entiere est non selectionnable : un appui maintenu n'ouvre plus
    ni loupe, ni poignees, ni menu Copier / Chercher / Traduire. Le prix de cette
-   regle, c'est qu'une donnee qu'on recopie vraiment ailleurs — un numero de
-   compte dans un virement, un ISIN dans la recherche d'un courtier — n'a plus
+   regle, c'est qu'une donnee qu'on recopie vraiment ailleurs -- un numero de
+   compte dans un virement, un ISIN dans la recherche d'un courtier -- n'a plus
    aucun chemin. Elle en recoit un explicite, en un appui, et lui seul.
 
    `navigator.clipboard` n'existe pas hors contexte securise, et il refuse aussi
    quand l'appui ne vient pas d'un geste : les deux cas passent par le meme
    `catch`, et AUCUN des deux ne fait croire que la copie a eu lieu. Le canal est
-   le toast de la maison — 2 300 ms, la duree deja retenue pour un message qui
-   n'attend pas de reponse — et non une nouvelle infrastructure.
+   le toast de la maison -- 2 300 ms, la duree deja retenue pour un message qui
+   n'attend pas de reponse -- et non une nouvelle infrastructure.
 
    Le texte affiche est ici le texte complet : rien n'est masque dans ces deux
    endroits, donc rien n'est reconstitue pour l'occasion. */
@@ -138,8 +138,8 @@ async function copierDansLePressePapiers(valeur) {
 
 /* LE BOUTON RESTE UNE ICONE, ET IL PORTE SON NOM.
 
-   Secondaire par le dessin — pas de fond, pas de bordure, l'encre en retrait —
-   et precis par le nom : « Copier le numéro de compte », jamais « Copier » seul,
+   Secondaire par le dessin -- pas de fond, pas de bordure, l'encre en retrait --
+   et precis par le nom : "Copier le numero de compte", jamais "Copier" seul,
    qui ne dirait pas quoi a qui lit l'ecran a l'oreille. `title` porte le meme
    mot pour la souris.
 
@@ -157,7 +157,7 @@ const boutonCopier = (valeur, libelle) => {
 
 /* La porte de sortie d'une ecriture, a passer en second argument de `toast`.
 
-   Elle n'existe que si la pile a de quoi revenir. Offrir « Annuler » sur une
+   Elle n'existe que si la pile a de quoi revenir. Offrir "Annuler" sur une
    pile vide serait la pire des promesses : le bouton ne rendrait pas l'etat
    d'avant, il en remonterait un plus ancien, ou rien du tout. */
 const porteDeSortie = (label = 'Annuler') =>
@@ -170,27 +170,27 @@ function sauvegardeAvantEcrasement(row) {
 
 /* Ouverture et fermeture de la fenetre, animees dans les deux sens.
 
-   L'entree etait deja animee — retirer `hidden` fait rejouer les keyframes du
-   panneau — mais la fermeture posait `hidden = true` d'un coup : la feuille qui
+   L'entree etait deja animee -- retirer `hidden` fait rejouer les keyframes du
+   panneau -- mais la fermeture posait `hidden = true` d'un coup : la feuille qui
    glisse depuis le bas du telephone disparaissait sans le geste inverse, et
    c'est precisement la sortie qui donne la sensation de fluidite, parce qu'on
    la regarde toujours.
 
    La logique des appelants ne change pas : `masquerModal` rend la main tout de
-   suite — les `resolve()` qui suivent partent sans attendre — seul le voile
+   suite -- les `resolve()` qui suivent partent sans attendre -- seul le voile
    visuel s'attarde 170 ms. Le compteur de generation protege le cas reel ou
-   une fenetre se rouvre pendant la sortie de la precedente (« Nouvelle
-   categorie » ferme la saisie puis la rouvre) : la fermeture perimee ne doit
+   une fenetre se rouvre pendant la sortie de la precedente ("Nouvelle
+   categorie" ferme la saisie puis la rouvre) : la fermeture perimee ne doit
    pas eteindre la fenetre fraiche.
 
-   Le compteur est par fenetre, et il a d'abord ete global — ce qui donnait
+   Le compteur est par fenetre, et il a d'abord ete global -- ce qui donnait
    l'inverse du but recherche. Deux fenetres existent, `#modal` et `#confirm`,
-   et elles se ferment souvent l'une apres l'autre : « Annuler » sur la saisie
+   et elles se ferment souvent l'une apres l'autre : "Annuler" sur la saisie
    d'un mois ferme la confirmation puis la saisie. La seconde fermeture faisait
    avancer le compteur, la sortie differee de la premiere se croyait perimee et
    rendait la main sans rien eteindre : `#confirm` restait avec `hidden = false`
-   pour le reste de la session. Invisible — `pointer-events: none` et opacite
-   nulle — donc jamais signale, mais present dans l'arbre d'accessibilite, et
+   pour le reste de la session. Invisible -- `pointer-events: none` et opacite
+   nulle -- donc jamais signale, mais present dans l'arbre d'accessibilite, et
    une seule regle de style en aurait fait un voile mort sur la page.
 
    Une `WeakMap` plutot qu'un champ sur l'element : rien a nettoyer, et aucun
@@ -206,7 +206,7 @@ const generationSuivante = m => {
    c'est ce que faisaient dix endroits, chacun a la main. Mais il ne garde pas la
    position : la page revenait tout en haut a l'ouverture, et on la retrouvait au
    sommet en fermant. Le defaut valait pour toutes les fenetres de
-   l'application — aperçus, fiches, confirmations, formulaires.
+   l'application -- apercus, fiches, confirmations, formulaires.
 
    On fige donc le corps la ou il est : `position: fixed` avec un decalage
    negatif egal au defilement, puis on le rend et on remet le defilement a la
@@ -231,9 +231,9 @@ function gelerFond() {
      defilee. `overflow: hidden` fait du corps une boite de rognage, et un corps
      en `position: fixed` sans hauteur prend alors celle de l'ecran : 812 px au
      lieu de 2 937. Pose a `top: -1833px`, ce bloc couvre la bande -1833 a
-     -1021 — donc rien de ce qui est visible n'est peint, et on voit le vide.
+     -1021 -- donc rien de ce qui est visible n'est peint, et on voit le vide.
 
-     Il etait de toute façon inutile : `position: fixed` sort le corps du flux,
+     Il etait de toute facon inutile : `position: fixed` sort le corps du flux,
      `html` n'a plus de contenu, donc plus rien a faire defiler. C'est le
      positionnement qui gele la page, pas le rognage. */
 
@@ -241,8 +241,8 @@ function gelerFond() {
      meme defaut : `html, body { height: 100% }` donne au corps la hauteur de
      l'ecran, 812 px, quelle que soit la longueur de la page. Pose a `top: -700px`,
      il couvre la bande -700 a 112 : sous 112 px, plus rien n'est peint, et le
-     voile de la fenetre — noir a 55 %, floute a 3 px — se pose alors sur du vide.
-     « En bas c'est tout noir, on voit pas en flou l'ecran de derriere. »
+     voile de la fenetre -- noir a 55 %, floute a 3 px -- se pose alors sur du vide.
+     "En bas c'est tout noir, on voit pas en flou l'ecran de derriere."
 
      Mesure sur une fiche ouverte depuis un defilement de 700 px : 700 px d'ecran
      nus sur 812. La hauteur rendue au corps additionne donc l'ecran et le
@@ -266,14 +266,14 @@ function degelerFond() {
 /* Le gel s'apparie a la fenetre, pas a l'appel.
 
    La cause est un compteur desynchronise. `apercu-enregistrer` rouvre le panneau
-   apres avoir enregistre — c'est voulu, on veut voir le total bouger — mais il le
+   apres avoir enregistre -- c'est voulu, on veut voir le total bouger -- mais il le
    rouvrait **alors qu'il etait deja ouvert**. Le compteur passait donc a deux, et
    la fermeture suivante le ramenait a un : le fond restait gele pour toujours.
 
    Compter les appels supposait qu'ils vont par paires, ce que rien ne garantit.
    On marque donc la fenetre elle-meme : elle gele une fois, elle degele une fois,
-   quel que soit le nombre d'appels et leur ordre. Le compteur garde son role — les
-   fenetres empilees, une fiche qui ouvre une confirmation — mais il ne peut plus
+   quel que soit le nombre d'appels et leur ordre. Le compteur garde son role -- les
+   fenetres empilees, une fiche qui ouvre une confirmation -- mais il ne peut plus
    compter deux fois la meme. */
 /* Rejouer un accuse d'appui : une classe qui porte une animation courte.
 
@@ -320,8 +320,8 @@ function nettoyerApres(el, repli, apres) {
 
    L'ordre etait inverse : la fenetre apparaissait, son animation demarrait, puis
    `gelerFond()` posait `position: fixed` et une hauteur calculee sur le corps.
-   Or ça invalide la mise en page du document entier — trois mille pixels de
-   cartes et de graphiques — au moment precis de la premiere image. L'animation
+   Or ca invalide la mise en page du document entier -- trois mille pixels de
+   cartes et de graphiques -- au moment precis de la premiere image. L'animation
    partait donc avec une trame de retard, et sur un telephone ce retard se voit.
 
    Geler d'abord coute exactement la meme chose, mais avant que quoi que ce soit
@@ -348,7 +348,7 @@ function montrerModal(m) {
    apres un debut de glissement, ce qui est pire que pas d'animation du tout.
 
    La duree se declare donc une fois, en variable CSS, et le JavaScript la lit
-   la ou elle est. `parseFloat` sur « .26s » rend 0,26 ; le repli couvre le cas
+   la ou elle est. `parseFloat` sur ".26s" rend 0,26 ; le repli couvre le cas
    d'une variable absente, sur un navigateur qui n'aurait pas encore la feuille.
    La marge de 30 ms laisse la derniere image se peindre. */
 function dureeSortieModal() {
@@ -397,8 +397,8 @@ const VIEWS = {
   /* Budget porte trois sous-onglets, sur le meme motif que Marches et
      Allocation : une seule vue, qui choisit quoi rendre. Les routes
      `history` et `budget-cadre` sont des redirections, elles n'ont pas
-     d'entree ici. Le titre suit l'onglet, sinon « Relevés mensuels »
-     s'annoncerait « Budget ». */
+     d'entree ici. Le titre suit l'onglet, sinon "Releves mensuels"
+     s'annoncerait "Budget". */
   budget:     { cle: 'budget',      render: () => barreSousOnglets('budget') + (
     sousOngletActif.budget === 'cadre' ? viewBudgetCadre() : viewBudget()) },
   positions:  { cle: 'positions',   render: () =>
@@ -455,21 +455,21 @@ const viewSub   = k => t('view.' + k + '.sub');
 
 /* --- sous-onglets -------------------------------------------------------
    Onze destinations dans la barre pour une application personnelle, dont
-   trois paires qui parlaient du même sujet : « Allocation » et
-   « Rééquilibrage » sont deux lectures du même argent — où il est, où il
-   devrait être ; « Performance » ne parle que du portefeuille de titres, que
-   « Marchés » porte déjà ; « Préférences » tenait en trois réglages et une
-   carte qui renvoyait à « Données ».
+   trois paires qui parlaient du meme sujet : "Allocation" et
+   "Reequilibrage" sont deux lectures du meme argent -- ou il est, ou il
+   devrait etre ; "Performance" ne parle que du portefeuille de titres, que
+   "Marches" porte deja ; "Preferences" tenait en trois reglages et une
+   carte qui renvoyait a "Donnees".
 
-   Elles deviennent des sous-onglets : le sujet garde une seule entrée dans la
-   barre, et la seconde lecture est à un geste, sans quitter la page. Les
+   Elles deviennent des sous-onglets : le sujet garde une seule entree dans la
+   barre, et la seconde lecture est a un geste, sans quitter la page. Les
    anciennes adresses continuent de fonctionner et ouvrent le bon sous-onglet
-   — un lien partagé ou un signet ne doit pas se casser sur un rangement.
+   -- un lien partage ou un signet ne doit pas se casser sur un rangement.
 
    Chaque sous-onglet garde son adresse : basculer change le `#/`, donc le
-   bouton retour du navigateur défait le geste, un rechargement retombe au
-   même endroit, et un lien se partage. Un état d'affichage qui ne vit que
-   dans une variable se perd au premier F5 — c'est ce qui distingue un
+   bouton retour du navigateur defait le geste, un rechargement retombe au
+   meme endroit, et un lien se partage. Un etat d'affichage qui ne vit que
+   dans une variable se perd au premier F5 -- c'est ce qui distingue un
    sous-onglet d'un simple bouton. */
 const SOUS_ONGLETS = {
   overview:   [['aujourdhui', 'Aujourd’hui', 'overview'],
@@ -484,18 +484,18 @@ const SOUS_ONGLETS = {
      cote sortent de sa base, comme toute classe qu'on met hors jeu. La page ne
      pilote que le portefeuille investissable, cash a investir compris.
 
-     La paire « Patrimoine | Cible » avait donc l'air d'opposer le reel au vise
+     La paire "Patrimoine | Cible" avait donc l'air d'opposer le reel au vise
      alors qu'elle comparait deux perimetres differents : l'un montrait tout,
      l'autre les seuls titres. Deux bases sous une meme barre, ce que ce projet
-     s'interdit ailleurs. Ce qui reste ici repond a une seule question — ou est
-     l'argent — et une page a une question n'a pas besoin d'un selecteur.
+     s'interdit ailleurs. Ce qui reste ici repond a une seule question -- ou est
+     l'argent -- et une page a une question n'a pas besoin d'un selecteur.
 
-     Le nom du menu ne bouge pas. « Allocation » nommait la paire, mais c'est
+     Le nom du menu ne bouge pas. "Allocation" nommait la paire, mais c'est
      aussi le mot que l'utilisateur emploie pour la chose elle-meme.
 
-     « Cible » plutot que « Objectifs » : le mot « objectif » designe deja
+     "Cible" plutot que "Objectifs" : le mot "objectif" designe deja
      l'objectif mensuel de depenses et l'objectif de patrimoine a fin d'annee,
-     et tout ce que la page contient s'appelle « cible » — la colonne, les
+     et tout ce que la page contient s'appelle "cible" -- la colonne, les
      menus, la base des pourcentages, jusqu'a sa route.
 
      Aucun onglet ne depend de l'adresse de base : `#/patrimoine`, `#/rebalance`
@@ -505,27 +505,27 @@ const SOUS_ONGLETS = {
      Marches : un signet pose du temps d'Allocation continue d'ouvrir la bonne
      page. */
   allocation: [['reel', 'Allocation', 'patrimoine']],
-  /* « Depenses » en premier : l'entree du menu s'appelle Budget, et c'est la
+  /* "Depenses" en premier : l'entree du menu s'appelle Budget, et c'est la
      qu'on arrive en la touchant. `currentView()` remet toujours l'adresse de
      base sur le premier onglet de cette liste, c'est donc l'ordre qui decide
-     de l'atterrissage. La saisie devant, le reglage derriere — c'est deja ce
+     de l'atterrissage. La saisie devant, le reglage derriere -- c'est deja ce
      que fait le menu de l'application, ou Donnees et Preferences sont en queue.
 
-     « Charges fixes » et non « Charges » : dans la langue courante les deux
-     mots disent la meme chose, de l'argent qui sort. C'est « fixes » qui porte
-     l'opposition avec « Depenses », ce qui se repete contre ce qui varie.
+     "Charges fixes" et non "Charges" : dans la langue courante les deux
+     mots disent la meme chose, de l'argent qui sort. C'est "fixes" qui porte
+     l'opposition avec "Depenses", ce qui se repete contre ce qui varie.
 
-     Cette barre en a porte trois, dont « Relevés ». La contrainte de largeur
+     Cette barre en a porte trois, dont "Releves". La contrainte de largeur
      s'est donc relachee : a deux onglets ils font 168 px au lieu de 112, et
-     « Charges fixes », mesure a 78 px de texte, y tient meme avec une pastille.
-     L'invariant reste malgre tout — voir PASTILLE_SOUS_ONGLET — parce qu'il ne
+     "Charges fixes", mesure a 78 px de texte, y tient meme avec une pastille.
+     L'invariant reste malgre tout -- voir PASTILLE_SOUS_ONGLET -- parce qu'il ne
      coute rien et qu'un troisieme onglet peut revenir. */
   budget:     [['depenses', 'Dépenses', 'budget'],
                ['cadre', 'Charges fixes', 'budget-cadre']],
 };
 /* L'onglet ouvert au depart, derive de la table et non recopie a cote.
 
-   Cette ligne portait ses quatre valeurs en dur — dont `allocation: 'reel'`. En
+   Cette ligne portait ses quatre valeurs en dur -- dont `allocation: 'reel'`. En
    mettant Objectifs devant Patrimoine dans SOUS_ONGLETS, l'ordre affiche a bien
    change mais l'atterrissage est reste sur Patrimoine : deux listes ecrites a la
    main, et celle-ci disait le contraire de l'autre. C'est la faute que ce projet
@@ -542,13 +542,13 @@ const PASTILLE_SOUS_ONGLET = {
 };
 
 /* Une barre de commutation qui n'est pas une navigation : elle ne change pas de
-   page, elle change la façon de lire celle où l'on est. Même forme que les
-   sous-onglets, parce que c'est le même geste et qu'un utilisateur n'a pas à
-   apprendre deux fois le même bouton.
+   page, elle change la facon de lire celle ou l'on est. Meme forme que les
+   sous-onglets, parce que c'est le meme geste et qu'un utilisateur n'a pas a
+   apprendre deux fois le meme bouton.
 
-   Elle partage donc leur habillage — le lavis qui glisse, la couleur de la
-   marque, le tassement d'appui — et n'en diffère que par l'action appelée.
-   `aria-pressed` et non `aria-current` : ce sont des boutons d'état, pas des
+   Elle partage donc leur habillage -- le lavis qui glisse, la couleur de la
+   marque, le tassement d'appui -- et n'en differe que par l'action appelee.
+   `aria-pressed` et non `aria-current` : ce sont des boutons d'etat, pas des
    liens vers une autre page. */
 function barreCommutateur(choix, actif, action, cle) {
   return `
@@ -564,10 +564,10 @@ function barreCommutateur(choix, actif, action, cle) {
 /* Le choix d'un jeu d'hypotheses, et son habillage lui appartient.
 
    Les trois pilules d'un `.segmented` etaient exactement le dessin des onglets
-   « Aujourd'hui | Historique | Projection » qui coiffent la meme page : deux
+   "Aujourd'hui | Historique | Projection" qui coiffent la meme page : deux
    controles identiques a l'oeil, l'un qui change d'ecran et l'autre qui change
    un calcul. Un pave borde ne se confond avec aucune navigation, et il a la
-   place d'afficher ce qu'il suppose — c'est le taux qui distingue les trois
+   place d'afficher ce qu'il suppose -- c'est le taux qui distingue les trois
    choix, pas le mot.
 
    Le taux imprime est celui du scenario, une propriete de la table, jamais un
@@ -633,14 +633,14 @@ function barreSousOnglets(vue) {
 /* Le nom d'une poche est celui de sa classe, et il se derive.
 
    Sept poches declaraient leur libelle a la main, a cote de `CLASSES_ACTIFS`
-   qui les nomme deja. Deux avaient divergé : la poche `pe` disait « Non coté »
-   quand sa classe dit « Placements non cotés », et la poche `biens` disait
-   « Biens de valeur » au pluriel quand sa classe le dit au singulier.
+   qui les nomme deja. Deux avaient diverge : la poche `pe` disait "Non cote"
+   quand sa classe dit "Placements non cotes", et la poche `biens` disait
+   "Biens de valeur" au pluriel quand sa classe le dit au singulier.
 
-   En anglais, ça donnait le meme argent sous deux noms sur deux cartes du meme
-   ecran : « Private assets » dans le tableau des classes, « Private
-   investments » dans l'infobulle et sur l'accueil. Signale sur une capture de
-   telephone, pas par un test — parce qu'aucun test ne peut voir qu'un mot juste
+   En anglais, ca donnait le meme argent sous deux noms sur deux cartes du meme
+   ecran : "Private assets" dans le tableau des classes, "Private
+   investments" dans l'infobulle et sur l'accueil. Signale sur une capture de
+   telephone, pas par un test -- parce qu'aucun test ne peut voir qu'un mot juste
    et un autre mot juste designent la meme chose.
 
    Une liste se derive, elle ne se recopie pas. La table ci-dessous ne dit plus
@@ -666,7 +666,7 @@ const SERIES_PATRIMOINE = () => [
    une bande absente du dessin, ou l'inverse.
 
    Le second n'a pas change : une poche qui ne porte rien sur la periode affichee
-   n'ajouterait qu'une pastille de legende et une ligne « 0 EUR » dans la bulle.
+   n'ajouterait qu'une pastille de legende et une ligne "0 EUR" dans la bulle.
    Les liquidites restent toujours, sinon un patrimoine tout juste ouvert n'aurait
    plus de graphique du tout. */
 function seriesUtiles(points, { financier = false } = {}) {
@@ -685,7 +685,7 @@ function legendeSeries(series, avecTotal = false) {
 
    Il y calculait la courbe -- imputation des dettes poche par poche, total
    derive des bandes -- et le harnais de tests ne charge pas `app.js` : le
-   controle le plus important de cette fonction, « la pile fait son total »,
+   controle le plus important de cette fonction, "la pile fait son total",
    etait donc une expression rationnelle sur la source, doublee d'un test qui
    REJOUAIT la regle sur ses propres donnees. Deux ecritures d'un seul calcul,
    dont l'une servait a verifier l'autre : la copie ne pouvait rien prouver.
@@ -732,7 +732,7 @@ function carteEvolution() {
     </div>`;
 }
 
-/* Le depliant « Voir les donnees » sous la courbe est parti. Il rendait le
+/* Le depliant "Voir les donnees" sous la courbe est parti. Il rendait le
    tableau des points par annee : les memes nombres que la courbe trace juste
    au-dessus, sous une autre forme, derriere un pli que personne n'ouvrait. Le
    journal des releves donne deja mois par mois ce qu'il montrait, avec la porte
@@ -754,7 +754,7 @@ function monterEvolution() {
   /* `parts` : l'infobulle ajoute le poids de chaque poche dans le total de la
      date. Une option, et non le defaut du graphique empile, parce que la
      Projection emploie le meme dessin pour deux series qui ne composent pas un
-     patrimoine — « Depart et versements » et « Rendement » — ou une part n'a pas
+     patrimoine -- "Depart et versements" et "Rendement" -- ou une part n'a pas
      le meme sens. */
   if (cible) Charts.stackedArea(cible, { points, height: 300, series, anime, parts: true });
 }
@@ -897,7 +897,7 @@ function carteAccumulation() {
      des sept montants. */
   /* Un montant dans une AIDE ne se formate pas comme a l'ecran : l'aide range
      son texte dans un attribut, ou le masque des montants s'imprimerait en
-     clair, balise SVG comprise. `fmtEUR0Texte` y rend « ••• € ». */
+     clair, balise SVG comprise. `fmtEUR0Texte` y rend "*** EUR". */
   if (!(rec.income > 0) && !(rec.fixed > 0) && !(rec.spend > 0)) return `
   <div class="card" data-anchor="accumulation">
     <div class="card-head"><h2>${trad('Accumulation ce mois-ci')}</h2></div>
@@ -918,7 +918,7 @@ function carteAccumulation() {
   const enTexte = v => montantSigne(v, fmtEUR0Texte);
   /* Le troisieme terme porte le nom de la branche prise : `savingsReconciliation`
      retombe sur l'objectif de depenses quand aucune depense n'est saisie, et
-     l'annoncer « observees » dirait une formule que le moteur n'a pas jouee. */
+     l'annoncer "observees" dirait une formule que le moteur n'a pas jouee. */
   const nomDepenses = rec.spendObserved
     ? trad('− Dépenses observées') : trad('− Objectif de dépenses');
   const sousDepenses = trad(rec.spendObserved
@@ -1005,7 +1005,7 @@ function carteAccumulationResume() {
    casserait les renvois sans rien apprendre a personne.
    SANS COUT DE LA VIE, IL N'Y A PAS DE RESERVE A COMPTER, quel que soit le
    coussin : le rapport vaudrait zero faute de denominateur, et la carte
-   annoncerait « 0,0 mois » en rouge a quelqu'un qui vient de declarer son cash.
+   annoncerait "0,0 mois" en rouge a quelqu'un qui vient de declarer son cash.
    Elle dit ce qui lui manque, precisement. */
 function carteReserveResume() {
   const r = runway();
@@ -1073,17 +1073,17 @@ const MAX_A_RETENIR = 2;
 
    VUE ET ANCRE, PAS LA VUE SEULE. Trois insights pointent vers `overview`, et
    ils y visent trois cartes qui repondent a trois questions differentes :
-   « Autonomie financiere », « Evolution du patrimoine », « Accumulation ce
-   mois-ci ». Les confondre sous la meme destination en ecarterait deux pour une
+   "Autonomie financiere", "Evolution du patrimoine", "Accumulation ce
+   mois-ci". Les confondre sous la meme destination en ecarterait deux pour une
    ressemblance qui n'existe que dans l'URL.
 
-   ET SURTOUT PAS LE LIBELLE. « Voir l'evolution » est du texte traduit : la
+   ET SURTOUT PAS LE LIBELLE. "Voir l'evolution" est du texte traduit : la
    selection changerait de comportement entre le francais et l'anglais. */
 const destinationInsight = p => (p && p.cta) ? `${p.cta.vue}:${p.cta.ancre || ''}` : '';
 
 /* L'algorithme des deux tours vit dans le moteur, ou il se teste : le harnais ne
    charge pas `app.js`, et une selection ecrite ici ne se verifierait que des
-   yeux. Ce qui reste ici est ce que la vue seule sait — l'endroit ou chaque
+   yeux. Ce qui reste ici est ce que la vue seule sait -- l'endroit ou chaque
    renvoi mene. */
 const selectionARetenir = candidats =>
   selectionParClef(candidats, c => destinationInsight(c[1]), MAX_A_RETENIR);
@@ -1290,14 +1290,14 @@ function noterInsightsVus() {
    LE CHOIX VIT DANS `meta`, PAS EN MEMOIRE VIVE. Les autres replis de ce
    fichier sont des drapeaux de session : un depliant qu'on vient d'ouvrir ne
    doit pas se refermer au rendu suivant, mais un rechargement le remet a sa
-   place. Celui-ci est l'inverse — c'est une preference, pas une position de
+   place. Celui-ci est l'inverse -- c'est une preference, pas une position de
    lecture. Range dans `meta`, il suit l'etat partout ou il va : le stockage
    local, la sauvegarde en ligne, l'export. Rouvrir la section a chaque
    lancement reviendrait a ne pas avoir ecoute.
 
-   PAS DE CROIX. Une croix dit « notification » et promet la disparition d'un
+   PAS DE CROIX. Une croix dit "notification" et promet la disparition d'un
    objet passager ; cette section est une piece du tableau de bord. Le geste
-   ordinaire est donc « Réduire », et le retrait complet vit un cran plus loin,
+   ordinaire est donc "Reduire", et le retrait complet vit un cran plus loin,
    derriere les trois points, avec sa porte de retour dans les Preferences. */
 const retenirReplie = () => !!Store.state?.meta?.retenirReplie;
 const retenirMasquee = () => !!Store.state?.meta?.retenirMasquee;

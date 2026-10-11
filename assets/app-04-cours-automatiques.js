@@ -56,23 +56,23 @@ function majEtatCours(etat) {
   /* Ce que la pastille date, c'est le PRIX, pas la requete.
 
      `coursAsOf()` donne l'heure du marche, celle que la place a mise sur le
-     dernier echange. Quand elle manque — Stooq ne la publie pas — on retombe
+     dernier echange. Quand elle manque -- Stooq ne la publie pas -- on retombe
      sur `lastRun`, qui est alors tout ce qu'on sait. */
   const marche = coursAsOf();
   const ageMarche = marche ? Date.now() - marche * 1000 : null;
   const reference = ageMarche == null ? age : ageMarche;
   btn.classList.add(reference < COURS_FRAIS ? 'frais' : 'tiede');
 
-  /* Hors seance, la pastille dit « hors seance » plutot qu'un age.
+  /* Hors seance, la pastille dit "hors seance" plutot qu'un age.
 
-     Elle affichait « il y a 11 h » juste apres une actualisation qui venait de
-     dire « 5 cours mis a jour ». Deux signaux qui semblent se contredire, et le
+     Elle affichait "il y a 11 h" juste apres une actualisation qui venait de
+     dire "5 cours mis a jour". Deux signaux qui semblent se contredire, et le
      second a l'air d'annoncer une panne : on a clique, quelque chose s'est
      passe, le repere n'a pas bouge.
 
-     Donc ni « a l'instant » ni un age : la raison. Quand aucune ligne n'a cote
-     depuis minuit, la place est fermee, et « hors seance » est a la fois vrai et
-     rassurant — c'est le mot que la page emploie deja sur ses tuiles d'indices
+     Donc ni "a l'instant" ni un age : la raison. Quand aucune ligne n'a cote
+     depuis minuit, la place est fermee, et "hors seance" est a la fois vrai et
+     rassurant -- c'est le mot que la page emploie deja sur ses tuiles d'indices
      et dans sa carte du jour. L'age reste dans l'infobulle pour qui le cherche.
 
      `dayPerformance().toutHorsSeance` plutot qu'un calcul d'horaires : les places
@@ -155,8 +155,8 @@ async function resoudreLigne(symbole, cote) {
 }
 
 /* Le cours et la devise d'un symbole, ou `null`.
-   Rend `null` a la moindre difficulte — passerelle endormie, symbole sans
-   cotation, reponse illisible — parce que l'appelant s'en sert pour meubler
+   Rend `null` a la moindre difficulte -- passerelle endormie, symbole sans
+   cotation, reponse illisible -- parce que l'appelant s'en sert pour meubler
    une question, jamais pour calculer : un repere absent laisse la fenetre
    s'ouvrir, une exception l'empecherait. */
 async function coteDuSymbole(symbole) {
@@ -409,7 +409,7 @@ function tableauPortefeuille(pf) {
    de carte : c'est une lecture du graphique, pas un chiffre de plus.
 
    En `hint` gris, jamais en couleur et jamais en rouge. Le rouge dit ce qui est
-   faux, et une concentration ne l'est pas — elle depend d'un projet que
+   faux, et une concentration ne l'est pas -- elle depend d'un projet que
    l'application ne connait pas. `concentration()` se tait deja quand il n'y a
    rien a dire ; ici on ne fait que rendre. */
 function phraseConcentration() {
@@ -514,17 +514,17 @@ function viewAllocation() {
 
   /* Trois teintes franchement distinctes, et pas voisines dans la palette :
      `series-7` (#00a5c3) et `series-2` (#00ab92) sont deux cyans que rien ne
-     sépare sur une pastille de 8 px. L'ambre est déjà, dans l'application, la
-     couleur de ce qui attend une action — c'est le point du menu quand un
-     relevé manque. Il dit ici la même chose d'un argent qui ne travaille pas
+     separe sur une pastille de 8 px. L'ambre est deja, dans l'application, la
+     couleur de ce qui attend une action -- c'est le point du menu quand un
+     releve manque. Il dit ici la meme chose d'un argent qui ne travaille pas
      encore. */
   const teintesPoche = { courant: 'var(--series-1)', precaution: 'var(--series-7)',
                          projet: 'var(--series-5)', investir: 'var(--series-4)' };
   const disponibilite = [
     /* Le nom suit le perimetre, parce que la poche n'est pas la meme chose des
        deux cotes. En vue financiere elle ne contient que du placement, et
-       « Investi » la nomme juste. En vue globale elle porte aussi les murs, la
-       montre et la voiture : les appeler « investi » ferait passer un logement
+       "Investi" la nomme juste. En vue globale elle porte aussi les murs, la
+       montre et la voiture : les appeler "investi" ferait passer un logement
        pour un placement, ce qu'il n'est pas pour qui l'habite.
 
        `BASES.place.nom` ne bouge pas pour autant : deux autres fiches le lisent,
@@ -544,7 +544,7 @@ function viewAllocation() {
       couleur: 'var(--series-6)' },
   ].filter(x => Math.abs(num(x.value)) > 0.005)
    /* `null` et non zero quand la base ne se divise pas : un patrimoine net
-      negatif retournerait tous les signes, et « 0,0 % » sous chaque ligne se
+      negatif retournerait tous les signes, et "0,0 %" sous chaque ligne se
       lirait comme une mesure alors que c'est une absence de mesure. */
    .map(x => ({ ...x, pct: partsAllocLisibles()
                   ? num(x.value) / valeurBaseAlloc() * 100 : null }));
@@ -686,7 +686,7 @@ function mountAllocation() {
   });
   /* L'anneau du portefeuille : ses tranches et les pastilles du tableau passent
      par la meme `couleurTranche`, donc elles ne peuvent pas diverger. Il ne se
-     monte que si la carte s'est rendue — `mount` sort en silence sur un
+     monte que si la carte s'est rendue -- `mount` sort en silence sur un
      conteneur absent, mais le dire ici evite de compter deux fois la
      repartition. */
   const pf = repartitionPortefeuille();
@@ -719,9 +719,9 @@ function diagnosticRoles(rr) {
   const socle = rr.roles.find(x => x.cle === 'core');
   const sat = rr.roles.find(x => x.cle === 'satellite');
   /* La phrase nomme une classe : elle doit donc peser la classe entiere.
-     `composition` est indexee par classe **et** par nature, si bien qu'« Actions
-     en direct » et « Actions en fonds » y sont deux entrees ; prendre la
-     premiere annoncerait « 55 % actions » quand les actions font 80 % des
+     `composition` est indexee par classe **et** par nature, si bien qu'"Actions
+     en direct" et "Actions en fonds" y sont deux entrees ; prendre la
+     premiere annoncerait "55 % actions" quand les actions font 80 % des
      satellites : 2 400 EUR en direct sur 4 400, au lieu de 2 400 + 1 100. Le
      chiffre serait juste et son intitule mentirait. On agrege donc par classe
      avant de chercher la plus grosse. */
@@ -783,8 +783,8 @@ function viewRebalance() {
     num(chemin.split('.').reduce((o, k) => (o == null ? o : o[k]), tg));
 
   /* `r.cash` vaut null quand la tresorerie est sortie du reequilibrage : elle
-     ne figure alors ni dans les mouvements, ni dans la phrase « ta tresorerie
-     disponible en couvre tant ». Trois lectures la supposaient presente, et la
+     ne figure alors ni dans les mouvements, ni dans la phrase "ta tresorerie
+     disponible en couvre tant". Trois lectures la supposaient presente, et la
      page tombait des qu'on la retirait. */
   const mouvements = mouvementsDuPlan(r);
   const alleger   = mouvements.filter(c => c.montant < 0).sort((x, y) => x.montant - y.montant);

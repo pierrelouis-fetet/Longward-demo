@@ -5,7 +5,7 @@
  *  Distributed WITHOUT ANY WARRANTY. See the LICENSE file for the full terms.
  */
 /* =============================================================
-   INSIGHTS — lecture de la situation, pas un second modèle
+   INSIGHTS -- lecture de la situation, pas un second modele
    =============================================================
 
    CE QUE FAIT CE FICHIER, ET CE QU'IL NE FERA JAMAIS.
@@ -13,7 +13,7 @@
    Il ne calcule rien de financier. Pas une addition de patrimoine, pas un
    echeancier, pas une allocation, pas une projection. Tout cela existe deja
    dans `store.js`, et une seconde implementation finirait par dire autre chose
-   que la premiere — c'est arrive assez de fois dans ce projet pour qu'on
+   que la premiere -- c'est arrive assez de fois dans ce projet pour qu'on
    n'essaie pas. Chaque regle appelle un moteur existant et INTERPRETE ce qu'il
    rend : `runway()`, `rebalanceRows()`, `monthlyPace()`, `capitalisation()`,
    `savingsReconciliation()`.
@@ -30,12 +30,12 @@
    resultat normal, pas un echec : il vaut mieux se taire que remplir.
 
    OU IL S'ARRETE, ET POURQUOI. Il decrit, il compare, il situe. Il ne
-   recommande pas. « Les actions pesent 72 % pour une cible de 65 % » est un
-   constat ; « reduis ton exposition » serait un conseil, et un conseil
+   recommande pas. "Les actions pesent 72 % pour une cible de 65 %" est un
+   constat ; "reduis ton exposition" serait un conseil, et un conseil
    financier ne se donne pas depuis un tableau de bord.
 
    CE QU'IL N'EST PAS : LE FRERE DE `healthChecks()`. La cloche surveille
-   l'INTEGRITE des donnees — un cours perime, un capital restant du a
+   l'INTEGRITE des donnees -- un cours perime, un capital restant du a
    reverifier, un releve manquant, une incoherence. Elle demande un geste de
    saisie. Ce moteur-ci lit des donnees SUPPOSEES SAINES et en tire une lecture
    financiere. Les deux ne partagent ni declencheur ni surface, et une donnee
@@ -48,23 +48,23 @@
 
    Ces nombres existent pour qu'un ecart d'un demi-point ne prenne pas la place
    d'un ecart de dix. Ils ne disent rien de ce qui est prudent, sain ou
-   souhaitable, et aucun ne doit jamais s'afficher comme une regle : « 5 points
-   d'ecart » n'est pas une limite recommandee, c'est le moment ou l'application
+   souhaitable, et aucun ne doit jamais s'afficher comme une regle : "5 points
+   d'ecart" n'est pas une limite recommandee, c'est le moment ou l'application
    juge que ca vaut la peine d'etre dit.
 
    La convention de comparaison est `>=`, et elle est volontairement inclusive :
    un ecart de exactement 5,0 points produit l'insight. Un test la fige, parce
    que la frontiere est le seul endroit ou deux lecteurs peuvent differer.
 
-   ET QUAND C'EST POSSIBLE, LE SEUIL VIENT DE LA PERSONNE. « Un mois de depenses
-   inhabituel » n'a pas de definition generale : trois cents euros de plus sont
+   ET QUAND C'EST POSSIBLE, LE SEUIL VIENT DE LA PERSONNE. "Un mois de depenses
+   inhabituel" n'a pas de definition generale : trois cents euros de plus sont
    enormes chez l'un et invisibles chez l'autre. Deux regles plus bas se passent
    donc de tout nombre pose et se comparent a la dispersion propre du detenteur,
    ou a la forme de son propre portefeuille. */
 const SEUIL_AFFICHAGE_ALLOCATION_PP = 5;
 
 /* Le rythme change-t-il assez pour qu'on le dise ? Vingt pour cent d'ecart
-   relatif entre les deux fenetres. « Mille quarante contre mille » est exact et
+   relatif entre les deux fenetres. "Mille quarante contre mille" est exact et
    n'apprend rien ; ce filtre le laisse dehors, et il ne dit rien de ce qui
    serait un bon rythme.
 
@@ -73,14 +73,14 @@ const SEUIL_AFFICHAGE_ALLOCATION_PP = 5;
    La fenetre precedente doit etre STRICTEMENT POSITIVE. C'est la regle que ce
    projet applique deja partout : un pourcentage n'existe que sur une base
    positive, et `deltas()` rend `pct: null` sur une base nulle ou negative.
-   Diviser par un rythme precedent proche de zero fabriquerait un « +900 % » qui
+   Diviser par un rythme precedent proche de zero fabriquerait un "+900 %" qui
    ne mesure rien. Le prix a payer est connu et assume : quelqu'un dont le
    patrimoine reculait et qui remonte ne verra pas cet insight-la. Mieux vaut
    ce silence qu'un pourcentage que personne ne peut interpreter.
 
    Les deux montants doivent DIFFERER UNE FOIS ARRONDIS comme ils seront
    affiches. Ce n'est pas un seuil, c'est une coherence : la phrase ne peut pas
-   dire « 1 240 contre 1 240 ».
+   dire "1 240 contre 1 240".
 
    Et l'ecart relatif doit atteindre le filtre, borne INCLUSIVE comme celle de
    l'allocation. Un test la fige. */
@@ -175,8 +175,8 @@ function horizonProjection() {
    `runway()` construit sa consommation mensuelle avec `stats.average || target`
    : sans aucun mois saisi, la moyenne vaut zero et c'est l'OBJECTIF de depenses
    qui prend sa place. Le chiffre reste utile a l'ecran du budget, ou l'on sait
-   ce qu'on lit. Ici il serait un mensonge : annoncer « quatorze mois de
-   depenses renseignees » quand rien n'a ete renseigne invente la moitie du
+   ce qu'on lit. Ici il serait un mensonge : annoncer "quatorze mois de
+   depenses renseignees" quand rien n'a ete renseigne invente la moitie du
    rapport. La regle exige donc un mois observe au moins, et se tait sinon. */
 function depensesObservees(annee) {
   const stats = expenseYearStats(annee);
@@ -187,14 +187,14 @@ function depensesObservees(annee) {
 /* Les lignes du reequilibrage, mises a plat PUIS ramenees a la classe.
 
    `rebalanceRows()` ne rend pas un tableau mais un objet : `classes` porte une
-   ligne par classe — dedoublee en core et satellite quand la cible l'est — et
+   ligne par classe -- dedoublee en core et satellite quand la cible l'est -- et
    `cash` porte la tresorerie a placer, ou `null` quand elle a ete sortie du
    perimetre. Les deux se lisent de la meme facon, avec la meme base, et une
    regle qui n'aurait lu que `classes` aurait ignore une cible de tresorerie.
 
    POURQUOI ON REGROUPE. Une phrase doit nommer exactement ce qu'elle compare.
-   « Actions core pese 46 % pour une cible de 46 % » est vrai et illisible : le
-   role n'est pas une classe, et personne ne raisonne en « actions core » devant
+   "Actions core pese 46 % pour une cible de 46 %" est vrai et illisible : le
+   role n'est pas une classe, et personne ne raisonne en "actions core" devant
    un tableau de bord. L'insight parle donc toujours de la classe entiere.
 
    L'AGREGATION NE RECALCULE RIEN. Elle additionne les lignes que le moteur
@@ -307,7 +307,7 @@ function rythmeRepresentatif(points) {
 }
 
 /* =============================================================
-   COUCHE 1 — LES MESURES
+   COUCHE 1 -- LES MESURES
    =============================================================
 
    Un seul passage sur les moteurs, un seul objet, et toutes les regles y
@@ -339,7 +339,7 @@ function mesuresInsights(ctx) {
   /* LE MOIS EN COURS, A PART, ET NOMME COMME TEL. La serie ci-dessus l'ecarte
      expres : un mois de huit jours compare a des mois entiers ferait croire a
      un effondrement des depenses. Mais une regle a le droit de le regarder SI
-     elle dit qu'il est en cours — c'est le cas du rythme, dont c'est tout le
+     elle dit qu'il est en cours -- c'est le cas du rythme, dont c'est tout le
      sujet. Deux objets distincts, donc, plutot qu'un drapeau sur un seul : une
      regle qui lit `depenses` ne peut pas se tromper de mois par inadvertance. */
   const ligneCourante = expenseSeries('all').find(x => x.month.startsWith(moisCourant));
@@ -432,7 +432,7 @@ function selectionParClef(liste, clefDe, combien) {
 }
 
 /* =============================================================
-   COUCHE 2 — LE CATALOGUE DES REGLES
+   COUCHE 2 -- LE CATALOGUE DES REGLES
    =============================================================
 
    Chacune porte son identifiant, sa FAMILLE, son rang, son groupe de
@@ -715,8 +715,8 @@ const REGLES_INSIGHT = [
      LA SEULE ATTRIBUTION DE CAUSE QUE LES DONNEES AUTORISENT, et elle s'arrete a
      mi-chemin. `apportsDetail()` sait ce qui est ENTRE du dehors sur la periode.
      Le complement, lui, melange la valorisation des placements, le capital
-     rembourse sur les credits et la revalorisation d'un bien : on le nomme « le
-     reste », et jamais « les marches ». */
+     rembourse sur les credits et la revalorisation d'un bien : on le nomme "le
+     reste", et jamais "les marches". */
   {
     id: 'wealth_growth_origin',
     onglet: 'overview',
@@ -789,7 +789,7 @@ const REGLES_INSIGHT = [
      Le seul moteur de projection est `capitalisation()`. On ne refait pas de
      trajectoire ici, on lit l'annee et le mois qu'il a notes au passage.
 
-     « Selon tes hypotheses actuelles » et non « au rythme actuel » : la
+     "Selon tes hypotheses actuelles" et non "au rythme actuel" : la
      trajectoire depend d'un scenario de rendement, d'un versement mensuel et
      d'une inflation, tous poses par le detenteur. Les nommer dans la preuve est
      ce qui rend la date honnete. */
@@ -940,8 +940,8 @@ const REGLES_INSIGHT = [
   /* --- Le poste qui a bouge, et lui seul ----------------------------------
 
      LA REGLE QUI MANQUAIT, et c'est la plus utile de l'onglet. `spending_shift`
-     dit que le total a change de niveau ; il ne dit pas ou. « Tes depenses ont
-     augmente de douze pour cent » laisse le lecteur ouvrir le tableau et
+     dit que le total a change de niveau ; il ne dit pas ou. "Tes depenses ont
+     augmente de douze pour cent" laisse le lecteur ouvrir le tableau et
      comparer douze colonnes a la main, ce qui est exactement le travail qu'une
      application doit faire a sa place.
 
@@ -951,8 +951,8 @@ const REGLES_INSIGHT = [
      qui decide de ce qui compte dans un budget ; le pourcentage sert de filtre,
      pas de classement.
 
-     Elle ne conseille rien. « Restaurants en hausse » est un constat ; « tu
-     devrais reduire » serait un jugement sur une vie que l'application ne
+     Elle ne conseille rien. "Restaurants en hausse" est un constat ; "tu
+     devrais reduire" serait un jugement sur une vie que l'application ne
      connait pas. */
   {
     id: 'spending_category_shift',
@@ -962,9 +962,9 @@ const REGLES_INSIGHT = [
     /* HAUTE, ET C'EST CE QUI LA FAIT PASSER DEVANT `spending_shift`. Les deux
        partagent un groupe : elles racontent le meme fait, l'une en disant ou.
        A rang egal, les deux amplitudes saturent des qu'un mouvement est franc,
-       et c'est alors l'ordre de declaration qui tranchait — donc le total, qui
-       est declare avant. On lisait « tes depenses ont monte de 40 % » la ou
-       « tes sorties passent de 100 a 300 € » etait disponible.
+       et c'est alors l'ordre de declaration qui tranchait -- donc le total, qui
+       est declare avant. On lisait "tes depenses ont monte de 40 %" la ou
+       "tes sorties passent de 100 a 300 EUR" etait disponible.
        Le rang dit la regle : quand un poste explique le mouvement, c'est lui
        qu'on veut lire ; quand aucun ne l'explique, cette regle ne sort pas et le
        total reprend sa place tout seul. */
@@ -1256,7 +1256,7 @@ function creditBientotSolde() {
    jusqu'a la ligne.
 
    Les deux parts se calculent sur la somme des MEMES poches de chaque cote. Un
-   denominateur pris ailleurs — le brut d'un bandeau, le net d'une carte — aurait
+   denominateur pris ailleurs -- le brut d'un bandeau, le net d'une carte -- aurait
    compare deux pourcentages qui ne parlent pas de la meme chose. */
 function partsDesPoches(m, moisEnArriere) {
   const pts = m.releves;
@@ -1299,7 +1299,7 @@ function ecartDetteReleves(m) {
 }
 
 /* =============================================================
-   COUCHES 3 A 5 — POIDS, DEDUPLICATION, SELECTION
+   COUCHES 3 A 5 -- POIDS, DEDUPLICATION, SELECTION
    =============================================================
 
    Parcourt le catalogue dans l'ordre declare, ecarte les regles qui n'ont pas de
@@ -1326,12 +1326,12 @@ function evaluerInsights(ctx) {
        IL L'ATTEND, IL NE SE TAIT PAS. Cette ligne rendait `return` : l'insight
        disparaissait de la liste au lieu de reculer dedans. Sur un patrimoine
        calme, ou trois regles seulement ont quelque chose a dire, les trois
-       partaient au repos le lendemain de leur premiere lecture — vingt et un a
-       quarante-cinq jours — et la carte affichait alors « Rien d'inhabituel a
-       signaler ». C'etait faux : trois choses avaient ete trouvees, aucune
+       partaient au repos le lendemain de leur premiere lecture -- vingt et un a
+       quarante-cinq jours -- et la carte affichait alors "Rien d'inhabituel a
+       signaler". C'etait faux : trois choses avaient ete trouvees, aucune
        n'avait cesse d'etre vraie, et la carte annoncait le calme. L'etat calme
        est une reponse, et il doit garder son sens ; il ne peut pas servir a dire
-       « tout dort ».
+       "tout dort".
 
        Le repos CLASSE donc, comme son commentaire l'a toujours dit : ce qui a
        deja ete lu passe derriere tout ce qui est neuf. Il disparait quand
@@ -1368,7 +1368,7 @@ function evaluerInsights(ctx) {
   return sortis;
 }
 
-/* COUCHE 5 — LA SELECTION, SEPAREE DE LA DETECTION.
+/* COUCHE 5 -- LA SELECTION, SEPAREE DE LA DETECTION.
 
    Elle l'est pour une raison pratique autant que propre : une regle se teste sur
    ce qu'elle DETECTE, pas sur sa place dans un classement a treize. Un test qui

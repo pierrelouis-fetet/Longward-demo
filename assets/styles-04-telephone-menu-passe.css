@@ -105,7 +105,7 @@
      `z-index`. Tout ce qui vit dans la barre y est donc enferme : le panneau
      des notifications avait beau demander 200, il restait sous un bandeau a 1,
      parce que la comparaison ne se fait pas entre eux mais entre leurs
-     contextes — celui de la barre valant zero. C'est elle qu'on remonte, et le
+     contextes -- celui de la barre valant zero. C'est elle qu'on remonte, et le
      panneau suit. Elle occupe sa propre colonne, donc rien ne passe dessous. */
   .sidebar { z-index: 100; }
   .entete-actions { position: fixed; top: 20px; right: 24px; margin: 0; }
@@ -116,7 +116,7 @@
      Deux defauts se suivaient. Il etait ancre a droite parce qu'il descendait
      d'un en-tete colle au bord droit de l'ecran : dans la barre laterale, cette
      droite-la laisse le panneau s'etendre vers une gauche hors ecran, et les
-     trois quarts disparaissaient — 330 px ancres a 229, donc un bord gauche a
+     trois quarts disparaissaient -- 330 px ancres a 229, donc un bord gauche a
      moins cent.
 
      Ancre a gauche, il restait coupe net au bord de la barre. `overflow-y: auto`
@@ -138,10 +138,10 @@
 @media (max-width: 900px) {
 
   /* Le logo reste au-dessus du panneau qu'il ouvre. Le tiroir couvre tout
-     l'écran et le recouvrait : plus rien ne le refermait, puisque c'est lui le
+     l'ecran et le recouvrait : plus rien ne le refermait, puisque c'est lui le
      bouton, et le voile est sous le panneau. Ne restait que le balayage, qui
-     ne s'annonce pas. Même traitement que le burger sur tablette, pour la même
-     raison — et `.nav` réserve déjà 66 px de haut pour ce passage. */
+     ne s'annonce pas. Meme traitement que le burger sur tablette, pour la meme
+     raison -- et `.nav` reserve deja 66 px de haut pour ce passage. */
   /* Le logo redevient un logo : c'est le bouton profil qui ouvre la feuille. La
      barre garde `flex: 1` pour que le nom de la page prenne la place et se
      tronque proprement. */
@@ -170,7 +170,7 @@
      Elle etait un bandeau plein colle en bas, separe du contenu par un filet.
      Le detacher change deux choses au-dela du style : la page continue de se
      voir sous la barre, donc on garde le sentiment de ce qui defile, et les
-     coins de l'ecran redeviennent du vide — un bandeau pleine largeur donne
+     coins de l'ecran redeviennent du vide -- un bandeau pleine largeur donne
      un plancher, une pilule laisse respirer.
 
      Le flou fait le travail que faisait le filet : c'est lui qui detache la
@@ -178,20 +178,20 @@
 
      L'opacite est a 22 % et le flou a 12 px. Cinq reglages ont mene la : 72, 62,
      46, 30, puis ceci. Les deux premiers montaient le flou a mesure qu'ils
-     baissaient le fond, par prudence, et c'etait le mauvais reflexe — ce qui
+     baissaient le fond, par prudence, et c'etait le mauvais reflexe -- ce qui
      donne l'impression de lire a travers, c'est l'opacite basse, tandis qu'un
      flou plus lourd cache davantage au lieu de devoiler. Les deux descendent
      donc ensemble, et on lit maintenant ce qui passe sous la barre.
 
      C'est le plancher. En dessous, le fond ne separe plus assez la barre du
-     contenu : le liseré et l'ombre portee restent seuls a la dessiner, et sur
+     contenu : le lisere et l'ombre portee restent seuls a la dessiner, et sur
      une carte claire elle cesse de se lire comme un objet pose devant.
 
      A ce niveau, c'est le texte qui porte la lisibilite, plus le fond. Les
      libelles et les traits des icones ont une ombre portee courte, la methode
      des titres poses sur une image : invisible sur fond sombre, elle tient le
      contraste quand un aplat clair passe dessous. Sans elle, 30 % rendrait
-     « Allocation » illisible des que la courbe monte. C'est aussi ce qui permet
+     "Allocation" illisible des que la courbe monte. C'est aussi ce qui permet
      a une barre de cinq libelles de 10,5 px d'aller aussi bas qu'une barre qui
      n'aurait que des icones. Verifie a 375 px dans les deux themes, avec les
      aplats du graphique d'evolution derriere.
@@ -204,16 +204,16 @@
      Le diagnostic visait la mauvaise piece. Ce n'etait pas la pilule qui laissait
      une bande morte, c'etait sa jupe : 200 px de `var(--page)` peints sous elle,
      qui masquaient le contenu au lieu de le laisser defiler. Une barre pleine
-     largeur a bien supprime la bande, mais en la remplaçant par un flou d'un bord
-     a l'autre — « tout le bas apparait flou au lieu de juste l'ovale ».
+     largeur a bien supprime la bande, mais en la remplacant par un flou d'un bord
+     a l'autre -- "tout le bas apparait flou au lieu de juste l'ovale".
 
      Donc : la pilule revient, et plus rien n'est peint autour d'elle. Le contenu
      defile jusqu'au bord bas de l'ecran, zone de gestes comprise. C'est ce qu'on
      veut voir, et c'est exactement ce que la jupe empechait.
 
      Pas de jupe, et pas besoin d'une. Elle existait pour le cas ou le navigateur
-     decale la fenetre visible — clavier qui se referme, barre d'outils qui se
-     replie — et decouvre une bande sous un element en `fixed`. `html, body`
+     decale la fenetre visible -- clavier qui se referme, barre d'outils qui se
+     replie -- et decouvre une bande sous un element en `fixed`. `html, body`
      portent `background: var(--page)` : le canvas est deja peint de la couleur de
      la page, rien ne peut y virer au noir. */
   .tabbar {
@@ -229,8 +229,8 @@
        au-dessus de l'endroit ou le systeme attend son geste.
 
        La zone de gestes ne se paie plus en entier, et c'est le troisieme reglage
-       de la journee : 43 px sous la pilule, puis 38, puis 20. « Trop haute », deux
-       fois, puis « legerement trop haute ».
+       de la journee : 43 px sous la pilule, puis 38, puis 20. "Trop haute", deux
+       fois, puis "legerement trop haute".
 
        Ce qui borne la descente n'est pas la zone reservee mais le trait du
        systeme : sur un iPhone, il fait 5 px de haut et vit dans les treize
@@ -266,8 +266,8 @@
     font: inherit; font-size: var(--font-xs); font-weight: 550; letter-spacing: .01em;
     text-shadow: 0 1px 2px color-mix(in oklab, var(--page) 78%, transparent),
                  0 0 7px color-mix(in oklab, var(--page) 55%, transparent);
-    /* L'encre discrète des annotations est trop faible ici : à 10,5 px, une
-       destination doit se lire, pas se deviner. Mesuré 3,2 contre le fond
+    /* L'encre discrete des annotations est trop faible ici : a 10,5 px, une
+       destination doit se lire, pas se deviner. Mesure 3,2 contre le fond
        avec `--muted`, 6,4 avec celle-ci. */
     color: var(--text-secondary);
     transition: color .14s;
@@ -286,7 +286,7 @@
      pastille par onglet ne peut pas se deplacer : elle disparaissait d'un cote
      et reapparaissait de l'autre, et le lien entre les deux etait a deviner.
      Il n'y en a plus qu'une, portee par la barre, et c'est elle qu'on voit
-     traverser — le mouvement dit d'ou l'on vient.
+     traverser -- le mouvement dit d'ou l'on vient.
 
      Sa position ne demande aucun JavaScript. La barre est une grille de cinq
      colonnes egales, donc chaque case fait exactement 20 %, et `:has()` lit
@@ -297,7 +297,7 @@
      Le deplacement passe par `transform` et non par `left` : c'est la seule
      facon d'obtenir un glissement fluide, et le pourcentage d'un `translateX`
      se compte sur la largeur de l'element, non sur celle du parent. D'ou le
-     `100% + 4px` — la pastille est en retrait de 4 px, il faut les rendre pour
+     `100% + 4px` -- la pastille est en retrait de 4 px, il faut les rendre pour
      avancer d'une case pleine, sinon l'ecart s'accumule et le cinquieme onglet
      se retrouve decale de 16 px. */
   .tabbar::before {
@@ -326,7 +326,7 @@
   .tabbar:has(> :nth-child(4).on) { --onglet: 3; }
   .tabbar:has(> :nth-child(5).on) { --onglet: 4; }
   /* Marches masque : quatre cases, et le dernier onglet devient le quatrieme.
-     Deux regles, lues dans le DOM comme les cinq du dessus — aucune variable a
+     Deux regles, lues dans le DOM comme les cinq du dessus -- aucune variable a
      poser depuis le script, donc rien qui puisse se desaccorder de la classe
      `.on`. Le quatrieme onglet ne peut pas etre actif quand il est masque, donc
      sa regle n'a pas de jumelle. */
@@ -378,17 +378,17 @@
 
   .view { padding-bottom: calc(76px + var(--zone-geste)); }
 
-  /* Toute vue doit dépasser l'écran, ne serait-ce que d'un pixel.
-     iOS replie la barre d'outils de Safari dès qu'on défile, ce qui agrandit
+  /* Toute vue doit depasser l'ecran, ne serait-ce que d'un pixel.
+     iOS replie la barre d'outils de Safari des qu'on defile, ce qui agrandit
      la zone visible et fait descendre la barre d'onglets, en `fixed`. Une page
-     qui ne défile pas la laisse déployée. Comptes était la seule vue dans ce
-     cas — 812 px de contenu pour 812 px d'écran, marge exactement zéro, quand
-     les autres débordent de 470 à 4 136 px — si bien qu'en y arrivant la barre
+     qui ne defile pas la laisse deployee. Comptes etait la seule vue dans ce
+     cas -- 812 px de contenu pour 812 px d'ecran, marge exactement zero, quand
+     les autres debordent de 470 a 4 136 px -- si bien qu'en y arrivant la barre
      d'onglets remontait de la hauteur de la barre d'outils, puis redescendait
-     en repartant. Le saut venait de l'écart entre les pages, pas de la barre.
-     Ce pixel garantit le même comportement partout. Il est survenu le jour où
-     la brique patrimoine a quitté Comptes : la page est passée juste sous le
-     seuil, et le réglage dépend donc du nombre de comptes. On ne le laisse
+     en repartant. Le saut venait de l'ecart entre les pages, pas de la barre.
+     Ce pixel garantit le meme comportement partout. Il est survenu le jour ou
+     la brique patrimoine a quitte Comptes : la page est passee juste sous le
+     seuil, et le reglage depend donc du nombre de comptes. On ne le laisse
      plus au hasard. */
   .view { min-height: calc(100vh + 1px); }
 
@@ -420,13 +420,13 @@
   outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-xs);
 }
 
-/* --- Entrée de vue : les cartes montent en cascade très courte ---
-   Vingt-cinq millisecondes d'écart suffisent à donner le sentiment que la page
+/* --- Entree de vue : les cartes montent en cascade tres courte ---
+   Vingt-cinq millisecondes d'ecart suffisent a donner le sentiment que la page
    se compose, sans jamais faire attendre.
 
-   Sous `.vue-entre` seulement, que render() ne pose qu'à l'arrivée sur une vue.
-   La cascade jouait sur chaque re-rendu, donc à chaque frappe dans un champ :
-   l'application clignotait précisément quand on s'en servait. */
+   Sous `.vue-entre` seulement, que render() ne pose qu'a l'arrivee sur une vue.
+   La cascade jouait sur chaque re-rendu, donc a chaque frappe dans un champ :
+   l'application clignotait precisement quand on s'en servait. */
 @keyframes carte-entre {
   from { opacity: 0; transform: translateY(7px); }
   to   { opacity: 1; transform: none; }
@@ -493,10 +493,10 @@
 }
 @media (prefers-reduced-motion: reduce) { .spark-halo { display: none; } }
 
-/* Les jauges poussent de zéro à leur valeur à l'arrivée, une fois les cartes
-   posées. `scaleX` et non `width` : la barre s'étire sans re-calculer la mise
-   en page, soixante images par seconde même sur un téléphone modeste. Le
-   repère de cible (.reeq-cible) reste immobile : c'est un point fixe, le voir
+/* Les jauges poussent de zero a leur valeur a l'arrivee, une fois les cartes
+   posees. `scaleX` et non `width` : la barre s'etire sans re-calculer la mise
+   en page, soixante images par seconde meme sur un telephone modeste. Le
+   repere de cible (.reeq-cible) reste immobile : c'est un point fixe, le voir
    glisser dirait qu'il bouge avec la valeur. */
 @keyframes barre-pousse { from { transform: scaleX(0); } }
 /* `graphes-poussent` et non `vue-entre` : les jauges repoussent aussi quand le
@@ -587,9 +587,9 @@ body, .card, .tile, .topbar {
    Elle etait dans la liste au-dessus, qui arrive apres le bloc telephone : meme
    specificite, ecrite plus loin, donc c'est elle qui gagnait et le `transform` du
    retour disparaissait de la liste des proprietes animees. La barre sautait au lieu
-   de glisser — « ça disparait et reapparait, c'est pas une animation » — et seul le
+   de glisser -- "ca disparait et reapparait, c'est pas une animation" -- et seul le
    retour etait touche, le retrait ayant sa propre regle plus specifique. Mesure sur
-   place : `transition-property` valait « background-color, border-color, color ».
+   place : `transition-property` valait "background-color, border-color, color".
 
    C'est le piege que `CLAUDE.md` nomme deja pour `.table-serree` : a specificite
    egale, c'est l'ordre qui tranche. Une seule declaration ici l'evite pour de bon,
@@ -597,13 +597,13 @@ body, .card, .tile, .topbar {
    ecran, ou la barre n'en porte jamais. */
 /*   Ce n'etait pas la duree, c'etait la courbe. `cubic-bezier(.17, .84, .44, 1)` a
    une pente de 4,9 a l'origine : mesure sur les 54 px de course, elle en faisait
-   **43 en 100 ms** et 49 en 150. Les 300 ms declarees etaient donc une illusion —
+   **43 en 100 ms** et 49 en 150. Les 300 ms declarees etaient donc une illusion --
    la barre etait arrivee, il ne restait que cinq pixels a parcourir pendant la
    moitie du temps. On ne voyait pas un glissement, on voyait une apparition suivie
    d'une attente.
 
-   `(.3, .55, .25, 1)` sur 420 ms garde une pente de 1,8 a l'origine — la barre
-   part au doigt, elle ne traine pas — mais elle passe 29 px a 100 ms, 40 a 150,
+   `(.3, .55, .25, 1)` sur 420 ms garde une pente de 1,8 a l'origine -- la barre
+   part au doigt, elle ne traine pas -- mais elle passe 29 px a 100 ms, 40 a 150,
    47 a 200 : on la voit traverser. Essaye et rejete : `(.4, 0, .2, 1)`, la courbe
    standard de Material, qui ne bouge que d'un pixel dans les 30 premieres
    millisecondes et se lit comme un retard a l'allumage.
@@ -614,12 +614,12 @@ body, .card, .tile, .topbar {
               transform .42s cubic-bezier(.3, .55, .25, 1);
 }
 
-/* --- Fermeture des fenêtres : le geste inverse de l'ouverture ---
-   L'entrée était animée, la sortie coupait net : `hidden` tombait d'un coup.
+/* --- Fermeture des fenetres : le geste inverse de l'ouverture ---
+   L'entree etait animee, la sortie coupait net : `hidden` tombait d'un coup.
    C'est pourtant la sortie qu'on regarde toujours. `masquerModal()` garde la
-   fenêtre visible 170 ms avec cette classe, puis la cache pour de bon ;
-   `pointer-events: none` pendant ce répit, pour qu'un doigt pressé ne clique
-   pas dans une fenêtre en train de partir. */
+   fenetre visible 170 ms avec cette classe, puis la cache pour de bon ;
+   `pointer-events: none` pendant ce repit, pour qu'un doigt presse ne clique
+   pas dans une fenetre en train de partir. */
 .modal.modal-ferme { pointer-events: none; animation: modal-fond-sort .17s ease forwards; }
 .modal.modal-ferme .modal-panel { animation: modal-sort var(--duree-fenetre-sortie) ease forwards; }
 @keyframes modal-fond-sort { to { opacity: 0; } }
@@ -642,10 +642,10 @@ body, .card, .tile, .topbar {
 @keyframes tip-pose { from { opacity: 0; transform: translateY(3px) scale(.98); } }
 .chart-tip { animation: tip-pose .15s cubic-bezier(.22, .61, .36, 1); }
 
-/* --- Dépliants : le contenu glisse au lieu d'apparaître ---
+/* --- Depliants : le contenu glisse au lieu d'apparaitre ---
    `interpolate-size` permet d'animer vers `auto`, ce qu'aucune hauteur en dur
-   ne fait proprement. Navigateur trop vieux : la règle est ignorée et le
-   dépliant s'ouvre d'un coup, comme avant — c'est une politesse, pas une
+   ne fait proprement. Navigateur trop vieux : la regle est ignoree et le
+   depliant s'ouvre d'un coup, comme avant -- c'est une politesse, pas une
    fondation. */
 :root { interpolate-size: allow-keywords; }
 details::details-content {
@@ -663,7 +663,7 @@ details[open]::details-content { block-size: auto; }
 /* La courbe d'evolution se decouvre de gauche a droite, a l'arrivee.
 
    Les jauges poussaient de zero, les cartes montaient de 7 px, et le graphique
-   — la plus grande surface de l'ecran — apparaissait d'un coup. Il etait
+   -- la plus grande surface de l'ecran -- apparaissait d'un coup. Il etait
    paradoxalement le moins vivant de la page.
 
    Un balayage plutot qu'un stroke-dashoffset par trace : c'est un graphique en
@@ -683,7 +683,7 @@ details[open]::details-content { block-size: auto; }
   animation: chart-balaye .78s cubic-bezier(.3, .8, .4, 1) .1s backwards;
 }
 /* PAS DE `backwards` ICI, ET C'EST UNE MESURE QUI L'A DIT. Ce mode applique
-   l'image de depart avant que l'animation parte — soit un decoupage a zero pour
+   l'image de depart avant que l'animation parte -- soit un decoupage a zero pour
    cette image-la. Mesure dans un panneau masque, ou le navigateur ne fait pas
    avancer les animations : la classe restait posee, l'animation n'avait jamais
    commence, et le graphique etait INVISIBLE. Le balayage d'arrivee s'en tire
@@ -723,7 +723,7 @@ details[open]::details-content { block-size: auto; }
   background: color-mix(in oklab, var(--accent) 26%, transparent);
   /* Eteint au repos, et c'est tout le correctif. `valeur-lavis` finit a
      `opacity: 0`, mais une animation sans `fill-mode` rend a l'element la valeur
-     de sa regle des qu'elle s'acheve — donc 1, l'opacite par defaut. Le lavis
+     de sa regle des qu'elle s'acheve -- donc 1, l'opacite par defaut. Le lavis
      restait peint pour toujours : un aplat violet sur le patrimoine de la barre
      laterale, signale trois fois, qu'on a pris pour une selection de texte puis
      pour un reste de survol. Mesure sur place : animation terminee, opacite du
@@ -732,7 +732,7 @@ details[open]::details-content { block-size: auto; }
      `opacity: 0` au repos plutot que `animation-fill-mode: forwards` : le
      premier eteint le lavis dans tous les cas, y compris si l'animation ne joue
      jamais ou si elle est interrompue. La classe `valeur-maj`, elle, n'est
-     jamais retiree — et elle n'a pas a l'etre, une fois l'etat de repos eteint. */
+     jamais retiree -- et elle n'a pas a l'etre, une fois l'etat de repos eteint. */
   opacity: 0;
   animation: valeur-lavis 1.1s cubic-bezier(.22, .61, .36, 1);
 }
@@ -768,7 +768,7 @@ details[open]::details-content { block-size: auto; }
 }
 
 /* ---------------- Budget : les cartes de l'onglet Charges fixes -------
-   Trois regles d'ordre vivaient ici. Elles remettaient « Epargne et croissance »
+   Trois regles d'ordre vivaient ici. Elles remettaient "Epargne et croissance"
    devant le tableau des charges, `order` evitant de deplacer soixante lignes de
    gabarit pour un resultat identique.
 
@@ -816,13 +816,13 @@ details[open]::details-content { block-size: auto; }
 @media (hover: hover) { .repart-credits:hover span:first-child { color: var(--text-primary); } }
 .repart-credits:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 
-/* ---------------- Le champ qui vient d'être enregistré ----------------
-   Tout ce qui se saisit dans une page entre dans l'état à la frappe, et le seul
-   témoin était « Sauvegardé ✓ » au bas de la barre latérale : dix pixels et demi,
-   dans le tiroir fermé sur téléphone. On tapait dans le vide.
+/* ---------------- Le champ qui vient d'etre enregistre ----------------
+   Tout ce qui se saisit dans une page entre dans l'etat a la frappe, et le seul
+   temoin etait "Sauvegarde U+2713" au bas de la barre laterale : dix pixels et demi,
+   dans le tiroir ferme sur telephone. On tapait dans le vide.
 
-   Un liseré vert sur le champ qu'on vient de remplir, huit dixièmes de seconde.
-   `box-shadow` et non `border` : une bordure déplacerait le contenu d'un pixel à
+   Un lisere vert sur le champ qu'on vient de remplir, huit dixiemes de seconde.
+   `box-shadow` et non `border` : une bordure deplacerait le contenu d'un pixel a
    chaque frappe, et le champ sauterait sous le doigt. */
 @keyframes champ-ecrit {
   0%   { box-shadow: 0 0 0 2px color-mix(in oklab, var(--good) 70%, transparent); }
@@ -835,19 +835,19 @@ details[open]::details-content { block-size: auto; }
 }
 
 /* Les rangees de boutons d'une fiche : la validation, au bas de la carte des
-   champs, et la vie du compte, dans la carte « Actions ». Une seule classe pour
+   champs, et la vie du compte, dans la carte "Actions". Une seule classe pour
    les deux, et une seule geometrie : deux rangees de boutons a quelques pixels
    l'une de l'autre, l'une plus large ou plus haute que l'autre, se lisent comme
-   un oubli — que la bordure d'une carte les separe ou non.
+   un oubli -- que la bordure d'une carte les separe ou non.
 
    Une grille, et non un flex, et c'est ce qui les rend comparables. En flex la
-   longueur du libelle decide de la largeur — 79 px pour « Archiver », 157 pour
-   « Clôturer et supprimer » — alors qu'ici deux colonnes de meme fraction
+   longueur du libelle decide de la largeur -- 79 px pour "Archiver", 157 pour
+   "Cloturer et supprimer" -- alors qu'ici deux colonnes de meme fraction
    donnent la meme largeur a tous, quel que soit le mot. Les deux cartes ayant la
    meme largeur, leurs colonnes coincident d'une carte a l'autre.
 
    Une seule colonne sous 768 px : a 375 px deux colonnes laissent 152 px, ou
-   « Clôturer et supprimer » se plie en deux lignes. Sa rangee prenait alors
+   "Cloturer et supprimer" se plie en deux lignes. Sa rangee prenait alors
    17 px de plus que sa voisine. Empiles, les quatre boutons sont identiques et
    la cible est plus large sous le pouce.
 
@@ -912,7 +912,7 @@ details[open]::details-content { block-size: auto; }
 .arch-actes { display: flex; align-items: center; gap: 8px; flex: none; }
 /* `.arch-agir` et non `.btn` : une regle posee sur `.btn`, meme portee, se lit
    comme une redefinition du bouton d'action de toute l'application, et le
-   controle qui garde cette famille la refuse — a raison. */
+   controle qui garde cette famille la refuse -- a raison. */
 .arch-ligne .arch-agir { min-height: 40px; }
 .arch-jeter { min-width: 40px; font-size: var(--font-lg); }
 
@@ -942,8 +942,8 @@ details[open]::details-content { block-size: auto; }
    tiennent toujours. A trois, il faut le laisser passer a la ligne, sinon les
    commandes se compriment contre le chiffre sur un ecran de telephone.
 
-   Le chiffre monte donc a hauteur du titre — `margin-left: auto` le pousse au
-   bord droit — et les commandes prennent la ligne suivante entiere, ou elles
+   Le chiffre monte donc a hauteur du titre -- `margin-left: auto` le pousse au
+   bord droit -- et les commandes prennent la ligne suivante entiere, ou elles
    retrouvent la place qu'elles avaient avant qu'un chiffre ne s'invite. */
 .tete-triple { flex-wrap: wrap; }
 .tete-triple > .tete-variation { margin-left: auto; }

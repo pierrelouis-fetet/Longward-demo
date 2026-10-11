@@ -4,17 +4,17 @@
  *  Source: https://github.com/pierrelouis-fetet/Longward-demo
  *  Distributed WITHOUT ANY WARRANTY. See the LICENSE file for the full terms.
  */
-/* ======================================================   I18N — français par défaut, anglais en option.
+/* ======================================================   I18N -- francais par defaut, anglais en option.
 
    Deux principes :
-   - la clé est en anglais, la valeur en français : si une clé manque en
-     anglais, on retombe sur le français plutôt que d'afficher une clé nue ;
-   - les libellés balisés `data-i18n` dans index.html sont traduits au
+   - la cle est en anglais, la valeur en francais : si une cle manque en
+     anglais, on retombe sur le francais plutot que d'afficher une cle nue ;
+   - les libelles balises `data-i18n` dans index.html sont traduits au
      chargement, le reste passe par t() dans les vues.
 
-   Le chantier est progressif : chaque chaîne traduite ici disparaît du
-   français en dur. Ce qui n'est pas encore dans le dictionnaire reste en
-   français dans les deux langues — visible, donc facile à repérer.
+   Le chantier est progressif : chaque chaine traduite ici disparait du
+   francais en dur. Ce qui n'est pas encore dans le dictionnaire reste en
+   francais dans les deux langues -- visible, donc facile a reperer.
    ============================================================= */
 
 const LANGS = [['fr', 'Français'], ['en', 'English']];
@@ -1206,7 +1206,7 @@ const I18N = {
     /* Intitules de champs des fenetres de saisie : `askForm` les traduit, leur
        francais est donc la clef. Identiques dans les deux langues pour
        certains, et l'entree existe quand meme : sans elle, rien ne distingue
-       « traduit a l'identique » de « traduction oubliee ». */
+       "traduit a l'identique" de "traduction oubliee". */
     "actions.fiche": "Actions",
     "Facultative, mais deux chiffres en dépendent. Le rendement par an, qui ramène « +36 % » à une échelle comparable, car sans date il ne dit pas s’il a fallu un an ou cinq. Et l’effet du jour : une ligne achetée aujourd’hui se compare à ton prix d’achat, pas à la clôture d’hier, que tu n’as pas vécue. Pour une ligne renforcée plusieurs fois, mets la date du premier achat.": "Optional, but two figures depend on it. The yearly return, which brings “+36%” to a comparable scale, because without a date it does not say whether it took one year or five. And today’s move: a holding bought today is compared with your purchase price, not with yesterday’s close, which you did not live through. For a holding topped up several times, use the date of the first purchase.",
     ", sans établissement": ", with no institution",

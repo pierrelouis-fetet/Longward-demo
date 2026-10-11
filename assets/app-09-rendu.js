@@ -9,8 +9,8 @@ const MOUNTS = {
     : sousOngletActif.overview === 'historique' ? mountHistory() : mountOverview(),
   positions: () => sousOngletActif.positions === 'cible' ? mountRebalance() : mountPositions(),
   allocation: mountAllocation,
-  /* Les préférences n'ont rien à monter : leurs réglages passent tous par
-     `data-path` et `data-action`, câblés une fois pour toute l'application. */
+  /* Les preferences n'ont rien a monter : leurs reglages passent tous par
+     `data-path` et `data-action`, cables une fois pour toute l'application. */
   data: () => { if (sousOngletActif.data !== 'preferences') mountData(); },
   budget: () => {
     if (sousOngletActif.budget === 'releves') mountHistory();
@@ -23,15 +23,15 @@ const MOUNTS = {
   objective: mountObjective,
   /* `accounts` manquait : le champ de recherche et le glissement lateral des
      lignes sont branches dans mountAccounts(), qui n'etait donc jamais
-     appele. La recherche laissait passer tout le monde — « zzz » affichait
-     les six etablissements — et les actions revelees au glissement etaient
+     appele. La recherche laissait passer tout le monde -- "zzz" affichait
+     les six etablissements -- et les actions revelees au glissement etaient
      inaccessibles. Le filtrage lui-meme etait juste : seul le cablage
      manquait. */
   accounts: mountAccounts,
 };
 
-/* Les fiches sont des pages, pas des fenêtres : `#/compte/<id>` et
-   `#/etab/<id>` sont des routes à part entière — le bouton retour du
+/* Les fiches sont des pages, pas des fenetres : `#/compte/<id>` et
+   `#/etab/<id>` sont des routes a part entiere -- le bouton retour du
    navigateur fonctionne, et un lien vers une fiche se partage. */
 function routeParam() {
   const m = location.hash.match(/^#\/(compte|etab)\/(.+)$/);
@@ -59,16 +59,16 @@ function currentView() {
   return VIEWS[v] ? v : 'overview';
 }
 
-/* Les sources de revenu, dans une fenêtre. Elles vivaient au bas de la carte
-   « Où va ce que tu gagnes », dans un dépliant qui redisait le montant déjà porté
+/* Les sources de revenu, dans une fenetre. Elles vivaient au bas de la carte
+   "Ou va ce que tu gagnes", dans un depliant qui redisait le montant deja porte
    par la barre du haut et terminait la carte par un tableau. C'est la barre
-   « Revenus » qui les ouvre maintenant, là où le regard se pose.
+   "Revenus" qui les ouvre maintenant, la ou le regard se pose.
 
-   Le balisage est celui d'avant, à l'identique : les champs portent leur
-   `data-path`, la suppression et l'ajout leurs actions, et les écouteurs qui
-   les servent sont posés sur le document. Rien à recâbler, et la saisie
-   s'enregistre au fil de la frappe comme partout ailleurs. D'où l'absence de
-   bouton « Valider » : il n'y a rien à valider. */
+   Le balisage est celui d'avant, a l'identique : les champs portent leur
+   `data-path`, la suppression et l'ajout leurs actions, et les ecouteurs qui
+   les servent sont poses sur le document. Rien a recabler, et la saisie
+   s'enregistre au fil de la frappe comme partout ailleurs. D'ou l'absence de
+   bouton "Valider" : il n'y a rien a valider. */
 function fenetreRevenus() {
   const m = $('#modal');
   const b = Store.state.budget;
@@ -156,7 +156,7 @@ function askText(titre, message, exemple = '', valeur = '', max = NOM_LIGNE_MAX)
     const m = $('#modal');
     apercuOuvert = null;
     /* Les trois textes se traduisent ici, pas chez l'appelant : c'est le meme
-       regime que les descripteurs d'`askForm`, et le français passe pour la
+       regime que les descripteurs d'`askForm`, et le francais passe pour la
        clef. Sans cela, chaque appel devait y penser, et sept sur dix l'oubliaient. */
     $('#modalTitle').textContent = trad(titre);
     $('#modalSub').textContent = message ? trad(message) : '';
@@ -181,7 +181,7 @@ function askText(titre, message, exemple = '', valeur = '', max = NOM_LIGNE_MAX)
     };
     /* Valider a vide ne ferme pas : cette fenetre ne demande qu'une chose, et
        repartir sans elle n'a jamais de sens. Elle le dit et garde la main, comme
-       un champ `requis` d'`askForm` — c'est « Annuler » qui sert a renoncer. */
+       un champ `requis` d'`askForm` -- c'est "Annuler" qui sert a renoncer. */
     const valider = () => {
       const v = champ.value.trim();
       if (!v) { champ.focus(); toast(`${titre}${deuxPoints()} ${trad('à remplir')}`); return; }
@@ -200,17 +200,17 @@ function askText(titre, message, exemple = '', valeur = '', max = NOM_LIGNE_MAX)
 /* ------------------------------------------------------------
    Formulaire generique
 
-   Ajouter une ligne creait jusqu'ici une rangee vide « Nouvelle charge » a
+   Ajouter une ligne creait jusqu'ici une rangee vide "Nouvelle charge" a
    remplir dans le tableau, case par case, en devinant ce qu'attendait
    chaque colonne. Une fenetre nomme les champs, propose des listes la ou
-   les valeurs sont contraintes, et ne cree la ligne qu'une fois remplie —
+   les valeurs sont contraintes, et ne cree la ligne qu'une fois remplie --
    donc pas de rangee fantome si l'on renonce.
 
    Un champ : { cle, label, type, valeur, options, aide, exemple, requis }
    type : 'texte' | 'nombre' | 'liste' | 'case'. Renvoie un objet, ou null.
 
    `encore` : le libelle d'un troisieme bouton, qui enregistre et rouvre la
-   fenetre vide. Il ne s'affiche que si l'appelant le demande — une fenetre de
+   fenetre vide. Il ne s'affiche que si l'appelant le demande -- une fenetre de
    modification n'a rien a enchainer, on ne modifie pas deux fois la meme ligne.
    La reponse porte alors `__encore`, et c'est l'appelant qui boucle : lui seul
    sait ce qu'il faut recalculer entre deux saisies. Le double blanc au nom du
@@ -224,7 +224,7 @@ async function demanderTypePerso() {
     ok: 'Créer',
     champs: [
       /* `requis` : sans lui, valider a vide fermait la fenetre sans un mot. Le
-         type ne se creait pas — `creerTypePerso` refuse un nom vide — mais rien
+         type ne se creait pas -- `creerTypePerso` refuse un nom vide -- mais rien
          ne le disait, et le geste ressemblait a une reussite. Un champ dont
          l'absence annule tout doit le dire avant de fermer. */
       { cle: 'nom', label: trad('Nom du nouveau type'), type: 'texte', requis: true,
@@ -254,8 +254,8 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
       /* Une SECTION : un intitule, aucun champ.
 
          Un formulaire de seize champs se lit comme une liste sans fin sur un
-         telephone. Nomme par etapes — le bien, son acquisition, son
-         financement — il se parcourt : on sait ou l'on est, et ce qui reste.
+         telephone. Nomme par etapes -- le bien, son acquisition, son
+         financement -- il se parcourt : on sait ou l'on est, et ce qui reste.
 
          Elle ne porte aucune valeur, et les deux lectures l'ignorent d'elles-
          memes : `valeurs()` cherche `#f_<cle>` et passe son chemin quand il
@@ -278,7 +278,7 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
       /* UN RESULTAT SE LIT, IL NE SE SAISIT PAS. Un champ `calcul` derive des
          autres et se rafraichit a la frappe : il n'a donc pas d'identifiant en
          `f_`, et `valeurs()` ne le voit pas. C'est voulu et c'est la regle de la
-         maison — deux surfaces d'edition pour une meme valeur, et personne ne
+         maison -- deux surfaces d'edition pour une meme valeur, et personne ne
          peut prouver qu'elles s'accordent. Ici le total est le produit de deux
          champs qui sont juste au-dessus : il les redit, il ne s'ajoute pas a
          eux. */
@@ -292,15 +292,15 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
           <span>${esc(trad(c.label))}${c.aide ? `<span class="sub">${esc(trad(c.aide))}</span>` : ''}</span>
         </label>`;
       /* `suggestions` : ce qui a deja ete tape dans ce champ, propose sans etre
-         impose. Un `datalist` et non une liste deroulante — le choix ferme
+         impose. Un `datalist` et non une liste deroulante -- le choix ferme
          conviendrait a un type de compte, pas a un organisme : il y en a une
          infinite, et le jour ou l'on change d'assureur il faut pouvoir taper le
-         nouveau nom sans passer par « Autre… ».
+         nouveau nom sans passer par "Autre...".
          Le `<datalist>` ne s'affiche pas, il n'ajoute donc rien a la mise en
          page ; `autocomplete="off"` le laisse fonctionner, il ne parle qu'aux
          suggestions du navigateur. */
       /* `max` : la longueur maximale d'un champ de texte. Le navigateur refuse
-         alors la frappe au-dela, ce qui vaut mieux qu'un message apres coup —
+         alors la frappe au-dela, ce qui vaut mieux qu'un message apres coup --
          on n'ecrit pas trente-cinq caracteres pour se les voir refuser. */
       const dl = (c.suggestions || []).length ? `dl_${c.cle}` : '';
       /* Une option est `[valeur, libelle]` ; un groupe est `[titre, options]`,
@@ -323,19 +323,19 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
       /* `mois` : sous un champ de date, le mois ecrit en lettres, tenu a jour.
          Une date au format du navigateur ne dit pas a quel mois elle appartient
          sans un calcul de tete, et c'est pourtant la question qu'on se pose en
-         datant un mouvement : « ça compte dans quel mois ». Le drapeau est
+         datant un mouvement : "ca compte dans quel mois". Le drapeau est
          explicite, champ par champ : toutes les dates de l'application n'ont
          pas cette question. */
       /* `parPart` : sous un montant total, LA FORMULE qui le lie au nombre de
          parts, et le prix par part en est un terme.
 
-         Il etait un second champ sous un second libelle, avec « l'un remplit
-         l'autre » en sous-titre : quatre champs nombre qui se ressemblaient, et
+         Il etait un second champ sous un second libelle, avec "l'un remplit
+         l'autre" en sous-titre : quatre champs nombre qui se ressemblaient, et
          la relation entre eux decrite en abstrait. On se demandait lequel
          remplir, lequel etait calcule, lequel faisait foi. La formule montre le
          calcul reel, avec les valeurs formatees comme partout ailleurs :
-         « 2 750 parts × [3] € / part = 8 250 € », et pour l'investissement
-         « 5 000 € ÷ 2 750 parts = [1,8182] € / part » — le sens de lecture suit
+         "2 750 parts x [3] EUR / part = 8 250 EUR", et pour l'investissement
+         "5 000 EUR / 2 750 parts = [1,8182] EUR / part" -- le sens de lecture suit
          le geste : un prix du jour revalorise le total, un montant investi se
          ramene a un prix d'achat (et ce prix, tape, redonne le nombre de parts :
          c'est ce que dit le sous-titre qui reste).
@@ -344,7 +344,7 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
          parcourt les champs declares, donc il ne se lit ni ne se stocke, tout
          comme le miroir du mois juste au-dessus. Les termes ecrits en texte sont
          tenus a jour par le cablage d'`askForm`, qui seul connait les valeurs.
-         Un terme absent s'ecrit « — », et le resultat d'un produit dont le total
+         Un terme absent s'ecrit "--", et le resultat d'un produit dont le total
          n'est pas encore ecrit ne s'affiche pas : c'est lui que la frappe du
          prix va remplir. */
       return `<div class="field">
@@ -368,7 +368,7 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
     $('#modalBody').innerHTML = `<div class="modal-champs">${champs.map(rendu).join('')}</div>`;
     /* Un champ qui ne s'applique pas DISPARAIT, il ne se grise pas.
 
-       « As-tu encore un credit sur ce bien ? » ne sert a rien si les six champs
+       "As-tu encore un credit sur ce bien ?" ne sert a rien si les six champs
        du pret restent la dessous : la question se pose, la reponse ne change
        rien a ce qu'il y a a lire. `montreSi` lit les valeurs courantes et se
        rejoue a chaque frappe.
@@ -452,12 +452,12 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
        LE TOTAL RESTE LA VERITE, et ce n'est pas un detail de cablage. Le
        patrimoine additionne `valeur` ; treize ecrans lisent ce montant. Deux
        champs pour une meme valeur finissent toujours par diverger, et un prix
-       par part arrondi au centime rendrait un total faux — 7 529 fois 1,33 fait
+       par part arrondi au centime rendrait un total faux -- 7 529 fois 1,33 fait
        10 013 et non les 10 000 saisis.
 
        QUATRE REGLES, et la quatrieme a manque. Taper le prix par part ECRIT le
        total ; taper le total recalcule le prix par part ; changer le nombre de
-       parts recalcule le prix par part, JAMAIS le total — celle-la compte, un
+       parts recalcule le prix par part, JAMAIS le total -- celle-la compte, un
        recalcul du total ferait bouger un montant qu'on n'a pas touche au moment
        ou l'on corrige une quantite.
 
@@ -465,11 +465,11 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
        par part sont tous deux ecrits, c'est le nombre qui se deduit. Sans elle,
        quelqu'un qui remplit d'abord les prix par part tapait dans le vide : la
        multiplication n'avait pas de multiplicateur, et rien ne le disait. Le
-       champ promet « l'un remplit l'autre » et ne remplissait rien.
+       champ promet "l'un remplit l'autre" et ne remplissait rien.
 
        Une deduction en entraine une autre : le nombre trouve sur une ligne sert
        aussitot a l'autre, dont le total attendait ce meme multiplicateur. D'ou
-       les paires assemblees AVANT d'etre cablees — chacune doit pouvoir
+       les paires assemblees AVANT d'etre cablees -- chacune doit pouvoir
        reveiller ses voisines.
 
        Quatre decimales au prix par part comme au nombre deduit : une part vaut
@@ -490,7 +490,7 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
       const n = () => num(combien.value);
       /* La formule redit les champs, elle ne calcule rien : ce sont `versUnite`
          et `versTotal` qui ecrivent, et elle se rafraichit a leur suite. Un
-         terme vide s'ecrit « — » ; le resultat du produit attend son total. */
+         terme vide s'ecrit "--" ; le resultat du produit attend son total. */
       const formule = $(`#f_${c.cle}_formule`);
       const majFormule = () => {
         if (!formule) return;
@@ -558,7 +558,7 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
 
            `num('')` vaut zero : un champ traverse sans rien taper arrivait donc
            chez l'appelant comme un zero declare, et `estDeclare` y lisait vrai.
-           Toute la convention « vide n'est pas zero » tombait a cet endroit
+           Toute la convention "vide n'est pas zero" tombait a cet endroit
            precis, avant meme d'atteindre le code qui la respecte.
 
            Rien ne change pour les lecteurs : `num('')` vaut toujours zero, et
@@ -581,7 +581,7 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
          portent cette case lisent toutes `v.supprimer`, ce nom est donc deja le
          contrat entre elles et `askForm`. La quatrieme l'aurait oublie. */
       const efface = champs.some(c => c.type === 'case' && c.cle === 'supprimer') && out.supprimer;
-      /* Ce qu'est un champ vide, par type. `String(0).trim()` vaut « 0 », donc
+      /* Ce qu'est un champ vide, par type. `String(0).trim()` vaut "0", donc
          non vide : un montant declare obligatoire passait la garde a zero, et
          la ligne s'enregistrait sans montant. Zero reste une valeur legitime
          partout ailleurs -- un versement mensuel a zero est un choix -- c'est
@@ -602,7 +602,7 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
          qu'il se traduit et que `{dev}` prend le signe de la devise. */
       if (manquant) { $(`#f_${manquant.cle}`).focus(); toast(`${trad(manquant.label)}${deuxPoints()} ${trad('à remplir')}`); return; }
       /* UN NOMBRE INVRAISEMBLABLE NE PASSE PAS LA PORTE. `type="number"` refuse
-         les lettres mais laisse entrer « 5e26 », et `num()` le lit sans
+         les lettres mais laisse entrer "5e26", et `num()` le lit sans
          broncher : une quantite a dix puissance vingt-six a fait naitre une
          ligne de quatre cent quatre-vingt-dix-neuf quintillions d'euros. On
          lit la VALEUR BRUTE du champ, pas `out` : `valeurs()` a deja fait
@@ -620,8 +620,8 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
         return;
       }
       /* Une regle qui porte sur DEUX champs ne peut pas vivre dans l'un des
-         deux : « le capital emprunte doit etre superieur a zero quand un capital
-         restant est renseigne » regarde les deux a la fois. `valide` rend le
+         deux : "le capital emprunte doit etre superieur a zero quand un capital
+         restant est renseigne" regarde les deux a la fois. `valide` rend le
          message a dire, ou rien. La fenetre reste ouverte, comme pour un champ
          obligatoire vide. */
       const souci = efface ? null : valide?.(out);
@@ -680,7 +680,7 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
     $('#modalClose').onclick = annulerOuDemander;
     /* La lambda n'est pas une precaution de style : `onclick = lire` passerait
        l'evenement de clic en premier argument, donc un objet toujours vrai a la
-       place du drapeau d'enchainement. Chaque « Enregistrer » aurait rouvert la
+       place du drapeau d'enchainement. Chaque "Enregistrer" aurait rouvert la
        fenetre. */
     $('#frmOk').onclick = () => lire();
     if (encore) $('#frmEncore').onclick = () => lire(true);
@@ -720,17 +720,17 @@ function askChoice(titre, message, options, valeur) {
   });
 }
 
-/* `refus` : le libelle du bouton de refus. Il valait « Annuler » en dur, ce qui
-   se lit mal des que la question n'est pas « faire ou ne pas faire » — devant
-   « Enregistrer et fermer », « Annuler » veut dire « annuler la fermeture », alors
+/* `refus` : le libelle du bouton de refus. Il valait "Annuler" en dur, ce qui
+   se lit mal des que la question n'est pas "faire ou ne pas faire" -- devant
+   "Enregistrer et fermer", "Annuler" veut dire "annuler la fermeture", alors
    que le refus ferme quand meme, sans enregistrer. Un choix a deux issues nommees.
 
    `refus` et non `non` : `non` est deja le bouton lui-meme, quelques lignes plus
    bas. Le parametre s'est fait masquer par lui, et le libelle affiche etait
-   « [object HTMLButtonElement] ». Meme piege que `aideTexte`, note ailleurs dans
+   "[object HTMLButtonElement]". Meme piege que `aideTexte`, note ailleurs dans
    ce fichier. */
 function askConfirm(texte, { danger = true, ok = 'Confirmer', refus = 'Annuler' } = {}) {
-  /* `ponct()` retire l'espace avant un « ? » en anglais : la question se compose
+  /* `ponct()` retire l'espace avant un "?" en anglais : la question se compose
      d'un morceau traduit et du signe, ecrit dans le gabarit, donc hors de la clef. */
   const [titre, ...suite] = ponct(String(texte)).split('\n');
   const message = suite.join('\n').trim();
@@ -1104,7 +1104,7 @@ function askCession(compteId, index) {
 }
 
 /* VENDRE UN BIEN. Le geste qui manquait au proprietaire : jusqu'ici, un
-   appartement vendu se sortait par « Archiver », qui ne dit rien du prix, et ses
+   appartement vendu se sortait par "Archiver", qui ne dit rien du prix, et ses
    credits restaient ouverts jusqu'a ce qu'on pense a les supprimer.
 
    La fenetre demande ce que dit l'acte de vente et le decompte du notaire : le
@@ -1114,7 +1114,7 @@ function askCession(compteId, index) {
 
    LE SENS DU CASH SE LIT SUR L'APERCU. Un prix qui couvre les credits verse le
    reste sur un compte : la meme destination que toute cession. Un prix qui ne
-   les couvre pas demande quel compte paie la difference, sans l'option « hors »
+   les couvre pas demande quel compte paie la difference, sans l'option "hors"
    : un credit ne se solde pas avec de l'argent venu de nulle part. */
 function askVenteBien(compteId) {
   return new Promise(resolve => {
@@ -1455,13 +1455,13 @@ function askPosition(index) {
       `<dt>${label}</dt><dd class="${classe || ''}">${valeur}</dd>`;
 
     /* `data-differe` : rien de ce qui est saisi ici n'entre dans l'etat avant
-       « Enregistrer ». Voir l'ecouteur des champs, plus bas dans ce fichier. */
+       "Enregistrer". Voir l'ecouteur des champs, plus bas dans ce fichier. */
     $('#modalBody').dataset.differe = 'propre';
 
     /* Toute la fiche se repeint d'un seul geste, et aucun chiffre ne se
        rafraichit a la main.
 
-       « Enregistrer » ne reprenait que deux noeuds, le montant en tete et le
+       "Enregistrer" ne reprenait que deux noeuds, le montant en tete et le
        total investi. Corriger un prix de revient laissait donc la plus-value,
        sa part du portefeuille et l'ecart du jour sur les anciens chiffres, dans
        la meme fenetre et a quelques lignes d'ecart. La fiche se contredisait
@@ -1671,11 +1671,11 @@ function askPosition(index) {
     }
     const propre = () => ($('#modalBody')?.dataset.differe || 'propre') === 'propre';
     /* Le champ du prix de revient quand il est vide alors que la ligne porte des
-       titres — et `null` sinon.
+       titres -- et `null` sinon.
 
        Une quantite sans prix de revient n'est pas une ligne incomplete, c'est une
        ligne MUETTE : `posPerfEur` et `posPerfPct` rendent `null` faute de base,
-       donc rien de faux ne s'affiche, mais « prix de revient manquant » s'installe
+       donc rien de faux ne s'affiche, mais "prix de revient manquant" s'installe
        et ne partira jamais tout seul. Enregistrer ce silence, c'est le rendre
        definitif. On refuse, et on designe le champ.
 

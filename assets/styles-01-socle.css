@@ -24,7 +24,7 @@
 
    Le sous-ensemble latin porte U+0000-00FF (tous les accents francais
    et les guillemets obliques), U+2000-206F (l'apostrophe typographique)
-   et U+20AC (l'euro). Un glyphe absent, comme le ⤒ des releves, tombe
+   et U+20AC (l'euro). Un glyphe absent, comme le U+2912 des releves, tombe
    sur la police du systeme, caractere par caractere : rien ne casse.
 
    Aucun `?v=` sur ce fichier, volontairement. Le lien de prechargement
@@ -40,7 +40,7 @@
      avant le premier rendu dans la quasi-totalite des cas. `optional`
      laisserait le navigateur l'ignorer purement et simplement sur une
      connexion lente, et le titre resterait en police systeme toute la
-     session — une identite qui n'apparait qu'une fois sur deux n'en
+     session -- une identite qui n'apparait qu'une fois sur deux n'en
      est pas une. */
   font-display: swap;
   src: url(manrope-latin.woff2) format('woff2');
@@ -123,7 +123,7 @@
   --h-barre: calc(var(--h-barre-dessin) + env(safe-area-inset-top, 0px));
   --h-sous-onglets: 53px;
   /* La barre du haut de l'ordinateur, `.topbar`. Sa hauteur ne se declarait
-     nulle part et se subissait — 91 px de remplissage et de texte — pendant
+     nulle part et se subissait -- 91 px de remplissage et de texte -- pendant
      qu'un bandeau collant la supposait a 72 : il se garait 19 px dessous, le
      titre coupe en deux. Declaree ici, la barre la tient par `min-height`, et
      le bandeau comme le defilement vers une ancre la lisent. */
@@ -136,8 +136,8 @@
      image, et le mouvement accrochait. Le collage est desormais fixe et c'est une
      translation qui deplace ces bandes, donc plus rien a faire varier. */
 
-  /* L'accent de l'interface : le violet du logo. Tout ce qui dit « actif,
-     survole, selectionne » le porte — le repere du menu, l'onglet courant, la
+  /* L'accent de l'interface : le violet du logo. Tout ce qui dit "actif,
+     survole, selectionne" le porte -- le repere du menu, l'onglet courant, la
      pastille de plage retenue, les anneaux de focus, la selection de texte.
 
      Il ne rejoint pas les series de donnees, et c'est le point : `--series-1`
@@ -165,9 +165,9 @@
      `--ombre-flottante` detache ce qui survole la page (menus, infobulles,
      panneau de notifications), `--ombre-fenetre` porte ce qui la recouvre
      (fenetres, tiroirs). Avant : six ombres noires ecrites en dur, les memes
-     dans les deux themes — un voile a 45 % de noir sous un menu en theme
-     clair pese trois fois trop lourd, c'est lui qui faisait « sombre colle
-     sur clair ». Chaque theme regle desormais sa densite. */
+     dans les deux themes -- un voile a 45 % de noir sous un menu en theme
+     clair pese trois fois trop lourd, c'est lui qui faisait "sombre colle
+     sur clair". Chaque theme regle desormais sa densite. */
   --shadow: 0 1px 2px rgba(13, 17, 23, .04);
   --ombre-flottante: 0 8px 24px rgba(13, 17, 23, .10);
   --ombre-fenetre: 0 20px 50px rgba(13, 17, 23, .16);
@@ -222,14 +222,14 @@
 
   --accent: #9a72e8;
 
-  --series-1:  #65a7f2;   /* liquidités, monétaire      — azur */
-  --series-2:  #35c5be;   /* actions, actifs de marché  — turquoise */
-  --series-3:  #e06da4;   /* non coté                   — rose */
-  --series-4:  #ca85cb;   /* immobilier, immobilier coté — mauve */
-  --series-5:  #46b1e3;   /* crypto                     — bleu ciel */
-  --series-6:  #b2b867;   /* métaux précieux            — or olive */
-  --series-7:  #3fbbd0;   /* obligations                — cyan */
-  --series-8:  #8ebe77;   /* multi-actifs               — vert */
+  --series-1:  #65a7f2;   /* liquidites, monetaire      -- azur */
+  --series-2:  #35c5be;   /* actions, actifs de marche  -- turquoise */
+  --series-3:  #e06da4;   /* non cote                   -- rose */
+  --series-4:  #ca85cb;   /* immobilier, immobilier cote -- mauve */
+  --series-5:  #46b1e3;   /* crypto                     -- bleu ciel */
+  --series-6:  #b2b867;   /* metaux precieux            -- or olive */
+  --series-7:  #3fbbd0;   /* obligations                -- cyan */
+  --series-8:  #8ebe77;   /* multi-actifs               -- vert */
   --series-9:  #8d9be2;   /* biens de valeur */
   --series-10: #6b8ca8;
   --series-11: #8fbf5a;
@@ -271,8 +271,8 @@
 * { box-sizing: border-box; }
 
 /* Le fond est porte par les deux : sur iPhone, la zone sous la barre
-   d'onglets — encoche du bas, ou l'espace laisse par la barre de Safari qui
-   se replie — reste parfois hors du canevas peint par `body` seul, et s'y
+   d'onglets -- encoche du bas, ou l'espace laisse par la barre de Safari qui
+   se replie -- reste parfois hors du canevas peint par `body` seul, et s'y
    affiche en noir.
 
    `min-height` sur le corps, et non `height`, et c'est un correctif.
@@ -287,19 +287,19 @@
 
    Ce n'est pas un choix qu'on aurait pu defendre. Le pied de cette barre porte
    le patrimoine net en permanence, au point que l'accueil a perdu une carte
-   entiere au motif qu'« il est deja ecrit en permanence au pied de la barre
-   laterale ». Un chiffre retire ailleurs parce qu'il est toujours la ne peut pas
+   entiere au motif qu'"il est deja ecrit en permanence au pied de la barre
+   laterale". Un chiffre retire ailleurs parce qu'il est toujours la ne peut pas
    s'en aller au premier defilement.
 
    Le corps peut donc depasser l'ecran, et il ne descend jamais en dessous : le
    fond reste peint d'un bord a l'autre sur une page courte, ce qui etait la
    raison d'etre de cette ligne. La hauteur posee par `gelerFond()` est un style
-   en ligne, elle gagne toujours sur celle-ci — le gel d'une fenetre ouverte
+   en ligne, elle gagne toujours sur celle-ci -- le gel d'une fenetre ouverte
    n'est pas touche.
 
    Le `min-height` vit dans la regle `body` principale, plus bas, et non dans une
    seconde regle posee ici : la feuille en compte deja une seule, et un controle
-   cherche « le bloc dont le selecteur est exactement body » pour verifier que
+   cherche "le bloc dont le selecteur est exactement body" pour verifier que
    les montants gardent la police du systeme. Une deuxieme regle du meme nom
    passait devant et lui faisait lire autre chose que ce qu'il croit lire. */
 html { height: 100%; }
@@ -311,16 +311,16 @@ html { height: 100%; }
 html { scroll-padding-top: calc(var(--h-entete) + 8px); }
 html, body { background: var(--page); }
 
-/* Garde-fou : rien ne doit pouvoir élargir la fenêtre.
-   Un seul élément trop large et le navigateur agrandit le viewport de mise en
-   page — 375 px devenaient 446 — puis dézoome pour tout montrer. La barre
-   d'onglets, posée en `fixed; bottom: 0`, se calait alors sur ce viewport
-   gonflé, donc 97 px sous le bord visible : elle disparaissait en arrivant sur
-   Marchés. `clip` plutôt que `hidden` : il ne crée pas de conteneur de
-   défilement et ne casse donc pas les en-têtes collants. */
+/* Garde-fou : rien ne doit pouvoir elargir la fenetre.
+   Un seul element trop large et le navigateur agrandit le viewport de mise en
+   page -- 375 px devenaient 446 -- puis dezoome pour tout montrer. La barre
+   d'onglets, posee en `fixed; bottom: 0`, se calait alors sur ce viewport
+   gonfle, donc 97 px sous le bord visible : elle disparaissait en arrivant sur
+   Marches. `clip` plutot que `hidden` : il ne cree pas de conteneur de
+   defilement et ne casse donc pas les en-tetes collants. */
 html, body { overflow-x: clip; max-width: 100%; }
 
-/* Le zoom au double-tap, lui, se refuse — et seulement lui.
+/* Le zoom au double-tap, lui, se refuse -- et seulement lui.
 
    `manipulation` vaut `auto` moins le zoom au double-tap. C'est celui qu'on
    declenche sans le vouloir : deux appuis rapproches sur un montant, et la page
@@ -356,12 +356,12 @@ body {
 
    Sur iPhone, un appui maintenu sur un montant ouvrait la loupe, posait les deux
    poignees bleues et sortait le menu Copier / Chercher / Traduire. Le geste qui
-   sert a lire — poser le doigt et le laisser une seconde — declenchait donc une
+   sert a lire -- poser le doigt et le laisser une seconde -- declenchait donc une
    selection dont personne n'avait besoin, sur du mobilier : un titre, un libelle,
    un chiffre affiche. Une application native ne fait pas cela.
 
-   LA REGLE VIT SUR `body` ET NON SUR `html` : tout ce qui s'affiche est dedans —
-   ecran de lancement, barre laterale, fiches, barre de navigation, infobulles —
+   LA REGLE VIT SUR `body` ET NON SUR `html` : tout ce qui s'affiche est dedans --
+   ecran de lancement, barre laterale, fiches, barre de navigation, infobulles --
    et `user-select` comme `-webkit-touch-callout` s'heritent, donc une seule
    declaration suffit a couvrir l'arbre entier. Elle remplace une demi-douzaine de
    gardes posees une par une, dont l'une rendait justement la selection aux
@@ -385,7 +385,7 @@ body {
    double-appui sur un mot, ni poignees pour deplacer le curseur, ni menu Coller.
    `-webkit-touch-callout: default` va avec, sinon iOS retire aussi le menu
    d'edition A L'INTERIEUR du champ. Deux appels a `champ.select()` vivent dans
-   `app.js` — quantite d'une ligne, code d'un doublon — et ils ont besoin de cette
+   `app.js` -- quantite d'une ligne, code d'un doublon -- et ils ont besoin de cette
    exception pour faire quelque chose.
 
    `[contenteditable]` n'est employe nulle part aujourd'hui. La ligne est posee
@@ -396,22 +396,22 @@ input, textarea,
   -webkit-touch-callout: default;
 }
 
-/* La barre latérale ne défile pas avec la page, et elle défile en elle-même.
+/* La barre laterale ne defile pas avec la page, et elle defile en elle-meme.
 
-   Et il n'y a rien à y gagner. Si la barre du haut se retire sur téléphone,
-   c'est que la place verticale y est comptée — 54 px sur 812. Ici la barre coûte
+   Et il n'y a rien a y gagner. Si la barre du haut se retire sur telephone,
+   c'est que la place verticale y est comptee -- 54 px sur 812. Ici la barre coute
    de la largeur, jamais de la hauteur : la cacher ne rendrait pas une ligne de
    contenu.
 
-   Mais la question désigne un vrai défaut, mesuré : dans une fenêtre de 560 px
-   de haut, son contenu en fait 655. Le pied dépassait donc de 95 px, et
-   `overflow: visible` sur un élément collé le rendait **inatteignable** — ni le
-   patrimoine net, ni le témoin de sauvegarde, et aucun défilement ne pouvait les
-   ramener. C'est le cas qu'on ne voit jamais en développant sur un grand écran.
+   Mais la question designe un vrai defaut, mesure : dans une fenetre de 560 px
+   de haut, son contenu en fait 655. Le pied depassait donc de 95 px, et
+   `overflow: visible` sur un element colle le rendait **inatteignable** -- ni le
+   patrimoine net, ni le temoin de sauvegarde, et aucun defilement ne pouvait les
+   ramener. C'est le cas qu'on ne voit jamais en developpant sur un grand ecran.
 
-   Elle défile donc en elle-même quand elle ne tient pas. `contain` pour que le
-   geste ne se propage pas à la page une fois le bas atteint : sinon lire le pied
-   de la barre ferait partir le contenu à côté. */
+   Elle defile donc en elle-meme quand elle ne tient pas. `contain` pour que le
+   geste ne se propage pas a la page une fois le bas atteint : sinon lire le pied
+   de la barre ferait partir le contenu a cote. */
 .sidebar {
   background: var(--sidebar);
   color: var(--sidebar-ink);
@@ -454,11 +454,11 @@ input, textarea,
     box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);
   }
 }
-/* L'appui, lui, reste — et il doit se voir.
+/* L'appui, lui, reste -- et il doit se voir.
 
    `:active` fait donc le travail, et il convient mieux : il finit quand le doigt
    se leve, alors qu'un `:hover` tactile attend qu'on touche ailleurs. Le
-   mouvement est un enfoncement franc, pas la levee du survol — on appuie sur une
+   mouvement est un enfoncement franc, pas la levee du survol -- on appuie sur une
    touche, on ne la survole pas. */
 .brand:active .brand-mark,
 .brand.tape .brand-mark {
@@ -479,10 +479,10 @@ input, textarea,
 .brand-vue { display: none; }
 /* Le rayon suit celui du dessin, mesure sur le fichier source : 204 px de rayon
    sur une tuile de 880, soit 23 %. En pourcentage et non en pixels, parce que la
-   meme image sert a 34 px dans la barre laterale et a 38 px dans le tiroir — un
+   meme image sert a 34 px dans la barre laterale et a 38 px dans le tiroir -- un
    rayon fixe arrondissait deux fois differemment le meme coin.
 
-   Et sans bordure : la nouvelle icone porte son propre liseré violet. Le
+   Et sans bordure : la nouvelle icone porte son propre lisere violet. Le
    `1px solid` d'avant existait parce que l'ancienne icone etait un carre plein
    bord a bord, qui avait besoin qu'on lui dessine un cadre. */
 .brand-mark {
@@ -504,7 +504,7 @@ input, textarea,
 }
 .nav a .ic { width: 15px; text-align: center; opacity: .8; font-size: 12px; }
 /* Les icones du menu sont des SVG au trait, comme la tabbar : les glyphes
-   texte (◈ ◎ ▦) rendaient differemment selon la police du systeme et
+   texte (U+25C8 U+25CE U+25A6) rendaient differemment selon la police du systeme et
    faisaient prototype a cote des vraies icones du bas. Meme classe `ic`,
    pour heriter des regles de largeur et de masquage existantes. */
 .nav a svg.ic {
@@ -532,14 +532,14 @@ input, textarea,
 
 .entete-actions { display: none; }
 
-/* --- l'étiquette de démonstration ----------------------------------------
+/* --- l'etiquette de demonstration ----------------------------------------
    Le mot le plus discret qui dise encore quelque chose : pas de fond plein, pas
-   de couleur d'alerte, la taille d'une légende. Elle accompagne le nom de la
-   page sans lui disputer la place, et elle tient à toutes les largeurs — une
-   démonstration doit s'annoncer aussi sur grand écran.
+   de couleur d'alerte, la taille d'une legende. Elle accompagne le nom de la
+   page sans lui disputer la place, et elle tient a toutes les largeurs -- une
+   demonstration doit s'annoncer aussi sur grand ecran.
 
-   `[hidden]` explicite : la règle d'affichage qui suit l'emporterait sinon sur
-   l'attribut, et l'étiquette resterait visible hors démonstration. */
+   `[hidden]` explicite : la regle d'affichage qui suit l'emporterait sinon sur
+   l'attribut, et l'etiquette resterait visible hors demonstration. */
 .etiquette-demo {
   display: inline-block; flex: none; align-self: center;
   padding: 2px 7px; border-radius: var(--radius-pill);
@@ -554,15 +554,15 @@ input, textarea,
 .topbar > div:first-child > .sub { flex-basis: 100%; }
 .etiquette-tel { display: none; }
 
-/* Sur téléphone, le tiroir « Plus » ne montre que ce que la barre du bas ne
-   porte pas : deux lignes, qui n'ont pas besoin de trois en-têtes. La classe
-   `dans-barre` est posée par `majOnglets()`, d'après la barre elle-même.
+/* Sur telephone, le tiroir "Plus" ne montre que ce que la barre du bas ne
+   porte pas : deux lignes, qui n'ont pas besoin de trois en-tetes. La classe
+   `dans-barre` est posee par `majOnglets()`, d'apres la barre elle-meme.
 
-   Les titres restent, eux : « Réglages » dit ce qu'est Données, et sans lui
-   l'entrée se lirait comme une suite du portefeuille. Seul se retire le titre
-   dont toutes les entrées sont parties — `sans-suite`, posée par le même
-   parcours. CSS ne sait pas dire « jusqu'au titre suivant » : `~` porte sur
-   tous les frères, donc « Pilotage » aurait vu Comptes, trois lignes plus
+   Les titres restent, eux : "Reglages" dit ce qu'est Donnees, et sans lui
+   l'entree se lirait comme une suite du portefeuille. Seul se retire le titre
+   dont toutes les entrees sont parties -- `sans-suite`, posee par le meme
+   parcours. CSS ne sait pas dire "jusqu'au titre suivant" : `~` porte sur
+   tous les freres, donc "Pilotage" aurait vu Comptes, trois lignes plus
    bas, et se serait cru encore utile. */
 @media (max-width: 900px) {
   #nav a.dans-barre, #nav .nav-groupe.sans-suite { display: none; }
@@ -574,7 +574,7 @@ input, textarea,
   border-radius: var(--radius-sm); padding: 11px 12px; display: flex; flex-direction: column; gap: 2px;
 }
 /* Ce bloc portait sa propre garde contre le surlignage, ecrite quand on a cru
-   que l'aplat violet du patrimoine net etait une selection — il venait en fait
+   que l'aplat violet du patrimoine net etait une selection -- il venait en fait
    d'une animation sans `fill-mode`, et un test le tient depuis. La garde reste
    juste, mais elle n'est plus a elle : la regle de `body` la couvre, et une
    selection tiree depuis ailleurs ne peut plus commencer nulle part. */
@@ -588,7 +588,7 @@ input, textarea,
 .compte-liens { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; font-size: var(--font-xs); }
 .compte-liens a { color: var(--sidebar-faible); }
 /* Une valeur qu'on lit et qu'on ne modifie pas. Un champ desactive dirait
-   « modifiable, mais pas maintenant » ; celle-ci n'est simplement pas a saisir.
+   "modifiable, mais pas maintenant" ; celle-ci n'est simplement pas a saisir.
    `break-all` parce qu'une adresse longue ne doit pas elargir sa carte. */
 .valeur-fixe { font-size: var(--font-lg); padding: 4px 0 2px; word-break: break-all; }
 
@@ -663,7 +663,7 @@ input, textarea,
    selon l'ecran, sans que rien ne le decide.
 
    `block` tranche pour les deux. `width: fit-content` garde le souligne sous
-   le seul texte — un bouton en bloc s'etendrait sur toute la largeur, et son
+   le seul texte -- un bouton en bloc s'etendrait sur toute la largeur, et son
    libelle se centrerait, ce qui en ferait un troisieme bouton a l'oeil. */
 .pas-actes {
   display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
@@ -730,8 +730,8 @@ body.nav-open .burger span::after  { transform: translateX(-50%) translateY(-6px
 .topbar-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
 
 /* Pied du menu : les reglages d'affichage, a l'ecart des destinations.
-   `margin-top: auto` les pousse tout en bas — d'ou le `flex: 1` sur le menu,
-   sans quoi la rangee restait collee sous « Preferences ».
+   `margin-top: auto` les pousse tout en bas -- d'ou le `flex: 1` sur le menu,
+   sans quoi la rangee restait collee sous "Preferences".
 
    L'alignement se calcule : le retrait des liens du menu moins le rembourrage
    propre du bouton, pour que le bord gauche des icones tombe sur celui du
@@ -751,11 +751,11 @@ body.nav-open .burger span::after  { transform: translateX(-50%) translateY(-6px
   border-radius: var(--radius-xs); transition: opacity .15s, color .15s, background .15s;
 }
 @media (hover: hover) { .btn-oeil:hover { opacity: 1; color: var(--text-secondary); background: var(--surface-2); } }
-/* L'œil de la barre du haut partage l'état allumé et l'animation de barre, sans
-   partager la géométrie : il est rond, comme la cloche et le profil, et
-   `.btn-rond` s'en charge. Étendre les sélecteurs existants plutôt que d'en
-   recopier trois — une seconde série de règles pour le même dessin aurait
-   divergé au premier retouchage. */
+/* L'oeil de la barre du haut partage l'etat allume et l'animation de barre, sans
+   partager la geometrie : il est rond, comme la cloche et le profil, et
+   `.btn-rond` s'en charge. Etendre les selecteurs existants plutot que d'en
+   recopier trois -- une seconde serie de regles pour le meme dessin aurait
+   diverge au premier retouchage. */
 :is(.btn-oeil, .btn-oeil-entete)[aria-pressed="true"] { opacity: 1; color: var(--accent); }
 
 .btn-oeil svg {
@@ -768,7 +768,7 @@ body.nav-open .burger span::after  { transform: translateX(-50%) translateY(-6px
 
    Dix-sept pixels de dessin se pointent a la souris et se manquent au doigt.
    Le `::after` porte donc une zone de quarante-quatre pixels centree sur le
-   bouton — la mesure d'Apple pour une cible tactile — sans peindre quoi que ce
+   bouton -- la mesure d'Apple pour une cible tactile -- sans peindre quoi que ce
    soit ni deplacer une ligne. Le bouton, lui, garde sa taille : une icone de
    quarante-quatre pixels dans une fiche serait un bouton plein, ce qu'il n'est
    pas.
@@ -785,7 +785,7 @@ body.nav-open .burger span::after  { transform: translateX(-50%) translateY(-6px
 }
 /* ANCREE A DROITE DU BOUTON, ET NON CENTREE SUR LUI. Mesure a 390 px, sur un
    numero de vingt-sept caracteres : centree, la zone depassait de neuf pixels
-   la boite du bouton — invisible, mais la ligne ne se replie pas et le
+   la boite du bouton -- invisible, mais la ligne ne se replie pas et le
    debordement se lisait sur son `scrollWidth`. Ancree a droite, elle s'etend
    vers le texte qu'elle copie, ou le doigt est de toute facon, et la ligne
    retombe juste. */
@@ -871,7 +871,7 @@ body.discret .acct-val {
    pendant que les lignes s'etiraient.
 
    1 100 px, et le chiffre vient d'une mesure, pas d'un gout. Le tableau le plus
-   large de l'application — neuf colonnes, les lignes de titres — demande 891 px
+   large de l'application -- neuf colonnes, les lignes de titres -- demande 891 px
    pour tenir sur une ligne ; il en recoit 1 002 une fois le remplissage retire.
    Les tuiles du budget passent de 330 a 248 px de large, ce qui reste au-dessus
    d'une carte de telephone. Aucun ecran ne deborde, a aucune des largeurs
@@ -894,15 +894,15 @@ body.discret .acct-val {
    serait reste en police systeme sans que rien ne le signale. Un titre est
    un titre parce qu'il est un `h`, pas parce qu'on a pense a l'inscrire.
 
-   Les deux ecritures du nom s'ajoutent explicitement — c'est meme la raison
+   Les deux ecritures du nom s'ajoutent explicitement -- c'est meme la raison
    d'etre de cette police. L'ecran de lancement le pose en grand une seconde ;
    la barre laterale le porte en permanence, et c'est celui-la qu'on voit. Les
    deux, ou aucun : une marque qui change de police d'un ecran a l'autre n'en
    est plus une.
 
-   Rien d'autre. Aucun de ces elements ne porte de montant — verifie : les
-   seules valeurs interpolees dans un titre sont un millesime (« Objectif a
-   fin 2026 ») et un rang (« Allocation 2 »), qui ne s'alignent en colonne
+   Rien d'autre. Aucun de ces elements ne porte de montant -- verifie : les
+   seules valeurs interpolees dans un titre sont un millesime ("Objectif a
+   fin 2026") et un rang ("Allocation 2"), qui ne s'alignent en colonne
    nulle part. Le jour ou un titre afficherait un total, il faudrait le
    sortir d'ici ou verifier que Manrope porte bien `tnum`. */
 h1, h2, h3,
@@ -918,7 +918,7 @@ td, th, .sb-net strong {
 .t-value { letter-spacing: -.02em; }
 
 /* Safari iOS peint le texte des <button> en bleu, comme un lien, et le fait
-   par `-webkit-text-fill-color` — qui l'emporte sur `color`. Depuis que les
+   par `-webkit-text-fill-color` -- qui l'emporte sur `color`. Depuis que les
    tuiles et les cartes sont cliquables, tous les montants qu'elles portent
    virraient au bleu sur iPhone, alors qu'ils restaient normaux ailleurs.
    On rend donc la couleur du remplissage a `color`, et on coupe l'habillage
@@ -948,7 +948,7 @@ a[href^="tel:"], a[x-apple-data-detectors] {
 @media (hover: hover) { .btn:hover:not(:disabled) { opacity: .85; } }
 /* Le meme anneau que les vingt-cinq autres composants focalisables de
    l'application. Sans lui, le bouton s'en remettait a l'anneau par defaut du
-   navigateur : la moitie de l'interface disait « tu es ici » en violet, l'autre
+   navigateur : la moitie de l'interface disait "tu es ici" en violet, l'autre
    moitie dans le dialecte du systeme, et un bouton plein clair sur fond clair
    n'y montrait presque rien. `outline-offset` positif : l'anneau se pose autour
    du bouton, pas dedans, ou il rognerait le libelle. */
@@ -974,7 +974,7 @@ a[href^="tel:"], a[x-apple-data-detectors] {
 /* La cible du doigt, plus grande que le dessin. Un bouton-icone mesurait 22 a
    29 px selon l'endroit, quand le minimum tenable au doigt est 24 : sous cette
    taille, on atteint son voisin une fois sur trois. L'agrandir pour de vrai
-   ferait un aplat la ou il faut un signe discret — le seul moyen d'avoir les
+   ferait un aplat la ou il faut un signe discret -- le seul moyen d'avoir les
    deux est de separer la boite cliquable du dessin.
 
    `inset` negatif plutot qu'un remplissage : le remplissage pousserait les
@@ -983,9 +983,9 @@ a[href^="tel:"], a[x-apple-data-detectors] {
    surtout pas de fond : c'est une surface a viser, pas a voir. */
 .btn.icon { position: relative; }
 /* Six pixels, et pas huit, y compris pour les `xs` de 22 px : a huit, la croix
-   de la carte de rappel mordait de deux pixels sur le bord de « Plus tard », son
+   de la carte de rappel mordait de deux pixels sur le bord de "Plus tard", son
    voisin a six pixels d'ecart. Une cible etendue ne doit jamais empieter sur une
-   autre — et surtout pas quand c'est l'action destructive qui gagne du terrain
+   autre -- et surtout pas quand c'est l'action destructive qui gagne du terrain
    sur celle qui ne fait que reporter. Six suffisent : 34 px pour le plus petit
    des boutons-icones, contre 24 demandes. */
 .btn.icon::after { content: ''; position: absolute; inset: -6px; }
@@ -1020,7 +1020,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 input[type=number] { text-align: right; font-variant-numeric: tabular-nums; }
 /* Le premier `textarea` de l'application. Deux endroits en avaient besoin : une
    adresse et la note d'un mois, deux textes qu'une ligne coupait en plein
-   milieu — l'adresse du fixture demande 359 px pour 311 disponibles, et rien ne
+   milieu -- l'adresse du fixture demande 359 px pour 311 disponibles, et rien ne
    disait qu'il en manquait.
 
    `resize: vertical` et non `both` : elargir un champ au-dela de sa carte le
@@ -1028,9 +1028,9 @@ input[type=number] { text-align: right; font-variant-numeric: tabular-nums; }
    regle sans rien casser. */
 textarea { resize: vertical; line-height: 1.45; }
 
-/* `hidden` doit primer : une règle de classe comme `.field { display: flex }`
-   l'emporte sinon sur le `display: none` du navigateur, et l'élément reste
-   visible alors que le code le croit masqué. */
+/* `hidden` doit primer : une regle de classe comme `.field { display: flex }`
+   l'emporte sinon sur le `display: none` du navigateur, et l'element reste
+   visible alors que le code le croit masque. */
 [hidden] { display: none !important; }
 
 .field { display: flex; flex-direction: column; gap: 5px; }
@@ -1050,12 +1050,12 @@ textarea { resize: vertical; line-height: 1.45; }
 
 /*      Un menu deroulant sait deja quelle largeur il lui faut : celle de sa
         plus longue option. C'est `.field`, colonne flex, qui l'etirait de
-        force sur toute la carte — d'ou « 1 000 € » dans une boite de 320 px.
+        force sur toute la carte -- d'ou "1 000 EUR" dans une boite de 320 px.
         On lui rend sa largeur naturelle. Un menu de montants se serre, un
         menu de noms de comptes reste large, sans qu'on ait a les distinguer.
-        Le plafond reste, pour l'option a rallonge — celui d'un texte libre, et
-        non 20 em : « Oui, chercher les cours automatiquement » demande 21,3 em
-        et « Automatique (place de reference du titre) » 22,5, donc les deux se
+        Le plafond reste, pour l'option a rallonge -- celui d'un texte libre, et
+        non 20 em : "Oui, chercher les cours automatiquement" demande 21,3 em
+        et "Automatique (place de reference du titre)" 22,5, donc les deux se
         coupaient au milieu d'un mot. Un menu natif tronque sans rien dire ;
         `text-overflow` ajoute l'ellipse quand le conteneur, lui, se resserre.
 
@@ -1072,17 +1072,17 @@ textarea { resize: vertical; line-height: 1.45; }
    C'est le principe ; la mise en oeuvre demande deux regles parce qu'aucune ne
    suffit seule. `width: auto` prend la largeur de la plus longue option, et une
    liste de quarante-quatre places de cotation etale donc son menu sur 292 px pour
-   afficher « Automatique », onze caracteres. A l'inverse, un plafond serre pour
-   tout le monde couperait « Oui, chercher les cours automatiquement », qui est la
+   afficher "Automatique", onze caracteres. A l'inverse, un plafond serre pour
+   tout le monde couperait "Oui, chercher les cours automatiquement", qui est la
    valeur choisie et non une option lointaine. Le CSS ne connait pas l'option
    selectionnee : il ne peut pas trancher entre ces deux cas.
 
-   Le plafond general reste donc large — la valeur choisie doit tenir — et les
+   Le plafond general reste donc large -- la valeur choisie doit tenir -- et les
    listes qui portent une option nettement plus longue que ce qu'on y choisit
    d'ordinaire prennent `menu-serre`. Douze em valent 192 px sur telephone, ou le
    navigateur impose 16 px aux controles de formulaire, et 156 sur ecran : de quoi
-   ecrire « Euronext Paris » en entier. Les deux ou trois noms plus longs de la
-   liste s'y coupent, avec l'ellipse pour le dire — c'est la contrepartie assumee,
+   ecrire "Euronext Paris" en entier. Les deux ou trois noms plus longs de la
+   liste s'y coupent, avec l'ellipse pour le dire -- c'est la contrepartie assumee,
    et la liste deroulee, elle, reste dessinee par le systeme a sa vraie largeur.
 
    `select.menu-serre` et non `.menu-serre` seul : a specificite egale avec
@@ -1096,10 +1096,10 @@ table .field :is(input, select) { max-width: none; }
 /* Dans une grille, un champ remplit sa cellule.
 
    Les plafonds ci-dessus ont leur raison hors grille : un champ seul sur une
-   ligne n'a pas besoin d'une boite de 320 px pour « 1 000 € ». Mais dans une
-   rangee, ils donnaient quatre largeurs differentes sur une meme fiche — 117 px
+   ligne n'a pas besoin d'une boite de 320 px pour "1 000 EUR". Mais dans une
+   rangee, ils donnaient quatre largeurs differentes sur une meme fiche -- 117 px
    pour un nombre, 160 pour un menu, 299 pour un texte serre, 364 pour un texte
-   libre — et rien ne s'alignait avec rien. C'est la grille qui decide de la
+   libre -- et rien ne s'alignait avec rien. C'est la grille qui decide de la
    largeur d'une cellule ; le champ, lui, l'occupe.
 
    Le resultat tient les deux : deux champs d'une `g-2` sont egaux, trois d'une
@@ -1111,7 +1111,7 @@ table .field :is(input, select) { max-width: none; }
 
    Enfant direct seulement, et c'est essentiel : une cellule de grille est un
    enfant de la grille, jamais un descendant. Le combinateur descendant attrapait
-   le moindre champ pose dans une carte posee dans une grille, et « Français »
+   le moindre champ pose dans une carte posee dans une grille, et "Francais"
    s'affichait alors dans un menu de 442 px sur la page Preferences. Un champ
    n'est etire que s'il est lui-meme la cellule. */
 .grid > .field :is(input, select, textarea) {
@@ -1119,8 +1119,8 @@ table .field :is(input, select) { max-width: none; }
 }
 /* Et le controle se pose au BAS de sa cellule.
 
-   Deux champs cote a cote, deux libelles de hauteur differente : « Valeur
-   estimee aujourd'hui (€) » passe a la ligne quand « Prix d'acquisition (€) »
+   Deux champs cote a cote, deux libelles de hauteur differente : "Valeur
+   estimee aujourd'hui (EUR)" passe a la ligne quand "Prix d'acquisition (EUR)"
    tient sur une, et les deux saisies se retrouvaient decalees de la hauteur
    d'une ligne. C'est la meme faute que la paire quantite / prix de revient,
    corrigee la sur le conteneur ; ici les cellules sont deja etirees a la hauteur
@@ -1156,7 +1156,7 @@ table .field :is(input, select) { max-width: none; }
 
    Dans l'en-tete, a droite du titre, deux textes de longueurs tres differentes
    seraient pousses aux deux bords par `space-between`. En francais,
-   « en % de ton patrimoine financier · 66 200 EUR » et « Repartition globale »
+   "en % de ton patrimoine financier . 66 200 EUR" et "Repartition globale"
    se rejoindraient au milieu et se chevaucheraient sur un telephone.
 
    Sous le titre, elle se lit comme ce qu'elle est : la legende de la carte, pas
@@ -1171,9 +1171,9 @@ table .field :is(input, select) { max-width: none; }
    quand elle passe a la ligne.
 
    `space-between` distribue ligne par ligne : seule sur la seconde, elle partait
-   a gauche. Le cas se produit en francais, ou « Evolution du patrimoine » prend
-   179 des 311 px d'une carte a 375 px quand l'anglais « Wealth over time » n'en
-   prend que 126 — la meme carte se replie dans une langue et pas dans l'autre.
+   a gauche. Le cas se produit en francais, ou "Evolution du patrimoine" prend
+   179 des 311 px d'une carte a 375 px quand l'anglais "Wealth over time" n'en
+   prend que 126 -- la meme carte se replie dans une langue et pas dans l'autre.
    C'est la meme regle que pour la bascule du grand chiffre, et c'est la meme
    raison : le bord droit est celui des commandes. */
 .card-head > .segmented { margin-left: auto; }
@@ -1235,8 +1235,8 @@ table .field :is(input, select) { max-width: none; }
 /* Deux boutons du meme geste passent a la ligne ensemble, ou pas du tout, et
    mesurent pareil.
 
-   En-tete de carte souple, ils tombaient un par un : « + Rentree » restait en
-   haut a droite contre le selecteur d'annee, « + Depense » descendait seul a
+   En-tete de carte souple, ils tombaient un par un : "+ Rentree" restait en
+   haut a droite contre le selecteur d'annee, "+ Depense" descendait seul a
    gauche sous le sous-titre, a l'autre bout de la rangee. Deux entrees de la
    meme paire lues comme deux commandes sans rapport. Un seul element de flex,
    donc un seul point de rupture.
@@ -1289,8 +1289,8 @@ table .field :is(input, select) { max-width: none; }
 .field-case > span { display: block; }
 
 /* L'etablissement sous le nom d'un champ de releve. `min-height` plutot que
-   rien : la ligne garde sa place quand elle est vide — le cas d'un nom qui
-   porte deja sa banque — et les douze champs de la grille restent alignes.
+   rien : la ligne garde sa place quand elle est vide -- le cas d'un nom qui
+   porte deja sa banque -- et les douze champs de la grille restent alignes.
    Sans elle, un seul libelle sur deux lignes decalait son champ d'un cran. */
 .f-etab {
   display: block; min-height: 1.15em; line-height: 1.15;
@@ -1313,7 +1313,7 @@ table .field :is(input, select) { max-width: none; }
 /* Un enfant de grille refuse par defaut de descendre sous sa largeur
    min-content : une carte au contenu large (un libelle qui ne se coupe pas,
    un tableau) poussait alors toute la page en debordement horizontal. Les
-   `minmax(0, …)` ci-dessous protegent les colonnes, pas leur contenu — d'ou
+   `minmax(0, ...)` ci-dessous protegent les colonnes, pas leur contenu -- d'ou
    ce plancher leve explicitement. La regle existait deja cote mobile ; elle
    manquait sur grand ecran, ou le debordement passait plus inapercu. */
 .grid > *, .card, .table-wrap { min-width: 0; }
@@ -1322,8 +1322,8 @@ table .field :is(input, select) { max-width: none; }
 .g-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .g-auto { grid-template-columns: repeat(auto-fit, minmax(172px, 1fr)); }
 /* `align-items: start` : chaque carte prend sa hauteur, pas celle de sa
-   voisine. Par defaut une grille etire ses elements, si bien que « Depenses du
-   mois en cours » — un grand chiffre et trois ecarts — s'allongeait sur les
+   voisine. Par defaut une grille etire ses elements, si bien que "Depenses du
+   mois en cours" -- un grand chiffre et trois ecarts -- s'allongeait sur les
    480 px de la carte d'a cote et montrait surtout du vide. Deux cartes de
    hauteurs differentes se lisent mieux qu'une carte a moitie remplie. */
 .g-hero { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); align-items: start; }
@@ -1421,7 +1421,7 @@ table .field :is(input, select) { max-width: none; }
    aux <button>, et doit donc ceder ensuite a `.hero-value`. Place apres, il
    ramenait le patrimoine de 52 px a 14 px. */
 /* Le montant est un bouton : il masque les chiffres au clic. Ce qu'on touche
-   pour agir ne doit pas se comporter comme du texte — c'est desormais vrai de
+   pour agir ne doit pas se comporter comme du texte -- c'est desormais vrai de
    toute l'application, par la regle posee sur `body`, et ce bouton n'a plus de
    garde a lui. */
 .val-masquable {
@@ -1444,7 +1444,7 @@ table .field :is(input, select) { max-width: none; }
 /* --- LE HAUT DU HERO, EN DEUX COLONNES --------------------------------------
 
    La lecture reste a gauche : intitule, montant, variation, periode. La courbe
-   prend le vide de droite, et rien d'autre ne bouge — la barre de composition
+   prend le vide de droite, et rien d'autre ne bouge -- la barre de composition
    garde toute la largeur, sous les deux colonnes.
 
    `align-items: end` : la courbe se pose sur la ligne de base de la periode
@@ -1454,10 +1454,10 @@ table .field :is(input, select) { max-width: none; }
 /* MOITIE-MOITIE, ET LE PARTAGE NE DEPEND PLUS DU CONTENU.
 
    Laisser le contenu decider ne tient pas. `3fr 2fr` donnerait toujours ses
-   trois cinquiemes a la colonne de gauche, meme quand « 49 500 € » n'en demande
+   trois cinquiemes a la colonne de gauche, meme quand "49 500 EUR" n'en demande
    que la moitie : le reste deviendrait un blanc entre le texte et la courbe.
    `fit-content(60%)` rendrait a la courbe TOUT ce que le texte ne prend pas :
-   sur un ecran large, « 50 600 € » ne demande pas grand-chose, et la courbe
+   sur un ecran large, "50 600 EUR" ne demande pas grand-chose, et la courbe
    s'etirerait sur les trois quarts de la carte pour illustrer un chiffre ecrit
    a cote.
 
@@ -1467,8 +1467,8 @@ table .field :is(input, select) { max-width: none; }
 
    `min-content` EST LA SEULE EXCEPTION, ET ELLE EST MESUREE. Le `clamp()` du
    grand chiffre suit la largeur de la fenetre, pas celle de sa colonne : a
-   375 px il reste a 34 px de police, et « 4 200 909 € » demande alors 166 px
-   la ou la moitie n'en donne que 148 — les separateurs de milliers sont
+   375 px il reste a 34 px de police, et "4 200 909 EUR" demande alors 166 px
+   la ou la moitie n'en donne que 148 -- les separateurs de milliers sont
    insecables, rien ne se replie. Avec `minmax(0, 1fr)` le montant debordait de
    dix-huit pixels ; avec `minmax(min-content, 1fr)` la colonne de lecture
    grandit juste assez (166/129) et seulement dans ce cas. Un patrimoine
@@ -1499,7 +1499,7 @@ table .field :is(input, select) { max-width: none; }
 /* SOUS 560 PX, ELLE S'EFFACE, ET LA RAISON EST UNE PROPORTION, PAS UNE CASSE.
    Mesure faite a 375 : la colonne de lecture tombe de 311 a 167 px, la courbe
    prend son plancher de 120. Rien ne deborde et le montant tient encore sur une
-   ligne, meme a sept chiffres — `clamp()` le ramene a 38 px et « 4 200 909 EUR »
+   ligne, meme a sept chiffres -- `clamp()` le ramene a 38 px et "4 200 909 EUR"
    y entre. Ce qui ne tient pas, c'est le partage : quarante pour cent de la
    colonne ou l'on vient lire un chiffre, donnes a l'illustration de ce meme
    chiffre, ecrit en toutes lettres deux lignes plus haut. Sur l'ecran ou cette
@@ -1516,7 +1516,7 @@ table .field :is(input, select) { max-width: none; }
    AUCUNE HAUTEUR IMPOSEE EN CSS SUR LE SVG, ET C'EST UN PIEGE MESURE. Poser
    `height` ne l'aplatit pas : sa `viewBox` se recentre pour tenir dans la
    boite, donc le dessin RETRECIT EN LARGEUR et flotte au milieu de son
-   conteneur — trois cent onze pixels de place, deux cent cinquante-quatre de
+   conteneur -- trois cent onze pixels de place, deux cent cinquante-quatre de
    trace. La hauteur se decide a la construction, dans `sparkline()`, ou nulle
    part. */
 
@@ -1549,8 +1549,8 @@ table .field :is(input, select) { max-width: none; }
    juste en dessous, ce serait deux jugements sur le meme mois. */
 .tiede { color: var(--serious); }
 
-/* Un credit en cours n'est pas une alerte. Le rouge de `.down` dit « quelque
-   chose ne va pas » — un depassement de budget, une moins-value — et il
+/* Un credit en cours n'est pas une alerte. Le rouge de `.down` dit "quelque
+   chose ne va pas" -- un depassement de budget, une moins-value -- et il
    s'affichait sur le capital restant du, qui n'est ni bon ni mauvais : c'est
    une soustraction choisie, dans une addition qui la mentionne. Le signe moins
    porte deja tout le sens, la couleur n'a rien a ajouter. */

@@ -596,11 +596,11 @@ const MOTS_IGNORES_RELEVE = ['total', 'patrimoine', 'net', 'brut', 'commentaire'
 /* La cible de chaque colonne d'un tableau de releves : 'date', un compte
    ({ compte: id }), 'dettes', IGNORER, ou '' (a choisir). L'ordre de lecture
    decide, et il va du plus sur au moins sur :
-     1. une marque finale explicite : « [identifiant] » designe ce compte,
-        ouvert ou cloture, « [dettes] » les credits du mois ;
+     1. une marque finale explicite : "[identifiant]" designe ce compte,
+        ouvert ou cloture, "[dettes]" les credits du mois ;
      2. la colonne des mois, par son CONTENU : une colonne de mois n'est pas un
         solde, meme si un compte porte le nom de son en-tete ;
-     3. le libelle exact d'un compte ouvert, puis « libelle etablissement »,
+     3. le libelle exact d'un compte ouvert, puis "libelle etablissement",
         chacun seulement s'il designe UN compte ;
      4. les mots de dette, parmi les colonnes qui restent : une colonne
         reconnue comme compte n'est jamais une dette ;

@@ -31,12 +31,12 @@ function carteUsageLots(c) {
   </div>`;
 }
 
-/* Ce qu'un placement immobilier rapporte — et ce n'est pas un appartement.
+/* Ce qu'un placement immobilier rapporte -- et ce n'est pas un appartement.
 
    Une SCPI ne s'habite pas, ne se releve pas entre deux locataires, n'a pas de
    mois loues : sa societe de gestion porte tout cela, et le distribue deja net
-   de sa propre vacance. Lui montrer « Loyer potentiel », « Vacance moyenne » ou
-   « Mois loues par an » invite a saisir une seconde fois ce que la distribution
+   de sa propre vacance. Lui montrer "Loyer potentiel", "Vacance moyenne" ou
+   "Mois loues par an" invite a saisir une seconde fois ce que la distribution
    contient, et le rendement affiche en sortirait deux fois ampute.
 
    La distinction vient du MODELE et non d'un libelle : `bienImmo` sans
@@ -516,22 +516,22 @@ function espaceBien(c, idx, t) {
   </div>`;
 }
 
-/* Un bouton « Enregistrer » sur une fiche, alors que tout y est deja ecrit.
+/* Un bouton "Enregistrer" sur une fiche, alors que tout y est deja ecrit.
 
    La regle du projet dit qu'une page ecrit a la frappe et qu'un bouton
-   « Enregistrer » y serait pire : on corrige un montant en haut, on descend, on
+   "Enregistrer" y serait pire : on corrige un montant en haut, on descend, on
    quitte, et un bouton non clique aurait tout jete. Ce bouton-ci ne change donc
-   rien a l'ecriture — elle a deja eu lieu, champ par champ, avec le lisere vert
+   rien a l'ecriture -- elle a deja eu lieu, champ par champ, avec le lisere vert
    de `marquerEcrit()`.
 
    Il ecrit et il reste, comme dans une fenetre de saisie en serie : une fiche de
    bien porte une dizaine de champs et trois cartes de chiffres derives, et on
-   vient justement voir ce que la saisie a change. « Enregistrer et fermer »
+   vient justement voir ce que la saisie a change. "Enregistrer et fermer"
    emportait l'ecran avant qu'on ait pu relire les comptes, et il fallait
    revenir. Le depart, lui, se fait par la navigation, qui ne perd rien.
 
-   « Annuler » reste, et rend la fiche telle qu'elle etait au dernier point
-   connu — l'ouverture, ou le dernier « Enregistrer ». */
+   "Annuler" reste, et rend la fiche telle qu'elle etait au dernier point
+   connu -- l'ouverture, ou le dernier "Enregistrer". */
 /* La rangee de validation d'une fiche, au bas de la carte qui porte les champs.
 
    Elle appartient au formulaire qu'elle valide : c'est la qu'on vient de taper, et
@@ -545,10 +545,10 @@ function espaceBien(c, idx, t) {
    filet, parce que celle-ci ferme une carte au lieu de suivre son titre.
 
    Elle vient avant ce qui detruit : le doigt ne doit pas traverser le rouge pour
-   atteindre « Enregistrer ». */
+   atteindre "Enregistrer". */
 function barreValiderFiche(retour = 'accounts', dater = '', { parts = 0, credits = 0 } = {}) {
   /* `dater` nomme le montant que ce bouton verifie : 'solde' dans la carte du
-     solde, 'bien' dans la carte « Mettre a jour » d'un bien. Sans lui, la barre
+     solde, 'bien' dans la carte "Mettre a jour" d'un bien. Sans lui, la barre
      enregistre et ne date rien (informations, notes).
 
      LE LIBELLE DIT CE QUE FAIT LE CLIC. Les chiffres sont deja ecrits a la
@@ -570,7 +570,7 @@ function barreValiderFiche(retour = 'accounts', dater = '', { parts = 0, credits
 
 /* L'etat d'une fiche a son ouverture, pour pouvoir y revenir.
 
-   « Annuler » ne peut pas vouloir dire « ne rien ecrire » : la fiche ecrit a
+   "Annuler" ne peut pas vouloir dire "ne rien ecrire" : la fiche ecrit a
    chaque frappe, et c'est ce qui garantit qu'on ne perd jamais un montant en
    changeant d'ecran. La regle du projet est explicite la-dessus, avec sa raison :
    un bouton qui conditionne l'ecriture jette tout ce qu'on a tape si on quitte
@@ -583,7 +583,7 @@ function barreValiderFiche(retour = 'accounts', dater = '', { parts = 0, credits
    Il couvre tout ce que la fiche peut ecrire, pas seulement l'objet qu'elle
    nomme : `instantaneFiche()` dans store.js en tient le perimetre. Il vit tant
    qu'on reste sur la fiche -- `render()` l'abandonne des qu'on la quitte, sinon
-   un retour plus tard comparerait a une photo perimee, et « Annuler » ecraserait
+   un retour plus tard comparerait a une photo perimee, et "Annuler" ecraserait
    un solde mis a jour entre-temps depuis un autre ecran. */
 let ficheAvant = null;
 
@@ -686,9 +686,9 @@ function viewFicheCompte(id) {
       const a = ancienneteCompte(c);
       if (!a) return '';
       const duree = `${a.annees} ${trad(a.annees > 1 ? 'ans' : 'an')}${
-        /* « mois » est invariable en francais : la clef au pluriel porte un
+        /* "mois" est invariable en francais : la clef au pluriel porte un
            repli, sinon `trad()` rend la clef elle-meme et l'ecran affiche
-           « 11 mois.pl ». Meme motif que `trad('sur.total', 'sur')`. */
+           "11 mois.pl". Meme motif que `trad('sur.total', 'sur')`. */
         a.reste ? ` ${trad('et')} ${a.reste} ${trad(a.reste > 1 ? 'mois.pl' : 'mois', 'mois')}` : ''}`;
       return `<p class="hint" style="margin:12px 0 0">${trad('Ouvert depuis')} ${duree} · ${
         a.atteint
@@ -778,7 +778,7 @@ function viewFicheCompte(id) {
        bouton ecrit au meme endroit que la fiche du dessus, et le sous-titre nomme
        l'etablissement pour qu'on ne croie pas qu'elle appartient a ce compte-la.
        Un etablissement qui tient deux comptes montre donc le meme credit sur les
-       deux fiches — c'est une lecture, et elle dit d'ou elle vient. */
+       deux fiches -- c'est une lecture, et elle dit d'ou elle vient. */
     if (estBien(t) || !c.etabId) return '';
     const { etab, dettes, total } = creditsDuCompte(c);
     if (!etab) return '';
@@ -973,21 +973,21 @@ function viewFicheEtab(id) {
   </div>`;
 }
 
-/* Glisser une ligne vers la gauche révèle Modifier / Archiver.
+/* Glisser une ligne vers la gauche revele Modifier / Archiver.
 
-   Le geste ne s'engage qu'une fois le sens décidé — sinon un défilement
-   vertical du doigt entraînait la ligne de quelques pixels sur le côté, et
+   Le geste ne s'engage qu'une fois le sens decide -- sinon un defilement
+   vertical du doigt entrainait la ligne de quelques pixels sur le cote, et
    toute la liste tremblait pendant qu'on la parcourait.
 
-   La position se pose dans une trame d'animation, pas à chaque événement
-   tactile : un doigt émet jusqu'à 120 événements par seconde là où l'écran
-   n'en affiche que 60 ou 120. Écrire deux fois la même trame ne se voit pas,
-   mais coûte deux recalculs de style — et c'est ce qui donne la sensation de
+   La position se pose dans une trame d'animation, pas a chaque evenement
+   tactile : un doigt emet jusqu'a 120 evenements par seconde la ou l'ecran
+   n'en affiche que 60 ou 120. Ecrire deux fois la meme trame ne se voit pas,
+   mais coute deux recalculs de style -- et c'est ce qui donne la sensation de
    caoutchouc. `translate3d` garde la ligne sur sa propre couche.
 
-   La course s'amortit en fin de trajet : passé la butée, le doigt continue et
+   La course s'amortit en fin de trajet : passe la butee, le doigt continue et
    la ligne ne suit plus qu'au tiers. Rien ne bloque net, ce qui est la
-   différence entre un geste qui répond et un geste qui bute. */
+   difference entre un geste qui repond et un geste qui bute. */
 function monteSwipeComptes() {
   const BUTEE = 132, DECLENCHE = 60;
   for (const bloc of $$('.cpt-swipe')) {
@@ -1022,7 +1022,7 @@ function monteSwipeComptes() {
         if (Math.abs(ex) < 6 && Math.abs(ey) < 6) return;
         sens = Math.abs(ex) > Math.abs(ey) ? 'lateral' : 'vertical';
       }
-      if (sens === 'vertical') return;             // on défile, la ligne ne bouge pas
+      if (sens === 'vertical') return;             // on defile, la ligne ne bouge pas
       dx = ex;
       if (!trame) trame = requestAnimationFrame(poser);
     }, { passive: true });
@@ -1031,8 +1031,8 @@ function monteSwipeComptes() {
       if (x0 === null) return;
       if (trame) { cancelAnimationFrame(trame); trame = 0; }
       const ouvre = sens === 'lateral' && position() < -DECLENCHE;
-      /* Une courbe qui décélère, pas un `ease` symétrique : le mouvement part
-         vite et se pose, comme un objet qu'on lâche. */
+      /* Une courbe qui decelere, pas un `ease` symetrique : le mouvement part
+         vite et se pose, comme un objet qu'on lache. */
       ligne.style.transition = 'transform .22s cubic-bezier(.22,.61,.36,1)';
       ligne.style.transform = ouvre ? `translate3d(${-BUTEE}px, 0, 0)` : '';
       bloc.classList.toggle('ouvert', ouvre);
@@ -1111,10 +1111,10 @@ function viewStrategy() {
   </div>`;
 }
 
-let budgetYear = null;   // null = l'année en cours
+let budgetYear = null;   // null = l'annee en cours
 /* Tri du detail mensuel : { key, dir }, ou null pour l'ordre du calendrier.
    `key` vaut 'mois', 'total', ou le nom d'une categorie. Il ne trie que le
-   tableau du grand ecran — la liste de telephone reste chronologique, elle
+   tableau du grand ecran -- la liste de telephone reste chronologique, elle
    n'a pas d'en-tetes pour dire son ordre, et un ordre muet est un piege. */
 let depSort = null;
 /* La lecture de la carte "Par categorie" : le total de l'annee, ou la
@@ -1125,7 +1125,7 @@ let depCatsParMois = false;
 function budgetAnnee() {
   const annees = expenseYears();
   const courante = todayISO().slice(0, 4);
-  /* « Toutes les années » a quitte le selecteur de Budget : une valeur `all`
+  /* "Toutes les annees" a quitte le selecteur de Budget : une valeur `all`
      restee d'avant (ou posee par un vieux geste) retombe sur l'annee en
      cours, sans quoi la page afficherait un choix que le menu n'offre plus. */
   if (budgetYear === 'all') budgetYear = null;
@@ -1136,14 +1136,14 @@ const viewBudgetCadre = () => viewBudget('cadre');
 
 /* LA BRIQUE DU MOIS AVANT LA PREMIERE DEPENSE.
 
-   Sur un profil vierge, l'onglet ouvrait sur « 0 € », puis « Objectif mensuel
-   0 € », « Reste sur l'objectif 0 € », « Moyenne 2026 0 € » : quatre nombres
-   qui disent tous la meme chose — rien n'est saisi — et qui font croire a un
+   Sur un profil vierge, l'onglet ouvrait sur "0 EUR", puis "Objectif mensuel
+   0 EUR", "Reste sur l'objectif 0 EUR", "Moyenne 2026 0 EUR" : quatre nombres
+   qui disent tous la meme chose -- rien n'est saisi -- et qui font croire a un
    tableau casse plutot qu'a un produit qui accompagne. Les tuiles et le
    graphique avaient deja leur garde, `aDesDepensesSaisies()` ; la brique la
    recoit, et fait ce que font les autres etats vides de l'application : dire
    ce que la section permet, et tendre le geste qui la remplit. Un objectif
-   deja regle se lit ; sinon on propose de le regler, jamais « 0 € ». */
+   deja regle se lit ; sinon on propose de le regler, jamais "0 EUR". */
 function briqueDepensesVide(f) {
   return `
     <div class="card">
@@ -1168,10 +1168,10 @@ function viewBudget(section = 'depenses') {
     .map((r, i) => ({ r, i }))
     .filter(({ r }) => year === 'all' || String(r.month).startsWith(year));
   const cur = currentExpenseMonth();
-  /* `savingsReconciliation()` etait lu ici, pour la carte « Epargne et
-     croissance » qui a rejoint l'accueil. Elle en etait le seul lecteur de cette
+  /* `savingsReconciliation()` etait lu ici, pour la carte "Epargne et
+     croissance" qui a rejoint l'accueil. Elle en etait le seul lecteur de cette
      vue : la ligne est partie avec elle, sans quoi c'etait un appel dont plus
-     personne ne se servait — la moitie qu'on oublie en retirant un affichage. */
+     personne ne se servait -- la moitie qu'on oublie en retirant un affichage. */
   const b = Store.state.budget;
 
   const resteObjectif = f.target - (cur ? cur.total : 0);
@@ -1293,7 +1293,7 @@ function viewBudget(section = 'depenses') {
                la carte du mois ouvre aussi. Un seul champ, deux portes.
 
                `goto` vise `budget-cadre`, la route du sous-onglet : viser
-               `budget` rendrait la page des depenses, ou l'ancre « charges »
+               `budget` rendrait la page des depenses, ou l'ancre "charges"
                n'existe pas, et le clic ne ferait rien du tout.
 
                La troisieme ligne reste inerte a dessein : c'est un reste, il se
@@ -1584,7 +1584,7 @@ function viewBudget(section = 'depenses') {
         .sort((a, x) => x.v - a.v);
       /* Le texte vit dans `PREMIERS_PAS` : c'est le meme que celui de l'invite,
          et l'ecrire ici en plus les aurait laisses diverger. Le repli sert au cas
-         ou des charges existent mais toutes a zero — le pas est franchi, il n'y a
+         ou des charges existent mais toutes a zero -- le pas est franchi, il n'y a
          pourtant rien a montrer. */
       if (!postes.length) return invitePremierPas('depenses')
         || `<p class="empty" style="margin:0">${trad('Aucune charge fixe déclarée.')}</p>`;

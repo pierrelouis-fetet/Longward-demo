@@ -41,7 +41,7 @@ const Xlsx = (() => {
       lh.setUint32(0, 0x04034b50, true);
       lh.setUint16(4, 20, true);          // version needed
       lh.setUint16(6, 0x0800, true);      // flag : noms en UTF-8
-      lh.setUint16(8, 0, true);           // méthode : stored
+      lh.setUint16(8, 0, true);           // methode : stored
       lh.setUint16(10, dosTime, true);
       lh.setUint16(12, dosDate, true);
       lh.setUint32(14, crc, true);
@@ -84,7 +84,7 @@ const Xlsx = (() => {
   const x = s => String(s ?? '').replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
 
-  function colName(n) {           // 1 → A, 27 → AA
+  function colName(n) {           // 1 -> A, 27 -> AA
     let s = '';
     while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = (n - 1 - r) / 26; }
     return s;

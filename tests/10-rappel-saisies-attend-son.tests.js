@@ -1562,7 +1562,7 @@ suite('Un bien change de contenant, et garde un seul nom', () => {
 
     /* Et le masque doit bien porter le guillemet qui rend le piege reel :
        si un jour il n'en portait plus, ce controle protegerait un fantome. */
-    vrai(/aria-label="montant masqué"/.test(lireSource('assets/store.js')),
+    vrai(/\saria-label="[^"]+"/.test(OEIL_MASQUE),
       'le masque porte un attribut, c’est ce qui interdit de l’imbriquer');
   });
 

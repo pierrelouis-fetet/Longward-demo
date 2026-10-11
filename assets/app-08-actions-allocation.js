@@ -91,11 +91,11 @@ Object.assign(ACTIONS, {
     Store.save(); render();
     toast(`${ASSET_CLASSES[v.classe]} · ${trad('cible')} ${tg[v.classe]} %`);
   },
-  /* Sortir une classe du reequilibrage. Son encours quitte la base — sinon les
+  /* Sortir une classe du reequilibrage. Son encours quitte la base -- sinon les
      pourcentages ne totaliseraient plus 100 % sans explication.
 
      Sa cible est mise de cote au lieu d'etre ecrasee. Elle retombait a zero, et
-     un decoupage par role partait avec : « 70 % de core, 20 % de satellite »
+     un decoupage par role partait avec : "70 % de core, 20 % de satellite"
      devenait `0`, un seul nombre, et remettre la classe rendait une ligne a
      zero. Un geste reversible ne doit rien detruire en chemin. */
   /* La tresorerie passe par les memes deux actions que les classes. Sa cible ne

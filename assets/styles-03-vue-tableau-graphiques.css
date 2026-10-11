@@ -5,7 +5,7 @@
  *  Distributed WITHOUT ANY WARRANTY. See the LICENSE file for the full terms.
  */
 .aide {
-  /* `inline-flex` : le « ? » etait centre par le bouton qu'il n'est plus. */
+  /* `inline-flex` : le "?" etait centre par le bouton qu'il n'est plus. */
   display: inline-flex; align-items: center; justify-content: center;
   width: 15px; height: 15px; padding: 0; margin-left: 5px;
   border-radius: var(--radius-pill); border: 1px solid var(--border);
@@ -29,7 +29,7 @@
 } }
 /* Un intitule de colonne qui porte son explication.
 
-   Le « ? » rond ne tient pas dans une colonne de 48 px, ou « Poids » occupe
+   Le "?" rond ne tient pas dans une colonne de 48 px, ou "Poids" occupe
    deja 40 pixels : c'est donc l'intitule qui declenche le panneau. Le pointille
    sous le mot dit qu'il y a quelque chose a lire, sans rien ajouter en largeur.
 
@@ -63,7 +63,7 @@
 
    En `fixed` et hors du flux : elle ne pousse rien et n'a pas a etre reservee
    dans la mise en page d'une carte. Posee sous l'en-tete, centree, invisible
-   tant que le doigt n'a rien tire — son opacite suit la course.
+   tant que le doigt n'a rien tire -- son opacite suit la course.
 
    Le disque se remplit de violet quand le seuil est franchi : c'est le signal
    qu'on peut lacher. Sans lui, on tire au hasard en esperant avoir assez tire. */
@@ -95,12 +95,12 @@
 .jour-total.up .jour-eur, .jour-total.up .jour-pct { color: var(--good); }
 .jour-total.down .jour-eur, .jour-total.down .jour-pct { color: var(--critical); }
 
-/* Bandeau de repères, défilement libre.
+/* Bandeau de reperes, defilement libre.
    Le `scroll-snap-type` accrochait le geste : sept tuiles de 104 px qu'on
-   pousse d'un pouce, et le doigt se faisait reprendre à chaque case. Un
+   pousse d'un pouce, et le doigt se faisait reprendre a chaque case. Un
    ruban d'indices se parcourt, il ne se feuillette pas.
-   `overscroll-behavior-x` empêche le geste horizontal de déborder sur la
-   page — sur iOS, arriver au bout déclenchait le retour arrière. */
+   `overscroll-behavior-x` empeche le geste horizontal de deborder sur la
+   page -- sur iOS, arriver au bout declenchait le retour arriere. */
 /* Les familles de reperes : des onglets de texte, pas des pastilles pleines.
 
    Le ruban en dessous porte deja des tuiles encadrees ; deux etages de boites
@@ -131,14 +131,14 @@
 
    Un `border-bottom` pose sur l'onglet actif sautait : la bordure disparait
    d'un mot et reapparait sur l'autre, sans rien entre les deux. Un seul trait,
-   deplace en `transform`, fait le trajet — et c'est ce trajet qui dit « ces
-   quatre onglets sont une seule chose a quatre etats », la ou deux bordures
-   clignotantes disent « deux boutons independants ».
+   deplace en `transform`, fait le trajet -- et c'est ce trajet qui dit "ces
+   quatre onglets sont une seule chose a quatre etats", la ou deux bordures
+   clignotantes disent "deux boutons independants".
 
    `transform` et `width`, pas `left` : la composition se fait sur le GPU et la
    mise en page n'est pas recalculee, donc soixante images par seconde meme sur
    un telephone modeste. La courbe part vite et finit doucement, avec un cheveu
-   de depassement — c'est ce leger excedent qui donne l'impression d'un objet
+   de depassement -- c'est ce leger excedent qui donne l'impression d'un objet
    qui a une masse plutot que d'une valeur qui change.
 
    La classe `glisse` n'arrive qu'apres le premier placement : au chargement, un
@@ -162,7 +162,7 @@
    Trois choses ont change. La duree passe a 0,42 s et l'ecart a 55 ms, donc le
    dernier arrive vers 0,64 s : assez lent pour se voir, assez court pour ne pas
    se faire attendre. Le mouvement devient lateral, parce que le ruban est
-   lateral — une tuile qui monte de 7 px dans une barre horizontale ne raconte
+   lateral -- une tuile qui monte de 7 px dans une barre horizontale ne raconte
    rien. Et il porte le sens du trajet : on passe d'Indices a Crypto, les
    nouvelles tuiles entrent par la droite, comme la page suivante d'un carrousel.
    C'est `--sens`, pose par la vue selon la position des deux familles dans la
@@ -232,7 +232,7 @@
 /* APRES `.rp-var`, et c'est la seule chose qui fait tenir cette regle : la
    tuile porte les deux classes, elles ont la meme specificite, et c'est l'ordre
    qui tranche. Ecrite avant, elle a longtemps declare une taille de 10,5 px que
-   `.rp-var` ecrasait sans que rien ne le dise — la couleur passait, la taille
+   `.rp-var` ecrasait sans que rien ne le dise -- la couleur passait, la taille
    non, et seule une mesure du style calcule pouvait le montrer.
 
    Cette taille reduite a disparu avec sa raison d'etre : elle servait a loger
@@ -240,8 +240,8 @@
    meme taille que le pourcentage des voisines, ce qui est plus juste : c'est la
    meme ligne et la meme fonction.
 
-   L'encre reste secondaire : un vert pour « faible » et un rouge pour « tres
-   elevee » feraient d'un chiffre de contexte une alerte. La coupure reste un
+   L'encre reste secondaire : un vert pour "faible" et un rouge pour "tres
+   elevee" feraient d'un chiffre de contexte une alerte. La coupure reste un
    filet de securite : la tuile a une largeur fixe, plus rien ne peut l'elargir,
    mais un libelle trop long doit se couper plutot que de deborder. */
 .rp-vix {
@@ -378,61 +378,61 @@
   text-align: right; font-variant-numeric: tabular-nums;
 }
 .jl-eur { font-weight: 650; }
-/* Le mouvement du jour, sur sa propre rangée, en pleine largeur.
+/* Le mouvement du jour, sur sa propre rangee, en pleine largeur.
 
-   Logé dans la colonne du nom, il était coupé net — « 588,77 $US → 5… » — la
-   colonne faisant 110 px à 375 px pour un texte qui en demande 150, et `.jl-nom`
+   Loge dans la colonne du nom, il etait coupe net -- "588,77 $US -> 5..." -- la
+   colonne faisant 110 px a 375 px pour un texte qui en demande 150, et `.jl-nom`
    portant `overflow: hidden` pour les noms longs. C'est un sous-titre de la
-   ligne, pas du nom : `1 / -1` lui donne la ligne entière, et il ne peut plus
-   déborder de quoi que ce soit.
+   ligne, pas du nom : `1 / -1` lui donne la ligne entiere, et il ne peut plus
+   deborder de quoi que ce soit.
 
-   La clôture de la veille en gris, la flèche plus discrète encore, le cours du
-   jour en gras et de la couleur du texte : l'œil doit tomber sur le prix
-   d'aujourd'hui — c'est lui qu'on cherche — et trouver d'où il vient sans avoir
-   à le chercher. */
+   La cloture de la veille en gris, la fleche plus discrete encore, le cours du
+   jour en gras et de la couleur du texte : l'oeil doit tomber sur le prix
+   d'aujourd'hui -- c'est lui qu'on cherche -- et trouver d'ou il vient sans avoir
+   a le chercher. */
 .jl-mouv {
   grid-column: 1 / -1;
   display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
   font-size: var(--font-xs); color: var(--muted); font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
-/* La clôture de la veille occupe une largeur fixe, calée à droite.
+/* La cloture de la veille occupe une largeur fixe, calee a droite.
 
-   « Que penses-tu de mettre le prix en blanc sur une troisième ligne, aligné
-   avec le prix gris ? » Le constat est juste : les prix du jour démarraient en
-   escalier, puisqu'ils suivent une clôture dont la largeur change à chaque
-   ligne — « 588,77 $US » ne fait pas la largeur de « 19,24 € ».
+   "Que penses-tu de mettre le prix en blanc sur une troisieme ligne, aligne
+   avec le prix gris ?" Le constat est juste : les prix du jour demarraient en
+   escalier, puisqu'ils suivent une cloture dont la largeur change a chaque
+   ligne -- "588,77 $US" ne fait pas la largeur de "19,24 EUR".
 
-   Mais une troisième ligne coûte un tiers de hauteur par titre, et c'est
-   exactement ce qu'on venait de retirer pour que la carte cesse d'être lourde.
-   Elle perdrait aussi la lecture « de ceci vers cela » que la flèche porte :
-   deux prix empilés ne disent plus lequel est l'ancien.
+   Mais une troisieme ligne coute un tiers de hauteur par titre, et c'est
+   exactement ce qu'on venait de retirer pour que la carte cesse d'etre lourde.
+   Elle perdrait aussi la lecture "de ceci vers cela" que la fleche porte :
+   deux prix empiles ne disent plus lequel est l'ancien.
 
-   Une largeur fixe suffit, et elle aligne les trois d'un coup : les clôtures
-   occupent la même boîte, donc les flèches partent du même pixel, donc les prix
+   Une largeur fixe suffit, et elle aligne les trois d'un coup : les clotures
+   occupent la meme boite, donc les fleches partent du meme pixel, donc les prix
    du jour aussi.
 
-   Calée à **gauche**, et c'est un second correctif. À droite, le vide se
-   creusait devant le montant : « 6,23 € » démarrait 40 px après le bord, sous
-   l'en-tête POIDS, et la ligne semblait appartenir à cette colonne plutôt qu'au
-   ticker au-dessus d'elle — « le prix ne doit pas aller sous le poids ». Le même
-   vide existe toujours, mais il est passé de l'autre côté du montant, entre lui
-   et sa flèche, où rien ne le lit comme un décalage.
+   Calee a **gauche**, et c'est un second correctif. A droite, le vide se
+   creusait devant le montant : "6,23 EUR" demarrait 40 px apres le bord, sous
+   l'en-tete POIDS, et la ligne semblait appartenir a cette colonne plutot qu'au
+   ticker au-dessus d'elle -- "le prix ne doit pas aller sous le poids". Le meme
+   vide existe toujours, mais il est passe de l'autre cote du montant, entre lui
+   et sa fleche, ou rien ne le lit comme un decalage.
 
    `6.6em` sur la police de ce sous-titre : la valeur la plus large qu'on y
-   rencontre est « 588,77 $US », et les chiffres sont tabulaires. */
+   rencontre est "588,77 $US", et les chiffres sont tabulaires. */
 .jl-prix { color: var(--text-primary); font-weight: 650; }
 .jl-prix.jl-fige { color: var(--text-secondary); font-weight: 600; }
-/* La mention de fraîcheur se cale à droite, contre le bord de la carte.
+/* La mention de fraicheur se cale a droite, contre le bord de la carte.
 
-   « Le mot cours d'hier n'est pas du tout aligné en vertical » : elle suivait
-   le mouvement, dont la largeur change à chaque ligne — « 6,23 € → 6,22 € » ne
-   fait pas la largeur de « 588,77 $US → 589,90 $US » — donc elle démarrait en
-   escalier. Poussée à droite, les cinq mentions finissent au même pixel et
-   forment leur propre colonne, sans qu'il faille en déclarer une.
+   "Le mot cours d'hier n'est pas du tout aligne en vertical" : elle suivait
+   le mouvement, dont la largeur change a chaque ligne -- "6,23 EUR -> 6,22 EUR" ne
+   fait pas la largeur de "588,77 $US -> 589,90 $US" -- donc elle demarrait en
+   escalier. Poussee a droite, les cinq mentions finissent au meme pixel et
+   forment leur propre colonne, sans qu'il faille en declarer une.
 
-   `margin-left: auto` plutôt qu'une largeur fixe : « pas coté aujourd'hui » et
-   « cours d'hier à 22:00 » n'ont pas la même longueur, et une colonne dimensionnée
+   `margin-left: auto` plutot qu'une largeur fixe : "pas cote aujourd'hui" et
+   "cours d'hier a 22:00" n'ont pas la meme longueur, et une colonne dimensionnee
    sur la plus longue laisserait un vide au milieu de la ligne le reste du temps. */
 .jl-quand { margin-left: auto; padding-left: 8px; white-space: nowrap; }
 
@@ -497,16 +497,16 @@ th .u {
 }
 
 /* ---------------- Rappel de saisie mensuelle ----------------
-   Une pastille collée au mot, pas un crayon renvoyé au bout de la ligne.
+   Une pastille collee au mot, pas un crayon renvoye au bout de la ligne.
 
-   Le crayon était plus parlant en théorie — il dit ce qu'on attend, écrire
-   quelque chose — mais `margin-left: auto` l'expédiait à l'autre extrémité du
-   menu. Détaché de « Relevés » par cinq centimètres de vide, incliné et
-   rouge, il se lisait comme une rayure sur l'écran plutôt que comme un
-   rappel, et on ne savait pas à quelle ligne il se rapportait.
+   Le crayon etait plus parlant en theorie -- il dit ce qu'on attend, ecrire
+   quelque chose -- mais `margin-left: auto` l'expediait a l'autre extremite du
+   menu. Detache de "Releves" par cinq centimetres de vide, incline et
+   rouge, il se lisait comme une rayure sur l'ecran plutot que comme un
+   rappel, et on ne savait pas a quelle ligne il se rapportait.
 
-   Ambre, comme la bannière de rappel : un relevé qui attend n'est pas une
-   panne. La pastille est petite et posée contre le mot — c'est le voisinage
+   Ambre, comme la banniere de rappel : un releve qui attend n'est pas une
+   panne. La pastille est petite et posee contre le mot -- c'est le voisinage
    qui porte le sens, pas la taille. */
 .badge {
   flex-shrink: 0; align-self: center;
@@ -556,8 +556,8 @@ th .u {
   display: flex; align-items: center; gap: 6px;
   margin-left: auto; flex: none;
 }
-/* `nowrap` : a 375 px, « Aller à la ligne » se pliait sur trois lignes et
-   « Plus tard » sur deux, ce qui triplait la hauteur du bandeau. */
+/* `nowrap` : a 375 px, "Aller a la ligne" se pliait sur trois lignes et
+   "Plus tard" sur deux, ce qui triplait la hauteur du bandeau. */
 .rappel-sorties .btn { margin-left: 0; white-space: nowrap; }
 
 :is(.note-relance, .note:has(> .rappel-sorties)) { flex-wrap: wrap; }
@@ -750,7 +750,7 @@ tr.flash-target td { animation: flash-row 1.6s ease; }
 
    En majuscules espacees et dans l'encre secondaire, comme les intitules de
    colonnes : c'est le seul registre de l'application qui annonce sans se lire
-   comme un titre. Aucune couleur d'accent, aucune pastille — elle classe, elle
+   comme un titre. Aucune couleur d'accent, aucune pastille -- elle classe, elle
    n'alerte pas, et une etiquette coloree sur trois entrees rendrait la carte
    bariolee pour ne rien ajouter.
 
@@ -765,7 +765,7 @@ tr.flash-target td { animation: flash-row 1.6s ease; }
 .retenir-titre { display: block; font-size: var(--font-base); font-weight: 600; letter-spacing: -.01em; }
 /* LE CHIFFRE QU'ON VIENT CHERCHER SE LIT SEUL.
 
-   « Ton rythme patrimonial est d'environ 1 250 € par mois » obligerait a lire
+   "Ton rythme patrimonial est d'environ 1 250 EUR par mois" obligerait a lire
    une phrase entiere pour trouver un nombre. Pose devant, en gras et d'un cran
    plus grand, il se prend d'un coup d'oeil et la phrase ne sert plus qu'a le
    situer dans le temps.
@@ -775,7 +775,7 @@ tr.flash-target td { animation: flash-row 1.6s ease; }
    viderait de sa force. Un chiffre en encre pleine se voit bien assez.
 
    `tabular-nums` parce que deux entrees voisines portant des montants doivent
-   aligner leurs chiffres ; `nowrap` parce que « +1 250 €/mois » coupe apres le
+   aligner leurs chiffres ; `nowrap` parce que "+1 250 EUR/mois" coupe apres le
    signe monetaire si on le laisse faire, et une unite orpheline sur la ligne
    suivante se lit comme une faute. */
 .retenir-valeur {
@@ -783,10 +783,10 @@ tr.flash-target td { animation: flash-row 1.6s ease; }
   letter-spacing: -.02em; color: var(--text-primary);
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
-/* UNE CAPITALE SUR LA PREMIERE LETTRE, ET SUR ELLE SEULE. « janvier 2030 » est
-   une valeur autant que « 0,8 mois » : elle ouvre sa ligne et merite la majuscule
-   qu'un debut de ligne appelle. `text-transform: capitalize` aurait ecrit « 0,8
-   Mois » ; `::first-letter` ne touche qu'au premier caractere, et les valeurs qui
+/* UNE CAPITALE SUR LA PREMIERE LETTRE, ET SUR ELLE SEULE. "janvier 2030" est
+   une valeur autant que "0,8 mois" : elle ouvre sa ligne et merite la majuscule
+   qu'un debut de ligne appelle. `text-transform: capitalize` aurait ecrit "0,8
+   Mois" ; `::first-letter` ne touche qu'au premier caractere, et les valeurs qui
    commencent par un chiffre ou un signe n'en ont pas. */
 .retenir-valeur::first-letter { text-transform: uppercase; }
 /* La rangee qui porte le chiffre et ce qu'il mesure. `baseline` et non `center` :
@@ -952,8 +952,8 @@ td .empty, th .empty { background: none; border: none; }
 }
 .note b { color: var(--text-primary); }
 
-/* La colonne des intitules etait en `auto` : une legende un peu longue —
-   « croissance reelle du patrimoine » — la poussait a 250 px et il ne restait
+/* La colonne des intitules etait en `auto` : une legende un peu longue --
+   "croissance reelle du patrimoine" -- la poussait a 250 px et il ne restait
    que 52 px pour le montant, qui se cassait en deux lignes. C'est la valeur
    qui doit prendre ce dont elle a besoin, et l'intitule ce qui reste : lui
    peut se replier, pas un chiffre. */
@@ -1001,7 +1001,7 @@ td .empty, th .empty { background: none; border: none; }
    `auto`, elle se dimensionne donc sur ce que la phrase demande une fois pliee,
    et c'est encore beaucoup. Mesure a 375 px sur le bloc d'un credit : 80 px pour
    les libelles contre 221 pour les valeurs, et les CINQ intitules replies sur
-   deux lignes — dont trois qui n'ont qu'un montant en face.
+   deux lignes -- dont trois qui n'ont qu'un montant en face.
 
    Une seule valeur affamait toute la grille, comme la fois d'avant ; la
    permission de se replier ne l'avait qu'attenue. Sortie de la colonne, elle
@@ -1021,7 +1021,7 @@ td .empty, th .empty { background: none; border: none; }
 
    Les colonnes s'inversent du meme coup. En `1fr auto`, une valeur qui a le
    droit de se replier reclame quand meme tout l'espace, et c'est le libelle
-   qui se retrouve ecrase — « Nom officiel » s'ecrivait une lettre par ligne.
+   qui se retrouve ecrase -- "Nom officiel" s'ecrivait une lettre par ligne.
    Ici le libelle prend ce qu'il lui faut, la valeur prend le reste.
 
    Le bloc mobile plus bas redeclare `.kv dt` : les regles qui doivent le
@@ -1032,10 +1032,10 @@ td .empty, th .empty { background: none; border: none; }
 .kv-texte dd { white-space: normal; overflow-wrap: anywhere; }
 .kv-texte dt { overflow-wrap: normal; min-width: max-content; }
 
-/* La carte « Accumulation ce mois-ci » : deux lignes qui composent, une ligne
+/* La carte "Accumulation ce mois-ci" : deux lignes qui composent, une ligne
    qui compte.
 
-   Le total porte un filet au-dessus et un corps plus grand — c'est le dessin
+   Le total porte un filet au-dessus et un corps plus grand -- c'est le dessin
    d'une addition, et il dit sans un mot que les lignes du dessus s'y ajoutent.
    Le filet ne se pose que si quelque chose le precede : sans credit a
    rembourser, la decomposition n'a pas lieu d'etre et le total ouvre la liste,
@@ -1045,7 +1045,7 @@ td .empty, th .empty { background: none; border: none; }
    sur la structure reelle, donc elle reste juste le jour ou une ligne s'ajoute
    au-dessus. */
 /* La gouttiere de 14 px de `.kv` coupait le filet en deux troncons, un sous le
-   libelle et un sous le montant, avec un trou au milieu — le trait cessait de
+   libelle et un sous le montant, avec un trou au milieu -- le trait cessait de
    se lire comme la barre d'une addition. L'ecart passe donc en remplissage du
    libelle : meme respiration entre les deux colonnes, et un filet continu.
    L'ecart entre les LIGNES, lui, ne change pas. */
@@ -1053,13 +1053,13 @@ td .empty, th .empty { background: none; border: none; }
 .kv-accumul dt { padding-right: 14px; }
 /* Trois niveaux, et ils se lisent comme une addition posee.
 
-   `.somme` marque une ligne de resultat — la capacite d'epargne, puis
+   `.somme` marque une ligne de resultat -- la capacite d'epargne, puis
    l'accumulation : un filet au-dessus, la graisse, l'encre pleine. C'est le
    dessin d'un trait de calcul, et il dit sans un mot que ce qui precede
    s'additionne.
 
    `.cle` s'ajoute au second, et lui seul : le corps monte a 18 px. Il ne porte
-   pas de couleur ici — elle vient de `cls()` sur la valeur, parce que le vert ne
+   pas de couleur ici -- elle vient de `cls()` sur la valeur, parce que le vert ne
    reste significatif que si UN montant le porte.
 
    `.sobre` redescend le taux d'un cran : il commente le resultat, il n'en fait
@@ -1093,24 +1093,24 @@ td .empty, th .empty { background: none; border: none; }
    Deux natures de controle segmente vivent dans cette application, et elles ne
    demandent pas la meme presence.
 
-   La NAVIGATION — « Aujourd'hui | Historique | Projection », « Depenses |
-   Charges fixes » — porte `.sous-onglets` et garde du volume : c'est une barre
+   La NAVIGATION -- "Aujourd'hui | Historique | Projection", "Depenses |
+   Charges fixes" -- porte `.sous-onglets` et garde du volume : c'est une barre
    qu'on vise, pas un reglage qu'on effleure.
 
-   Les FILTRES DE VUE — Net / Brut, Financier / Global, les plages, le tri d'un
-   journal, un filtre de role — portent `.seg-mini`. Ils choisissent un etat dans
+   Les FILTRES DE VUE -- Net / Brut, Financier / Global, les plages, le tri d'un
+   journal, un filtre de role -- portent `.seg-mini`. Ils choisissent un etat dans
    une carte, a cote d'un titre ou d'une etiquette de 11 px, et ils ne doivent pas
-   peser plus lourd que le mot qu'ils accompagnent. « Choisir un etat » n'a pas le
-   poids de « declencher une action » : c'est ce que la difference doit dire.
+   peser plus lourd que le mot qu'ils accompagnent. "Choisir un etat" n'a pas le
+   poids de "declencher une action" : c'est ce que la difference doit dire.
 
    **La classe existait et ne faisait rien.** Elle etait declaree 2 500 lignes
    plus haut, avant `.segmented`, a specificite egale : elle perdait. Mesure sur
    la bascule Net / Brut, qui la porte depuis toujours : corps calcule a 12,5 px
    et remplissage a 7px 12px, soit exactement les valeurs de `.segmented`. Seul
-   son `letter-spacing` s'appliquait, faute de concurrent — il ELARGISSAIT le
+   son `letter-spacing` s'appliquait, faute de concurrent -- il ELARGISSAIT le
    controle au lieu de le reduire.
 
-   Les valeurs ne sont pas celles qu'elle annonçait : 2 px de remplissage
+   Les valeurs ne sont pas celles qu'elle annoncait : 2 px de remplissage
    auraient donne des pilules de 17 px de haut, quand la regle de la maison en
    demande 24 au doigt. La pilule fait 25 px et le controle 31, contre 36 pour un
    segmente ordinaire.
@@ -1163,7 +1163,7 @@ td .empty, th .empty { background: none; border: none; }
   /* Les pastilles ne s'etirent pas a la hauteur de la bande.
 
      La bande DECLARE sa hauteur, `--h-sous-onglets`, parce que les bandeaux
-     collants s'y accrochent — et en `align-items` par defaut, le controle
+     collants s'y accrochent -- et en `align-items` par defaut, le controle
      segmente s'etirait pour la remplir. Sa hauteur n'etait donc pas la sienne :
      elle valait la bande moins son remplissage, quoi qu'on demande aux pilules.
      Mesure : 47 px a 375 px pour des boutons regles a 34.
@@ -1204,7 +1204,7 @@ body.haut-cache .sous-onglets::before { content: ''; }
    En `normal`, elle depend de ce que la pilule contient : la pastille de rappel,
    un `<i>` de 6 px cale a deux pixels de la ligne de base, gonflait la boite de
    ligne de sept pixels. La barre grandissait donc de sept pixels le jour ou une
-   saisie devenait en attente, et retrecissait quand on la faisait — mesure a
+   saisie devenait en attente, et retrecissait quand on la faisait -- mesure a
    375 px : 41 px de pilule avec la pastille, 34 sans. Une navigation qui change
    de taille selon son contenu se remarque, et rien ne l'expliquait.
 
@@ -1217,18 +1217,18 @@ body.haut-cache .sous-onglets::before { content: ''; }
 
 .sous-onglets .segmented { background: var(--surface-1); position: relative; }
 
-/* Des cellules égales à toutes les largeurs, et non seulement au téléphone.
+/* Des cellules egales a toutes les largeurs, et non seulement au telephone.
 
-   Le lavis se déplace par index : il suppose des cases identiques. Sur
-   ordinateur, `.segmented` se dimensionne sur son texte — « Cible » contre
-   « Patrimoine », presque du simple au double — et le lavis tombait donc à
-   côté de l'onglet qu'il devait souligner. Le défaut dormait derrière
-   « Objectifs | Patrimoine », deux mots de longueur voisine ; il s'est vu le
-   jour où le premier est devenu « Cible ».
+   Le lavis se deplace par index : il suppose des cases identiques. Sur
+   ordinateur, `.segmented` se dimensionne sur son texte -- "Cible" contre
+   "Patrimoine", presque du simple au double -- et le lavis tombait donc a
+   cote de l'onglet qu'il devait souligner. Le defaut dormait derriere
+   "Objectifs | Patrimoine", deux mots de longueur voisine ; il s'est vu le
+   jour ou le premier est devenu "Cible".
 
-   Une grille de colonnes égales le rend structurel, et non plus dépendant
-   d'un `flex: 1` posé dans une seule requête média. La largeur reste celle du
-   contenu : les colonnes prennent celle du libellé le plus long. */
+   Une grille de colonnes egales le rend structurel, et non plus dependant
+   d'un `flex: 1` pose dans une seule requete media. La largeur reste celle du
+   contenu : les colonnes prennent celle du libelle le plus long. */
 .sous-onglets .segmented {
   display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
 }
@@ -1238,7 +1238,7 @@ body.haut-cache .sous-onglets::before { content: ''; }
    l'autre, et le lien entre les deux est a deviner.
 
    L'effet est reserve aux sous-onglets, et c'est une contrainte de geometrie et
-   non un choix. Ici les cellules sont egales — leurs boutons portent `flex: 1`,
+   non un choix. Ici les cellules sont egales -- leurs boutons portent `flex: 1`,
    mesure faite : 169 et 169 a deux, 112 trois fois a trois. Les autres
    `.segmented` de l'application, Net / Brut ou le filtre de role, se
    dimensionnent sur leur texte : 46 et 50 pixels. Un deplacement par index y
@@ -1246,7 +1246,7 @@ body.haut-cache .sous-onglets::before { content: ''; }
    gardent donc leur fond par bouton.
 
    Le nombre de cellules se lit dans le DOM plutot que d'etre passe par le
-   gabarit : `:nth-child(3):last-child` veut dire « le troisieme est le dernier »,
+   gabarit : `:nth-child(3):last-child` veut dire "le troisieme est le dernier",
    donc il y en a trois. Une variable posee a la main dans les quatre gabarits
    qui rendent ce composant aurait fini par se desaccorder de l'un d'eux. */
 .sous-onglets .segmented:has(> :nth-child(2):last-child) { --n: 2; }
@@ -1298,9 +1298,9 @@ body.haut-cache .sous-onglets::before { content: ''; }
   /* Le bandeau d'un etablissement se colle sous les sous-onglets, et non a la
      meme hauteur qu'eux.
 
-     Il portait `top: calc(54px + …)`, exactement la valeur des sous-onglets : les
+     Il portait `top: calc(54px + ...)`, exactement la valeur des sous-onglets : les
      deux se disputaient la bande sous la barre du haut, et le bandeau gagnait.
-     Le point de rupture avait glisse lui aussi — la regle vivait sous 900 px
+     Le point de rupture avait glisse lui aussi -- la regle vivait sous 900 px
      quand la barre du haut n'existe qu'a partir de 768 : entre les deux, le
      bandeau se collait a 54 px sous une topbar de 72, donc derriere elle.
 
@@ -1334,7 +1334,7 @@ body.haut-cache .sous-onglets::before { content: ''; }
 
    Par un pseudo-element et non par du remplissage : `padding` grandit la boite
    de ligne et la pilule passait de 37 a 54 px de haut. Une marge negative ne la
-   rattrape pas — elle n'agit pas sur la hauteur de la boite de ligne d'un
+   rattrape pas -- elle n'agit pas sur la hauteur de la boite de ligne d'un
    element en ligne. Ce calque-la est hors flux, donc invisible a la mise en
    page, et les clics qu'il recoit sont ceux du bouton. */
 .toast-action::after {
@@ -1379,9 +1379,9 @@ body.haut-cache .sous-onglets::before { content: ''; }
   .nav a .ic { display: inline-block; width: 20px; font-size: 14px; }
   .nav a svg.ic { width: 20px; height: 20px; }
 
-  /* Sous la barre latérale (z-index 40), pas au-dessus : celle-ci étant en
-     `fixed`, elle forme son propre contexte d'empilement — le z-index du
-     menu qu'elle contient ne peut pas dépasser le sien. */
+  /* Sous la barre laterale (z-index 40), pas au-dessus : celle-ci etant en
+     `fixed`, elle forme son propre contexte d'empilement -- le z-index du
+     menu qu'elle contient ne peut pas depasser le sien. */
   .nav-backdrop {
     display: block; position: fixed; inset: 0; z-index: 30;
     background: rgba(0,0,0,.5); backdrop-filter: blur(2px);
@@ -1392,7 +1392,7 @@ body.haut-cache .sous-onglets::before { content: ''; }
   .nav a { white-space: nowrap; padding: 7px 10px; }
   .sidebar-foot { display: none; }
   .compte-liens { padding: 16px 12px 6px; gap: 8px 18px; }
-  /* 10px : le retrait reellement applique aux liens ici — `.nav a` est
+  /* 10px : le retrait reellement applique aux liens ici -- `.nav a` est
      redeclare plus bas dans ce meme bloc, et c'est cette valeur qui gagne. */
   .nav-outils { --nav-retrait: 10px; --oeil-marge: 10px; padding-top: 10px; padding-bottom: 4px; }
   .nav-outils .btn-oeil { padding: var(--oeil-marge); }
@@ -1401,7 +1401,7 @@ body.haut-cache .sous-onglets::before { content: ''; }
   /* La barre du haut se retire quand on descend, revient quand on remonte.
 
      Elle etait clouee a l'ecran en permanence, pour que le burger reste
-     atteignable — un burger qui n'existe plus, remplace par le bouton profil et
+     atteignable -- un burger qui n'existe plus, remplace par le bouton profil et
      par la barre du bas. Ce qu'elle gelait, mesure a 375 x 812 : 54 px, plus 53 de
      sous-onglets, plus 94 pour l'ovale du bas et sa garde, soit 201 px, un quart
      de l'ecran, et 44 de plus pour la barre de statut d'un iPhone.
@@ -1425,19 +1425,19 @@ body.haut-cache .sous-onglets::before { content: ''; }
     gap: 8px; flex-wrap: nowrap;
     /* Rien ne se rogne ici, et c'est un correctif.
 
-       Le défilement interne posé sur la barre latérale — pour qu'un écran court
-       ne rende pas son pied inatteignable — vaut pour le rail vertical de
-       l'ordinateur. Sur téléphone, ce même sélecteur est une bande de 54 px, et
-       `overflow: auto` en fait un conteneur qui découpe tout ce qui dépasse.
+       Le defilement interne pose sur la barre laterale -- pour qu'un ecran court
+       ne rende pas son pied inatteignable -- vaut pour le rail vertical de
+       l'ordinateur. Sur telephone, ce meme selecteur est une bande de 54 px, et
+       `overflow: auto` en fait un conteneur qui decoupe tout ce qui depasse.
 
-       Le panneau des notifications vit dedans, en absolu, et descend à 306 px :
-       il était donc entièrement rogné. « Le bouton notifications ne marche plus
-       sur téléphone, rien ne s'affiche » — il marchait, on ne le voyait pas.
-       Mesure : boîte du panneau de 56 à 306, mais au milieu de cette boîte c'est
-       la page qui répondait au doigt.
+       Le panneau des notifications vit dedans, en absolu, et descend a 306 px :
+       il etait donc entierement rogne. "Le bouton notifications ne marche plus
+       sur telephone, rien ne s'affiche" -- il marchait, on ne le voyait pas.
+       Mesure : boite du panneau de 56 a 306, mais au milieu de cette boite c'est
+       la page qui repondait au doigt.
 
-       C'est le cas qu'on ne voit jamais sur un grand écran, où la barre fait
-       toute la hauteur et n'a rien à découper. */
+       C'est le cas qu'on ne voit jamais sur un grand ecran, ou la barre fait
+       toute la hauteur et n'a rien a decouper. */
     overflow: visible;
     /* Le fond est celui de la page, et rien d'autre.
 
@@ -1459,17 +1459,17 @@ body.haut-cache .sous-onglets::before { content: ''; }
     /* Le mouvement du retour ne se declare pas ici : la regle de bascule de theme
        vit plus loin dans la feuille et ecraserait cette transition, `transform`
        compris. Il est donc pose la-bas, avec les couleurs, dans une declaration
-       que rien ne suit. Chercher « couleurs et retrait dans la meme declaration ».
+       que rien ne suit. Chercher "couleurs et retrait dans la meme declaration".
 
        Pas de `will-change: transform` ici, et ce n'est pas un oubli. Il promeut la
-       barre sur sa propre couche — ce qu'on veut — mais il cree aussi un bloc
+       barre sur sa propre couche -- ce qu'on veut -- mais il cree aussi un bloc
        conteneur pour tous ses descendants en `position: fixed`. Or le tiroir des
        reglages est un enfant de cette barre : il se calait donc sur une boite de
        54 px en haut de l'ecran au lieu de la fenetre, et s'ouvrait hors champ.
-       « Le menu parametres ne fonctionne plus, il apparait hors ecran sur tel. »
+       "Le menu parametres ne fonctionne plus, il apparait hors ecran sur tel."
 
        Le `translate3d` du retrait produit le meme effet, mais seulement pendant
-       qu'il est applique — et le bouton qui ouvre ce tiroir vit precisement dans la
+       qu'il est applique -- et le bouton qui ouvre ce tiroir vit precisement dans la
        barre retiree, donc hors d'atteinte a ce moment-la. `app.js` rend la barre
        avant d'ouvrir le tiroir, ce qui ferme le dernier chemin. */
   }
@@ -1504,7 +1504,7 @@ body.haut-cache .sous-onglets::before { content: ''; }
 
      La course vaut le dessin de la barre et jamais sa hauteur totale : l'encoche
      reste, et elle reste par construction. C'est ce qui la met hors de portee
-     d'une distraction — j'ai perdu cette garde une fois, en ecrivant un zero, et
+     d'une distraction -- j'ai perdu cette garde une fois, en ecrivant un zero, et
      les sous-onglets sont remontes derriere l'heure de l'iPhone. */
   .sous-onglets {
     transition: transform .42s cubic-bezier(.3, .55, .25, 1);
@@ -1526,17 +1526,17 @@ body.haut-cache .sous-onglets::before { content: ''; }
      translater, c'est la deplacer. Les bandeaux, eux, sont six, chacun dans sa
      carte, et la plupart sont encore dans le flux de leur groupe pendant que la
      barre se retire. Les translater tous de 54 px sortait chaque titre de sa
-     carte — et `.cpt-groupe` porte `overflow: clip`, donc il ne reapparaissait
+     carte -- et `.cpt-groupe` porte `overflow: clip`, donc il ne reapparaissait
      meme pas au-dessus : il etait **decoupe**. La bande restait, vide, parce que
-     la place d'un element colle reste dans le flux. « Enorme bug en defilant
-     comptes vers le bas sur mobile, les titres de banque disparaissent. »
+     la place d'un element colle reste dans le flux. "Enorme bug en defilant
+     comptes vers le bas sur mobile, les titres de banque disparaissent."
 
      Ce qui doit suivre la barre n'est pas le bandeau, c'est l'endroit ou il se
      gare. On deplace donc `top` et jamais l'element : hors collage, `top` ne fait
      rien du tout, ce qui est exactement la garantie qui manquait.
 
      Sans transition, a dessein. Animer le `top` d'un element colle fait
-     recalculer sa contrainte a chaque image, sur le fil principal — c'est
+     recalculer sa contrainte a chaque image, sur le fil principal -- c'est
      precisement ce que la session precedente a retire de ces bandes. Le bandeau
      gare remonte donc d'un coup, puis les sous-onglets glissent par-dessus et le
      decouvrent : il passe sous eux le temps du geste, ce qui se lit comme un
@@ -1554,8 +1554,8 @@ body.haut-cache .sous-onglets::before { content: ''; }
   }
 
   /* Une sous-page garde sa barre, et c'est l'exception que tient iOS aussi : la
-     barre qui porte « retour » ne se cache pas. Elle y porte aussi le titre de la
-     fiche regardee, que la barre du bas ne dit pas — celle-ci designe la rubrique,
+     barre qui porte "retour" ne se cache pas. Elle y porte aussi le titre de la
+     fiche regardee, que la barre du bas ne dit pas -- celle-ci designe la rubrique,
      pas l'ecran. Une commande ne part pas comme une etiquette.
 
      Le refus vit dans `app.js`, qui ne pose pas la classe : le faire ici
@@ -1589,7 +1589,7 @@ body.haut-cache .sous-onglets::before { content: ''; }
 
      La classe se pose au cas par cas et non sur `.g-2` en general : la meme
      mesure sur Preferences donne un champ a 76 px, ou deux colonnes ne sont
-     plus une economie mais une gene. La specificite fait le reste — deux
+     plus une economie mais une gene. La specificite fait le reste -- deux
      classes contre une, l'ordre ne decide de rien. */
   .grid.g-paire { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .g-tuiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -1598,14 +1598,14 @@ body.haut-cache .sous-onglets::before { content: ''; }
   .g-tuiles .t-value { font-size: var(--font-xl); }
   /* Ce texte n'est pas une aide, c'est la base du chiffre au-dessus, et il
      revient donc. Il a ete masque par `font-size: 0` pour deux raisons dont
-     aucune ne tient plus : tronque il faisait du bruit — il ne l'est plus, il se
-     replie sur deux lignes — et entier il donnait a chaque tuile sa propre
-     hauteur — `grid-auto-rows: 1fr`, deux lignes plus bas, les egalise depuis.
+     aucune ne tient plus : tronque il faisait du bruit -- il ne l'est plus, il se
+     replie sur deux lignes -- et entier il donnait a chaque tuile sa propre
+     hauteur -- `grid-auto-rows: 1fr`, deux lignes plus bas, les egalise depuis.
 
      Ce qu'il coute : 56 px sur la grille des quatre tuiles de Budget, mesure a
-     375 px. Ce qu'il rend : « 1 400 € » n'est une moyenne que si l'on sait « sur
-     7 mois clos, hors charges fixes ». Un dividende sans son diviseur n'est pas
-     un chiffre plus court, c'est un chiffre faux — et la regle de la maison veut
+     375 px. Ce qu'il rend : "1 400 EUR" n'est une moyenne que si l'on sait "sur
+     7 mois clos, hors charges fixes". Un dividende sans son diviseur n'est pas
+     un chiffre plus court, c'est un chiffre faux -- et la regle de la maison veut
      qu'un rapport dise sur quelle base il se calcule, sur le petit ecran comme
      sur le grand.
 
@@ -1646,7 +1646,7 @@ body.haut-cache .sous-onglets::before { content: ''; }
   /* Une seule convention pour les bascules de vue : l'intitule a gauche, SA
      bascule en haut a droite de la carte, sur la meme ligne.
 
-     Elle a d'abord ete l'inverse — la bascule sous l'intitule, calee a gauche —
+     Elle a d'abord ete l'inverse -- la bascule sous l'intitule, calee a gauche --
      parce que l'en-tete du graphique s'y repliait deja et qu'il fallait bien
      choisir un cote. Le bord droit vaut mieux : c'est la ou vivent les commandes
      dans toute l'application, les vingt-six en-tetes de carte y posent leurs
@@ -1667,8 +1667,8 @@ body.haut-cache .sous-onglets::before { content: ''; }
      Une paire, elle, va a gauche, et ce n'est pas une exception de confort. Un
      bouton seul est un accessoire du titre : il en suit le bord. Une paire de
      commandes est un bloc a elle seule, et un en-tete qui la replie porte deja
-     d'autres blocs replies au-dessus — les plages du journal des ventes, le
-     selecteur d'annee des apports — tous cales a gauche. Alignee a droite, elle
+     d'autres blocs replies au-dessus -- les plages du journal des ventes, le
+     selecteur d'annee des apports -- tous cales a gauche. Alignee a droite, elle
      etait la seule rangee de l'en-tete a ne pas partager son bord avec les
      autres. `space-between` la laisse au depart de sa ligne, il n'y a donc rien
      a poser. */
@@ -1679,8 +1679,8 @@ body.haut-cache .sous-onglets::before { content: ''; }
 
   /* Listes descriptives : le libelle garde sa largeur, la valeur se replie.
 
-     La regle precedente faisait l'inverse — libelle flexible, valeur
-     intouchable — et `overflow-wrap: anywhere` sur le libelle ramenait sa
+     La regle precedente faisait l'inverse -- libelle flexible, valeur
+     intouchable -- et `overflow-wrap: anywhere` sur le libelle ramenait sa
      largeur minimale a une seule lettre. Une valeur longue, comme le nom
      officiel d'un ETF, prenait alors toute la place et le libelle
      s'imprimait verticalement, un caractere par ligne.
@@ -1696,7 +1696,7 @@ body.haut-cache .sous-onglets::before { content: ''; }
      `gap` de `.kv` est redeclare dans ce bloc, a la meme specificite et plus
      bas dans le fichier, donc c'est lui qui tranche. Sans cette ligne le filet
      du total se coupait en deux troncons a 375 px, avec dix pixels de trou au
-     milieu — mesure, et invisible sur grand ecran. */
+     milieu -- mesure, et invisible sur grand ecran. */
   .kv-accumul { column-gap: 0; }
   .kv-accumul dt { padding-right: 10px; }
 
@@ -1715,7 +1715,7 @@ body.haut-cache .sous-onglets::before { content: ''; }
 
   /* iOS Safari zoome automatiquement sur un champ dont le texte fait moins
      de 16px, et **ne dezoome jamais ensuite**. C'est la cause la plus probable
-     du « si on zoom ça reste zoomé » : on touche un champ, la page se recadre,
+     du "si on zoom ca reste zoome" : on touche un champ, la page se recadre,
      et rien ne la remet.
 
      `!important` est ici une garantie de comportement, pas une commodite. La
@@ -1724,14 +1724,14 @@ body.haut-cache .sous-onglets::before { content: ''; }
      (0,2,2) contre `select` (0,0,1). Mesure a 375 px : sept champs sous les
      16 px, dont les six selecteurs d'annee. Une taille decorative ne doit pas
      pouvoir rallumer le zoom automatique, et la liste des exceptions n'a pas a
-     etre tenue a la main — elle se serait perimee au premier habillage suivant. */
+     etre tenue a la main -- elle se serait perimee au premier habillage suivant. */
   input, select, textarea { font-size: 16px !important; }
 
   .table-wrap { -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
 
-  /* Un tableau hors conteneur défilant reste un tableau : passé en `block`
-     il cessait d'occuper sa carte et ses colonnes se tassaient à gauche,
-     laissant la moitié de la largeur vide. Il garde donc sa mise en page de
+  /* Un tableau hors conteneur defilant reste un tableau : passe en `block`
+     il cessait d'occuper sa carte et ses colonnes se tassaient a gauche,
+     laissant la moitie de la largeur vide. Il garde donc sa mise en page de
      tableau, occupe toute la carte, et c'est le texte qui se replie. */
   .card > table, .grid > div > table, .data-view > table {
     width: 100%; max-width: 100%; table-layout: auto;
@@ -1744,14 +1744,14 @@ body.haut-cache .sous-onglets::before { content: ''; }
   .data-view > table td.pct, .data-view > table td.montant { white-space: nowrap; overflow-wrap: normal; }
 
   /* Tableau etroit tenu dans sa carte, sans conteneur defilant. Un champ de
-     saisie porte une largeur intrinseque — vingt caracteres par defaut — que
-     la mise en page automatique respecte : la colonne « Source » reclamait
+     saisie porte une largeur intrinseque -- vingt caracteres par defaut -- que
+     la mise en page automatique respecte : la colonne "Source" reclamait
      154 px des 311 disponibles, le tableau debordait de la carte, et rien ne
      pouvait le rattraper puisque `body` est en `overflow-x: clip`. La croix de
      suppression tombait derriere le bord de l'ecran.
      La regle suit celle du dessus, qui impose `table-layout: auto` avec la
      meme specificite : declaree avant, la mienne perdait le depart.
-     Reservee aux tableaux qui doivent tenir — les grands tableaux de Budget
+     Reservee aux tableaux qui doivent tenir -- les grands tableaux de Budget
      vivent dans un `.table-wrap` et gardent leurs colonnes lisibles. */
   table.table-serree { table-layout: fixed; width: 100%; }
   table.table-serree input, table.table-serree select { width: 100%; min-width: 0; }
@@ -1781,7 +1781,7 @@ body.haut-cache .sous-onglets::before { content: ''; }
 
   .sticky-col { position: static; }
 
-  .table-wrap table.editable { min-width: 880px; }   /* une colonne de plus : Classe + Rôle */
+  .table-wrap table.editable { min-width: 880px; }   /* une colonne de plus : Classe + Role */
   table.editable th, table.editable td { white-space: nowrap; }
   /* Sauf la prose : cette regle-ci empeche un montant de se couper en deux, ce
      qui est juste, mais elle est plus specifique que `td.prose` et lui reprenait

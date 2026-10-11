@@ -44,8 +44,8 @@ Object.assign(ACTIONS, {
 
   /* `effacer-identite` et non `supprimer-compte` : ce dernier existe deja, et il
      supprime un compte BANCAIRE. Deux clefs de meme nom dans cet objet ne se
-     signalent pas — la derniere gagne en silence, et le bouton de l'ecran du
-     compte appelait la suppression d'une ligne d'actifs. Le mot « compte » est
+     signalent pas -- la derniere gagne en silence, et le bouton de l'ecran du
+     compte appelait la suppression d'une ligne d'actifs. Le mot "compte" est
      pris dans cette application, il faut en choisir un autre. */
   /* La carte se referme sur un geste, jamais sur une condition : voir la note
      de `CLE_DEMARRAGE`. Le bouton n'apparait qu'une fois les quatre pas
@@ -249,7 +249,7 @@ Object.assign(ACTIONS, {
     /* La graine passe par la migration, comme partout ailleurs ou elle sert.
        Elle est ecrite dans l'ancien modele, un compte par ligne de releve :
        c'est la migration qui en tire les etablissements, les comptes et leurs
-       poches. Posee telle quelle, elle rendait un etat a moitie construit —
+       poches. Posee telle quelle, elle rendait un etat a moitie construit --
        `comptes` absent, et tout ce qui en descend a zero. L'ecran affichait
        donc 0 EUR sur huit cartes apres un effacement, et le premier
        enregistrement figeait cet etat vide pour les visites suivantes. */
