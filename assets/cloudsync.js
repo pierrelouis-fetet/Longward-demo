@@ -145,11 +145,11 @@ const CloudSync = (() => {
 
   /* Un seul envoi en vol a la fois.
 
-     Rien ne l'empechait, et l'envoi immediat a chaque geste rendait le defaut
-     atteignable : deux clics rapproches lancaient deux `PUT` concurrents, et
-     c'est le plus lent qui arrivait en dernier -- donc potentiellement un etat
-     plus ancien, ecrit par-dessus le plus recent. Sur un reseau mobile ou les
-     latences varient d'un facteur trois, ce n'est pas une hypothese d'ecole.
+     L'envoi part a chaque geste : sans cette garde, deux clics rapproches
+     lanceraient deux `PUT` concurrents, et le plus lent arriverait en
+     dernier -- donc potentiellement un etat plus ancien, ecrit par-dessus le
+     plus recent. Sur un reseau mobile ou les latences varient d'un facteur
+     trois, ce n'est pas une hypothese d'ecole.
 
      Quand un envoi est deja parti, on ne l'annule pas : on note qu'il faudra
      recommencer, et le `finally` s'en charge. Le dernier etat gagne toujours,
@@ -180,13 +180,6 @@ const CloudSync = (() => {
     const payload = impose ? JSON.stringify(sansSuspension(Store.state)) : JSON.stringify(Store.state);
     if (!force && payload === lastPayload) return { skipped: true };
 
-    /* L'horodatage de CE qu'on envoie, releve au moment de la serialisation.
-
-       `markSynced(Store.state.meta.savedAt)` le lisait apres la reponse du
-       reseau. Une frappe pendant l'aller-retour -- et il y en a, l'application
-       ecrit a chaque caractere -- et l'on marquait comme synchronise un etat plus
-       recent que celui reellement envoye. La modification suivante devenait donc
-       invisible au conflit, et pouvait etre ecrasee sans un mot. */
     const envoyeAt = Store.state?.meta?.savedAt;
 
     status.pushing = true;
@@ -194,9 +187,9 @@ const CloudSync = (() => {
       /* La version qu'on a lue part avec l'ecriture : le serveur n'accepte que si
          c'est encore celle en place. Voir la note de `handleState()` dans
          `_worker.js`, le seul point d'entree que Cloudflare Pages charge.
-         Sans ce parametre, un onglet ouvert depuis des heures ecrasait ce qu'un
-         autre appareil venait d'enregistrer, sur la seule foi d'une estampille
-         plus fraiche. */
+         Sans ce parametre, un onglet ouvert depuis des heures ecraserait ce
+         qu'un autre appareil vient d'enregistrer, sur la seule foi d'une
+         estampille plus fraiche. */
       const r = await fetch('/api/state' + parametresEcriture(force), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'X-Longward-User': userId || '' },
@@ -205,12 +198,12 @@ const CloudSync = (() => {
 
       if (r.status === 409) {
         const d = await r.json();
-        /* NOTRE PROPRE BEACON, ARRIVE PENDANT QU'ON NE REGARDAIT PAS.
+        /* NOTRE PROPRE BEACON, ENVOYE A LA FERMETURE.
 
-           La fermeture a confie un corps a `sendBeacon`, sans reponse. Le
-           serveur l'a accepte, puis cet envoi-ci declare l'ancienne base et se
-           fait refuser : sans ce cas, retourner sur l'application apres l'avoir
-           cachee produisait un conflit contre soi-meme. La date seule ne le
+           A la fermeture, un corps part par `sendBeacon`, sans reponse. Si le
+           serveur l'accepte, l'envoi suivant declare encore l'ancienne base et
+           se fait refuser : sans ce cas, revenir sur l'application apres
+           l'avoir cachee produirait un conflit contre soi-meme. La date seule ne le
            prouve pas, puisqu'une ecriture derivee garde la sienne : on lit la
            version en ligne et l'on compare les corps eux-memes, caractere pour
            caractere. Le meme corps, c'est le notre ; un autre, c'est un vrai
@@ -258,10 +251,10 @@ const CloudSync = (() => {
       return { ok: true };
     } catch (e) {
       status.error = e.message;
-      /* Un echec reseau n'etait suivi de rien : l'erreur se notait, et la
-         modification attendait la prochaine frappe ou la prochaine ouverture de
+      /* Un echec reseau arme un nouvel essai : sans lui, la modification
+         attendrait la prochaine frappe ou la prochaine ouverture de
          l'application. Corriger un montant dans un train, puis ranger son
-         telephone, suffisait a la laisser en arriere-plan pendant des heures.
+         telephone, suffirait a la laisser en arriere-plan pendant des heures.
 
          Un seul reessai arme, et non une boucle : si le reseau est vraiment
          coupe, c'est l'evenement `online` qui reprendra la main -- insister
@@ -287,10 +280,8 @@ const CloudSync = (() => {
 
   /* QUI GAGNE AU DEMARRAGE, ET POURQUOI. Fonction pure, sans reseau ni
      stockage : c'est la seule forme sous laquelle cette regle se teste pour de
-     bon. Tant qu'elle vivait dissoute dans `init()`, la suite ne pouvait
-     qu'affirmer que telle ligne etait bien ecrite -- elle n'a jamais joue une
-     seule rencontre entre deux appareils, et le defaut ci-dessous a vecu des
-     semaines sous un vert complet.
+     bon, en jouant la rencontre de deux appareils au lieu de relire la
+     source.
 
      TROIS DATES, ET LA TROISIEME EST CELLE QUI COMPTE. `localAt` et `remoteAt`
      disent quand chaque cote a ete ecrit ; `syncedAt` dit ou cet appareil avait
@@ -298,11 +289,9 @@ const CloudSync = (() => {
      premieres ne repond qu'a "qui porte l'estampille la plus fraiche", ce qui
      n'est pas la question posee.
 
-     Car une estampille fraiche ne prouve aucun contenu frais. `Store.save()`
-     date l'etat a chaque ecriture, et le rafraichissement des cours en est une :
-     ouvrir l'application sur un ordinateur, sans rien toucher, suffisait a le
-     faire passer pour porteur de modifications. Il l'emportait alors sur un
-     telephone qui, lui, avait vraiment saisi quelque chose.
+     Car une estampille fraiche ne prouve aucun contenu frais. Un appareil en
+     retard de plusieurs jours date d'aujourd'hui sa premiere ecriture : sur la
+     seule horloge, il l'emporterait sur un telephone qui a saisi entre-temps.
 
      `syncedAt` tranche parce qu'il parle de filiation et non d'heure : si le
      cloud n'est plus la ou nous l'avions laisse, quelqu'un d'autre a ecrit
@@ -348,9 +337,8 @@ const CloudSync = (() => {
        il designe une version que le cloud n'a plus, donc le declarer ferait
        refuser l'ecriture qu'on veut justement faire. Sans lui, l'envoi part
        sans base, et c'est le serveur qui arbitre -- il n'insere que s'il n'y a
-       toujours rien. Un `force` faisait la meme chose en supprimant l'arbitrage
-       au lieu de le laisser se tenir : si ce 204 etait une fausse lecture, il
-       ecrasait un patrimoine entier sans un mot. */
+       toujours rien. Un `force` ici supprimerait cet arbitrage : si ce 204 est
+       une fausse lecture, il ecraserait un patrimoine entier sans un mot. */
     if (!remote) { markSynced(''); markSyncedRev(''); return { available: true, empty: true, user }; }
 
     if (Store.envoiSuspendu) {
@@ -375,12 +363,6 @@ const CloudSync = (() => {
       return { available: true, newer: true, at: remoteAt, data: remote, revision: revisionLue, user, localAt };
     }
 
-    /* Le repere ne se pose que sur une egalite vraie.
-
-       `markSynced(localAt)` etait appele aussi quand le local etait en avance,
-       sans qu'aucune ecriture n'ait eu lieu : le repere disait "cet etat est
-       aligne avec le cloud" alors qu'il n'avait jamais ete envoye, et la
-       modification suivante devenait invisible au conflit. */
     if (verdict === 'aligne') {
       /* DATES EGALES, CORPS DIFFERENTS : QUI A LU QUOI ?
 
@@ -421,8 +403,8 @@ const CloudSync = (() => {
     /* `envoyer` : cet appareil porte une modification jamais partie ET le cloud
        est reste exactement la ou il l'avait laisse. Il n'y a donc rien a perdre
        en ligne, et l'envoi part au demarrage plutot que d'attendre la frappe
-       suivante -- c'est cette attente qui perdait la saisie quand l'application
-       passait en veille avant l'envoi differe. */
+       suivante : cette attente perdrait la saisie si l'application passe en
+       veille avant l'envoi differe. */
     if (verdict === 'envoyer') markSyncedRev(revisionLue);
     return { available: true, ready: true, user, aEnvoyer: verdict === 'envoyer' };
   }

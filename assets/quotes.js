@@ -12,15 +12,15 @@ const Quotes = (() => {
   let online = null;          // null = pas encore teste
   let healthPromise = null;   // mutualise : un seul appel reseau au demarrage
 
-  /* LA SONDE NE RETIENT PLUS LE DEMARRAGE. `init()` l'attend avant de lire le
-     stockage local -- l'identite precede toute lecture -- et une requete sans
-     limite laissait l'ecran de lancement a l'infini des que le reseau pendait :
-     portail captif, tunnel, serveur muet. Au-dela de 2,5 s la reponse vaut
-     "pas de serveur", exactement ce qu'un `catch` rendait deja : l'application
-     s'ouvre sur ce qu'elle a en local, le pied du menu dit "Sauvegarde
-     localement", et sur une instance a comptes l'ecran "Session a reverifier"
-     propose de recharger. Aucun chemin nouveau : le retard emprunte celui de
-     la panne.
+  /* LA SONDE NE RETIENT PAS LE DEMARRAGE PLUS DE 2,5 S. `init()` l'attend
+     avant de lire le stockage local -- l'identite precede toute lecture --,
+     et une requete sans limite laisserait l'ecran de lancement a l'infini des
+     que le reseau pend : portail captif, tunnel, serveur muet. Au-dela, la
+     reponse vaut "pas de serveur", comme la panne que le `catch` rend :
+     l'application s'ouvre sur ce qu'elle a en local, le pied du menu dit
+     "Sauvegarde localement", et sur une instance a comptes l'ecran "Session a
+     reverifier" propose de recharger. Le retard emprunte le chemin de la
+     panne, sans chemin a lui.
 
      Une reponse tardive ne se garde pas en cache. Le prochain appel resonde,
      parce que le serveur a pu revenir ; la synchronisation, elle, a deja
@@ -139,9 +139,9 @@ const Quotes = (() => {
        (`pos.fxBase`), posee a chaque taux ecrit ici. La marque globale,
        `quotes.fxBase`, ne la remplace pas : elle passe a la nouvelle devise
        des le premier rafraichissement, meme quand une ligne n'a pas eu son
-       change, et l'ancien rafraichissement pouvait deja garder le taux d'une
-       autre devise sous une marque a jour. Sans marque de ligne, la provenance
-       du taux est inconnue : il ne sert pas, et la ligne attend son change. */
+       change, et couvrirait alors le taux d'une autre devise. Sans marque de
+       ligne, la provenance du taux est inconnue : il ne sert pas, et la ligne
+       attend son change. */
     const tauxDe = (pos, devise) => {
       if (!devise || devise === base) return 1;
       if (fx[devise] > 0) return fx[devise];
@@ -199,10 +199,10 @@ const Quotes = (() => {
        devise du profil les rend non fiables jusqu'au rafraichissement suivant. */
     Store.state.quotes = { lastRun: new Date().toISOString(), fx, fxBase: base, changes, resolved };
     /* `derive` : un cours vient du marche, pas du detenteur. L'enregistrer ne
-       doit pas dater l'etat, sinon ouvrir l'application suffit a faire passer
-       cet appareil pour porteur d'une modification -- et c'est ainsi qu'un
-       ordinateur rouvert apres plusieurs jours imposait son contenu perime au
-       telephone sur lequel on avait reellement saisi. */
+       doit pas dater l'etat, sinon ouvrir l'application suffirait a faire
+       passer cet appareil pour porteur d'une modification, avec une
+       estampille plus fraiche que celle du telephone sur lequel on a
+       reellement saisi. */
     Store.save({ derive: true });
     return { changes, fx, resolved };
   }
@@ -258,11 +258,9 @@ const Quotes = (() => {
 
   const cacheReperes = new Map();
 
-  /* Un seul chemin pour redemander : `oublierReperes()`. Cette fonction
-     acceptait un `{ force: true }` que PERSONNE ne lui passait -- un drapeau mort
-     qui donnait a lire un cablage inexistant, et c'est exactement ce qui a
-     retarde le diagnostic quand le ruban restait fige. Deux portes pour un seul
-     besoin, dont une fermee : il n'en reste qu'une. */
+  /* Un seul chemin pour redemander : `oublierReperes()`. Aucun drapeau ici
+     pour contourner le cache : une seconde porte que personne n'emprunte
+     donnerait a lire un cablage qui n'existe pas. */
   async function reperes(famille = FAMILLE_PAR_DEFAUT) {
     const cle = FAMILLES_REPERES.some(f => f[0] === famille) ? famille : FAMILLE_PAR_DEFAUT;
     const garde = cacheReperes.get(cle);
@@ -278,23 +276,23 @@ const Quotes = (() => {
       const utilisable = Number.isFinite(prix) && Number.isFinite(veille) && veille !== 0;
       /* La meme garde que sur une ligne de titres, et pour la meme raison : un
          cours qui date d'avant minuit ne fait pas la "variation du jour".
-         Sans elle, le ruban a deja affiche le S&P 500 a -0,17 % sous un
-         soleil : c'etait le mouvement de la veille, et rien ne le disait. La
-         regle avait ete ecrite pour les positions seulement, alors qu'elle
-         vaut pour tout ce qui compare un prix a une cloture.
+         Sans elle, le ruban afficherait sous un soleil le mouvement de la
+         veille, sans rien qui le dise. La regle vaut pour tout ce qui compare
+         un prix a une cloture, pas pour les seules positions.
          `coteAujourdhui()` lit `quoteTime`, `marketState` et `session` : le
-         repere porte deja les trois, ils etaient simplement inutilises ici. */
+         repere porte les trois. */
       const horsSeance = utilisable && !coteAujourdhui({
         quoteTime: x.time || null, marketState: x.marketState || null, session: x.session || null,
       });
       return { symbole: sym, nom, prix, veille, devise: x.currency || '',
                pct: utilisable && !horsSeance ? (prix - veille) / veille * 100 : null,
                horsSeance,
-               /* L'etat de la place et les horaires de seance arrivaient dans
-                  la reponse et etaient jetes ici. `marketStatus()` sait deja
-                  les lire -- c'est ce qui allume le soleil ou la lune sur la
-                  tuile. Bitcoin et l'EUR/USD n'ont pas besoin d'un cas
-                  particulier : Yahoo les annonce ouverts, ils le sont. */
+               /* L'etat de la place et les horaires de seance arrivent dans
+                  la reponse et se gardent ici : `marketStatus()` les lit --
+                  c'est ce qui allume le soleil ou la lune sur la tuile.
+                  Bitcoin et l'EUR/USD n'ont pas besoin d'un cas
+                  particulier : leur etat se deduit des donnees recues,
+                  comme celui de toute autre ligne. */
                marketState: x.marketState || null,
                session: x.session || null,
                quoteTime: x.time || null,
@@ -304,18 +302,6 @@ const Quotes = (() => {
     return lignes;
   }
 
-  /* Jeter le cache du ruban, pour que le prochain rendu aille rechercher.
-
-     `reperes()` acceptait `{ force: true }` depuis le debut, et personne ne le
-     lui passait : le drapeau etait du code mort, et le ruban gardait donc ses
-     cinq minutes quoi qu'on fasse. Un appui sur la pastille des cours mettait
-     les lignes detenues a jour, annoncait "6 cours mis a jour", et laissait
-     les indices sur leurs anciens chiffres -- deux signaux qui se contredisent
-     dans la meme seconde.
-
-     Oublier plutot que forcer : l'appelant ne sait pas quelle famille est
-     affichee, et il n'a pas a le savoir. Le rendu suivant redemande ce qu'il
-     montre, et lui seul. */
   function oublierReperes() {
     cacheReperes.clear();
   }

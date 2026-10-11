@@ -32,14 +32,13 @@ const Charts = (() => {
      soit la moitie de l'etat interne du graphique, recopiee dans la vue. La
      vue dit "anime cette transition", le graphique sait d'ou il vient.
 
-     **Range par identifiant, et surtout pas par element.** Une `WeakMap` clefee
-     sur le noeud etait le premier reflexe, et elle ne retenait rien : `render()`
-     reecrit le `innerHTML` de la vue entiere, donc le `<div id="chartEvo">` du
-     rendu suivant est un AUTRE noeud. La clef n'existait plus au moment de la
-     lire, `get()` rendait `undefined`, et la transition se posait d'un coup sans
-     erreur ni message -- mesuree a l'image pres, elle etait deja arrivee a 13 ms.
-     Un conteneur sans identifiant ne se souvient donc de rien, et n'anime pas :
-     c'est le cas de tous les graphiques sauf celui-ci.
+     **Range par identifiant, et surtout pas par element.** `render()` reecrit
+     le `innerHTML` de la vue entiere, donc le `<div id="chartEvo">` du rendu
+     suivant est un AUTRE noeud. Une `WeakMap` clefee sur le noeud ne
+     retiendrait rien : la clef n'existerait plus au moment de la lire, `get()`
+     rendrait `undefined`, et la transition se poserait d'un coup sans erreur
+     ni message. Un conteneur sans identifiant ne se souvient donc de rien, et
+     n'anime pas.
 
      Ce que ca retient est minuscule -- sept tableaux d'une douzaine de nombres --
      et jamais un noeud du DOM, donc rien qui empeche une page de se liberer. */
@@ -50,9 +49,9 @@ const Charts = (() => {
     window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* Un conteneur absent n'est pas une erreur, c'est une carte que la vue a
-     choisi de ne pas rendre. Sans cette garde, chaque graphique lisait
-     `el.clientWidth` sur `null` et l'exception remontait jusqu'a `render()` :
-     l'ecran restait a moitie peint. Le cas se produit des qu'une vue masque une
+     choisi de ne pas rendre. Sans cette garde, chaque graphique lirait
+     `el.clientWidth` sur `null` et l'exception remonterait jusqu'a `render()` :
+     l'ecran resterait a moitie peint. Le cas se produit des qu'une vue masque une
      carte selon l'etat -- un premier lancement, par exemple, ou aucune des six
      cartes de l'accueil n'a de quoi tracer quoi que ce soit.
 
@@ -81,15 +80,14 @@ const Charts = (() => {
 
   /* Toutes les infobulles des graphiques, pour pouvoir les refermer d'ailleurs.
 
-     Les six graphiques cachaient la leur sur `mouseleave`. Cet evenement
-     n'existe pas au doigt : rien ne "quitte" l'ecran quand on leve le doigt,
-     et l'infobulle restait donc collee jusqu'au prochain rendu de la page. Sur
-     telephone, elle recouvrait la moitie de la courbe sans aucun moyen de la
-     faire partir.
+     `mouseleave` n'existe pas au doigt : rien ne "quitte" l'ecran quand on
+     leve le doigt, et une infobulle qui n'attendrait que lui resterait collee
+     jusqu'au prochain rendu de la page. Sur telephone, elle recouvrirait la
+     moitie de la courbe sans aucun moyen de la faire partir.
 
      Un seul ecouteur, pose une fois pour toutes : toucher ailleurs referme.
-     C'est le geste qu'on essaie d'instinct, et il vaut pour les six sans que
-     chacun ait a s'en occuper. */
+     C'est le geste qu'on essaie d'instinct, et il vaut pour tous les
+     graphiques sans que chacun ait a s'en occuper. */
   const infobulles = new Set();
   let ecouteFermeture = false;
 
@@ -175,8 +173,9 @@ const Charts = (() => {
     /* `pointercancel` ne ferme pas une infobulle deja ouverte.
 
        Le graphique porte `touch-action: pan-y`, donc le navigateur
-       annule le pointeur des qu'il reclame le geste -- l'infobulle partait au
-       moindre tremblement, alors qu'on tenait le doigt en place pour lire.
+       annule le pointeur des qu'il reclame le geste -- fermer sur cette
+       annulation ferait partir l'infobulle au moindre tremblement, alors qu'on
+       tient le doigt en place pour lire.
 
        Tant qu'elle n'est pas ouverte, en revanche, l'annulation est le signal
        le plus sur qui existe : le navigateur vient de decider que ce geste est
@@ -204,14 +203,14 @@ const Charts = (() => {
   /* Des graduations qui encadrent un intervalle SIGNE, zero tombant toujours
      sur l'une d'elles.
 
-     `niceTicks` part de zero et monte : c'est tout ce qu'il faut tant qu'aucun
-     total n'est negatif. Un patrimoine net peut l'etre -- un achat recent finance
-     a credit -- et l'aire empilee se dessinait alors sous le cadre, invisible,
-     avec un axe qui commencait a zero au-dessus de la courbe.
+     `niceTicks` part de zero et monte : il suffit tant qu'aucun total n'est
+     negatif. Un patrimoine net peut l'etre -- un achat recent finance a
+     credit -- et avec un axe qui commence a zero, l'aire empilee se
+     dessinerait sous le cadre, invisible.
 
      Quand le minimum est positif ou nul, cette fonction rend exactement ce que
-     rendait l'autre : le dessin de tous les cas deja en place ne bouge pas d'un
-     pixel. */
+     rend `niceTicks` : un patrimoine positif garde le meme dessin, au pixel
+     pres. */
   function niceTicksSignes(min, max, count = 4) {
     if (min >= 0) return niceTicks(max, count);
     const etendue = Math.max(max, 0) - min;
@@ -279,14 +278,13 @@ const Charts = (() => {
            paint-order="stroke" stroke="${cssv('--surface-1')}" stroke-width="4"
            stroke-linejoin="round">${texte}</text>`;
 
-  /* Option facultative, nee de la page Projection :
+  /* Option facultative, utilisee par la page Projection :
      `guide: { value, label }` est une ligne horizontale en pointille, comme
-     celle de barsWithTarget. La cible long terme ne vivait que dans une note
-     en texte ; tracee, on voit l'annee ou la courbe la croise sans lire un
-     seul chiffre. Elle entre dans l'echelle : une cible hors de portee ecrase
-     la courbe, et c'est exactement ce qu'elle doit montrer.
-     (Une seconde serie en pointille pour les euros d'aujourd'hui a ete
-     essayee puis retiree : deux courbes quasi paralleles, du bruit.) */
+     celle de barsWithTarget. Tracee, la cible long terme montre l'annee ou la
+     courbe la croise sans lire un seul chiffre. Elle entre dans l'echelle :
+     une cible hors de portee ecrase la courbe, et c'est exactement ce qu'elle
+     doit montrer. Une seconde serie en pointille pour les euros d'aujourd'hui
+     ferait deux courbes quasi paralleles, du bruit. */
   function stackedArea(el, opts) {
     /* `anime` vit hors du rendu et s'eteint apres le premier : le registre
        rejoue ce rendu a chaque redimensionnement, et une transition qui se
@@ -308,9 +306,9 @@ const Charts = (() => {
 
       /* Un point non fini n'entre pas dans l'echelle. `Math.max(..., Infinity)`
          rend Infinity, `niceTicksSignes` boucle ou rend NaN, et toutes les
-         autres valeurs s'ecrasent sur l'axe. Une seule donnee corrompue rendait
-         le graphique entier illisible ; elle se marque a l'entree du modele,
-         ici on refuse simplement de la dessiner. */
+         autres valeurs s'ecrasent sur l'axe : une seule donnee corrompue
+         rendrait le graphique entier illisible. Elle se marque a l'entree du
+         modele ; ici on refuse simplement de la dessiner. */
       const fini = v => Number.isFinite(v) ? v : 0;
       const totals = points.map(p => series.reduce((s, sr) => s + fini(p[sr.key] || 0), 0));
       const maxV = Math.max(...totals.filter(Number.isFinite), guide ? fini(guide.value) : 0,
@@ -327,12 +325,10 @@ const Charts = (() => {
 
       /* --- la geometrie des bandes, en un seul endroit ---------------------
 
-         Elle etait ecrite une fois, en ligne, ce qui suffisait tant que le
-         dessin ne bougeait plus apres sa pose. L'animation en redemande une
-         image par frame, avec d'autres valeurs et une autre echelle : deux
-         ecritures du meme empilement auraient fini par ne plus empiler pareil,
-         et le defaut ne se verrait que pendant le demi-seconde de la
-         transition -- donc jamais vraiment.
+         Le rendu en demande une, et l'animation une par image, avec d'autres
+         valeurs et une autre echelle : deux ecritures du meme empilement
+         finiraient par ne plus empiler pareil, et le defaut ne se verrait que
+         pendant la demi-seconde de la transition -- donc jamais vraiment.
 
          `valeur(i, cle)` plutot que les points directement : c'est le seul
          point ou l'animation differe, elle interpole entre deux etats. `topC`
@@ -625,7 +621,7 @@ const Charts = (() => {
            deja. Un total nul diviserait par zero ; un patrimoine net negatif
            retournerait tous les signes, et "43 %" sur une base de -20 000 ne
            veut rien dire. Dans ces deux cas la colonne ne parait pas du tout et
-           l'infobulle redevient celle d'avant : c'est ce que font les six autres
+           l'infobulle ne donne que les montants : c'est ce que font les autres
            endroits de l'application ou une part indisponible ne s'ecrit pas.
 
            UNE POCHE NEGATIVE SUR UNE BASE POSITIVE GARDE SON SIGNE. Le trace net
@@ -659,9 +655,9 @@ const Charts = (() => {
         tip.style.top = '8px';
       }
       /* Evenements pointeur et non souris : au doigt, `mousemove` est bien
-         synthetise a l'appui -- l'infobulle apparaissait donc -- mais aucun
-         `mouseleave` ne suit, et elle ne partait plus. Ici l'appui montre, le
-         glissement suit le doigt, et lever la main la referme.
+         synthetise a l'appui, donc l'infobulle apparaitrait, mais aucun
+         `mouseleave` ne suit, et elle ne partirait plus. Ici l'appui montre,
+         le glissement suit le doigt, et lever la main la referme.
 
          Le glissement vertical reste possible : sans `touch-action: pan-y`, le
          navigateur reserve le geste au graphique et la page se bloque. */
@@ -674,22 +670,14 @@ const Charts = (() => {
          appui qui commence un defilement n'ouvre rien : tout le geste vit dans
          `cablerInfobulle`, en tete de fichier, avec son raisonnement.
 
-         L'infobulle part avec le doigt, sans delai.
-
-         Elle s'attardait 1 400 ms apres la levee, pour laisser le temps de lire.
-         L'intention etait bonne et le raisonnement faux : on lit **pendant** qu'on
-         appuie, pas apres. Le repit ne servait donc a rien, et il coutait cher.
-
-         Car ce delai etait un `setTimeout` que rien n'annulait. Deux appuis
-         rapproches, et le minuteur du premier fermait l'infobulle du second, en
-         plein milieu -- d'ou "la plupart du temps", qui est la signature d'un
-         minuteur en retard et non d'une regle. Le supprimer regle les deux d'un
-         coup : plus de disparition inexpliquee, et le geste devient celui qu'on
-         attend -- ca s'affiche tant que le doigt est la, ca part quand il se leve.
+         L'infobulle part avec le doigt, sans delai : on lit **pendant** qu'on
+         appuie, pas apres. Un repit apres la levee ne servirait donc a rien, et
+         il couterait cher : un minuteur de fermeture que rien n'annulerait
+         fermerait, sur deux appuis rapproches, l'infobulle du second en plein
+         milieu. Ca s'affiche tant que le doigt est la, ca part quand il se leve.
 
          Le minuteur d'armement, lui, est annule partout : a la levee, a la
-         sortie, a l'annulation du pointeur et au debut du geste suivant. C'est
-         la lecon de celui-la. */
+         sortie, a l'annulation du pointeur et au debut du geste suivant. */
       cablerInfobulle(svg, move, cacher);
     });
   }
@@ -698,7 +686,7 @@ const Charts = (() => {
 
      Un `<text>` SVG ne se replie pas : un libelle plus large que le trou sort
      de l'anneau et se lit par-dessus les tranches. "Tes investissements de
-     marche" debordait des deux cotes.
+     marche" deborderait des deux cotes.
 
      La coupe se fait a l'espace le PLUS PROCHE DU MILIEU, jamais au premier qui
      deborde : celui-la laisserait "Tes" seul sur une ligne au-dessus de tout
@@ -787,8 +775,8 @@ const Charts = (() => {
       /* L'arrivee sur la vue se lit sur le DOM, pas sur un second drapeau :
          `render()` pose `.vue-entre` sur le conteneur de la vue avant d'y
          ecrire les cartes, et l'enleve 700 ms plus tard. Les jauges de la page
-         poussent deja de zero sous cette classe ; l'anneau etait le seul a se
-         poser d'un coup au milieu de barres qui grandissent.
+         poussent deja de zero sous cette classe ; sans ce remplissage, l'anneau
+         serait le seul a se poser d'un coup au milieu de barres qui grandissent.
 
          `.angle-entre` dit la meme chose d'une section d'Allocation : l'angle
          qu'on vient de choisir y entre comme une vue, sans que la page change.
@@ -941,10 +929,10 @@ const Charts = (() => {
           tip.style.top = '6px';
         });
         node.addEventListener('mouseleave', () => { tip.hidden = true; });
-        /* Au doigt, aucun `mouseleave` ne suit l'appui : l'infobulle restait
-           collee. Lever le doigt la referme, apres un instant de repit pour
-           laisser lire le chiffre. Toucher ailleurs referme aussi, par
-           l'ecouteur pose dans `ensureTip`. */
+        /* Au doigt, aucun `mouseleave` ne suit l'appui : sans ce relais,
+           l'infobulle resterait collee. Lever le doigt la referme, apres un
+           instant de repit pour laisser lire le chiffre. Toucher ailleurs
+           referme aussi, par l'ecouteur pose dans `ensureTip`. */
         node.addEventListener('pointerup', ev => {
           if (ev.pointerType === 'touch') setTimeout(() => { tip.hidden = true; }, 1400);
         });
@@ -1009,16 +997,15 @@ const Charts = (() => {
           tip.style.left = Math.max(4, W - tip.offsetWidth - 8) + 'px';
           /* Le haut suit la ligne survolee, et c'est la seule infobulle des
              graphiques dans ce cas : les autres s'epinglent en tete, donc rien
-             ne pouvait les faire sortir. Celle-ci n'avait aucune borne basse, et
-             sur les dernieres lignes elle depassait sa carte -- les deux
-             dernieres valeurs, le montant et la part, tombaient hors du cadre.
-             Elle est posee en absolu dans le conteneur du graphique, donc c'est
-             la hauteur de ce conteneur qui la retient.
+             ne peut les faire sortir. Sans borne basse, celle-ci depasserait sa
+             carte sur les dernieres lignes -- les deux dernieres valeurs, le
+             montant et la part, tomberaient hors du cadre. Elle est posee en
+             absolu dans le conteneur du graphique, donc c'est la hauteur de ce
+             conteneur qui la retient.
 
              Et cette hauteur se MESURE : `H` est celle du viewBox, or le SVG est
              mis a l'echelle de la largeur disponible. Sur un telephone les deux
-             differaient de dix pixels, et borner sur `H` laissait deborder
-             d'autant. */
+             different, et borner sur `H` laisserait deborder d'autant. */
           const dispo = el.clientHeight || H;
           tip.style.top = Math.max(0,
             Math.min(dispo - tip.offsetHeight, +node.dataset.i * rowH - 6)) + 'px';
@@ -1026,16 +1013,16 @@ const Charts = (() => {
         node.addEventListener('mouseenter', montrer);
         node.addEventListener('mouseleave', () => { tip.hidden = true; });
         /* Au doigt, `mouseenter` n'arrive qu'apres coup, et parfois pas du tout :
-           un appui maintenu ne montrait donc rien, ou rien avant de relacher.
+           un appui maintenu ne montrerait donc rien, ou rien avant de relacher.
            `pointerdown` ouvre la bulle des que le doigt se pose, ce qui est
            precisement le geste qu'on fait pour la demander. */
         node.addEventListener('pointerdown', ev => {
           if (ev.pointerType === 'touch') montrer();
         });
-        /* Au doigt, aucun `mouseleave` ne suit l'appui : l'infobulle restait
-           collee. Lever le doigt la referme, apres un instant de repit pour
-           laisser lire le chiffre. Toucher ailleurs referme aussi, par
-           l'ecouteur pose dans `ensureTip`. */
+        /* Au doigt, aucun `mouseleave` ne suit l'appui : sans ce relais,
+           l'infobulle resterait collee. Lever le doigt la referme, apres un
+           instant de repit pour laisser lire le chiffre. Toucher ailleurs
+           referme aussi, par l'ecouteur pose dans `ensureTip`. */
         node.addEventListener('pointerup', ev => {
           if (ev.pointerType === 'touch') setTimeout(() => { tip.hidden = true; }, 1400);
         });
@@ -1098,10 +1085,10 @@ const Charts = (() => {
           tip.style.top = '6px';
         });
         node.addEventListener('mouseleave', () => { tip.hidden = true; });
-        /* Au doigt, aucun `mouseleave` ne suit l'appui : l'infobulle restait
-           collee. Lever le doigt la referme, apres un instant de repit pour
-           laisser lire le chiffre. Toucher ailleurs referme aussi, par
-           l'ecouteur pose dans `ensureTip`. */
+        /* Au doigt, aucun `mouseleave` ne suit l'appui : sans ce relais,
+           l'infobulle resterait collee. Lever le doigt la referme, apres un
+           instant de repit pour laisser lire le chiffre. Toucher ailleurs
+           referme aussi, par l'ecouteur pose dans `ensureTip`. */
         node.addEventListener('pointerup', ev => {
           if (ev.pointerType === 'touch') setTimeout(() => { tip.hidden = true; }, 1400);
         });
@@ -1126,9 +1113,9 @@ const Charts = (() => {
       const band = iw / items.length;
       const bw = Math.min(46, band * 0.62);
 
-      /* Trois niveaux, pas deux. Tout mois au-dessus de l'objectif etait rouge :
-         sur huit mois, sept l'etaient, et une couleur d'alerte qui s'allume
-         presque toujours ne dit plus rien. Le seuil vit dans le modele,
+      /* Trois niveaux, pas deux. Avec un seul seuil, tout mois au-dessus de
+         l'objectif serait rouge, et une couleur d'alerte qui s'allume presque
+         toujours ne dit rien. Le seuil vit dans le modele,
          `niveauDepassement()`, partage avec les tableaux. */
       const teinte = { sous: cssv('--good'), leger: cssv('--serious'), grave: cssv('--critical') };
       const none = cssv('--grid');
@@ -1174,10 +1161,10 @@ const Charts = (() => {
           tip.style.top = '4px';
         });
         node.addEventListener('mouseleave', () => { tip.hidden = true; });
-        /* Au doigt, aucun `mouseleave` ne suit l'appui : l'infobulle restait
-           collee. Lever le doigt la referme, apres un instant de repit pour
-           laisser lire le chiffre. Toucher ailleurs referme aussi, par
-           l'ecouteur pose dans `ensureTip`. */
+        /* Au doigt, aucun `mouseleave` ne suit l'appui : sans ce relais,
+           l'infobulle resterait collee. Lever le doigt la referme, apres un
+           instant de repit pour laisser lire le chiffre. Toucher ailleurs
+           referme aussi, par l'ecouteur pose dans `ensureTip`. */
         node.addEventListener('pointerup', ev => {
           if (ev.pointerType === 'touch') setTimeout(() => { tip.hidden = true; }, 1400);
         });
@@ -1246,10 +1233,10 @@ const Charts = (() => {
           tip.style.top = '2px';
         });
         node.addEventListener('mouseleave', () => { tip.hidden = true; });
-        /* Au doigt, aucun `mouseleave` ne suit l'appui : l'infobulle restait
-           collee. Lever le doigt la referme, apres un instant de repit pour
-           laisser lire le chiffre. Toucher ailleurs referme aussi, par
-           l'ecouteur pose dans `ensureTip`. */
+        /* Au doigt, aucun `mouseleave` ne suit l'appui : sans ce relais,
+           l'infobulle resterait collee. Lever le doigt la referme, apres un
+           instant de repit pour laisser lire le chiffre. Toucher ailleurs
+           referme aussi, par l'ecouteur pose dans `ensureTip`. */
         node.addEventListener('pointerup', ev => {
           if (ev.pointerType === 'touch') setTimeout(() => { tip.hidden = true; }, 1400);
         });
@@ -1267,36 +1254,35 @@ const Charts = (() => {
       /* UN PLANCHER D'AMPLITUDE, SINON TOUTE VARIATION DEVIENT UNE FALAISE.
 
          Le cadrage sur min/max donne toujours toute la hauteur a l'ecart
-         existant, quel qu'il soit. Mesure faite sur le trace : `[100 000,
-         110 000]` et `[100 000, 100 012]` rendent exactement le meme dessin,
-         "0,32 200,4". Douze euros de mouvement se lisaient donc comme dix
-         mille, et c'est sur deux points -- le cas de qui commence -- que le
-         malentendu est le plus fort, puisqu'aucune forme ne vient le nuancer.
+         existant, quel qu'il soit : `[100 000, 110 000]` et `[100 000,
+         100 012]` y rendraient exactement le meme dessin, et douze euros de
+         mouvement se liraient comme dix mille. C'est sur deux points -- le cas
+         de qui commence -- que le malentendu est le plus fort, puisqu'aucune
+         forme ne vient le nuancer.
 
          Sous un demi pour cent du niveau, l'echelle s'ouvre donc a ce demi
-         pour cent AUTOUR DU MILIEU. La ligne ne ment plus dans les deux sens :
-         un patrimoine immobile se pose au milieu du cadre au lieu de se coller
-         au bord bas -- `(max - min) || 1` envoyait toutes les valeurs egales sur
-         la meme ligne, celle du plancher -- et un mouvement negligeable reste
-         visiblement negligeable. Rien n'est cache pour autant : le montant
-         exact et son pourcentage sont ecrits juste a cote.
+         pour cent AUTOUR DU MILIEU. La ligne ne ment dans aucun sens : un
+         patrimoine immobile se pose au milieu du cadre au lieu de se coller au
+         bord bas -- un simple `(max - min) || 1` enverrait toutes les valeurs
+         egales sur la meme ligne, celle du plancher -- et un mouvement
+         negligeable reste visiblement negligeable. Rien n'est cache pour
+         autant : le montant exact et son pourcentage sont ecrits juste a cote.
 
          `Number.EPSILON` comme minimum absolu : sur une serie entierement a
          zero, un plancher proportionnel vaudrait zero lui aussi, et la ligne
          retomberait au bord bas par la porte qu'on vient de fermer.
 
          LA COULEUR SUIT LA PENTE DESSINEE, ET NON LE DRAPEAU CI-DESSUS. Vert
-         sur un patrimoine qui n'a pas bouge, c'etait une bonne nouvelle
-         inventee ; mais lier l'encre au drapeau donnait pire, et c'est une
-         mesure au seuil qui l'a montre : a +500 sur 100 000, l'ecart passe tout
-         juste sous le plancher, l'echelle s'ouvre a peine et le trait monte
-         donc de presque toute la hauteur -- en gris. Une pente franche peinte
-         comme une ligne morte.
+         sur un patrimoine qui n'a pas bouge serait une bonne nouvelle
+         inventee ; mais lier l'encre au drapeau ferait pire : a +500 sur
+         100 000, l'ecart passe tout juste sous le plancher, l'echelle s'ouvre
+         a peine et le trait monte donc de presque toute la hauteur -- en gris,
+         une pente franche peinte comme une ligne morte.
 
          Le critere est donc geometrique et se suffit : on mesure ce que le
          trace occupe VRAIMENT en pixels apres l'ouverture, et l'encre devient
          neutre quand il n'y a plus de pente a colorer. Aucun second seuil
-         metier, et les deux decisions ne peuvent plus se contredire. */
+         metier, et les deux decisions ne peuvent pas se contredire. */
       const milieu = (min + max) / 2;
       const plancher = Math.max(Math.abs(milieu) * AMPLITUDE_MINIMALE, Number.EPSILON);
       const bas = (max - min) < plancher ? milieu - plancher / 2 : min;
@@ -1337,8 +1323,8 @@ const Charts = (() => {
         curseur.setAttribute('cx', x(i));
         curseur.setAttribute('cy', y(values[i]));
         /* LA DATE AU-DESSUS, LE MONTANT EN DESSOUS. En ligne, separes d'un point
-           median, les deux se disputaient la meme lecture et c'est la date qui
-           gagnait -- elle finissait la phrase. Empiles, l'oeil prend le montant
+           median, les deux se disputeraient la meme lecture et la date
+           gagnerait -- elle finirait la phrase. Empiles, l'oeil prend le montant
            d'un coup et la date le situe. `tt-head` est le meme intitule que la
            bulle de la courbe d'evolution : petites capitales, encre secondaire,
            aucune couleur nouvelle. */
@@ -1347,18 +1333,6 @@ const Charts = (() => {
         tip.hidden = false;                  // l'attribut hidden gagnerait sur un style inline
         const tw = tip.offsetWidth;
         tip.style.left = Math.max(0, Math.min(W - tw, x(i) - tw / 2)) + 'px';
-        /* AU-DESSUS DU TRACE, PAS DESSUS. A `-6px`, la bulle commencait six
-           pixels au-dessus du cadre et retombait sur toute la hauteur de la
-           courbe : on lisait le chiffre a travers le dessin qu'il commente.
-           Son BAS se pose desormais huit pixels au-dessus du cadre, donc elle
-           n'en couvre plus rien. La hauteur se mesure a chaque fois : elle
-           depend de la langue et de la taille de police du lecteur.
-
-           ET LA MONTEE EST BORNEE PAR LA PLACE QUI EXISTE, mesuree sur la carte
-           qui porte le graphique et non ecrite en dur : sans cette borne, une
-           bulle plus haute que l'espace disponible sortirait par le haut. Quand
-           la place manque, elle redescend juste ce qu'il faut plutot que de
-           depasser. */
         const carte = el.closest('.card, .hero');
         const placeAuDessus = carte
           ? el.getBoundingClientRect().top - carte.getBoundingClientRect().top - 4
@@ -1368,17 +1342,15 @@ const Charts = (() => {
       const cacher = () => { curseur.style.display = 'none'; tip.hidden = true; };
       /* Meme regle que la courbe d'evolution, et pour les memes raisons : le doigt
          garde la main sur toute la hauteur, un appui qui commence un defilement
-         n'ouvre rien, et ce qui ferme est sa levee, sans minuteur. Celui qui
-         vivait ici -- 1 200 ms, jamais annule -- fermait l'infobulle du deuxieme
-         appui avec le retard du premier.
+         n'ouvre rien, et ce qui ferme est sa levee, sans minuteur : un minuteur
+         de fermeture que rien n'annulerait fermerait l'infobulle d'un appui
+         avec le retard du precedent.
 
-         Cable sur le `svg` et non sur `el`, contrairement aux `on...` qui
-         vivaient ici : `mount` rejoue ce rendu a chaque redimensionnement, et
-         des `addEventListener` poses sur le conteneur, qui lui survit, se
-         seraient empiles a chaque fois. Les proprietes `on...` s'ecrasaient et
-         masquaient donc ce piege. Le `svg`, lui, est refait a chaque rendu par
-         l'`innerHTML` ci-dessus : rien ne s'empile, et c'est deja ce que fait
-         la courbe d'evolution. */
+         Cable sur le `svg` et non sur `el` : `mount` rejoue ce rendu a chaque
+         redimensionnement, et des `addEventListener` poses sur le conteneur,
+         qui lui survit, s'empileraient a chaque fois. Le `svg`, lui, est refait
+         a chaque rendu par l'`innerHTML` ci-dessus : rien ne s'empile, et c'est
+         deja ce que fait la courbe d'evolution. */
       cablerInfobulle(svg, montrer, cacher);
     });
   }

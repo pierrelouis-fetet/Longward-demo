@@ -279,7 +279,11 @@ suite('À retenir mène à trois endroits différents, pas trois fois au même',
       eq(selectionParClef(l, x => x[1], 3).map(x => x[0]).join(','), a, 'même liste, même ordre');
     }
     const m = lireSource('assets/insights.js');
-    const bloc = m.slice(m.indexOf('function selectionParClef'), m.indexOf('COUCHE 2'));
+    /* La fonction jusqu'a son accolade fermante, et non jusqu'au titre de
+       section qui la suit : un commentaire peut changer de mot. */
+    const debutSel = m.indexOf('function selectionParClef');
+    const bloc = m.slice(debutSel, m.indexOf('\n}\n', debutSel) + 3);
+    vrai(bloc.length > 200, 'la fonction de sélection doit être trouvable');
     for (const interdit of ['Math.random', 'Date.now', 'sort(', 'shuffle']) {
       vrai(!bloc.includes(interdit), `la sélection n’utilise pas ${interdit}`);
     }

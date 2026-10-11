@@ -28,7 +28,7 @@ function insererPlus(champ) {
     champ.scrollLeft = champ.scrollWidth;
   };
   /* Passer apres le gestionnaire de focus global, qui selectionne tout une image
-     apres la prise de focus : sans ce decalage le chiffre suivant effacait la
+     apres la prise de focus : sans ce decalage le chiffre suivant effacerait la
      somme. Inutile quand le champ a deja le focus, ce que `onmousedown` garantit
      dans le cas courant. */
   if (document.activeElement === champ) placerCurseur();
@@ -158,15 +158,15 @@ function askExpenseMonth(index) {
     const champs = $$('#modalBody [data-cat]');
     const champDe = cat => champs.find(c => c.dataset.cat === cat);
     /* Un "+" sans rien apres est un geste inacheve, pas une saisie invalide :
-       on l'ignore au lieu de rejeter le champ entier. Deux consequences, et la
-       seconde est grave. Le total tombait a zero entre le clic sur "+" et la
-       frappe du second montant. Et surtout, un "157+" laisse en place valait
-       zero a l'enregistrement : `saisie()` fait `if (!t) continue`, donc la
-       categorie quittait `v`, et le 157 deja saisi etait perdu sans un mot. Le
-       bouton qui met le "+" a portee d'un doigt rendait cette perte facile.
+       on l'ignore au lieu de rejeter le champ entier. Sinon, le total
+       tomberait a zero entre le clic sur "+" et la frappe du second montant.
+       Et surtout, un "157+" laisse en place vaudrait zero a l'enregistrement :
+       `saisie()` fait `if (!t) continue`, donc la categorie quitterait `v`, et
+       le 157 deja saisi se perdrait sans un mot. Le bouton qui met le "+" a
+       portee d'un doigt rend ce cas facile.
 
-       `parseSomme()` n'est pas touchee : elle continue de rejeter ce qui est
-       vraiment invalide, et ce rejet ne devient jamais un zero ici. */
+       `parseSomme()` garde ses refus : elle rejette ce qui est vraiment
+       invalide, et ce rejet ne devient jamais un zero ici. */
     const valeurChamp = el => parseSomme(String(el.value).replace(/[+\s]+$/, ''))?.total ?? 0;
 
     const majTotal = () => {
@@ -192,14 +192,14 @@ function askExpenseMonth(index) {
 
     if ($('#depSansDetail')) $('#depSansDetail').onclick = regrouperCeMois;
     if ($('#depRemettreDetail')) $('#depRemettreDetail').onclick = remettreDetailIci;
-    /* Le bouton n'existe pas quand les categories sont desactivees : le garder
-       cable sans garde aurait leve sur un `null` au premier rendu du mode
-       "une seule case". Ses deux voisins portaient deja ce garde. */
+    /* Le bouton n'existe pas quand les categories sont desactivees : le cabler
+       sans garde leverait sur un `null` au rendu du mode "une seule case".
+       Ses deux voisins portent le meme garde. */
     if ($('#depNouvelleCat')) $('#depNouvelleCat').onclick = async () => {
       /* La saisie se releve **avant** d'ouvrir la question par-dessus : les
-         deux fenetres partagent le meme corps, et `saisie()` cherchait le
-         champ de note dans un panneau qu'`askText` venait de remplacer. Elle
-         echouait en silence, la fenetre se fermait et rien ne revenait. */
+         deux fenetres partagent le meme corps, et apres `askText`, `saisie()`
+         chercherait le champ de note dans un panneau remplace. Elle echouerait
+         en silence, et la fenetre se fermerait sans rien rendre. */
       const etat = saisie();
       const nom = await askText('Nouvelle catégorie de dépenses',
         'Elle devient une colonne du tableau, vide sur tous les autres mois.', 'ex. Abonnements');
@@ -260,10 +260,10 @@ function askExpenseMonth(index) {
        taper 40 par-dessus 40 ne salit rien. */
     /* `depart` bouge : c'est ce qui permet d'enregistrer sans fermer.
 
-       Il valait l'etat d'ouverture, une fois pour toutes. Enregistrer en cours
-       de saisie l'aurait laisse en arriere, et fermer ensuite aurait redemande
-       "modifications non enregistrees" pour des montants deja ecrits. Il
-       marque desormais le dernier etat mis a l'abri, ouverture comprise. */
+       Il marque le dernier etat mis a l'abri, ouverture comprise. Fige sur
+       l'etat d'ouverture, il resterait en arriere apres un enregistrement, et
+       fermer redemanderait "modifications non enregistrees" pour des montants
+       deja ecrits. */
     let depart = JSON.stringify(saisie());
     const sale = () => JSON.stringify(saisie()) !== depart;
 
@@ -446,10 +446,10 @@ function askMonthlySnapshot(index) {
         <button type="button" class="lien-nu" id="relVerifier">${trad('Vérifier mes poches')}</button></p>` : ''}
       ${/* Sans avoirs saisis, la photo vaut zero : proposer d'ecraser douze
             champs avec des zeros n'aiderait personne. */''}
-      ${/* Le bouton de photo est l'action principale, et il ne l'etait pas.
+      ${/* Le bouton de photo est l'action principale.
 
             Il est donc plein, pleine largeur, et son libelle dit ce qu'il fait
-            plutot que de se nommer : "Reprendre les montants actuels" et le
+            plutot que de se nommer : "Preremplir avec les montants actuels" et le
             total qu'il va ecrire. La phrase en dessous degrade les champs a ce
             qu'ils sont vraiment -- une surface de correction -- et emploie les
             memes mots que le depliant de la page, pour que les deux ecrans
@@ -463,10 +463,9 @@ function askMonthlySnapshot(index) {
       ${photo && revolu ? `
       <button class="btn pleine" id="relPhoto" type="button"
               >${icone('importer')} ${trad('Préremplir avec les montants actuels')} · ${fmtEUR0(photo)}</button>
-      ${/* La phrase d'aide redisait le bouton avec d'autres mots ("remplir
-            automatiquement") : deux formulations pour un geste. Elle dit
-            maintenant ce que le bouton ne dit pas, d'ou viennent les valeurs,
-            et qu'on peut corriger avant d'enregistrer. */''}
+      ${/* La phrase d'aide dit ce que le bouton ne dit pas, d'ou viennent les
+            valeurs, et qu'on peut corriger avant d'enregistrer : redire le bouton
+            avec d'autres mots ferait deux formulations pour un geste. */''}
       <p class="hint" style="margin:6px 0 14px; text-align:center">${
         trad('Chaque poche reçoit sa valeur d’aujourd’hui ; tu peux corriger un champ avant d’enregistrer.')}</p>` : ''}
       ${revolu ? '' : `
@@ -582,15 +581,12 @@ function askMonthlySnapshot(index) {
     const enregistrer = async () => {
       const v = {};
       for (const [k, val] of Object.entries(r.v || {})) if (!montres.has(k)) v[k] = val;
-      /* LE CHAMP VIDE SE TAIT, LE ZERO SE DECLARE. Le test portait sur le
-         MONTANT -- `if (num(c.value))` -- donc un zero tape a la main ne
-         s'ecrivait jamais : le compte qu'on vient de vider ressortait comme un
-         compte auquel on n'a pas repondu, et le releve entier passait pour vide
-         s'il n'y avait que ca. C'est la seule saisie capable de declarer un
-         compte a zero, et elle ne savait pas l'entendre.
-
-         La question porte donc sur le REMPLISSAGE du champ, et le montant
-         suit. */
+      /* LE CHAMP VIDE SE TAIT, LE ZERO SE DECLARE. La question porte sur le
+         REMPLISSAGE du champ, et le montant suit : un test sur le MONTANT --
+         `if (num(c.value))` -- n'ecrirait jamais un zero tape a la main, et le
+         compte qu'on vient de vider ressortirait comme un compte auquel on n'a
+         pas repondu ; le releve entier passerait pour vide s'il n'y avait que
+         ca. C'est la seule saisie capable de declarer un compte a zero. */
       for (const c of champs) {
         const brut = String(c.value ?? '').trim();
         if (brut === '') continue;
@@ -789,10 +785,10 @@ const APERCUS = {
         live: sommes,
         /* Le meme pli anime que les groupes de la page Actifs, et le meme
            bouton pour les mener tous : `.cpt-pli` passe sa rangee de 0fr a 1fr,
-           seule facon d'animer une hauteur inconnue. `<details>` tenait ce role
-           et ne s'anime pas -- et surtout il n'offrait aucune prise pour un geste
-           collectif, alors que c'est precisement ce qu'on vient faire ici :
-           replier les usages pour comparer leurs totaux d'un coup d'oeil. */
+           seule facon d'animer une hauteur inconnue. `<details>` ne s'anime pas,
+           et surtout il n'offre aucune prise pour un geste collectif, alors que
+           c'est precisement ce qu'on vient faire ici : replier les usages pour
+           comparer leurs totaux d'un coup d'oeil. */
         sousAction: nbGroupes > 1
           ? `<button type="button" class="btn sm ghost" data-action="liq-plier-tout"
                      aria-expanded="true">${trad('Tout replier')}</button>`
@@ -1024,7 +1020,7 @@ const APERCUS = {
        le rythme qu'il faudrait tenir. Puis le point de depart, qui fonde la
        barre, avec de quoi le changer. Puis une extrapolation, dite comme telle.
        Les deux reglages ferment la fenetre, sous leur propre intitule : on les
-       touche rarement, et poses au milieu ils se lisaient comme des resultats.
+       touche rarement, et poses au milieu ils se liraient comme des resultats.
 
        Tout passe par `html` plutot que par `champs` et `lignes` : la fenetre
        generique pose ses champs AVANT ses lignes, donc au milieu du suivi. Les
@@ -1103,9 +1099,9 @@ const APERCUS = {
     const date = new Date(aujourdhui.getFullYear() + projHorizon, aujourdhui.getMonth(), aujourdhui.getDate());
     const plat = num(p.plat);
     /* Toutes les poches qui capitalisent, rendues par `pochesProjection` :
-       ecrire la somme ici a la main laissait une poche dehors des qu'une
-       nouvelle arrivait, et la difference se retrouvait dans "ce que tu
-       verses", qui annoncait des versements jamais faits. */
+       ecrire la somme ici a la main laisserait une poche dehors des qu'une
+       nouvelle arrive, et la difference tomberait dans "ce que tu verses", qui
+       annoncerait des versements jamais faits. */
     const base = p.poches.placees;
     const verses = Math.max(0, j.contributed - base - plat);
     return {
@@ -1175,9 +1171,9 @@ const APERCUS = {
          dit rien. */
       /* Une ligne par poche de la projection, et la liste ne se recopie pas :
          chaque valeur vient de `pochesProjection`, celle-la meme que le moteur
-         lit. Six lignes nommaient des classes -- cryptomonnaies, non cote -- que
-         la projection ne distingue plus ; elles en font une, sous le nom de la
-         poche et avec le taux qu'elle recoit vraiment. */
+         lit. Les classes que la projection ne distingue pas -- cryptomonnaies,
+         non cote -- tiennent dans une ligne, sous le nom de la poche et avec le
+         taux qu'elle recoit vraiment. */
       lignes: [
         { label: trad('Actifs de marché'), meta: tauxM, valeur: q.marche },
         { label: trad('Capital garanti'), meta: tauxG, valeur: q.garanti },
@@ -1200,11 +1196,11 @@ const APERCUS = {
       if (c.statut === 'archive') continue;
       /* Les comptes que le perimetre financier ecarte, et eux seuls : c'est
          mot pour mot ce que `partPlate()` gele, donc les lignes font le total.
-         Le filtre portait sur la CLASSE de la ligne, et cette fiche listait donc
-         une SCPI sous "ton immobilier net" alors que la projection ne la gele
-         plus : le total et ses parts ne se seraient plus accordes. Les biens de
-         valeur restent ici avec l'immobilier -- une montre comptee dans le total
-         sans ligne en face etait deja le defaut qu'on repare. */
+         Un filtre sur la CLASSE de la ligne listerait une SCPI sous "ton
+         immobilier net" alors que la projection ne la gele pas : le total et
+         ses parts ne s'accorderaient plus. Les biens de valeur restent ici
+         avec l'immobilier : un bien compte dans le total sans ligne en face
+         ferait le meme defaut. */
       if (!estHorsPerimetreFinancier(c)) continue;
       for (const l of (c.lignes || [])) {
         if (!num(l.valeur)) continue;
@@ -1243,10 +1239,9 @@ const APERCUS = {
       vue: 'accounts', ancre: '', cta: trad('Voir les avoirs'),
     };
   },
-  /* Le detail de la reserve de securite, ouvert depuis sa carte de l'accueil :
-     ce que la carte montrait sous sa jauge, sans rien recalculer. `runway()`
-     porte les paliers, la reserve et le cout de la vie, et la carte comme la
-     fenetre le lisent. */
+  /* Le detail de la reserve de securite, ouvert depuis sa carte de l'accueil,
+     sans rien recalculer : `runway()` porte les paliers, la reserve et le cout
+     de la vie, et la carte comme la fenetre le lisent. */
   reserve: () => {
     const r = runway();
     const pk = poches();
@@ -1299,19 +1294,9 @@ const APERCUS = {
     };
   },
 
-  /* Cette fiche s'ouvre depuis Allocation, et de nulle part ailleurs : elle
-     herite donc du perimetre de cette page. Sans cet heritage, la carte
-     annoncait un montant hors immobilier et la fiche en rendait un autre, murs
-     compris -- le meme intitule, deux montants a un clic d'ecart.
-
-     La note du haut prend la base du perimetre, pas le patrimoine entier : un
-     pourcentage calcule sur une base plus large que la liste qu'il surmonte ne
-     totalise pas cent, et c'est la faute que cette base de code traque depuis le
-     debut. `baseAlloc().de` porte deja la forme grammaticale des deux cas. */
-
-  /* Les lignes de cibles, tresorerie comprise quand elle est suivie. Cinq
-     endroits lisaient `[...r.classes, r.cash]` en supposant `r.cash` toujours
-     present : le jour ou la tresorerie a pu se retirer, la page tombait sur un
+  /* Les lignes de cibles, tresorerie comprise quand elle est suivie. Elles
+     passent par `lignesAvecTresorerie` : `r.cash` peut manquer, et lire
+     `[...r.classes, r.cash]` en dur ferait tomber la page sur un
      `null.delta`. Un seul passage, donc un seul endroit ou se tromper. */
   portefeuilleBoursier: () => {
     const r = rebalanceRows();
@@ -1378,16 +1363,16 @@ const APERCUS = {
       total,
       totalNote: budgetFrame().fixedPct == null ? trad('aucun revenu déclaré')
         : `${fmtPct(budgetFrame().fixedPct, 1)} ${trad('de tes revenus')}`,
-      /*         Le total a l'annee est en sous-titre, mais poste par poste il
+      /* Le total a l'annee est en sous-titre, mais poste par poste il
          faudrait multiplier de tete, et c'est a cette echelle qu'on decide
-         de garder un abonnement : 21 EUR par mois se lisent autrement a 252 EUR
-         par an. Douze lignes de plus a l'ecran l'auraient dit en permanence pour
+         de garder un abonnement : un petit montant par mois se lit autrement
+         une fois rapporte a l'annee. Douze lignes de plus a l'ecran le diraient en permanence pour
          un chiffre qu'on consulte une fois, d'ou la bulle.
 
          `data-aide` et rien d'autre : le survol, l'appui, le clavier et la
-         fermeture au premier geste ailleurs y sont deja, et depuis que ces
-         ecouteurs sont delegues ils atteignent l'interieur d'une fenetre. C'est
-         ce qui rend cette demande gratuite.
+         fermeture au premier geste ailleurs y sont deja, et ces ecouteurs sont
+         delegues, donc ils atteignent l'interieur d'une fenetre. La bulle ne
+         coute ainsi aucun code de plus.
 
          La periodicite s'y ajoute quand elle n'est pas mensuelle : la ligne
          affiche un montant ramene au mois, qu'on ne retrouve sur aucune facture,
@@ -1410,20 +1395,6 @@ const APERCUS = {
     };
   },
 
-  /* Le detail d'une vente.
-
-     Ce que trois tuiles disaient pour toute la page -- produit encaisse, prix de
-     revient cede, taux de reussite -- appartient a chaque vente : ce sont des
-     faits de celle-la, pas des totaux d'ecran. Deux d'entre eux se relisaient
-     deja en tete de page, ou la plus-value encaissee porte son pourcentage et son
-     compte de ventes gagnantes.
-
-     Le panneau porte aussi l'annulation, qui vivait au bout d'une ligne de
-     tableau. Ici le geste a la place de dire ce qu'il emporte, et il n'est plus a
-     portee de pouce de la lecture.
-
-     `ventesRealisees` a disparu avec la tuile qui l'ouvrait : une fonction sans
-     appelant est la moitie qu'on oublie en retirant un affichage. */
   vente: (i) => {
     const idx = Number(i);
     const v = (Store.state.sales || [])[idx];
@@ -1601,7 +1572,7 @@ const APERCUS = {
 
          TEXTE NU, et c'est un contrat : `noteApercu` passe par `escMontant`,
          qui echappe tout sauf le fragment de l'oeil masque. Une pastille d'aide
-         posee ici s'imprimait donc en clair, balise comprise, sous le grand
+         posee ici s'imprimerait donc en clair, balise comprise, sous le grand
          nombre. Le slot qui accepte du balisage est `html`, plus bas, et c'est
          la que l'aide vit. */
       totalNote: estVix(l) ? (niveauVix(l.prix) || '') : (m ? m.label : ''),
@@ -1745,11 +1716,10 @@ const APERCUS = {
   }),
 
   /* Les lignes suivent la CLASSE du total, pas le groupe d'ecran : le groupe
-     `pe` rassemble aussi l'immobilier et les biens de valeur, et la fenetre
-     listait donc des comptes pour bien plus que son total -- un studio a
-     120 000 EUR sous un titre qui annonce le non cote. La valeur par compte
-     est celle de ses lignes non cotees seulement, et la somme des parts
-     refait le total. */
+     `pe` rassemble aussi l'immobilier et les biens de valeur, et le suivre
+     listerait des comptes pour bien plus que le total -- un studio sous un
+     titre qui annonce le non cote. La valeur par compte est celle de ses
+     lignes non cotees seulement, et la somme des parts refait le total. */
   pe: () => {
     const nc = latentNonCote();
     const lignes = nc.lignes.filter(l => l.classe === 'nonCote');

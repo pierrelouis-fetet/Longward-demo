@@ -88,9 +88,6 @@ suite('Insight : l’écart à la cible d’allocation', () => {
     eq(i.evidence.source, 'rebalanceRows');
     eq(i.evidence.displayThresholdPp, SEUIL_AFFICHAGE_ALLOCATION_PP,
       'la preuve porte le seuil, pour que la présentation sache que c’est un filtre');
-    vrai(/filtres d’affichage, jamais des normes/.test(lireSource('assets/insights.js'))
-      || /filtres d'affichage, jamais des normes/.test(lireSource('assets/insights.js')),
-      'et le code le dit');
     /* Le moteur ne recalcule ni la base, ni les parts. */
     const r = rebalanceRows();
     const ligne = lignesReequilibrage(r).find(x => x.cle === i.params.classe);
@@ -286,9 +283,6 @@ suite('Le rythme ne se dit que s’il a vraiment changé', () => {
 
   test('le seuil est un filtre d’affichage, et il vaut vingt pour cent', () => {
     eq(SEUIL_AFFICHAGE_RYTHME_PCT, 20);
-    const s = lireSource('assets/insights.js');
-    vrai(/filtres d’affichage, jamais des normes/.test(s) || /filtres d'affichage, jamais des normes/.test(s),
-      'le fichier dit que ce sont des filtres, pas des normes');
   });
 
   test('une variation trop faible ne se dit pas', () => {

@@ -13,10 +13,9 @@
    Il ne calcule rien de financier. Pas une addition de patrimoine, pas un
    echeancier, pas une allocation, pas une projection. Tout cela existe deja
    dans `store.js`, et une seconde implementation finirait par dire autre chose
-   que la premiere -- c'est arrive assez de fois dans ce projet pour qu'on
-   n'essaie pas. Chaque regle appelle un moteur existant et INTERPRETE ce qu'il
-   rend : `runway()`, `rebalanceRows()`, `monthlyPace()`, `capitalisation()`,
-   `savingsReconciliation()`.
+   que la premiere. Chaque regle appelle un moteur existant et INTERPRETE ce
+   qu'il rend : `runway()`, `rebalanceRows()`, `monthlyPace()`,
+   `capitalisation()`, `savingsReconciliation()`.
 
    Il ne produit aucun texte. Une regle rend un identifiant, des nombres nus et
    une preuve. Ni phrase, ni signe monetaire, ni pourcentage formate : la
@@ -549,8 +548,8 @@ const REGLES_INSIGHT = [
 
      ELLE VIT DANS MARCHES, parce que la cible y vit : le sous-onglet Cible
      est le sien, son renvoi y mene, et sa base est le portefeuille de marche.
-     Rangee dans Allocation, elle renvoyait vers un autre onglet que le sien,
-     et laissait Marches sans lecture tant qu'aucun apport n'etait declare. */
+     Rangee dans Allocation, elle renverrait vers un autre onglet que le sien,
+     et Marches n'aurait aucune lecture : c'est la seule regle de cet onglet. */
   {
     id: 'allocation_target_gap',
     onglet: 'positions',
@@ -939,7 +938,7 @@ const REGLES_INSIGHT = [
 
   /* --- Le poste qui a bouge, et lui seul ----------------------------------
 
-     LA REGLE QUI MANQUAIT, et c'est la plus utile de l'onglet. `spending_shift`
+     LA REGLE QUI DIT OU, et c'est la plus utile de l'onglet. `spending_shift`
      dit que le total a change de niveau ; il ne dit pas ou. "Tes depenses ont
      augmente de douze pour cent" laisse le lecteur ouvrir le tableau et
      comparer douze colonnes a la main, ce qui est exactement le travail qu'une
@@ -959,12 +958,12 @@ const REGLES_INSIGHT = [
     onglet: 'budget',
     famille: 'budget',
     categorie: 'budget',
-    /* HAUTE, ET C'EST CE QUI LA FAIT PASSER DEVANT `spending_shift`. Les deux
-       partagent un groupe : elles racontent le meme fait, l'une en disant ou.
-       A rang egal, les deux amplitudes saturent des qu'un mouvement est franc,
-       et c'est alors l'ordre de declaration qui tranchait -- donc le total, qui
-       est declare avant. On lisait "tes depenses ont monte de 40 %" la ou
-       "tes sorties passent de 100 a 300 EUR" etait disponible.
+    /* MOYENNE, UN RANG AU-DESSUS DE `spending_shift`, ET C'EST CE QUI LA FAIT
+       PASSER DEVANT. Les deux partagent un groupe : elles racontent le meme
+       fait, l'une en disant ou. A rang egal, les deux amplitudes saturent des
+       qu'un mouvement est franc, et l'ordre de declaration trancherait -- pour
+       le total, qui est declare avant : "tes depenses ont monte de 40 %"
+       passerait devant "tes sorties passent de 100 a 300 EUR".
        Le rang dit la regle : quand un poste explique le mouvement, c'est lui
        qu'on veut lire ; quand aucun ne l'explique, cette regle ne sort pas et le
        total reprend sa place tout seul. */
@@ -1321,21 +1320,6 @@ function evaluerInsights(ctx) {
     if (!regle.eligible(m, c)) return;
     const brut = regle.evaluer(m, c);
     if (!brut) return;
-    /* Deja dit recemment, et le chiffre n'a pas bouge : il attend son tour.
-
-       IL L'ATTEND, IL NE SE TAIT PAS. Cette ligne rendait `return` : l'insight
-       disparaissait de la liste au lieu de reculer dedans. Sur un patrimoine
-       calme, ou trois regles seulement ont quelque chose a dire, les trois
-       partaient au repos le lendemain de leur premiere lecture -- vingt et un a
-       quarante-cinq jours -- et la carte affichait alors "Rien d'inhabituel a
-       signaler". C'etait faux : trois choses avaient ete trouvees, aucune
-       n'avait cesse d'etre vraie, et la carte annoncait le calme. L'etat calme
-       est une reponse, et il doit garder son sens ; il ne peut pas servir a dire
-       "tout dort".
-
-       Le repos CLASSE donc, comme son commentaire l'a toujours dit : ce qui a
-       deja ete lu passe derriere tout ce qui est neuf. Il disparait quand
-       quelque chose de plus frais prend sa place, jamais parce qu'il est seul. */
     const repos = auRepos(regle, brut.valeur, c.aujourdhui);
     sortis.push({
       repos,
@@ -1371,12 +1355,13 @@ function evaluerInsights(ctx) {
 /* COUCHE 5 -- LA SELECTION, SEPAREE DE LA DETECTION.
 
    Elle l'est pour une raison pratique autant que propre : une regle se teste sur
-   ce qu'elle DETECTE, pas sur sa place dans un classement a treize. Un test qui
-   passait par la liste finale cessait de parler de sa regle des qu'une
-   quatorzieme entrait, et c'est un faux rouge a chaque ajout.
+   ce qu'elle DETECTE, pas sur sa place dans le classement du catalogue entier.
+   Un test qui passerait par la liste finale cesserait de parler de sa regle
+   des qu'une autre y entre, et ce serait un faux rouge a chaque ajout.
 
    `evaluerInsights()` rend tout ce qui a quelque chose a dire, classe.
-   `construireInsights()` en garde au plus trois, et c'est lui que la vue lit. */
+   `construireInsights()` en retire les redites et met les familles en tete,
+   sans plafond : c'est lui que la vue lit, et c'est elle qui coupe. */
 function construireInsights(ctx) {
   const sortis = evaluerInsights(ctx);
 
