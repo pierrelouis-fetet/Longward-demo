@@ -1121,6 +1121,12 @@ let depSort = null;
    moyenne par mois. Un reglage de lecture, qui vit le temps d'une session
    comme `evoNet` et `evoFinancier`. */
 let depCatsParMois = false;
+/* La lecture qu'on vient de choisir, le temps d'un rendu : les barres de la
+   carte repoussent, et elles seules, comme celles d'un angle d'Allocation
+   (voir `allocAngleEntre`). Le reste de la page ne bouge pas : rejouer la
+   pousse de toute la vue ferait clignoter des graphiques qui n'ont pas
+   change. */
+let depCatsEntre = false;
 
 function budgetAnnee() {
   const annees = expenseYears();
@@ -1383,7 +1389,7 @@ function viewBudget(section = 'depenses') {
   </div>
 
   ${sansDistinction() ? '' : `
-  <div class="card">
+  <div class="card cats-carte${depCatsEntre ? ' graphes-poussent' : ''}">
     <div class="card-head"><h2>${trad('Par catégorie')}</h2>
       <div class="row cats-lecture">
         <span class="hint">${depCatsParMois

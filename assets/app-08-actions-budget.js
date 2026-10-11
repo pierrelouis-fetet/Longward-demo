@@ -24,11 +24,22 @@ Object.assign(ACTIONS, {
     budgetYear = btn.dataset.year === 'all' ? 'all' : btn.dataset.year;
     render();
   },
+  /* Recliquer la lecture deja affichee ne change rien, donc n'anime rien.
+     Les barres de la carte repoussent : voir `depCatsEntre`. Le minuteur
+     retire la classe de CETTE carte, et non de celle qui sera dans la page a
+     son echeance : un second clic rapide rend une carte neuve, que le premier
+     minuteur ne doit pas couper. Meme duree que la pousse posee par render(). */
   'dep-cats-lecture'(btn) {
     const voulu = btn.dataset.lecture === 'mois';
     if (voulu === depCatsParMois) return;
     depCatsParMois = voulu;
+    depCatsEntre = true;
     render();
+    depCatsEntre = false;
+    const carte = $('.cats-carte');
+    if (carte) setTimeout(() => carte.classList.remove('graphes-poussent'), 750);
+    const b = $(`[data-action="dep-cats-lecture"][data-lecture="${btn.dataset.lecture}"]`);
+    if (b) b.focus({ preventScroll: true });
   },
   'toggle-revenus'() { if (!Store.state.budget.income.length) return ACTIONS['add-income'](); fenetreRevenus(); },
   'revenu-estime'(el) {
