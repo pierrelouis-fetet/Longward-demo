@@ -391,8 +391,8 @@ Object.assign(I18N.en, {
     "de plus-value": "in capital gains",
     "sur.investis": "on",
     /* "7 ventes sur 11" : ici "sur" compte une part d'un ensemble, donc
-       "of". La clef `sur.investis` rendait "on", juste devant un montant
-       investi, et le journal affichait "7 sales on 11". */
+       "of". La clef `sur.investis` rend "on", juste devant un montant
+       investi : reprise ici, elle ferait lire "7 sales on 11" au journal. */
     "sur.total": "of",
     "investis": "invested",
     "vente gagnante sur": "winning sale out of",
@@ -1723,12 +1723,12 @@ function uniteMonetaire(s) {
    casse sans qu'on voie pourquoi. `trad` n'entre en collision avec rien.
 
    `t()` reste pour les clefs pointees (`nav.*`, `view.*`), et un test refuse
-   desormais qu'on lui passe autre chose. */
+   qu'on lui passe autre chose. */
 const trad = (phrase, repli) => t(phrase, repli !== undefined ? repli : phrase);
 const deuxPoints = () => trad(' :');
 /* Un seul argument, et c'est le point. `trad(phrase, repli)` rend le REPLI en
    francais et la traduction de la CLEF en anglais : passer ':' en repli
-   ecraserait donc precisement le cas francais, et "tout est compte: 30 250 EUR"
+   ecraserait donc precisement le cas francais, et "tout est compte: 1 234 EUR"
    perdrait son espace. Sans repli, la clef sert des deux cotes : ' :' en
    francais, sa traduction ':' en anglais. */
 
@@ -1767,16 +1767,10 @@ const FR = {
   'view.overview.historique.sub': 'Ton patrimoine, mois après mois',
   'view.overview.projection.sub': "Où tes hypothèses mènent ton patrimoine",
   'view.overview.aujourdhui.sub': 'Photo instantanée de ton patrimoine',
-  /* Trois sous-titres qui ne se sont jamais affiches. Ils s'appelaient
-     `view.performance.sub`, `view.history.sub` et `view.rebalance.sub` -- des
-     noms de route, herites du temps ou ces ecrans etaient des vues a part
-     entiere. Le rendu, lui, cherche `view.<vue>.<onglet>.sub`, donc il ne les
-     trouvait pas et servait le sous-titre du parent : l'onglet Performance
-     s'annoncait "Tes lignes de titres, en direct", et Releves aussi.
-
-     Les textes etaient justes, c'est leur nom qui ne l'etait pas. Deux d'entre
-     eux avaient meme deja un double correctement nomme -- la copie route est
-     partie, pas le texte. */
+  /* Le sous-titre d'un onglet se nomme `view.<vue>.<onglet>.sub` : c'est la
+     clef que le rendu cherche, et il retombe sur `view.<vue>.sub` quand elle
+     manque. Une clef au nom de la route seule ne serait jamais lue, et
+     l'onglet s'annoncerait avec le sous-titre de sa vue. */
   'view.positions.performance.sub': 'Plus-values latentes et encaissées',
   'view.budget': 'Budget',
   'view.budget.sub': 'Revenus, charges fixes et dépenses du quotidien',
@@ -1817,11 +1811,11 @@ const FR = {
 /* Applique les traductions aux libelles statiques d'index.html.
 
    Les attributs se traduisent par leur valeur, sans balise a poser : le
-   francais qui s'y trouve EST la clef, comme partout ailleurs. Douze titres et
-   intitules pour lecteur d'ecran vivaient dans le balisage statique, donc hors
-   d'atteinte de `trad()`, et restaient francais sur toutes les pages, dans les
-   deux langues. Marquer chacun d'un `data-i18n-title` aurait fait deux endroits
-   a tenir d'accord pour un seul fait.
+   francais qui s'y trouve EST la clef, comme partout ailleurs. Les titres et
+   intitules pour lecteur d'ecran du balisage statique sont hors d'atteinte de
+   `trad()` au rendu : sans ce passage, ils resteraient francais dans les deux
+   langues. Marquer chacun d'un `data-i18n-title` ferait deux endroits a tenir
+   d'accord pour un seul fait.
 
    `trad()` rend sa clef inchangee quand le dictionnaire ne la connait pas : un
    attribut deja anglais, une valeur qui n'est pas une phrase, un second passage

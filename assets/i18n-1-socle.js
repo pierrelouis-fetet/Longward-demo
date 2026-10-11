@@ -4,17 +4,21 @@
  *  Source: https://github.com/pierrelouis-fetet/Longward-demo
  *  Distributed WITHOUT ANY WARRANTY. See the LICENSE file for the full terms.
  */
-/* ======================================================   I18N -- francais par defaut, anglais en option.
+/* ======================================================   I18N -- francais et anglais.
 
-   Deux principes :
-   - la cle est en anglais, la valeur en francais : si une cle manque en
-     anglais, on retombe sur le francais plutot que d'afficher une cle nue ;
-   - les libelles balises `data-i18n` dans index.html sont traduits au
-     chargement, le reste passe par t() dans les vues.
+   Deux formes de clef :
+   - une clef pointee (`nav.*`, `view.*`) passe par t() : son francais vit
+     dans FR, son anglais dans I18N.en ;
+   - une phrase francaise passe par trad() : elle est sa propre clef, et
+     I18N.en en donne l'anglais.
+   Une clef sans anglais retombe sur le francais plutot que d'afficher une
+   cle nue. Les libelles balises `data-i18n` dans index.html sont traduits au
+   chargement.
 
-   Le chantier est progressif : chaque chaine traduite ici disparait du
-   francais en dur. Ce qui n'est pas encore dans le dictionnaire reste en
-   francais dans les deux langues -- visible, donc facile a reperer.
+   La langue vient du choix enregistre ; sans choix, currentLang() la fixe,
+   et c'est la que chaque instance pose son repli. Une chaine absente du
+   dictionnaire reste en francais dans les deux langues -- visible, donc
+   facile a reperer, et la suite la signale.
    ============================================================= */
 
 const LANGS = [['fr', 'Français'], ['en', 'English']];
@@ -24,8 +28,8 @@ const LANG_KEY = 'wealth-dashboard:lang';
 
    Le choix enregistre prime toujours : quelqu'un qui a pris le francais sur un
    navigateur anglais ne se le voit pas redevine au rechargement suivant. La
-   detection ne sert qu'a la premiere visite, ou l'alternative etait d'imposer
-   l'anglais a tout le monde.
+   detection ne sert qu'a la premiere visite : sans elle, l'anglais
+   s'imposerait a tout le monde.
 
    `navigator.languages` est une liste ordonnee par preference, et non un seul
    code : un navigateur francais annonce souvent `fr-FR` puis `en-US`. On prend

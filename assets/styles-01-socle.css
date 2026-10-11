@@ -67,9 +67,10 @@
   /* Le troisieme gris porte le texte le plus petit de l'application : intitules
      de colonnes a 11 px, bulles d'aide a 12, etiquettes de tuiles a 10,5. Il
      doit donc franchir 4,5:1 sur les trois fonds, et non seulement sur la page.
-     #7b8794 donnait 3,66:1 sur une carte blanche et 3,32 sur `--surface-2` :
-     sous le seuil la ou les caracteres sont les plus fins. #66707d rend 5,03,
-     4,76 et 4,56, et garde un ecart net avec `--text-secondary`, a 7,23. */
+     Un gris comme #7b8794 ne rend que 3,66:1 sur une carte blanche et 3,32 sur
+     `--surface-2` : sous le seuil la ou les caracteres sont les plus fins.
+     #66707d rend 5,03, 4,76 et 4,56, et garde un ecart net avec
+     `--text-secondary`, a 7,23. */
   --muted: #66707d;
   --grid: #e4e9ef;
   --axis: #c3ccd6;
@@ -94,10 +95,10 @@
   --warning: #b07d00;
   --warning-text: #815c00;
   /* L'orange sert de texte, et pas seulement d'aplat : les ecarts au budget
-     s'ecrivent avec, a 12 et 13 px. #c25f2b ne rendait que 4,23:1 sur blanc et
-     3,83 sur `--surface-2`, sous le seuil aux deux endroits ou il s'affiche.
-     #ab5022 rend 5,38, 5,10 et 4,88, et reste un orange : il ne glisse pas vers
-     le rouge, qui a son propre sens dans cette application. */
+     s'ecrivent avec, a 12 et 13 px. Un orange comme #c25f2b ne rend que 4,23:1
+     sur blanc et 3,83 sur `--surface-2`, sous le seuil aux deux endroits ou il
+     s'affiche. #ab5022 rend 5,38, 5,10 et 4,88, et reste un orange : il ne
+     glisse pas vers le rouge, qui a son propre sens dans cette application. */
   --serious: #ab5022;
   --critical: #cf3a3a;
 
@@ -122,35 +123,33 @@
   --h-barre-dessin: 54px;
   --h-barre: calc(var(--h-barre-dessin) + env(safe-area-inset-top, 0px));
   --h-sous-onglets: 53px;
-  /* La barre du haut de l'ordinateur, `.topbar`. Sa hauteur ne se declarait
-     nulle part et se subissait -- 91 px de remplissage et de texte -- pendant
-     qu'un bandeau collant la supposait a 72 : il se garait 19 px dessous, le
-     titre coupe en deux. Declaree ici, la barre la tient par `min-height`, et
-     le bandeau comme le defilement vers une ancre la lisent. */
+  /* La barre du haut de l'ordinateur, `.topbar`. Sa hauteur se declare ici et
+     ne se subit pas : remplissage et texte en font 91 px, et un bandeau collant
+     qui la supposerait plus basse se garerait dessous, le titre coupe en deux.
+     La barre la tient par `min-height`, et le bandeau comme le defilement vers
+     une ancre la lisent. */
   --h-entete: 91px;
 
-  /* Une troisieme variable a vecu ici, `--h-colle`, qui portait la hauteur
-     reellement clouee en haut selon que la barre etait la ou retiree. Les collants
-     s'y accrochaient par leur `top`. Elle est partie avec ce mecanisme : animer le
-     `top` d'un element collant fait recalculer sa contrainte de collage a chaque
-     image, et le mouvement accrochait. Le collage est desormais fixe et c'est une
-     translation qui deplace ces bandes, donc plus rien a faire varier. */
+  /* Aucune variable ne porte la hauteur reellement clouee en haut selon que la
+     barre est la ou retiree : les collants ne s'accrochent pas par un `top` qui
+     varie. Animer le `top` d'un element collant fait recalculer sa contrainte
+     de collage a chaque image, et le mouvement accroche. Le collage reste fixe,
+     et c'est une translation qui deplace ces bandes. */
 
   /* L'accent de l'interface : le violet du logo. Tout ce qui dit "actif,
      survole, selectionne" le porte -- le repere du menu, l'onglet courant, la
      pastille de plage retenue, les anneaux de focus, la selection de texte.
 
-     Il ne rejoint pas les series de donnees, et c'est le point : `--series-1`
-     peignait a la fois les liquidites et chaque etat actif de l'application.
-     Une couleur qui sert de marque et de classe d'actif ne veut plus rien dire,
-     et l'interface entiere prenait l'air d'un gabarit dont l'accent est le bleu
-     le plus consensuel qui existe, pendant que la marque etait violette. */
+     Il ne rejoint pas les series de donnees, et c'est le point : une couleur
+     qui sert de marque et de classe d'actif ne veut plus rien dire. Peint de
+     `--series-1`, chaque etat actif prendrait la teinte des liquidites, et
+     l'interface entiere l'air d'un gabarit dont l'accent est le bleu le plus
+     consensuel qui existe, quand la marque est violette. */
   --accent: #6d3fc4;
 
-  /* Le degrade du budget, defini une fois. La jauge de l'accueil le portait en
-     dur dans son CSS pendant que les barres par categorie tiraient sur un
-     jaune sans rapport : deux ecrans du meme sujet, deux couleurs. Les deux le
-     lisent ici, donc ils ne peuvent plus diverger.
+  /* Le degrade du budget, defini une fois. Les barres par categorie du budget le
+     lisent ici, ou qu'elles s'affichent : deux ecrans du meme sujet portent la
+     meme couleur, et ne peuvent pas diverger.
 
      Une seule declaration suffit pour les deux themes : un `var()` dans une
      variable se resout chez qui l'utilise, donc `--series-1` y prend la teinte
@@ -164,23 +163,21 @@
   /* Trois niveaux d'ombre, et pas un par surface. `--shadow` pose (cartes),
      `--ombre-flottante` detache ce qui survole la page (menus, infobulles,
      panneau de notifications), `--ombre-fenetre` porte ce qui la recouvre
-     (fenetres, tiroirs). Avant : six ombres noires ecrites en dur, les memes
-     dans les deux themes -- un voile a 45 % de noir sous un menu en theme
-     clair pese trois fois trop lourd, c'est lui qui faisait "sombre colle
-     sur clair". Chaque theme regle desormais sa densite. */
+     (fenetres, tiroirs). Chaque theme regle sa densite : une meme ombre noire
+     dans les deux themes pese trois fois trop lourd en clair, ou un voile a
+     45 % de noir sous un menu colle un pan sombre sur une page claire. */
   --shadow: 0 1px 2px rgba(13, 17, 23, .04);
   --ombre-flottante: 0 8px 24px rgba(13, 17, 23, .10);
   --ombre-fenetre: 0 20px 50px rgba(13, 17, 23, .16);
   --ombre-ovale: 0 -14px 34px rgba(13, 17, 23, .10);
   --fw-chiffre: 650;
-  /*    La police du systeme d'abord, Inter ensuite. Inter etait demandee en
-   premier. Elle est excellente et elle est aussi la police par defaut de tous
-   les gabarits web : c'est le premier signal qui fait dire d'une application
-   qu'elle sort d'un modele. Avec `system-ui` en tete, elle porte le caractere
-   de l'appareil : SF Pro sur iPhone et Mac, Segoe UI Variable sur Windows,
-   Roboto sur Android. C'est ce qui fait qu'une application a l'air
-   d'appartenir au telephone plutot qu'au web. Inter reste en repli pour les
-   systemes sans police d'interface.*/
+  /*    La police du systeme d'abord, Inter ensuite. Inter est excellente, et elle
+   est aussi la police par defaut de tous les gabarits web : c'est le premier
+   signal qui fait dire d'une application qu'elle sort d'un modele. Avec
+   `system-ui` en tete, elle porte le caractere de l'appareil : SF Pro sur
+   iPhone et Mac, Segoe UI Variable sur Windows, Roboto sur Android. C'est ce
+   qui fait qu'une application a l'air d'appartenir au telephone plutot qu'au
+   web. Inter reste en repli pour les systemes sans police d'interface.*/
   --font: system-ui, -apple-system, "Segoe UI Variable Text", "Segoe UI",
           Roboto, "Inter", ui-sans-serif, sans-serif;
   --font-titre: 'Manrope', var(--font);
@@ -210,10 +207,10 @@
   --sidebar-border: rgba(255, 255, 255, .07);
   --text-primary: #f2f3f5;
   --text-secondary: #9a9ca3;
-  /* Meme regle qu'en clair, meme faute corrigee : #6a6c74 rendait 3,61:1 sur une
+  /* Meme regle qu'en clair : un gris comme #6a6c74 ne rend que 3,61:1 sur une
      carte et 3,32 sur `--surface-2`, aux tailles ou les caracteres sont les plus
      fins. #83858e rend 5,13, 5,42 et 4,73, et reste sous `--text-secondary`
-     (6,88) : la hierarchie des trois gris tient toujours. */
+     (6,88) : la hierarchie des trois gris tient. */
   --muted: #83858e;
   --grid: #1e2025;
   --axis: #2c2f36;
@@ -275,48 +272,45 @@
    se replie -- reste parfois hors du canevas peint par `body` seul, et s'y
    affiche en noir.
 
-   `min-height` sur le corps, et non `height`, et c'est un correctif.
+   `min-height` sur le corps, et non `height`.
 
-   `height: 100%` plafonnait le corps a la hauteur de l'ecran quelle que soit la
-   longueur de la page : 900 px pour un document de 2 062. Or le corps est la
+   `height: 100%` plafonnerait le corps a la hauteur de l'ecran quelle que soit
+   la longueur de la page : 900 px pour un document de 2 062. Or le corps est la
    grille qui porte la barre laterale, donc la zone de grille de cette barre
-   faisait 900 px, exactement sa propre hauteur. Un element colle n'a de course
+   ferait 900 px, exactement sa propre hauteur. Un element colle n'a de course
    que dans son bloc conteneur : avec zero de marge, `position: sticky` ne
-   collait rien du tout, et la barre s'en allait avec la page. Mesure a 1 280 x
-   900 : `top` a -800 px pour un defilement de 800, donc pas un pixel de retenue.
+   collerait rien du tout, et la barre s'en irait avec la page -- a 1 280 x 900,
+   `top` a -800 px pour un defilement de 800.
 
-   Ce n'est pas un choix qu'on aurait pu defendre. Le pied de cette barre porte
-   le patrimoine net en permanence, au point que l'accueil a perdu une carte
-   entiere au motif qu'"il est deja ecrit en permanence au pied de la barre
-   laterale". Un chiffre retire ailleurs parce qu'il est toujours la ne peut pas
-   s'en aller au premier defilement.
+   Le pied de cette barre porte le patrimoine net en permanence, et l'accueil
+   compte sur lui pour ne pas le redire : un chiffre retire ailleurs parce qu'il
+   est toujours la ne peut pas s'en aller au premier defilement.
 
    Le corps peut donc depasser l'ecran, et il ne descend jamais en dessous : le
-   fond reste peint d'un bord a l'autre sur une page courte, ce qui etait la
-   raison d'etre de cette ligne. La hauteur posee par `gelerFond()` est un style
-   en ligne, elle gagne toujours sur celle-ci -- le gel d'une fenetre ouverte
-   n'est pas touche.
+   fond reste peint d'un bord a l'autre sur une page courte. La hauteur posee
+   par `gelerFond()` est un style en ligne, elle gagne toujours sur celle-ci --
+   le gel d'une fenetre ouverte n'est pas touche.
 
    Le `min-height` vit dans la regle `body` principale, plus bas, et non dans une
-   seconde regle posee ici : la feuille en compte deja une seule, et un controle
-   cherche "le bloc dont le selecteur est exactement body" pour verifier que
-   les montants gardent la police du systeme. Une deuxieme regle du meme nom
-   passait devant et lui faisait lire autre chose que ce qu'il croit lire. */
+   seconde regle posee ici : un controle cherche "le bloc dont le selecteur est
+   exactement body" pour verifier que les montants gardent la police du systeme,
+   et une regle du meme nom posee avant lui ferait lire autre chose que ce qu'il
+   croit lire. */
 html { height: 100%; }
 /* LE DEFILEMENT VERS UNE ANCRE S'ARRETE SOUS CE QUI EST CLOUE EN HAUT.
-   `scrollIntoView` et `focusAnchor` posaient leur cible au bord de la fenetre,
-   donc derriere la barre du haut. `scroll-padding-top` le dit une fois, pour le
-   conteneur qui defile, et chaque ecran le redit avec ses propres bandes plus
-   bas ; `app.js` lit cette valeur au lieu de porter les siennes. */
+   Sans marge, `scrollIntoView` et `focusAnchor` poseraient leur cible au bord
+   de la fenetre, donc derriere la barre du haut. `scroll-padding-top` le dit
+   une fois, pour le conteneur qui defile, et chaque ecran le redit avec ses
+   propres bandes plus bas ; `app.js` lit cette valeur au lieu de porter les
+   siennes. */
 html { scroll-padding-top: calc(var(--h-entete) + 8px); }
 html, body { background: var(--page); }
 
 /* Garde-fou : rien ne doit pouvoir elargir la fenetre.
    Un seul element trop large et le navigateur agrandit le viewport de mise en
-   page -- 375 px devenaient 446 -- puis dezoome pour tout montrer. La barre
-   d'onglets, posee en `fixed; bottom: 0`, se calait alors sur ce viewport
-   gonfle, donc 97 px sous le bord visible : elle disparaissait en arrivant sur
-   Marches. `clip` plutot que `hidden` : il ne cree pas de conteneur de
+   page, puis dezoome pour tout montrer. La barre d'onglets, posee en
+   `fixed; bottom: 0`, se calerait alors sur ce viewport gonfle, sous le bord
+   visible. `clip` plutot que `hidden` : il ne cree pas de conteneur de
    defilement et ne casse donc pas les en-tetes collants. */
 html, body { overflow-x: clip; max-width: 100%; }
 
@@ -343,7 +337,7 @@ body {
   color: var(--text-primary);
   display: grid;
   grid-template-columns: 244px 1fr;
-  /* Et non `height: 100%`, qui plafonnait le corps a un ecran : cette grille est
+  /* Et non `height: 100%`, qui plafonnerait le corps a un ecran : cette grille est
      le bloc conteneur de la barre laterale, et une zone de grille exactement
      aussi haute que la barre ne laisse aucune course a son collage. Voir la note
      en tete de fichier, sous `html { height: 100% }`. */
@@ -354,19 +348,18 @@ body {
 
 /* RIEN NE SE SELECTIONNE DANS L'APPLICATION, SAUF CE QUI S'EDITE.
 
-   Sur iPhone, un appui maintenu sur un montant ouvrait la loupe, posait les deux
-   poignees bleues et sortait le menu Copier / Chercher / Traduire. Le geste qui
-   sert a lire -- poser le doigt et le laisser une seconde -- declenchait donc une
-   selection dont personne n'avait besoin, sur du mobilier : un titre, un libelle,
-   un chiffre affiche. Une application native ne fait pas cela.
+   Sur iPhone, un appui maintenu sur un montant ouvre la loupe, pose les deux
+   poignees bleues et sort le menu Copier / Chercher / Traduire. Le geste qui
+   sert a lire -- poser le doigt et le laisser une seconde -- declencherait donc
+   une selection dont personne n'a besoin, sur du mobilier : un titre, un
+   libelle, un chiffre affiche. Une application native ne fait pas cela.
 
    LA REGLE VIT SUR `body` ET NON SUR `html` : tout ce qui s'affiche est dedans --
    ecran de lancement, barre laterale, fiches, barre de navigation, infobulles --
    et `user-select` comme `-webkit-touch-callout` s'heritent, donc une seule
-   declaration suffit a couvrir l'arbre entier. Elle remplace une demi-douzaine de
-   gardes posees une par une, dont l'une rendait justement la selection aux
-   paragraphes et aux tableaux des cartes a graphique : deux regles qui se
-   contredisaient, et la plus specifique gagnait.
+   declaration suffit a couvrir l'arbre entier. Une garde locale de plus ne
+   dirait rien de neuf, et une regle qui rendrait la selection aux paragraphes
+   ou aux tableaux d'une carte la contredirait : la plus specifique gagnerait.
 
    `-webkit-touch-callout: none` EN PLUS de `user-select`, et non a sa place : le
    premier supprime le menu contextuel et la loupe d'iOS, que le second laisse
@@ -398,16 +391,15 @@ input, textarea,
 
 /* La barre laterale ne defile pas avec la page, et elle defile en elle-meme.
 
-   Et il n'y a rien a y gagner. Si la barre du haut se retire sur telephone,
-   c'est que la place verticale y est comptee -- 54 px sur 812. Ici la barre coute
-   de la largeur, jamais de la hauteur : la cacher ne rendrait pas une ligne de
-   contenu.
+   Elle ne se retire pas comme la barre du haut sur telephone, ou la place
+   verticale est comptee -- 54 px sur 812. Ici la barre coute de la largeur,
+   jamais de la hauteur : la cacher ne rendrait pas une ligne de contenu.
 
-   Mais la question designe un vrai defaut, mesure : dans une fenetre de 560 px
-   de haut, son contenu en fait 655. Le pied depassait donc de 95 px, et
-   `overflow: visible` sur un element colle le rendait **inatteignable** -- ni le
-   patrimoine net, ni le temoin de sauvegarde, et aucun defilement ne pouvait les
-   ramener. C'est le cas qu'on ne voit jamais en developpant sur un grand ecran.
+   Dans une fenetre de 560 px de haut, son contenu en fait 655. Avec
+   `overflow: visible`, un element colle laisserait ce pied **inatteignable** --
+   ni le patrimoine net, ni le temoin de sauvegarde, et aucun defilement ne
+   pourrait les ramener. C'est le cas qu'on ne voit jamais en developpant sur
+   un grand ecran.
 
    Elle defile donc en elle-meme quand elle ne tient pas. `contain` pour que le
    geste ne se propage pas a la page une fois le bas atteint : sinon lire le pied
@@ -434,7 +426,7 @@ input, textarea,
   transition: transform .18s cubic-bezier(.34, 1.28, .48, 1),
               box-shadow .18s ease, filter .18s ease;
 }
-/* Sous `hover: hover` seulement, et c'est un correctif.
+/* Sous `hover: hover` seulement.
 
    Sur un ecran tactile, `:hover` reste colle apres un appui jusqu'a ce qu'on
    touche ailleurs. Le halo violet resterait donc allume sur le T une fois qu'on
@@ -477,14 +469,6 @@ input, textarea,
   .brand.tape .brand-mark { transform: none; }
 }
 .brand-vue { display: none; }
-/* Le rayon suit celui du dessin, mesure sur le fichier source : 204 px de rayon
-   sur une tuile de 880, soit 23 %. En pourcentage et non en pixels, parce que la
-   meme image sert a 34 px dans la barre laterale et a 38 px dans le tiroir -- un
-   rayon fixe arrondissait deux fois differemment le meme coin.
-
-   Et sans bordure : la nouvelle icone porte son propre lisere violet. Le
-   `1px solid` d'avant existait parce que l'ancienne icone etait un carre plein
-   bord a bord, qui avait besoin qu'on lui dessine un cadre. */
 .brand-mark {
   width: 34px; height: 34px; border-radius: 23%; flex-shrink: 0; display: block;
   object-fit: cover;
@@ -503,9 +487,9 @@ input, textarea,
   transition: background .12s, color .12s;
 }
 .nav a .ic { width: 15px; text-align: center; opacity: .8; font-size: 12px; }
-/* Les icones du menu sont des SVG au trait, comme la tabbar : les glyphes
-   texte (U+25C8 U+25CE U+25A6) rendaient differemment selon la police du systeme et
-   faisaient prototype a cote des vraies icones du bas. Meme classe `ic`,
+/* Les icones du menu sont des SVG au trait, comme la tabbar : des glyphes
+   texte (U+25C8 U+25CE U+25A6) rendraient differemment selon la police du systeme
+   et feraient prototype a cote des vraies icones du bas. Meme classe `ic`,
    pour heriter des regles de largeur et de masquage existantes. */
 .nav a svg.ic {
   width: 16px; height: 16px; flex: none;
@@ -573,11 +557,10 @@ input, textarea,
   background: var(--sidebar-hover); border: 1px solid var(--sidebar-border);
   border-radius: var(--radius-sm); padding: 11px 12px; display: flex; flex-direction: column; gap: 2px;
 }
-/* Ce bloc portait sa propre garde contre le surlignage, ecrite quand on a cru
-   que l'aplat violet du patrimoine net etait une selection -- il venait en fait
-   d'une animation sans `fill-mode`, et un test le tient depuis. La garde reste
-   juste, mais elle n'est plus a elle : la regle de `body` la couvre, et une
-   selection tiree depuis ailleurs ne peut plus commencer nulle part. */
+/* Aucune garde contre le surlignage propre a ce bloc : la regle de `body` la
+   couvre, et une selection tiree depuis ailleurs ne peut commencer nulle part.
+   L'aplat violet qui peut s'y montrer n'est pas une selection mais le lavis
+   d'une valeur mise a jour, eteint au repos ; un test le tient. */
 
 .sb-label { font-size: var(--font-xs); color: var(--sidebar-faible); text-transform: uppercase; letter-spacing: .06em; }
 .sb-net strong { font-size: var(--font-xl); font-weight: 700; letter-spacing: -.03em; color: var(--sidebar-ink); }
@@ -657,9 +640,9 @@ input, textarea,
 /* IL PASSE A LA LIGNE DE LUI-MEME, ET C'EST AU STYLE DE LE DIRE.
 
    Les deux branches du pas n'ont pas la meme forme : celle de la question
-   pose une rangee de deux boutons, qui occupe sa ligne, et le renvoi tombait
+   pose une rangee de deux boutons, qui occupe sa ligne, et le renvoi tomberait
    donc dessous ; celle d'un pas rouvert n'a qu'un bouton, reste en ligne, et
-   le renvoi venait se coller a sa droite. Deux places pour un meme element
+   le renvoi viendrait se coller a sa droite. Deux places pour un meme element
    selon l'ecran, sans que rien ne le decide.
 
    `block` tranche pour les deux. `width: fit-content` garde le souligne sous
@@ -731,7 +714,7 @@ body.nav-open .burger span::after  { transform: translateX(-50%) translateY(-6px
 
 /* Pied du menu : les reglages d'affichage, a l'ecart des destinations.
    `margin-top: auto` les pousse tout en bas -- d'ou le `flex: 1` sur le menu,
-   sans quoi la rangee restait collee sous "Preferences".
+   sans quoi la rangee resterait collee sous "Preferences".
 
    L'alignement se calcule : le retrait des liens du menu moins le rembourrage
    propre du bouton, pour que le bord gauche des icones tombe sur celui du
@@ -784,9 +767,9 @@ body.nav-open .burger span::after  { transform: translateX(-50%) translateY(-6px
   border-radius: var(--radius-xs); transition: opacity .15s, color .15s, background .15s;
 }
 /* ANCREE A DROITE DU BOUTON, ET NON CENTREE SUR LUI. Mesure a 390 px, sur un
-   numero de vingt-sept caracteres : centree, la zone depassait de neuf pixels
+   numero de vingt-sept caracteres : centree, la zone depasserait de neuf pixels
    la boite du bouton -- invisible, mais la ligne ne se replie pas et le
-   debordement se lisait sur son `scrollWidth`. Ancree a droite, elle s'etend
+   debordement se lirait sur son `scrollWidth`. Ancree a droite, elle s'etend
    vers le texte qu'elle copie, ou le doigt est de toute facon, et la ligne
    retombe juste. */
 .btn-copie::after {
@@ -859,28 +842,24 @@ body.discret .acct-val {
 
 /* Le contenu s'arrete de grandir, la page continue de se centrer.
 
-   Sur un ecran de 2 000 px, la colonne de contenu en faisait 1 750, et une
-   courbe de patrimoine a douze points s'y etirait sur toute la largeur : des
-   pixels depenses a eloigner les reperes les uns des autres, pas a montrer
-   davantage. Les cartes a deux colonnes devenaient deux bandes, et l'oeil
-   parcourait 1 700 px pour aller d'un intitule a son montant.
+   Sans plafond, sur un ecran de 2 000 px, la colonne de contenu ferait 1 750 px,
+   et une courbe de patrimoine a douze points s'y etirerait sur toute la
+   largeur : des pixels depenses a eloigner les reperes les uns des autres, pas
+   a montrer davantage. Les cartes a deux colonnes deviendraient deux bandes, et
+   l'oeil parcourrait 1 700 px pour aller d'un intitule a son montant.
 
-   1 480 px visait une grille a trois colonnes confortable. Cette grille n'existe
-   plus : la page la plus large porte une grille de quatre tuiles, et les autres
-   sont des listes. Le plafond gardait donc de la place pour un usage disparu,
-   pendant que les lignes s'etiraient.
+   Aucune grille a trois colonnes ne demande plus de place : la page la plus
+   large porte une grille de quatre tuiles, et les autres sont des listes.
 
    1 100 px, et le chiffre vient d'une mesure, pas d'un gout. Le tableau le plus
    large de l'application -- neuf colonnes, les lignes de titres -- demande 891 px
    pour tenir sur une ligne ; il en recoit 1 002 une fois le remplissage retire.
-   Les tuiles du budget passent de 330 a 248 px de large, ce qui reste au-dessus
-   d'une carte de telephone. Aucun ecran ne deborde, a aucune des largeurs
-   essayees.
+   Les tuiles du budget font 248 px de large, ce qui reste au-dessus d'une carte
+   de telephone. Aucun ecran ne deborde, a aucune des largeurs essayees.
 
-   Ce qu'on y gagne se lit sur une rangee : un intitule et son montant etaient
-   separes de 1 328 px sur un 1 680, pour un tableau de trois colonnes. Le
-   regard n'a pas a faire ce chemin, et deux comptes voisins se comparent
-   d'autant mieux que leurs chiffres sont proches l'un de l'autre.
+   Le regard n'a pas a aller chercher un montant au bout d'une rangee, et deux
+   comptes voisins se comparent d'autant mieux que leurs chiffres sont proches
+   l'un de l'autre.
 
    En dessous, `margin: 0 auto` ne fait rien ; au-dela, il centre. */
 .view {
@@ -918,9 +897,9 @@ td, th, .sb-net strong {
 .t-value { letter-spacing: -.02em; }
 
 /* Safari iOS peint le texte des <button> en bleu, comme un lien, et le fait
-   par `-webkit-text-fill-color` -- qui l'emporte sur `color`. Depuis que les
-   tuiles et les cartes sont cliquables, tous les montants qu'elles portent
-   virraient au bleu sur iPhone, alors qu'ils restaient normaux ailleurs.
+   par `-webkit-text-fill-color` -- qui l'emporte sur `color`. Les tuiles et
+   les cartes cliquables sont des boutons : sans cette regle, tous les montants
+   qu'elles portent vireraient au bleu sur iPhone, et la seulement.
    On rend donc la couleur du remplissage a `color`, et on coupe l'habillage
    natif que Safari applique par-dessus notre propre style. */
 button, [role="button"] {
@@ -947,11 +926,11 @@ a[href^="tel:"], a[x-apple-data-detectors] {
 }
 @media (hover: hover) { .btn:hover:not(:disabled) { opacity: .85; } }
 /* Le meme anneau que les vingt-cinq autres composants focalisables de
-   l'application. Sans lui, le bouton s'en remettait a l'anneau par defaut du
-   navigateur : la moitie de l'interface disait "tu es ici" en violet, l'autre
+   l'application. Sans lui, le bouton s'en remettrait a l'anneau par defaut du
+   navigateur : la moitie de l'interface dirait "tu es ici" en violet, l'autre
    moitie dans le dialecte du systeme, et un bouton plein clair sur fond clair
-   n'y montrait presque rien. `outline-offset` positif : l'anneau se pose autour
-   du bouton, pas dedans, ou il rognerait le libelle. */
+   n'y montrerait presque rien. `outline-offset` positif : l'anneau se pose
+   autour du bouton, pas dedans, ou il rognerait le libelle. */
 .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* Desactive : plus pale, et le curseur le dit. Aucune regle de survol ni
    d'appui ne s'applique a lui (`:not(:disabled)` sur chacune) : un bouton qui
@@ -962,16 +941,11 @@ a[href^="tel:"], a[x-apple-data-detectors] {
 .btn.ghost { background: var(--surface-1); color: var(--text-primary); border-color: var(--border-strong); }
 @media (hover: hover) { .btn.ghost:hover:not(:disabled) { background: var(--surface-2); opacity: 1; } }
 .btn.sm { padding: 6px 11px; font-size: var(--font-sm); }
-/* Pleine largeur, pour l'action principale d'une fenetre. Le bouton de photo du
-   jour etait un `sm ghost` pose au-dessus de douze champs a remplir : discret
-   devant une grille, il se lisait comme une option alors qu'il fait tout le
-   travail. Une action qui remplace douze gestes doit occuper la largeur des
-   douze. */
 .btn.pleine { display: block; width: 100%; padding: 11px 14px; font-size: var(--font-md); }
 .btn.danger { background: color-mix(in oklab, var(--critical) 90%, #000); color: #fff; }
 .btn.icon { padding: 4px 8px; background: transparent; color: var(--muted); border-color: transparent; font-size: var(--font-base); }
 @media (hover: hover) { .btn.icon:hover:not(:disabled) { color: var(--critical); background: var(--surface-2); } }
-/* La cible du doigt, plus grande que le dessin. Un bouton-icone mesurait 22 a
+/* La cible du doigt, plus grande que le dessin. Un bouton-icone mesure 22 a
    29 px selon l'endroit, quand le minimum tenable au doigt est 24 : sous cette
    taille, on atteint son voisin une fois sur trois. L'agrandir pour de vrai
    ferait un aplat la ou il faut un signe discret -- le seul moyen d'avoir les
@@ -983,7 +957,7 @@ a[href^="tel:"], a[x-apple-data-detectors] {
    surtout pas de fond : c'est une surface a viser, pas a voir. */
 .btn.icon { position: relative; }
 /* Six pixels, et pas huit, y compris pour les `xs` de 22 px : a huit, la croix
-   de la carte de rappel mordait de deux pixels sur le bord de "Plus tard", son
+   de la carte de rappel mordrait de deux pixels sur le bord de "Plus tard", son
    voisin a six pixels d'ecart. Une cible etendue ne doit jamais empieter sur une
    autre -- et surtout pas quand c'est l'action destructive qui gagne du terrain
    sur celle qui ne fait que reporter. Six suffisent : 34 px pour le plus petit
@@ -1018,10 +992,9 @@ input, select, textarea {
 }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 input[type=number] { text-align: right; font-variant-numeric: tabular-nums; }
-/* Le premier `textarea` de l'application. Deux endroits en avaient besoin : une
-   adresse et la note d'un mois, deux textes qu'une ligne coupait en plein
-   milieu -- l'adresse du fixture demande 359 px pour 311 disponibles, et rien ne
-   disait qu'il en manquait.
+/* Un `textarea` pour deux textes qu'une ligne couperait en plein milieu : une
+   adresse et la note d'un mois -- l'adresse du fixture demande 359 px pour 311
+   disponibles, et rien ne dirait qu'il en manque.
 
    `resize: vertical` et non `both` : elargir un champ au-dela de sa carte le
    ferait deborder d'une mise en page qui ne l'attend pas. La hauteur, elle, se
@@ -1049,20 +1022,20 @@ textarea { resize: vertical; line-height: 1.45; }
 }
 
 /*      Un menu deroulant sait deja quelle largeur il lui faut : celle de sa
-        plus longue option. C'est `.field`, colonne flex, qui l'etirait de
-        force sur toute la carte -- d'ou "1 000 EUR" dans une boite de 320 px.
-        On lui rend sa largeur naturelle. Un menu de montants se serre, un
-        menu de noms de comptes reste large, sans qu'on ait a les distinguer.
+        plus longue option. `.field`, colonne flex, l'etirerait de force sur
+        toute la carte -- "1 000 EUR" dans une boite de 320 px. On lui rend sa
+        largeur naturelle. Un menu de montants se serre, un menu de noms de
+        comptes reste large, sans qu'on ait a les distinguer.
         Le plafond reste, pour l'option a rallonge -- celui d'un texte libre, et
         non 20 em : "Oui, chercher les cours automatiquement" demande 21,3 em
-        et "Automatique (place de reference du titre)" 22,5, donc les deux se
-        coupaient au milieu d'un mot. Un menu natif tronque sans rien dire ;
+        et "Automatique (place de reference du titre)" 22,5, que 20 em
+        couperaient au milieu d'un mot. Un menu natif tronque sans rien dire ;
         `text-overflow` ajoute l'ellipse quand le conteneur, lui, se resserre.
 
         `min(28em, 100%)` et non 28 em seuls : un menu prend la largeur de sa
         plus longue option sans regarder ou il est pose, et 28 em valent 364 px
-        quand la carte n'en offre que 311 a 375 px. Il sortait alors de l'ecran,
-        ou les pixels au-dela du bord sont perdus. */
+        quand la carte n'en offre que 311 a 375 px. Il sortirait alors de
+        l'ecran, ou les pixels au-dela du bord sont perdus. */
 .field select {
   width: auto; align-self: start;
   max-width: min(28em, 100%); text-overflow: ellipsis;
@@ -1097,23 +1070,23 @@ table .field :is(input, select) { max-width: none; }
 
    Les plafonds ci-dessus ont leur raison hors grille : un champ seul sur une
    ligne n'a pas besoin d'une boite de 320 px pour "1 000 EUR". Mais dans une
-   rangee, ils donnaient quatre largeurs differentes sur une meme fiche -- 117 px
-   pour un nombre, 160 pour un menu, 299 pour un texte serre, 364 pour un texte
-   libre -- et rien ne s'alignait avec rien. C'est la grille qui decide de la
-   largeur d'une cellule ; le champ, lui, l'occupe.
+   rangee, ils donneraient quatre largeurs differentes sur une meme fiche --
+   117 px pour un nombre, 160 pour un menu, 299 pour un texte serre, 364 pour un
+   texte libre -- et rien ne s'alignerait avec rien. C'est la grille qui decide
+   de la largeur d'une cellule ; le champ, lui, l'occupe.
 
    Le resultat tient les deux : deux champs d'une `g-2` sont egaux, trois d'une
    `g-3` aussi, et les rangees successives s'alignent puisqu'elles partagent la
    largeur de la carte. Un champ hors grille garde son plafond.
 
-   `align-self` est remis a son defaut : `.field select` le passait a `start`,
-   ce qui laissait le menu a sa largeur naturelle meme avec `width: 100%`.
+   `align-self` est remis a son defaut : `.field select` le passe a `start`,
+   ce qui laisserait le menu a sa largeur naturelle meme avec `width: 100%`.
 
    Enfant direct seulement, et c'est essentiel : une cellule de grille est un
-   enfant de la grille, jamais un descendant. Le combinateur descendant attrapait
-   le moindre champ pose dans une carte posee dans une grille, et "Francais"
-   s'affichait alors dans un menu de 442 px sur la page Preferences. Un champ
-   n'est etire que s'il est lui-meme la cellule. */
+   enfant de la grille, jamais un descendant. Un combinateur descendant
+   attraperait le moindre champ pose dans une carte posee dans une grille, et
+   "Francais" s'afficherait alors dans un menu de 442 px sur la page
+   Preferences. Un champ n'est etire que s'il est lui-meme la cellule. */
 .grid > .field :is(input, select, textarea) {
   max-width: none; width: 100%; align-self: stretch;
 }
@@ -1121,9 +1094,9 @@ table .field :is(input, select) { max-width: none; }
 
    Deux champs cote a cote, deux libelles de hauteur differente : "Valeur
    estimee aujourd'hui (EUR)" passe a la ligne quand "Prix d'acquisition (EUR)"
-   tient sur une, et les deux saisies se retrouvaient decalees de la hauteur
-   d'une ligne. C'est la meme faute que la paire quantite / prix de revient,
-   corrigee la sur le conteneur ; ici les cellules sont deja etirees a la hauteur
+   tient sur une, et les deux saisies se retrouveraient decalees de la hauteur
+   d'une ligne. C'est le meme cas que la paire quantite / prix de revient,
+   regle la sur le conteneur ; ici les cellules sont deja etirees a la hauteur
    de la rangee, donc c'est a l'interieur du champ que l'espace doit se placer.
 
    `margin-bottom: auto` sur le LIBELLE et non `margin-top: auto` sur la saisie :
@@ -1156,7 +1129,7 @@ table .field :is(input, select) { max-width: none; }
 
    Dans l'en-tete, a droite du titre, deux textes de longueurs tres differentes
    seraient pousses aux deux bords par `space-between`. En francais,
-   "en % de ton patrimoine financier . 66 200 EUR" et "Repartition globale"
+   "en % de ton patrimoine financier . 50 000 EUR" et "Repartition globale"
    se rejoindraient au milieu et se chevaucheraient sur un telephone.
 
    Sous le titre, elle se lit comme ce qu'elle est : la legende de la carte, pas
@@ -1170,12 +1143,12 @@ table .field :is(input, select) { max-width: none; }
 /* Une bascule posee dans un en-tete de carte se cale au bord droit, et y reste
    quand elle passe a la ligne.
 
-   `space-between` distribue ligne par ligne : seule sur la seconde, elle partait
-   a gauche. Le cas se produit en francais, ou "Evolution du patrimoine" prend
-   179 des 311 px d'une carte a 375 px quand l'anglais "Wealth over time" n'en
-   prend que 126 -- la meme carte se replie dans une langue et pas dans l'autre.
-   C'est la meme regle que pour la bascule du grand chiffre, et c'est la meme
-   raison : le bord droit est celui des commandes. */
+   `space-between` distribue ligne par ligne : seule sur la seconde, elle
+   partirait a gauche. Le cas se produit en francais, ou "Evolution du
+   patrimoine" prend 179 des 311 px d'une carte a 375 px quand l'anglais
+   "Wealth over time" n'en prend que 126 -- la meme carte se replie dans une
+   langue et pas dans l'autre. C'est la meme regle que pour la bascule du grand
+   chiffre, et c'est la meme raison : le bord droit est celui des commandes. */
 .card-head > .segmented { margin-left: auto; }
 /* Un intitule et sa precision, empiles dans l'en-tete.
 
@@ -1195,9 +1168,9 @@ table .field :is(input, select) { max-width: none; }
 
    Sur la ligne du titre, a droite, UNE chose au plus : une information
    discrete, ou l'action de la carte, ou une bascule. Deux boutons de meme
-   poids s'y disputaient l'attention, et une precision posee a cote d'un bouton
-   flottait entre les deux. Une precision qui accompagne une action se range
-   sous le titre (`.tete-titre`).
+   poids s'y disputeraient l'attention, et une precision posee a cote d'un
+   bouton flotterait entre les deux. Une precision qui accompagne une action se
+   range sous le titre (`.tete-titre`).
 
    Ce qui regle la liste descend en dessous, en deux rangees partagees par
    toutes les cartes qui en ont besoin : les filtres d'abord (`.carte-filtres`),
@@ -1235,15 +1208,15 @@ table .field :is(input, select) { max-width: none; }
 /* Deux boutons du meme geste passent a la ligne ensemble, ou pas du tout, et
    mesurent pareil.
 
-   En-tete de carte souple, ils tombaient un par un : "+ Rentree" restait en
-   haut a droite contre le selecteur d'annee, "+ Depense" descendait seul a
-   gauche sous le sous-titre, a l'autre bout de la rangee. Deux entrees de la
-   meme paire lues comme deux commandes sans rapport. Un seul element de flex,
-   donc un seul point de rupture.
+   Dans un en-tete de carte souple, ils tomberaient un par un : "+ Rentree"
+   resterait en haut a droite contre le selecteur d'annee, "+ Depense"
+   descendrait seul a gauche sous le sous-titre, a l'autre bout de la rangee.
+   Deux entrees de la meme paire lues comme deux commandes sans rapport. Un seul
+   element de flex, donc un seul point de rupture.
 
    Une grille a colonnes egales, et non un flex, pour la meme raison que les
    rangees de boutons d'une fiche : en flex, la longueur du libelle decide de la
-   largeur, et deux boutons du meme geste finissaient a 77 et 120 px l'un
+   largeur, et deux boutons du meme geste finiraient a 77 et 120 px l'un
    au-dessus de l'autre. Des colonnes en `1fr` dans un conteneur de largeur
    naturelle prennent toutes la taille de la plus large : les deux boutons
    mesurent celui qui en demande le plus, sans qu'aucun libelle se replie. */
@@ -1270,11 +1243,10 @@ table .field :is(input, select) { max-width: none; }
   color: var(--text-secondary);
 }
 
-/* UNE CASE ET SON LIBELLE FONT UNE LIGNE, et il fallait l'ecrire. La classe
-   existait dans le gabarit sans aucune regle en face : la case tombait donc
-   sur sa propre ligne, au-dessus du texte qu'elle commande, et le centrage du
-   pied de fenetre la posait au milieu. On lisait un intitule sans savoir a quoi
-   la case se rapportait.
+/* UNE CASE ET SON LIBELLE FONT UNE LIGNE. Sans regle en face de la classe du
+   gabarit, la case tomberait sur sa propre ligne, au-dessus du texte qu'elle
+   commande, et le centrage du pied de fenetre la poserait au milieu : on
+   lirait un intitule sans savoir a quoi la case se rapporte.
    `align-items: start` et non `center` : le libelle porte une bulle d'aide en
    dessous, donc il fait deux lignes, et une case centree sur ces deux lignes
    flotte a cote de rien. Elle s'aligne sur la premiere. */
@@ -1283,7 +1255,7 @@ table .field :is(input, select) { max-width: none; }
   padding: 7px 2px; cursor: pointer; text-align: left;
 }
 /* `width: auto` : la regle generique des champs met tout `input` a pleine
-   largeur, case a cocher comprise, et le libelle etait repousse hors de la
+   largeur, case a cocher comprise, et le libelle serait repousse hors de la
    fenetre, replie sur quatre lignes. */
 .field-case > input { flex: none; width: auto; padding: 0; margin: 3px 0 0; }
 .field-case > span { display: block; }
@@ -1291,7 +1263,7 @@ table .field :is(input, select) { max-width: none; }
 /* L'etablissement sous le nom d'un champ de releve. `min-height` plutot que
    rien : la ligne garde sa place quand elle est vide -- le cas d'un nom qui
    porte deja sa banque -- et les douze champs de la grille restent alignes.
-   Sans elle, un seul libelle sur deux lignes decalait son champ d'un cran. */
+   Sans elle, un seul libelle sur deux lignes decalerait son champ d'un cran. */
 .f-etab {
   display: block; min-height: 1.15em; line-height: 1.15;
   font-weight: 500; font-size: var(--font-xs); color: var(--muted);
@@ -1312,10 +1284,10 @@ table .field :is(input, select) { max-width: none; }
 .grid { display: grid; gap: 16px; }
 /* Un enfant de grille refuse par defaut de descendre sous sa largeur
    min-content : une carte au contenu large (un libelle qui ne se coupe pas,
-   un tableau) poussait alors toute la page en debordement horizontal. Les
+   un tableau) pousserait alors toute la page en debordement horizontal. Les
    `minmax(0, ...)` ci-dessous protegent les colonnes, pas leur contenu -- d'ou
-   ce plancher leve explicitement. La regle existait deja cote mobile ; elle
-   manquait sur grand ecran, ou le debordement passait plus inapercu. */
+   ce plancher leve explicitement, a toutes les largeurs : sur grand ecran, le
+   debordement passerait plus inapercu qu'au telephone. */
 .grid > *, .card, .table-wrap { min-width: 0; }
 .g-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .g-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -1323,8 +1295,8 @@ table .field :is(input, select) { max-width: none; }
 .g-auto { grid-template-columns: repeat(auto-fit, minmax(172px, 1fr)); }
 /* `align-items: start` : chaque carte prend sa hauteur, pas celle de sa
    voisine. Par defaut une grille etire ses elements, si bien que "Depenses du
-   mois en cours" -- un grand chiffre et trois ecarts -- s'allongeait sur les
-   480 px de la carte d'a cote et montrait surtout du vide. Deux cartes de
+   mois en cours" -- un grand chiffre et trois ecarts -- s'allongerait sur les
+   480 px de la carte d'a cote et montrerait surtout du vide. Deux cartes de
    hauteurs differentes se lisent mieux qu'une carte a moitie remplie. */
 .g-hero { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); align-items: start; }
 .g-2-1 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
@@ -1341,12 +1313,12 @@ table .field :is(input, select) { max-width: none; }
    creuser une seule carte, ce que `.g-hero` refuse, et a raison.
 
    Sans point a retenir, trois cartes ne s'equilibrent dans aucune
-   disposition : la rangee d'origine revient, le mois et le flux cote a cote,
+   disposition : la rangee simple revient, le mois et le flux cote a cote,
    l'accumulation en dessous.
 
-   A 1180 px et moins, le rendu est celui d'avant, au pixel : la premiere pile
-   garde la grille et ses 16 px, la seconde se fond dans la vue et en reprend
-   l'espacement. */
+   A 1180 px et moins, le rendu est celui de la rangee simple, au pixel : la
+   premiere pile garde la grille et ses 16 px, la seconde se fond dans la vue
+   et en reprend l'espacement. */
 .budget-duo > .duo-col > * { min-width: 0; }
 @media (min-width: 1181px) {
   .grid.budget-duo { align-items: stretch; }
@@ -1394,8 +1366,8 @@ table .field :is(input, select) { max-width: none; }
 .btn:not(.icon) > .ic-geste:first-child { margin-right: .4em; }
 .hero-label > .import-lien { margin-left: auto; text-transform: none; letter-spacing: normal; }
 
-/* La version reduite du controle segmente vit plus bas, apres `.segmented`.
-   Elle etait ecrite ici et n'a jamais rien fait : voir son commentaire. */
+/* La version reduite du controle segmente vit plus bas, apres `.segmented` :
+   ecrite ici, avant lui et a specificite egale, elle perdrait. */
 .hero-sous { font-size: var(--font-sm); margin-top: 2px; text-transform: none; letter-spacing: 0; }
 
 .bien { padding: 12px 0; border-bottom: 1px solid var(--grid); }
@@ -1419,11 +1391,11 @@ table .field :is(input, select) { max-width: none; }
    Ce bloc precede volontairement les regles qui donnent leur taille aux
    montants : `font: inherit` neutralise le style que le navigateur impose
    aux <button>, et doit donc ceder ensuite a `.hero-value`. Place apres, il
-   ramenait le patrimoine de 52 px a 14 px. */
+   ramenerait le patrimoine de 52 px a 14 px. */
 /* Le montant est un bouton : il masque les chiffres au clic. Ce qu'on touche
-   pour agir ne doit pas se comporter comme du texte -- c'est desormais vrai de
-   toute l'application, par la regle posee sur `body`, et ce bouton n'a plus de
-   garde a lui. */
+   pour agir ne doit pas se comporter comme du texte -- c'est vrai de toute
+   l'application, par la regle posee sur `body`, et ce bouton n'a pas de garde
+   a lui. */
 .val-masquable {
   background: none; border: none; padding: 0; cursor: pointer;
   color: inherit; font: inherit; letter-spacing: inherit; text-align: left;
@@ -1451,28 +1423,28 @@ table .field :is(input, select) { max-width: none; }
    plutot que de flotter en haut, ou elle aurait concurrence le grand chiffre.
    `min-width: 0` sur la colonne gauche, sans quoi un montant a sept chiffres
    refuserait de se laisser comprimer et pousserait la courbe hors de la carte. */
-/* MOITIE-MOITIE, ET LE PARTAGE NE DEPEND PLUS DU CONTENU.
+/* MOITIE-MOITIE, ET LE PARTAGE NE DEPEND PAS DU CONTENU.
 
    Laisser le contenu decider ne tient pas. `3fr 2fr` donnerait toujours ses
-   trois cinquiemes a la colonne de gauche, meme quand "49 500 EUR" n'en demande
+   trois cinquiemes a la colonne de gauche, meme quand le montant n'en demande
    que la moitie : le reste deviendrait un blanc entre le texte et la courbe.
    `fit-content(60%)` rendrait a la courbe TOUT ce que le texte ne prend pas :
-   sur un ecran large, "50 600 EUR" ne demande pas grand-chose, et la courbe
-   s'etirerait sur les trois quarts de la carte pour illustrer un chiffre ecrit
-   a cote.
+   sur un ecran large, un montant a cinq chiffres ne demande pas grand-chose, et
+   la courbe s'etirerait sur les trois quarts de la carte pour illustrer un
+   chiffre ecrit a cote.
 
    Deux fractions egales tranchent : chaque colonne prend la moitie de ce qui
    reste APRES l'ecart, a toutes les largeurs, quelle que soit la longueur du
-   montant. Mesure a 1440 : la courbe passe de 750 a 485 px.
+   montant. Mesure a 1440 : la courbe fait 485 px.
 
    `min-content` EST LA SEULE EXCEPTION, ET ELLE EST MESUREE. Le `clamp()` du
    grand chiffre suit la largeur de la fenetre, pas celle de sa colonne : a
-   375 px il reste a 34 px de police, et "4 200 909 EUR" demande alors 166 px
-   la ou la moitie n'en donne que 148 -- les separateurs de milliers sont
-   insecables, rien ne se replie. Avec `minmax(0, 1fr)` le montant debordait de
-   dix-huit pixels ; avec `minmax(min-content, 1fr)` la colonne de lecture
-   grandit juste assez (166/129) et seulement dans ce cas. Un patrimoine
-   ordinaire garde ses deux moities exactes. */
+   375 px il reste a 34 px de police, et un montant a sept chiffres demande
+   alors 166 px la ou la moitie n'en donne que 148 -- les separateurs de
+   milliers sont insecables, rien ne se replie. Avec `minmax(0, 1fr)` le
+   montant deborderait de dix-huit pixels ; avec `minmax(min-content, 1fr)` la
+   colonne de lecture grandit juste assez (166/129) et seulement dans ce cas.
+   Un patrimoine ordinaire garde ses deux moities exactes. */
 .hero-haut {
   display: grid; grid-template-columns: minmax(min-content, 1fr) minmax(0, 1fr);
   align-items: end; gap: 16px;
@@ -1496,22 +1468,11 @@ table .field :is(input, select) { max-width: none; }
   min-width: 0;
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
 }
-/* SOUS 560 PX, ELLE S'EFFACE, ET LA RAISON EST UNE PROPORTION, PAS UNE CASSE.
-   Mesure faite a 375 : la colonne de lecture tombe de 311 a 167 px, la courbe
-   prend son plancher de 120. Rien ne deborde et le montant tient encore sur une
-   ligne, meme a sept chiffres -- `clamp()` le ramene a 38 px et "4 200 909 EUR"
-   y entre. Ce qui ne tient pas, c'est le partage : quarante pour cent de la
-   colonne ou l'on vient lire un chiffre, donnes a l'illustration de ce meme
-   chiffre, ecrit en toutes lettres deux lignes plus haut. Sur l'ecran ou cette
-   carte se lit vraiment, l'illustration cede.
-   Rien ne reste a sa place : la colonne gauche reprend toute la largeur, et la
-   carte retrouve exactement la mise en page qu'elle avait. */
-/* ELLE RESTE A DROITE A TOUTES LES LARGEURS, telephone compris. Deux essais
-   l'ont precede et aucun ne tenait : l'effacer sous 560 px la faisait
-   simplement manquer, la passer sous la lecture l'eloignait du chiffre qu'elle
-   illustre. A 375 px la lecture tombe a 167 px et la courbe prend son plancher
-   de 120 : rien ne deborde, et le montant tient sur une ligne meme a sept
-   chiffres, `clamp()` le ramenant a 38 px.
+/* ELLE RESTE A DROITE A TOUTES LES LARGEURS, telephone compris. L'effacer sous
+   560 px la ferait simplement manquer, la passer sous la lecture l'eloignerait
+   du chiffre qu'elle illustre. A 375 px, la colonne `min-content` decrite plus
+   haut garde le montant sur une ligne, meme a sept chiffres, et la courbe
+   prend ce qui reste : rien ne deborde.
 
    AUCUNE HAUTEUR IMPOSEE EN CSS SUR LE SVG, ET C'EST UN PIEGE MESURE. Poser
    `height` ne l'aplatit pas : sa `viewBox` se recentre pour tenir dans la
@@ -1550,10 +1511,10 @@ table .field :is(input, select) { max-width: none; }
 .tiede { color: var(--serious); }
 
 /* Un credit en cours n'est pas une alerte. Le rouge de `.down` dit "quelque
-   chose ne va pas" -- un depassement de budget, une moins-value -- et il
-   s'affichait sur le capital restant du, qui n'est ni bon ni mauvais : c'est
-   une soustraction choisie, dans une addition qui la mentionne. Le signe moins
-   porte deja tout le sens, la couleur n'a rien a ajouter. */
+   chose ne va pas" -- un depassement de budget, une moins-value -- et le capital
+   restant du n'est ni bon ni mauvais : c'est une soustraction choisie, dans
+   une addition qui la mentionne. Le signe moins porte deja tout le sens, la
+   couleur n'a rien a ajouter. */
 .dette { color: var(--text-secondary); }
 
 .tile {
@@ -1707,4 +1668,3 @@ button.pf-total:focus-visible, button.pf-mesure:focus-visible {
 }
 .flash-target { animation: flash-target 1.6s ease; border-radius: var(--radius); }
 @media (prefers-reduced-motion: reduce) { .flash-target { animation: none; outline: 2px solid var(--accent); } }
-

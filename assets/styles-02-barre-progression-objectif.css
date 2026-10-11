@@ -18,10 +18,10 @@
 
 /* Le montant et sa legende cote a cote, pas aux deux bouts de la carte.
 
-   `space-between` marchait sur un telephone, ou 343 px font une paire serree.
-   Sur un ecran de 1 280 px il jetait le chiffre tout a gauche et la phrase tout
-   a droite, avec neuf cents pixels de vide entre les deux : deux ilots au lieu
-   d'une lecture. "Ca manque de professionnalisme" -- c'est d'abord ca.
+   `space-between` tient sur un telephone, ou 343 px font une paire serree.
+   Sur un ecran de 1 280 px il jetterait le chiffre tout a gauche et la phrase
+   tout a droite, avec neuf cents pixels de vide entre les deux : deux ilots au
+   lieu d'une lecture.
 
    Alignes a gauche, ils se lisent d'un trait a toutes les largeurs. La barre,
    elle, garde la pleine largeur : c'est une jauge, elle doit se comparer a son
@@ -33,13 +33,12 @@
 .goal-bar { height: 12px; border-radius: var(--radius-pill); background: var(--surface-2); overflow: hidden; border: 1px solid var(--border); }
 /* L'accent, et non le degrade du budget.
 
-   La barre portait `--degrade-budget`, bleu vers rose, cree pour accorder la
-   jauge de l'accueil et les barres de categories du Budget. Sur Projection,
-   aucun autre element ne le porte : le graphique juste en dessous parle en azur
-   et en turquoise. La barre etait donc la seule couleur decorative de l'ecran,
-   et un degrade qui ne represente aucune quantite se lit comme de l'ornement.
-   "Ca ne colle pas au graphique plus bas" : les deux ne partageaient
-   litteralement aucune couleur. */
+   `--degrade-budget`, bleu vers rose, accorde entre elles les barres de
+   categories du Budget. Sur Projection, aucun autre element ne le porte : le
+   graphique juste en dessous parle en azur et en turquoise. Le degrade y
+   serait la seule couleur decorative de l'ecran, sans une teinte commune avec
+   le graphique, et un degrade qui ne represente aucune quantite se lit comme
+   de l'ornement. */
 .goal-fill { height: 100%; border-radius: var(--radius-pill); background: var(--accent); }
 .goal-foot { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 4px 12px;
              font-size: var(--font-sm); color: var(--text-secondary); }
@@ -114,20 +113,20 @@ dt .sub .mois-lien { font: inherit; color: inherit; }
 }
 /* Une jauge de cible, deux couleurs et non trois.
 
-   Le bleu de `series-1` peignait la barre sous la cible : c'est la teinte des
-   liquidites, elle n'avait rien a dire ici. Un degrade de l'accent la remplace --
-   c'est la page des objectifs, et le violet y est la couleur de ce qu'on decide.
+   Pas le bleu de `series-1` sous la cible : c'est la teinte des liquidites,
+   elle n'a rien a dire ici. Un degrade de l'accent porte la barre -- c'est la
+   page des objectifs, et le violet y est la couleur de ce qu'on decide.
 
-   Le depassement porte le meme violet. Il a ete rouge, puis ambre, et les deux
-   etaient faux pour la meme raison : detenir plus que sa cible n'est pas un
-   incident, c'est un ecart a arbitrer, exactement comme en detenir moins. Une
-   couleur d'alerte sur la moitie des cas faisait d'une page ou rien ne va mal la
-   plus alarmante de l'application.
+   Le depassement porte le meme violet. Ni rouge ni ambre, faux tous les deux
+   pour la meme raison : detenir plus que sa cible n'est pas un incident, c'est
+   un ecart a arbitrer, exactement comme en detenir moins. Une couleur d'alerte
+   sur la moitie des cas ferait d'une page ou rien ne va mal la plus alarmante
+   de l'application.
 
-   Et elle ne servait a rien : le repere de cible est dessine sur la piste, donc
-   le cote se lit a la position de la barre, pas a sa teinte. Le vert reste seul
-   a dire quelque chose -- la cible est atteinte, la seule nouvelle de la carte
-   qui merite sa couleur. */
+   Et elle ne servirait a rien : le repere de cible est dessine sur la piste,
+   donc le cote se lit a la position de la barre, pas a sa teinte. Le vert reste
+   seul a dire quelque chose -- la cible est atteinte, la seule nouvelle de la
+   carte qui merite sa couleur. */
 .reeq-reel { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--radius-pill); }
 .reeq-reel.sous, .reeq-reel.sur {
   background: linear-gradient(90deg,
@@ -187,9 +186,9 @@ dt .sub .mois-lien { font: inherit; color: inherit; }
 .reeq-ecart.a-faire b.renfort, .montant-plan.renfort { color: var(--good-text); }
 .reeq-pied { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
 
-/* La cible se choisit dans une liste, plus au clavier : `width: auto` laisse le
-   selecteur prendre la largeur de son plus long libelle, "100", au lieu des
-   3,4 em taillees pour un champ de saisie. */
+/* La cible se choisit dans une liste, et non au clavier : `width: auto` laisse
+   le selecteur prendre la largeur de son plus long libelle, "100", et non une
+   largeur taillee pour un champ de saisie. */
 .cible-champ {
   width: auto; padding: 3px 6px; font-size: var(--font-sm);
   border: 1px solid var(--border-strong); background: var(--surface-1);
@@ -216,7 +215,7 @@ dt .sub .mois-lien { font: inherit; color: inherit; }
    Un bouton qui l'enveloppe, et non la barre elle-meme faite bouton : elle
    porte `overflow: hidden` -- c'est ce qui decoupe ses segments en pilule -- et
    un pseudo-element de zone sensible y serait donc rogne. Le bouton prend les
-   marges a son compte : la barre garde ses nueve pixels du dessus, le bouton
+   marges a son compte : la barre garde ses neuf pixels du dessus, le bouton
    ajoute cinq pixels sous elle et les reprend en marge negative, donc rien ne
    bouge et la zone sensible fait 28 pixels. Les jauges de cibles, plus serrees
    entre leurs voisines, n'en offrent que 21.
@@ -230,9 +229,9 @@ dt .sub .mois-lien { font: inherit; color: inherit; }
 }
 .role-barre-lien > .role-barre { transition: background .15s ease; }
 @media (hover: hover) { .role-barre-lien:hover > .role-barre { background: var(--surface-3, var(--border)); } }
-/* Les segments sont maintenant petits-enfants de la piste, pas enfants : ils
-   vivent dans `.role-part`. Un selecteur en enfant direct ne les atteindrait
-   plus, et l'appui perdrait son retour visuel. */
+/* Les segments sont petits-enfants de la piste, pas enfants : ils vivent
+   dans `.role-part`. Un selecteur en enfant direct ne les atteindrait pas, et
+   l'appui perdrait son retour visuel. */
 .role-barre-lien:active > .role-barre i { opacity: .8; }
 .role-barre-lien:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--radius-pill); }
 .role-legende { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 5px; font-size: var(--font-sm); color: var(--text-secondary); }
@@ -244,10 +243,9 @@ dt .sub .mois-lien { font: inherit; color: inherit; }
 /* Une liste qui est la lecture principale, sur tous les ecrans. `.liste-mobile`
    s'efface au-dela de 768 px, parce qu'elle est le repli d'une grille ; celle-ci
    non, parce qu'aucune grille ne l'attend au-dessus -- la liste EST l'affichage.
-   Les releves et le journal des ventes la portent. Le nom ne dit plus "releves"
-   pour cette raison : la deuxieme carte a en avoir besoin s'est retrouvee devant
-   une classe qui parlait de la premiere, et a repris `.liste-mobile`, invisible
-   sur un ecran large. */
+   Les releves et le journal des ventes la portent, et son nom ne cite aucune
+   des deux cartes : une classe nommee d'apres l'une pousserait l'autre vers
+   `.liste-mobile`, invisible sur un ecran large. */
 .liste-principale { display: block; }
 tr.ligne-ouvre { cursor: pointer; }
 @media (hover: hover) { tr.ligne-ouvre:hover { background: var(--surface-2); } }
@@ -285,11 +283,10 @@ button.lien-vue {
   color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 /* LA COLONNE DES CHIFFRES NE PEUT PAS ECRASER LE NOM. En `flex: none`, elle
-   prenait toute la largeur que son contenu demandait, et le nom, en
-   `min-width: 0`, absorbait le choc : "MSCI World" s'ecrivait sur trois
-   lignes derriere un montant a vingt-sept chiffres. Un tel montant n'entre
-   plus dans le modele ; mais un patrimoine reel a dix chiffres existe, et la
-   ligne doit tenir sans lui non plus. Plafond a soixante pour cent, retour a
+   prendrait toute la largeur que son contenu demande, et le nom, en
+   `min-width: 0`, absorberait le choc : un nom de fonds s'ecrirait sur trois
+   lignes derriere un montant tres long. Un patrimoine a dix chiffres existe,
+   et la ligne doit tenir avec lui. Plafond a soixante pour cent, retour a
    la ligne autorise dans le nombre, et le nom garde au moins ses quarante. */
 .ml-chiffres {
   flex: none; min-width: 0; max-width: 60%;
@@ -357,13 +354,11 @@ button.lien-vue {
 }
 
 /* ---------------- Flux du budget ----------------
-   Les barres des categories d'un mois, dans la carte de saisie. Elles ont servi
-   un temps aux deux cartes du haut de Budget, et c'est precisement ce qui les
-   faisait se ressembler : un meme composant pour deux questions. Le partage du
-   revenu a maintenant sa forme, juste en dessous.
-   `.flow-lien` etait parti avec : plus une seule de ces barres ne menait
-   quelque part. `.flow-pct` revient, dans le panneau qui montre tous les postes
-   -- la quatrieme colonne de la grille l'attendait deja. */
+   Les barres des categories d'un mois, dans la carte de saisie, et le panneau
+   qui montre tous les postes, ou `.flow-pct` occupe la quatrieme colonne de la
+   grille. Le partage du revenu a sa propre forme, juste en dessous : un meme
+   composant pour deux questions ferait se ressembler deux cartes qui n'y
+   repondent pas pareil. */
 .flow { display: flex; flex-direction: column; gap: 10px; }
 /* La colonne du pourcentage n'existe que si un pourcentage l'occupe.
 
@@ -496,10 +491,10 @@ tfoot tr.pied-note td {
   font-size: var(--font-xs); color: var(--muted); white-space: normal;
 }
 /* Une cellule qui porte un nom porte du texte, pas un nombre : elle s'aligne a
-   gauche. `td` est a droite par defaut, ce qui est juste pour des montants, et
-   seule la premiere colonne repassait a gauche. Toutes les cellules `.name`
-   etaient premieres sauf une, la note du mois, qui se retrouvait donc alignee
-   comme un chiffre : on lisait le debut de la phrase et la fin sortait du cadre. */
+   gauche. `td` est a droite par defaut, ce qui est juste pour des montants. Une
+   regle qui ne viserait que la premiere colonne manquerait la note du mois,
+   cellule `.name` qui n'est pas premiere : alignee comme un chiffre, on en
+   lirait le debut et la fin sortirait du cadre. */
 td.name { font-weight: 550; text-align: left; }
 
 /* La note d'un mois est de la prose, et la seule du tableau : elle se replie sur
@@ -614,22 +609,22 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 
 .chart { position: relative; width: 100%; }
 /* `overflow: visible` laisse les etiquettes d'axe deborder du viewBox, ce
-   qui est voulu. Mais il laissait aussi une serie hors echelle peindre par
+   qui est voulu. Mais il laisserait aussi une serie hors echelle peindre par
    dessus les cartes suivantes : les series sont donc decoupees dans le SVG
    lui-meme, et le conteneur borne les degats. */
 /* Le SVG du graphique lui-meme, pas n'importe quel SVG a l'interieur : les
    infobulles vivent dans `.chart` et peuvent contenir un montant masque.
-   En selecteur descendant, cette regle etirait le petit oeil a 100 % de la
+   En selecteur descendant, cette regle etirerait le petit oeil a 100 % de la
    largeur de la carte. */
 .chart > svg { display: block; width: 100%; height: auto; overflow: visible; }
 .chart { contain: paint; }
 
-/* Le graphique n'a plus sa garde a lui : elle vivait ici en trois regles, dont
-   la derniere RENDAIT la selection aux paragraphes et aux tableaux de la carte --
-   c'est-a-dire aux montants, aux titres et aux textes d'aide, exactement ce qui
-   ne doit plus se selectionner. La regle de `body`, en tete de fichier, couvre le
-   dessin, ses etiquettes d'axe et la carte qui le porte, sans exception a lever
-   ni ancetre a remonter. */
+/* Le graphique n'a pas de garde a lui contre la selection : la regle de
+   `body`, en tete de fichier, couvre le dessin, ses etiquettes d'axe et la
+   carte qui le porte, sans exception a lever ni ancetre a remonter. Une regle
+   locale qui rendrait la selection aux paragraphes et aux tableaux de la carte
+   la rendrait aux montants, aux titres et aux textes d'aide, exactement ce qui
+   ne doit pas se selectionner. */
 .chart text { font-family: var(--font); }
 .tick { font-size: var(--font-xs); fill: var(--muted); font-variant-numeric: tabular-nums; }
 .tick-strong { fill: var(--text-secondary); font-weight: 600; }
@@ -662,8 +657,8 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
    Elle emprunte tout au reste -- le fond, la bordure, l'ombre, l'intitule en
    petites capitales de `tt-head` -- et ne change que ce qu'une bulle de deux
    lignes demande : un remplissage plus serre, et aucun plancher de largeur.
-   Celui des grandes infobulles, 170 px, la rendait deux fois trop large pour
-   "MARS 2026" et la poussait contre les bords sans raison.
+   Celui des grandes infobulles, 170 px, la rendrait deux fois trop large pour
+   "MARS 2026" et la pousserait contre les bords sans raison.
 
    `tabular-nums` SUR LE MONTANT, ET CE N'EST PAS UNE COQUETTERIE. Le doigt
    glisse d'un mois a l'autre : sans chiffres de largeur egale, la bulle change
@@ -729,16 +724,14 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
    page de trois mille pixels que Safari doit d'abord rasteriser. La premiere
    ouverture trouve ces couches deja pretes -- la page n'a pas bouge depuis un
    moment -- les suivantes arrivent apres un `render()` qui a reconstruit toute
-   la vue et ses graphiques, donc tout est a repeindre. C'est exactement la
-   forme du symptome.
+   la vue et ses graphiques, donc tout est a repeindre.
 
    Ce qu'on perd est presque rien : sous un voile noir a 55 %, trois pixels de
    flou ne se voient pas. Ce qu'on garde, c'est l'assombrissement, qui fait tout
    le travail de separation.
 
-   Meme raisonnement que pour l'ovale du bas, dont `ETAT.md` note deja qu'il est
-   le suspect no 1 des accrocs pendant un geste : un flou et une animation ne
-   doivent pas se disputer le meme compositeur. */
+   Meme raisonnement que pour l'ovale du bas : un flou et une animation ne
+   doivent pas se disputer le meme compositeur pendant un geste. */
 @media (max-width: 900px) {
   .modal { backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
@@ -759,11 +752,11 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
   max-height: min(80dvh, 640px);
   /* La fenetre est une grille, et un element de grille recoit `min-width:
      auto` : il refuse de descendre sous la largeur minimale de son contenu,
-     et cette regle bat `width: 100%` comme `max-width: 100%`. Sur un ecran de
-     375 px, le panneau s'etalait a 399 px des qu'une fiche portait un contenu
-     un peu large -- le tableau, les valeurs, tout finissait 5 px au-dela du
-     bord, hors d'atteinte puisque la page coupe ce qui depasse. Le contenu se
-     replie desormais, comme il aurait toujours du. */
+     et cette regle bat `width: 100%` comme `max-width: 100%`. Sans ce plancher
+     leve, sur un ecran de 375 px, le panneau s'etalerait a 399 px des qu'une
+     fiche porte un contenu un peu large -- le tableau, les valeurs, tout
+     finirait 5 px au-dela du bord, hors d'atteinte puisque la page coupe ce
+     qui depasse. */
   min-width: 0;
   display: flex; flex-direction: column;
   background: var(--surface-1); border: 1px solid var(--border-strong);
@@ -778,11 +771,10 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
      fichier l'applique deja aux bandes collantes du haut. */
   will-change: transform, opacity;
 }
-/* L'en-tete d'une fiche ne se selectionne pas -- pas plus que son corps depuis
-   que la regle de `body` couvre l'application entiere. Les trois declarations
-   qui vivaient ici ne disaient plus rien de neuf ; seuls les champs de saisie du
-   corps gardent leur selection, et c'est l'exception d'en-tete de fichier qui le
-   dit. */
+/* L'en-tete d'une fiche ne se selectionne pas, pas plus que son corps : la
+   regle de `body` couvre l'application entiere, et rien ici n'a a la redire.
+   Seuls les champs de saisie du corps gardent leur selection, et c'est
+   l'exception d'en-tete de fichier qui le dit. */
 .modal-head {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
   padding: 16px 18px 12px; border-bottom: 1px solid var(--grid);
@@ -891,12 +883,6 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
   outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--radius-xs);
 }
 
-/* `.champ-objectif` vivait ici : un champ discret, souligne d'un pointille, pose
-   parmi les trois ecarts du haut de la brique des depenses. Il etait joli et il
-   ne se trouvait pas -- un reglage a besoin de son intitule, pas d'etre pres du
-   regard. L'objectif est redevenu un champ etiquete au bas de la carte, comme
-   dans l'onglet Charges fixes, et cette regle est partie avec lui. */
-
 .modal-panel::before { content: none; }
 @media (max-width: 900px) {
   .modal-panel { touch-action: pan-y; }
@@ -914,8 +900,9 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 .cat-retiree td { opacity: .62; }
 .cat-retiree .tag { margin-left: 8px; }
 /* Les deux gestes d'une categorie tiennent dans une cellule : en colonnes
-   separees, le tableau debordait de son cadre a 375 px et la croix passait hors
-   de l'ecran. `nowrap` pour qu'ils restent cote a cote plutot que de s'empiler. */
+   separees, le tableau deborderait de son cadre a 375 px et la croix passerait
+   hors de l'ecran. `nowrap` pour qu'ils restent cote a cote plutot que de
+   s'empiler. */
 .cat-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; white-space: nowrap; }
 
 /* Le nom d'une fiche -- compte ou etablissement -- en titre plutot qu'en champ
@@ -961,8 +948,6 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
     color-mix(in oklab, var(--teinte) 16%, var(--surface-2)),
     var(--surface-2) 65%);
   padding: 0 12px 0 0;
-  /* Sous la barre du haut, en la lisant : `72px` ecrit ici la supposait plus
-     basse qu'elle n'est, et le bandeau se collait derriere elle. */
   position: sticky; top: var(--h-entete); z-index: 5;
   border-bottom: 1px solid var(--border);
   box-shadow: inset 3px 0 0 var(--teinte);
@@ -982,7 +967,7 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
    facon d'animer une hauteur inconnue sans la mesurer -- `height: auto` ne se
    transitionne pas. La visibilite part APRES le mouvement (delai en fermant,
    aucun en ouvrant) : elle sort le contenu replie du clavier et des lecteurs,
-   le role que tenait l'attribut hidden quand le pli etait sec.*/
+   ce que l'attribut hidden ferait sur un pli sans animation.*/
 .cpt-pli {
   display: grid; grid-template-rows: 0fr; visibility: hidden;
   transition: grid-template-rows .28s cubic-bezier(.22, .61, .36, 1), visibility 0s .28s;
@@ -1041,8 +1026,8 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 }
 /* `max-width` autant que `min-width` : une piste de grille fixe ne retient
    pas un contenu plus large que lui. Sans ces deux bornes, la liste
-   deroulante "Auto, Bloque" gardait sa largeur naturelle et venait couvrir
-   le montant a sa droite. */
+   deroulante "Auto, Bloque" garderait sa largeur naturelle et viendrait
+   couvrir le montant a sa droite. */
 .plc-placement .plc-dispo {
   justify-self: stretch; min-width: 0; max-width: 100%;
 }
@@ -1086,7 +1071,7 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 
 /* La ligne qui porte un bouton "Modifier" cede sa derniere colonne.
 
-   Les 0.9em du bout etaient tailles pour un chevron. Le bouton y serait entre
+   Les 0.9em du bout sont tailles pour un chevron. Le bouton y serait entre
    au chausse-pied, alors que la meme rangee sans bouton n'a aucune raison de
    reserver sa largeur : `:has()` fait dependre la grille de son contenu, comme
    ailleurs dans cette feuille pour les pourcentages de flux.
@@ -1111,10 +1096,9 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 .rw-hors { opacity: .72; }
 
 /* Variante sobre du bouton rouge : la couleur passe dans le texte et le
-   lisere, pas en aplat. Elle n'etait pas limitee a `.ghost` -- a specificite
-   egale avec la regle du bouton plein, elle en repeignait le texte en rouge
-   sans toucher le fond, lui aussi rouge. "Cloturer et supprimer" dans
-   Comptes etait illisible. */
+   lisere, pas en aplat. Elle est limitee a `.ghost` : sans ce filtre, elle
+   atteindrait aussi le bouton plein et en repeindrait le texte en rouge sur
+   un fond lui aussi rouge, illisible. */
 .btn.ghost.danger {
   background: var(--surface-1); color: var(--critical); font-weight: 600;
   border-color: color-mix(in oklab, var(--critical) 75%, transparent);
@@ -1207,7 +1191,7 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 .repart-base { margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--border); }
 /* Un montant ne se coupe pas apres la virgule. La regle mobile qui fait
    replier les cellules de tableau -- necessaire pour les libelles longs --
-   l'emportait sur `nowrap` : ces deux selecteurs sont assez specifiques
+   l'emporterait sinon sur `nowrap` : ces deux selecteurs sont assez specifiques
    pour la battre, et assez etroits pour ne toucher que des montants. */
 .repart-pied dd,
 .card .repart-total td:not(:first-child),
@@ -1218,7 +1202,7 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 }
 .modal-sub.avec-action > .btn { margin-left: auto; }
 .liq-groupe { border-bottom: 1px solid var(--border); }
-/* Le sommaire est un bouton et non plus un `<summary>` : `<details>` ne
+/* Le sommaire est un bouton et non un `<summary>` : `<details>` ne
    s'anime pas, et le pli en grille exige un conteneur qu'on pilote a la
    classe. Il en garde l'allure exacte. */
 .liq-sommaire {
@@ -1345,10 +1329,9 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
   .modal-panel {
     width: 100%;
     /* `vh` sur telephone mesure la fenetre barre d'adresse repliee, pas celle
-       qu'on voit. La feuille faisait donc 88 % d'une hauteur plus grande que
-       l'ecran : son pied, et avec lui la fin du corps defilant, tombaient sous
-       la barre du navigateur. On croyait que le defilement etait casse, alors
-       que la fenetre depassait par le bas.
+       qu'on voit. En `vh`, la feuille ferait 88 % d'une hauteur plus grande que
+       l'ecran : son pied, et avec lui la fin du corps defilant, tomberaient
+       sous la barre du navigateur, et le defilement aurait l'air casse.
        `dvh` suit la fenetre reellement visible. La declaration en `vh` reste
        au-dessus pour les navigateurs qui ignorent `dvh` : meme propriete, la
        derniere comprise gagne. */
@@ -1364,15 +1347,15 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 
 /* "Enregistrer et en ajouter une autre" prend sa ligne, sous les deux autres.
    Six mots ne se mettent pas au coude a coude avec "Annuler" et "Ajouter" :
-   a 375 px les trois boutons faisaient 107 px chacun et le libelle se pliait en
-   quatre. Le pied se replie deja, mais le repli tombait ou il tombait ; une
-   ligne declaree vaut mieux qu'un repli subi.
+   a 375 px les trois boutons feraient 107 px chacun et le libelle se plierait
+   en quatre. Le pied se replie deja, mais la ou le repli tombe ; une ligne
+   declaree vaut mieux qu'un repli subi.
 
    Cette regle vient **apres** le bloc telephone, et ce n'est pas un rangement :
    `.modal-foot .btn { flex: 1 }` y pose `flex-basis: 0`, meme specificite que
-   `.modal-foot .btn-encore`. Ecrite avant, elle perdait -- mesure : trois boutons
-   sur une seule ligne. Meme piege que `.table-serree`, deja note dans
-   `CLAUDE.md` : a specificite egale, c'est l'ordre qui tranche. */
+   `.modal-foot .btn-encore`. Ecrite avant, elle perdrait, et les trois boutons
+   resteraient sur une seule ligne. Meme piege que `.table-serree` : a
+   specificite egale, c'est l'ordre qui tranche. */
 .modal-foot .btn-encore { flex: 1 0 100%; justify-content: center; }
 
 .lancement {
@@ -1538,9 +1521,9 @@ details.pli-reglages > summary::-webkit-details-marker { display: none; }
 .pli-action::after { content: '▾'; display: inline-block; transition: transform .15s; }
 /* `> summary` et non un descendant : le depliant des taux vit A L'INTERIEUR de
    la carte des hypotheses, qui porte la meme classe. Sans cette restriction, la
-   carte ouverte retournait AUSSI le chevron de son enfant ferme -- on lisait
-   "Ouvrir ^" sur un pli qui ne montrait rien, une fleche qui annoncait
-   l'inverse de ce que le clic allait faire.
+   carte ouverte retournerait AUSSI le chevron de son enfant ferme -- on lirait
+   "Ouvrir ^" sur un pli qui ne montre rien, une fleche qui annonce l'inverse
+   de ce que le clic va faire.
 
    La regle vaut pour tout depliant imbrique a venir : le chevron appartient au
    sommaire de son propre depliant, jamais a celui d'un ancetre. */
