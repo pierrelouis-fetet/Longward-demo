@@ -9,19 +9,18 @@ const MODE_KEY   = 'wealth-dashboard:mode';
 
 /* LA PORTEE DU STOCKAGE LOCAL, ET POURQUOI ELLE EXISTE.
 
-   Une seule cle `wealth-dashboard:v1` par navigateur suffisait tant qu'un
-   navigateur ne servait qu'une personne. Des que des comptes existent, la
-   deuxieme qui se connecte ouvre le patrimoine de la premiere et l'ecrase en
-   enregistrant. Ce n'est pas une gene d'affichage, c'est une fuite entre
-   comptes.
+   Une seule cle `wealth-dashboard:v1` par navigateur ne vaut que pour un
+   navigateur qui ne sert qu'une personne. Des que des comptes existent, la
+   deuxieme qui se connecte ouvrirait sans portee le patrimoine de la premiere
+   et l'ecraserait en enregistrant. Ce n'est pas une gene d'affichage, c'est
+   une fuite entre comptes.
 
    La portee est l'identifiant stable du compte, jamais l'adresse : changer
    d'adresse ne doit ni perdre ni reaffecter un patrimoine. Elle est filtree
    parce qu'elle entre dans un nom de clef.
 
-   Vide, les clefs gardent leur nom d'origine : une instance a un seul
-   proprietaire ne voit pas ses donnees demenager parce qu'on a deploye une
-   version plus recente. */
+   Vide, les clefs gardent leur nom sans suffixe : une instance a un seul
+   proprietaire ne voit pas ses donnees demenager d'une version a l'autre. */
 let STORAGE_SCOPE = '';
 
 function setStorageScope(scope) {
@@ -265,28 +264,22 @@ const AFFECTATION_LABEL = Object.fromEntries(AFFECTATIONS);
 /* ============================================================
    LES BASES DE CALCUL, NOMMEES UNE FOIS
    ============================================================
-   Sept montants differents circulaient sous des noms flottants : "Investi"
-   designait deux grandeurs (le brut moins le cash, et le prix de revient du
-   portefeuille), "Total investi" et "Total investissements" designaient la
-   meme, et "Total de vos avoirs" cotoyait "patrimoine brut" et
-   "patrimoine net" pour deux montants distincts. Un lecteur ne pouvait pas
-   savoir si deux chiffres parlaient de la meme chose.
-
-   Un montant, un nom, partout. `de` porte la forme grammaticale des mentions
+   Un montant, un nom, partout. Deux grandeurs sous un meme mot, ou une meme
+   grandeur sous deux mots, et un lecteur ne sait pas si deux chiffres parlent
+   de la meme chose. `de` porte la forme grammaticale des mentions
    "en % de ...", que le francais ne deduit pas du nom.
 
-   AVOIRS et NET restent deux entrees : ils ne coincident que sans credit.
-   Les fondre en un seul mot est exactement la faute que ce projet a payee
-   d'une demi-journee, "Patrimoine total" affichant le net.
+   AVOIRS et NET restent deux entrees : ils ne coincident que sans credit. Un
+   seul mot pour les deux finirait par afficher le net sous un nom qui promet
+   le total.
 
    LE CASH N'A QU'UNE HISTOIRE, ET ELLE EST HIERARCHIQUE.
    "Liquidites" nomme le tout ; dedans, les quatre affectations, et rien
    d'autre. Aucun agregat intermediaire n'a de nom, parce qu'aucun n'a besoin
    d'exister : chaque ecran montre soit le tout, soit les poches. C'est ce qui
-   garantit que trois ecrans racontent la meme chose -- avant, Allocation
-   agregeait courant + precaution + projet sous "Argent disponible", un
-   montant que l'accueil ne connaissait pas et qui portait presque le nom
-   d'une de ses propres parts.
+   garantit que trois ecrans racontent la meme chose -- un sous-total propre a
+   un ecran serait un montant que les autres ne connaissent pas, sous un nom
+   proche de celui d'une poche.
    Les noms des poches viennent d'AFFECTATIONS : une seule source, un seul
    endroit a modifier. */
 const BASES = {
@@ -384,8 +377,8 @@ const TYPES_COMPTE = [
      CTO.
 
      La liste des classes va donc jusqu'a l'immobilier et au non cote : sans
-     `immobilier`, `comptesPourCategorie()` n'offrait jamais l'assurance-vie a
-     qui ajoute une SCPI, et la part restait sans domicile.
+     `immobilier`, `comptesPourCategorie()` n'offrirait jamais l'assurance-vie
+     a qui ajoute une SCPI, et la part resterait sans domicile.
 
      `melange` dit que `titres` n'est pas exclusif ici. Ailleurs, un compte qui
      porte des titres ne porte que des titres, et sa fiche renvoie a Marches ou
@@ -394,8 +387,8 @@ const TYPES_COMPTE = [
 
      `sansCash` : il n'y a pas de "cash a investir" sur un contrat. L'argent
      verse est sur un support des son arrivee, au pire le fonds euros, et
-     proposer les quatre affectations y inventait une poche qui n'existe pas --
-     comptee ensuite dans les liquidites de l'accueil et dans les paliers
+     proposer les quatre affectations y inventerait une poche qui n'existe pas
+     -- comptee ensuite dans les liquidites de l'accueil et dans les paliers
      d'autonomie. Le drapeau ne touche pas a `classes` : "liquidites" y sert
      aussi a accepter un support monetaire, qui est un placement et non du cash.
      Deux choses sous un seul mot, d'ou deux reglages. */
@@ -464,15 +457,12 @@ const TYPES_COMPTE = [
      L'anglais dit Crowdlending, precis. Parts contre pret : la distinction se lit
      en un coup d'oeil, et l'axe du modele apparait -- Longward ne separe pas par
      plateforme mais par ce qu'on detient. */
-  /* "Parts de societe" et non "Placements non cotes" : ce dernier est le nom
-     de la CLASSE `nonCote`, et un type de compte qui le reprenait faisait porter
-     le meme libelle a deux montants differents sur le meme ecran. La carte
-     "Par enveloppe" lisait 11 100 EUR sous ce nom, la carte des classes
-     11 600 EUR sous le meme -- l'ecart etant le compte de financement
-     participatif, qui est du non cote lui aussi.
-
-     Le calcul etait juste des deux cotes. C'est le nom du contenant qui mentait,
-     et c'est exactement ce que ce projet s'interdit : un libelle, un montant.
+  /* "Parts de societe" et non "Placements non cotes" : un type de compte qui
+     reprendrait le nom de la classe `nonCote` ferait porter le meme libelle a
+     deux montants differents sur le meme ecran -- la carte "Par enveloppe"
+     sans le pret participatif, la carte des classes avec, puisqu'il est du non
+     cote lui aussi. Les deux calculs seraient justes, le nom du contenant
+     mentirait : un libelle, un montant.
 
      Un type nomme donc ce qu'on ouvre, une classe ce qu'on detient. "Parts de
      societe" fait la paire avec "Pret participatif" : l'un est du capital,
@@ -482,10 +472,10 @@ const TYPES_COMPTE = [
      `titres` : un autre type qui se diviserait en parts le declarera ici. */
   /* `terminal` : le compte EST le placement, il n'en contient pas d'autres.
 
-     Sans ce drapeau, la fiche d'une participation portait une carte
-     "Placements detenus" ou figurait la participation elle-meme, sous son
+     Sans ce drapeau, la fiche d'une participation porterait une carte
+     "Placements detenus" ou figurerait la participation elle-meme, sous son
      propre nom : un actif qui se contient lui-meme, et un "+ Placement" qui
-     invitait a en ranger un second dedans. `direct` dit la meme chose pour ce
+     inviterait a en ranger un second dedans. `direct` dit la meme chose pour ce
      qu'on detient physiquement ; celui-ci le dit pour ce qui est detenu par un
      tiers mais ne se subdivise pas. */
   { id: 'pe',      label: 'Parts de société', classes: ['nonCote'], defaut: 'investir', groupe: 'pe', parts: true, terminal: true, estimee: true, contenant: 'societe' },
@@ -509,17 +499,17 @@ const TYPES_COMPTE = [
   /* `direct` : on le detient soi-meme, le contenant EST la chose.
 
      `bienImmo` : ce type EST un bien immobilier, il ne fait pas qu'en porter.
-     La distinction manquait, et "peut porter de l'immobilier" lui servait de
-     tenant-lieu : le jour ou une assurance-vie accepte une SCPI, le contrat
-     entier devenait un bien, avec le vocabulaire qui va avec -- "Dans quel bien
-     le ranger ?" pour un contrat d'assurance. Un fait qui commande trois
-     ecrans se declare, il ne se devine pas d'un effet de bord. */
+     "Peut porter de l'immobilier" ne le dit pas : une assurance-vie accepte
+     une SCPI, et le contrat entier deviendrait un bien, avec le vocabulaire qui
+     va avec -- "Dans quel bien le ranger ?" pour un contrat d'assurance. Un
+     fait qui commande trois ecrans se declare, il ne se devine pas d'un effet
+     de bord. */
   /* "Bien immobilier" et non "Immobilier" : ce dernier est le nom de la
-     CLASSE `immobilier`, que ce type partage avec les SCPI. Deux enveloppes pour
-     une classe, et l'une portait le nom de la classe : la carte "Par enveloppe"
-     aurait affiche le seul bien sous un intitule que la carte des classes
-     employait pour le bien ET les SCPI. Le meme defaut que "Placements non
-     cotes", trouve par le test qui interdisait le premier. */
+     CLASSE `immobilier`, que ce type partage avec les SCPI. Deux enveloppes
+     pour une classe : si l'une portait le nom de la classe, la carte "Par
+     enveloppe" afficherait le seul bien sous un intitule que la carte des
+     classes emploie pour le bien ET les SCPI. Meme regle que pour les parts de
+     societe, et le meme test la garde. */
   { id: 'immo',    label: 'Bien immobilier', classes: ['immobilier'], defaut: 'investir',
     groupe: 'pe', direct: true, bienImmo: true },
   /* Une SCPI se tient en parts, chez sa societe de gestion, et vaut ses parts
@@ -528,20 +518,20 @@ const TYPES_COMPTE = [
   { id: 'scpi',    label: 'SCPI',           classes: ['immobilier'], defaut: 'investir', groupe: 'pe', bienImmo: true, pays: 'fr',
     parts: true, prixRetrait: true, contenant: 'societe' },
   /* Les billets dans un portefeuille. C'est le seul argent que personne ne
-     tient pour vous : pour le noter, il fallait inventer une banque appelee
-     "Especes", et se demander pourquoi l'application reclamait un
-     etablissement pour un billet de cinquante.
+     tient pour vous : sans ce type, le noter demanderait d'inventer une banque
+     appelee "Especes", et l'application reclamerait un etablissement pour un
+     billet de cinquante.
 
      `sansEtab` dit qu'il n'a pas de contenant, `interne` qu'on ne le choisit
      pas dans une liste : il existe pour tout le monde, une fois, pose par
      `poserEspeces()`. Dernier de la liste, donc dernier groupe a l'ecran --
-     c'est la plus petite ligne d'un patrimoine, elle occupait la place
-     d'honneur. */
+     c'est la plus petite ligne d'un patrimoine, la place d'honneur ne lui
+     revient pas. */
   /* Un bien de valeur ne se tient nulle part : il est chez soi.
 
-     `sansEtab` comme les especes -- il fallait sinon inventer un etablissement
-     appele d'apres l'objet lui-meme, et se demander pourquoi l'application reclame une
-     banque pour un objet pose sur une etagere. Mais pas `interne` : les especes
+     `sansEtab` comme les especes -- il faudrait sinon inventer un etablissement
+     appele d'apres l'objet lui-meme, et l'application reclamerait une banque
+     pour un objet pose sur une etagere. Mais pas `interne` : les especes
      existent une fois pour tout le monde, la ou l'on ajoute autant de biens
      qu'on en possede. Il se choisit donc dans la liste des types.
 
@@ -658,17 +648,17 @@ const estUnBien = t => !!t && !t.titres && t.groupe === 'pe';
 
 /* Ce qu'on detient en direct : le contenant EST la chose.
 
-   La frontiere s'est d'abord posee sur la classe, et c'etait faux : `immobilier`
-   couvre a la fois un appartement et une SCPI, qui est du papier tenu par une
-   societe de gestion. Deux types partagent une classe sans partager le mode de
-   detention. Le drapeau `direct` vit donc sur le type, declare une fois dans
+   La frontiere ne se pose pas sur la classe : `immobilier` couvre a la fois un
+   appartement et une SCPI, qui est du papier tenu par une societe de gestion.
+   Deux types partagent une classe sans partager le mode de detention. Le
+   drapeau `direct` vit donc sur le type, declare une fois dans
    `TYPES_COMPTE`, la ou vivent deja `sansEtab`, `prete` et `interne`. */
 const estDetenuEnDirect = t => !!t && !!t.direct;
 /* Une valeur que PERSONNE ne confirme : c'est le detenteur qui l'apprecie, et
    rien d'exterieur ne dit s'il a raison. Un bien detenu en direct (`direct`) et
    une participation non cotee (`estimee`) sont dans ce cas.
 
-   Ce que ce drapeau n'est pas, et les trois s'etaient deja melanges : une VL
+   Ce que ce drapeau n'est pas, et les trois se confondent vite : une VL
    publiee par une societe de gestion (`vl`) est un chiffre etabli par un tiers,
    pas une opinion ; un solde lu chez un teneur de compte est un fait ; le
    nominal d'un pret ne bouge pas tant qu'il n'est pas rembourse.
@@ -713,21 +703,20 @@ const CONTENANTS = {
   /* `teinte` : la couleur d'un etablissement vient de sa FAMILLE, pas de ce
      qu'il contient le mois ou on le regarde.
 
-     Elle venait de la classe d'actif dominante en valeur, et une minorite
-     pouvait peindre le tout : un courtier dont la plus grosse ligne est du non
-     cote se lisait "societe" alors que sa propre fiche annoncait "Banque ou
-     courtier" deux centimetres plus haut. Les mots et la couleur se
-     contredisaient dans la meme carte. Pire, la couleur bougeait avec le
-     marche : la ligne qui passe devant repeint l'etablissement.
+     Tiree de la classe d'actif dominante en valeur, une minorite pourrait
+     peindre le tout : un courtier dont la plus grosse ligne est du non cote se
+     lirait "societe" alors que sa propre fiche annonce "Banque ou courtier"
+     deux centimetres plus haut, et la couleur bougerait avec le marche -- la
+     ligne qui passe devant repeindrait l'etablissement.
 
      La famille, elle, se derive des TYPES de compte. Elle ne bouge pas quand un
      cours monte, et elle est deja ecrite au-dessus du nom.
 
-     Le choix des teintes suit ce que chaque famille tient d'habitude, ce qui
-     est demande : une banque garde l'azur des liquidites, une societe le rose
-     du non cote, un bien le mauve de l'immobilier. Un contrat d'assurance prend
-     le vert des multi-actifs, parce que c'est litteralement ce qu'il est : la
-     famille n'existe que pour les enveloppes qui melangent. */
+     Le choix des teintes suit ce que chaque famille tient d'habitude : une
+     banque garde l'azur des liquidites, une societe le rose du non cote, un
+     bien le mauve de l'immobilier. Un contrat d'assurance prend le vert des
+     multi-actifs, parce que c'est litteralement ce qu'il est : la famille
+     n'existe que pour les enveloppes qui melangent. */
   bien:   { titre: 'Bien immobilier',    teinte: 'var(--series-4)',
             question: 'À quel bien le rattacher ?',
             aide: 'Un bien déjà enregistré, ou un nouveau.',
@@ -908,15 +897,14 @@ const sousNom = (nom, ...parts) => {
 };
 
 /* --- classe d'actif et role -------------------------------------------
-   L'ancien champ "category" melangeait trois questions : le role
-   strategique (ETF Core contre satellite), la nature de l'instrument (ETF,
-   action, option) et la classe d'actif (or, crypto, cash). Trier dessus
-   revenait a trier sur trois choses a la fois, et une action detenue en
-   coeur de portefeuille n'avait pas de case.
-
-   Deux champs orthogonaux le remplacent : `assetClass` dit dans quoi on est
-   investi, `role` dit pourquoi. On peut desormais avoir des obligations en
-   coeur, une action en satellite, ou de l'or dans les deux. */
+   Deux champs orthogonaux, parce que ce sont deux questions : `assetClass`
+   dit dans quoi on est investi, `role` dit pourquoi. Un champ unique
+   melangerait le role strategique (ETF Core contre satellite), la nature de
+   l'instrument (ETF, action, option) et la classe d'actif (or, crypto, cash) :
+   trier dessus reviendrait a trier sur trois choses a la fois, et une action
+   detenue en coeur de portefeuille n'aurait pas de case. Ainsi des
+   obligations peuvent etre en coeur, une action en satellite, et de l'or dans
+   les deux. L'ancien champ "category" n'est lu que par la migration. */
 const ASSET_CLASSES = {
   actions:        trad('Actions'),
   obligations:    trad('Obligations'),
@@ -926,16 +914,16 @@ const ASSET_CLASSES = {
   crypto:         'Crypto',
   monetaire:      trad('Monétaire'),
 };
-/* Pas de "capital garanti" ici, et le test l'a rappele avant moi : cette
-   table est le vocabulaire des lignes COTEES, et chacune de ses classes doit
-   tomber dans une poche rapide a vendre. Un fonds euros ne cote pas et ne se
-   vend pas en seance -- il vit dans `CLASSES_ACTIFS`, la table des poches, ou
-   les lignes saisies a la main puisent leur classe. */
+/* Pas de "capital garanti" ici, et un test le garde : cette table est le
+   vocabulaire des lignes COTEES, et chacune de ses classes doit tomber dans
+   une poche rapide a vendre. Un fonds euros ne cote pas et ne se vend pas en
+   seance -- il vit dans `CLASSES_ACTIFS`, la table des poches, ou les lignes
+   saisies a la main puisent leur classe. */
 /* Pas de "non cote" ici, et c'est volontaire.
    `assetClass` qualifie une ligne de marche -- une ligne cotee, par
-   construction. Lui proposer "non cote" etait une contradiction dans les
-   termes, et cela dedoublait un suivi qui existe deja ailleurs : les parts non
-   cotees sont des lignes de compte, sur des comptes de private equity, et
+   construction. Lui proposer "non cote" serait une contradiction dans les
+   termes, et cela dedoublerait un suivi qui existe deja ailleurs : les parts
+   non cotees sont des lignes de compte, sur des comptes de private equity, et
    apparaissent dans Allocation et dans la repartition de la vue d'ensemble.
    Une ligne qui porterait encore cette valeur retombe sur "actions" par la
    lecture tolerante d'assetClassDe(). */
@@ -977,8 +965,9 @@ const POCHE_DE_CLASSE = {
 };
 /* Une poche du patrimoine passee ici se rend elle-meme : `comptesPourCategorie`
    appelle cette fonction avec ce que le menu des supports lui donne, et le menu
-   parle en poches. Sans ce renvoi, "capital garanti" retombait sur le defaut
-   "actions" et l'application proposait un PEA pour y ranger un fonds euros. */
+   parle en poches. Sans ce renvoi, "capital garanti" retomberait sur le
+   defaut "actions" et l'application proposerait un PEA pour y ranger un
+   fonds euros. */
 const pocheDeClasse = ac => {
   const cle = CLASSES_ALIAS[ac] || ac;
   return POCHE_DE_CLASSE[cle] || (cle in CLASSES_ACTIFS ? cle : 'actions');
@@ -995,11 +984,11 @@ const classeDePoche = poche => CLASSE_DE_POCHE[poche] || null;
 
 /* Un nombre DECLARE, et le zero en est un.
 
-   C'est la convention qui manquait, et quatre endroits la violaient chacun a sa
-   facon : `num(x) || defaut` transforme un zero saisi en valeur par defaut,
-   parce que zero est faux en JavaScript. Un champ vide dit l'ignorance, un zero
-   dit zero. Les confondre fait afficher un bien a
-   100 % quand on a saisi 0 %, et douze mois loues quand on en a saisi zero.
+   `num(x) || defaut` transforme un zero saisi en valeur par defaut, parce que
+   zero est faux en JavaScript : c'est ce predicat qui tranche, partout. Un
+   champ vide dit l'ignorance, un zero dit zero. Les confondre fait afficher un
+   bien a 100 % quand on a saisi 0 %, et douze mois loues quand on en a saisi
+   zero.
 
    `v !== ''` d'abord : `Number('')` vaut zero et passerait pour un nombre. */
 const estDeclare = v => v !== undefined && v !== null && v !== ''
@@ -1012,9 +1001,9 @@ const partEstValide = v => !estDeclare(v) || (num(v) >= 0 && num(v) <= 100);
    UN NOMBRE SAISI A UN PLAFOND, ET C'EST UNE BORNE DE VRAISEMBLANCE, pas une
    limite technique. Un champ `type="number"` refuse les lettres mais accepte la
    notation savante : "5e26" passe, `Number()` le lit sans broncher, et une
-   quantite de titres a 4,99 x 10^26 a fait naitre une ligne a 499 280 000 000
-   000 570 000 000 000 euros. Le montant a traverse neuf couches sans rencontrer
-   une question : total, allocation, plus-value, insights, graphiques, jusqu'a
+   quantite de titres a 10^26 ferait une ligne a plus de vingt-cinq chiffres.
+   Sans borne, le montant traverse toutes les couches sans rencontrer une
+   question : total, allocation, plus-value, insights, graphiques, jusqu'a
    repousser le nom de la ligne sur trois lignes de telephone.
 
    `Number.MAX_SAFE_INTEGER` n'est pas une reponse : neuf millions de milliards
@@ -1123,11 +1112,10 @@ const partDetention = l => {
   const p = num(l.part);
   /* Hors de [0, 100] : `null`, et surtout pas un pourcentage invente.
 
-     Le garde-fou d'avant rendait 1, au motif que les totaux devaient rester
-     calculables. Mais rendre 1 DIT que le bien est detenu en entier, ce que
-     personne n'a declare : 150 % devenait 100 % en silence, au moment meme ou
-     l'ecran demandait de corriger la valeur. Un total calculable au prix d'une
-     detention inventee n'est pas un service.
+     Rendre 1 pour garder les totaux calculables DIRAIT que le bien est detenu
+     en entier, ce que personne n'a declare : 150 % deviendrait 100 % en
+     silence, au moment meme ou l'ecran demande de corriger la valeur. Un total
+     calculable au prix d'une detention inventee n'est pas un service.
 
      Les appelants ECARTENT la ligne des montants personnels, ils ne substituent
      pas 1. Le patrimoine est alors incomplet, et le controle de coherence le
@@ -1154,9 +1142,9 @@ const moisLouesDeclares = compte => estDeclare(compte?.moisLoues)
    capital des interets. Un taux DECLARE a zero, lui, est un vrai taux -- le pret
    familial, le differe sans interets -- et s'amortit tout droit.
 
-   L'echeancier appliquait deja cette distinction ; la projection du capital
-   restant du, non. Les deux moteurs repondaient donc differemment sur le meme
-   credit. Une seule porte desormais. */
+   L'echeancier et la projection du capital restant du lisent le taux par cette
+   seule porte : sinon les deux moteurs repondraient differemment sur le meme
+   credit. */
 const tauxCreditDeclare = d => estDeclare(d?.taux) ? num(d.taux) : null;
 
 const USAGES_BIEN = [
@@ -1187,11 +1175,10 @@ function estBienEnDirect(compte) {
 
    Elle ne porte pas sur la classe. `immobilier` couvre a la fois un appartement
    et une SCPI, et la question posee ici n'est pas "de quoi est-ce fait" mais
-   "est-ce un mur qu'on detient soi-meme". Le filtre par classe repondait donc
-   faux deux fois : il sortait la pierre papier des avoirs financiers, et avec
-   elle le support immobilier d'une assurance-vie -- cinquante mille euros
-   quittaient Allocation parce qu'un contrat propose ce support, alors que
-   l'argent y est aussi pilotable que le fonds actions d'a cote.
+   "est-ce un mur qu'on detient soi-meme". Un filtre par classe repondrait
+   faux deux fois : il sortirait la pierre papier des avoirs financiers, et avec
+   elle le support immobilier d'une assurance-vie, alors que l'argent y est
+   aussi pilotable que le fonds actions d'a cote.
 
    `estDetenuEnDirect` et rien d'autre : le contenant EST la chose. Un
    appartement et une montre le sont ; une SCPI ne l'est pas, ni une enveloppe
@@ -1207,20 +1194,21 @@ function estHorsPerimetreFinancier(compte) {
 
 /* L'usage d'un bien, et D'OU IL VIENT. La seule porte.
 
-   Trois questions vivaient eparpillees dans les vues -- "l'usage est-il
-   rempli ?", "y a-t-il un loyer ?", "que montrer sinon ?" -- et chacune
-   repondait a sa facon. Elles se rejoignent ici, et le resultat dit toujours sa
-   provenance : c'est elle qui decide si l'ecran doit demander confirmation.
+   Trois questions -- "l'usage est-il rempli ?", "y a-t-il un loyer ?", "que
+   montrer sinon ?" -- se tranchent ici et nulle part dans les vues, pour
+   qu'aucune ne reponde a sa facon. Le resultat dit toujours sa provenance :
+   c'est elle qui decide si l'ecran doit demander confirmation.
 
      source: 'declare'   quelqu'un l'a choisi. Il gagne toujours, meme contre un
                          loyer qui dirait le contraire : une chambre louee dans
                          sa residence principale est un cas reel, et l'ecran n'a
                          pas a requalifier le logement de son detenteur.
      source: 'loyer'     rien n'est declare, mais un loyer est rattache. On penche
-                         vers le locatif pour ne pas changer ce que les anciens
-                         etats affichaient -- c'est une DEDUCTION, et
-                         `aConfirmer` le dit. Rien n'est ecrit dans les donnees :
-                         le jour ou le detenteur confirme, alors seulement.
+                         vers le locatif, pour qu'un etat sans usage declare
+                         garde son affichage -- c'est une DEDUCTION, et
+                         `action: 'confirmer'` le dit. Rien n'est ecrit dans les
+                         donnees : le jour ou le detenteur confirme, alors
+                         seulement.
      source: 'mixte'     les lots ne s'accordent pas. Un appartement habite et un
                          studio loue dans le meme compte : choisir l'un des deux
                          en silence serait inventer. Le compte n'a pas d'usage.
@@ -1244,10 +1232,11 @@ function usageEffectifBien(compte) {
   if (dits.length > 1)
     return { usage: '', source: 'mixte', mixte: true, action: 'lots' };
   /* Un lot declare et un lot muet ne font pas un usage de compte. Le filtre
-     `Boolean` effacait le lot muet avant de compter, et un appartement habite
-     accompagne d'un parking sans usage devenait "residence principale" en
-     entier, sans que personne l'ait dit pour le parking. Le compte n'a pas
-     d'usage tant qu'un lot n'a pas le sien, et la fiche renvoie vers ce lot. */
+     `Boolean` retire le lot muet de `dits`, d'ou le compte a part des muets :
+     sans lui, un appartement habite accompagne d'un parking sans usage
+     deviendrait "residence principale" en entier, sans que personne l'ait dit
+     pour le parking. Le compte n'a pas d'usage tant qu'un lot n'a pas le sien,
+     et la fiche renvoie vers ce lot. */
   if (dits.length && muets)
     return { usage: '', source: 'partiel', mixte: false, action: 'lots', aPreciser: muets };
   if (dits.length === 1)
@@ -1263,10 +1252,10 @@ function usageBien(compte) { return usageEffectifBien(compte).usage; }
 /* Ce qu'un lot a COUTE, et d'ou vient la reponse.
 
    Trois montants, et le total ne se saisit pas : le prix, les frais, les travaux
-   du depart. "Prix d'acquisition" nommait jusqu'ici tantot l'un, tantot leur
-   somme, selon qui remplissait le champ -- et l'ecart entre les deux vaut les
-   frais de notaire, sept a huit pour cent du prix. Un intitule qui peut vouloir
-   dire deux choses finit par vouloir dire la mauvaise.
+   du depart. Un seul champ "Prix d'acquisition" se lirait tantot comme l'un,
+   tantot comme leur somme, selon qui le remplit -- et l'ecart entre les deux
+   vaut les frais de notaire, sept a huit pour cent du prix. Un intitule qui
+   peut vouloir dire deux choses finit par vouloir dire la mauvaise.
 
    VIDE N'EST PAS ZERO. `estDeclare` tranche : un champ jamais rempli est
    inconnu, un zero tape est une declaration. Des travaux a zero disent "il n'y
@@ -1279,9 +1268,9 @@ function usageBien(compte) { return usageEffectifBien(compte).usage; }
    et rien de plus : aucune decomposition ne s'en deduit, et l'ecran dit "detail
    non renseigne" plutot que d'inventer un prix d'achat.
 
-   Une seule source a la lecture : des qu'un composant est declare, le detail
-   gagne et le champ legacy cesse d'etre lu. Il n'est jamais efface -- personne ne
-   peut savoir ce qu'il contenait. */
+   Une seule source a la lecture : des que la decomposition est complete, le
+   detail gagne et le champ legacy cesse d'etre lu. Il n'est jamais efface --
+   personne ne peut savoir ce qu'il contenait. */
 function acquisitionLigne(l) {
   const dit = cle => estDeclare(l?.[cle]) ? num(l[cle]) : null;
   const prixAchat = dit('prixAchat');
@@ -1291,8 +1280,8 @@ function acquisitionLigne(l) {
   const dits = [prixAchat, frais, travaux].filter(v => v !== null);
   const sousTotal = dits.length ? round2(dits.reduce((s, v) => s + v, 0)) : null;
   /* Le legacy ne distingue pas un zero d'une absence : il n'a jamais eu de quoi.
-     Zero y vaut donc "non renseigne", et un vrai cout nul se declare
-     desormais par `prixAchat: 0`. */
+     Zero y vaut donc "non renseigne", et un vrai cout nul se declare par
+     `prixAchat: 0`. */
   const legacy = num(l?.prixDeRevient) || null;
   const socle = { prixAchat, frais, travaux, sousTotal, legacy };
 
@@ -1329,8 +1318,8 @@ function acquisitionCompte(compte) {
               des qu'UN lot n'a pas le sien -- detail partiel sans legacy, ou rien
               du tout -- le compte n'en a pas non plus : un total qui
               n'additionnerait que les lots connus se ferait passer pour celui du
-              bien. `!partiels` ne gardait que le premier cas, et deux lots dont
-              un seul avait un prix affichaient ce prix en "cout total". */
+              bien. D'ou `connus === lots.length` et non `!partiels`, qui
+              laisserait passer un lot dont on ne sait rien. */
            total: connus && connus === lots.length ? round2(entier) : null,
            sansCout: lots.length - connus,
            sousTotal: sousTotal ? round2(sousTotal) : null,
@@ -1357,11 +1346,10 @@ function lignesDe(compte) {
        ENTIER reste lisible -- c'est elle qu'on vient corriger -- et `partInvalide`
        permet a la fiche de dire pourquoi le montant personnel manque. */
     const partInvalide = q === null;
-    /* `prixDeRevient` rendu ici est desormais le COUT TOTAL d'acquisition, pas
-       le seul champ du meme nom : les treize lecteurs de cette fonction -- dont
-       la base des rendements -- parlent tous du meme montant, et un bien dont le
-       detail n'est pas rempli continue de rendre exactement sa valeur legacy.
-       Aucun ecran ne change de denominateur en silence. */
+    /* `prixDeRevient` rendu ici est le COUT TOTAL d'acquisition, pas le seul
+       champ du meme nom : les treize lecteurs de cette fonction -- dont la base
+       des rendements -- parlent tous du meme montant, et un bien dont le
+       detail n'est pas rempli rend exactement sa valeur legacy. */
     const acq = acquisitionLigne(l);
     return { ...l, ref: i, partInvalide,
              part: partInvalide ? num(l.part) : (q < 1 ? num(l.part) : null),
@@ -1387,17 +1375,16 @@ const valeurCompte = c => cashCompte(c) + lignesDe(c).reduce((s, l) => s + l.val
    Le regroupement "Enveloppe" de la page Comptes, ici et non dans la vue,
    pour qu'un test puisse le sommer : le harnais ne charge pas `app.js`.
 
-   Il parcourait `TYPES_COMPTE` et gardait les comptes de chaque type. Un compte
-   portant un type absent de cette liste n'apparaissait alors dans aucun groupe,
-   tout en restant compte dans le total de la page : le total cessait d'egaler la
-   somme de ses parts, silencieusement. Ce n'est pas theorique -- un etat migre
-   depuis l'ancien modele peut porter `levier`, que la liste ne connait pas, et
-   `typeCompte()` prevoit deja un type inconnu en lui rendant une definition de
-   secours.
+   On part des comptes, pas de `TYPES_COMPTE` : un compte dont le type manque a
+   la liste n'apparaitrait sinon dans aucun groupe, tout en restant compte dans
+   le total de la page, et le total cesserait d'egaler la somme de ses parts,
+   silencieusement. Ce n'est pas theorique -- un etat migre depuis l'ancien
+   modele peut porter `levier`, que la liste ne connait pas, et `typeCompte()`
+   prevoit deja un type inconnu en lui rendant une definition de secours.
 
-   On part donc des comptes, pas de la liste : chaque compte tombe forcement dans
-   le groupe de son type. La liste ne sert plus qu'a ordonner, les types qu'elle
-   ne connait pas venant a la fin, dans l'ordre ou ils se presentent. */
+   Chaque compte tombe donc forcement dans le groupe de son type. La liste ne
+   sert qu'a ordonner, les types qu'elle ne connait pas venant a la fin, dans
+   l'ordre ou ils se presentent. */
 function groupesParEnveloppe(comptes = comptesOuverts()) {
   const rang = new Map(TYPES_COMPTE.map((t, i) => [t.id, i]));
   const inconnu = TYPES_COMPTE.length;
@@ -1422,10 +1409,10 @@ function cashInvestirEntree(compte, creer = false) {
 }
 
 /* --- les especes, toujours la -------------------------------------------
-   Personne ne tient les billets d'un portefeuille : les noter demandait
-   d'inventer un etablissement, et celui qu'on inventait remontait en tete de
-   liste. Un compte d'especes existe donc pour tout le monde, sans contenant,
-   pose une fois ici.
+   Personne ne tient les billets d'un portefeuille : les noter demanderait
+   sinon d'inventer un etablissement, qui remonterait en tete de liste. Un
+   compte d'especes existe donc pour tout le monde, sans contenant, pose une
+   fois ici.
 
    Deux chemins, et le meme resultat : on adopte le compte bricole s'il
    existe, sinon on en cree un a zero. Adopter et non ajouter, sinon le meme
@@ -1525,8 +1512,8 @@ function valeurPerimee(ligne, type) {
    compte, un releve qui recopie les valeurs du jour -- ne date rien non plus :
    ce n'est pas une lecture chez la banque.
 
-   La clef `saisiLe` garde son nom : elle date de l'epoque ou seule la frappe
-   datait un solde, et la renommer ferait une migration pour un mot. */
+   La clef `saisiLe` garde son nom, meme quand la date dit une verification et
+   non une frappe : la renommer ferait une migration pour un mot. */
 const montantChange = (avant, apres) =>
   estDeclare(avant) !== estDeclare(apres) || num(avant) !== num(apres);
 
@@ -1620,9 +1607,8 @@ function ageAnnees(iso) {
    Cinq ans pour un PEA, huit pour une assurance-vie : ce sont des seuils
    FISCAUX, pas des barrieres a la sortie -- d'ou leur absence de
    `mobilisabilite`. Mais c'est le repere que tout detenteur d'assurance-vie
-   guette, et l'application connaissait la date sans rien en faire : elle la
-   reclamait a la creation en promettant qu'elle "conditionne la
-   disponibilite", ce qui etait faux, et ne l'affichait nulle part.
+   guette : la date d'ouverture demandee a la creation sert a l'afficher, et
+   non a decider d'un delai.
 
    Le PER n'a pas de seuil d'anciennete : ce qui le libere est un evenement, le
    depart en retraite, et non une duree ecoulee. Il porte donc une echeance
@@ -1644,7 +1630,7 @@ function ancienneteCompte(c) {
   /* La date se recompose a la main, jamais par `toISOString()` : celui-ci
      convertit en UTC, et minuit heure locale a l'est de Greenwich retombe la
      veille. Le seuil des huit ans d'un contrat ouvert un 1er septembre
-     s'affichait au 31 aout. */
+     s'afficherait sinon au 31 aout. */
   const iso = x => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}`
                  + `-${String(x.getDate()).padStart(2, '0')}`;
   return { mois, annees: Math.floor(mois / 12), reste: mois % 12,
@@ -1656,21 +1642,20 @@ function mobilisabilite(classe, typeId) {
   /* LA DISPONIBILITE SE DECLARE SUR LE TYPE quand elle ne se deduit pas de la
      classe : un PER est ferme jusqu'a la retraite ("bloque"), une enveloppe de
      retraite americaine se casse en quelques semaines avec une decote
-     ("lent"). La regle vivait ici sous `typeId === 'per'` : un identifiant
-     francais decidait d'une propriete generale. */
+     ("lent"). Pas de `typeId === 'per'` ici : un identifiant francais
+     deciderait d'une propriete generale. */
   const declaree = typeCompte(typeId).disponibilite;
   if (declaree) return declaree;
   if (classe === 'nonCote' || classe === 'immobilier') return 'lent';
   if (classe === 'bienValeur') return 'lent';
   /* Les liquidites sont immediates si le compte qui les porte est un compte de
-     cash, et non selon une liste de deux types ecrite ici a la main.
+     cash, et non selon une liste de types ecrite ici a la main.
 
-     Cette liste disait "courant ou livret", et les especes sont arrivees
-     apres : des billets dans un portefeuille tombaient donc en "quelques
-     jours", derriere un virement bancaire. C'est l'argent le plus immediat qui
-     existe. Sinon, la jauge de l'accueil annoncerait 6 000 EUR de coussin quand
-     "Disponible tout de suite" en montrerait 5 350 : l'ecart vaudrait
-     exactement les especes, et rien ne le dirait.
+     Une telle liste oublierait le prochain type de cash : des billets dans un
+     portefeuille tomberaient en "quelques jours", derriere un virement
+     bancaire, alors que c'est l'argent le plus immediat qui existe. La jauge
+     de l'accueil et "Disponible tout de suite" se contrediraient alors d'un
+     ecart qui vaudrait exactement les especes, et rien ne le dirait.
 
      `groupe === 'cash'` couvre courant, livret et especes, et couvrira le
      prochain type de compte de cash sans qu'on y pense. Le cash pose chez un

@@ -383,7 +383,9 @@ suite('Projection tient sur quatre hypothèses', () => {
     }
     /* Et la seule survivance de l'essai par classe est sa migration, qui existe
        pour effacer la clef. */
-    const store = lireSource('assets/store.js');
+    /* Le code seul : un commentaire peut nommer la clef sans la faire vivre.
+       Aucune chaine du store ne porte d'ouvrant de bloc. */
+    const store = lireSource('assets/store.js').replace(/\/\*[\s\S]*?\*\//g, ' ');
     const mentions = (store.match(/projRateCrypto/g) || []).length;
     vrai(mentions > 0 && mentions <= 4,
       'projRateCrypto ne vit plus que dans la migration qui l’efface');

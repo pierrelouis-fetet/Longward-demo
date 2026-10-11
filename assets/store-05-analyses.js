@@ -21,10 +21,9 @@ function runway() {
   /* Les libelles viennent de `MOBILISABLE_LABEL`, ils ne se reecrivent pas ici.
 
      Cette carte et "Par disponibilite" decoupent le meme argent selon les
-     memes cinq paliers, et chacune avait sa propre liste de mots : "En
-     quelques jours" d'un cote, "Disponible sous quelques jours" de l'autre,
-     pour la meme poche. Deux ecrans qu'on ne regarde pas en meme temps, donc
-     personne ne pouvait le voir. Une liste se derive, elle ne se recopie pas.
+     memes cinq paliers. Deux listes de mots y donneraient deux noms a la meme
+     poche, sur deux ecrans qu'on ne regarde pas en meme temps, donc sans que
+     personne puisse le voir. Une liste se derive, elle ne se recopie pas.
 
      Les notes, elles, appartiennent a cette carte : elles disent ce que le
      palier contient chez celui qui lit, ce que l'autre carte n'a pas a faire. */
@@ -77,13 +76,14 @@ function runway() {
 
 /* LA MOYENNE SE DIVISE PAR DES MOIS, PAS PAR DES ECARTS.
 
-   Elle valait `somme / n`, ou `n` compte les INTERVALLES entre releves. Tant
-   qu'on saisit tous les mois les deux coincident, et c'est pour ca que le
-   defaut a tenu. Un mois saute, et ils divergent : un releve de janvier a
-   100 000 et un d'avril a 106 000 font UN intervalle de +6 000, donc une
-   "moyenne mensuelle" de 6 000 EUR pour un rythme reel de 2 000. Le chiffre
-   sert de rythme d'accumulation, il nourrit la trajectoire vers l'objectif et
-   l'ecart au budget : trois lectures triplees d'un coup, du cote flatteur.
+   `somme / n`, ou `n` compte les INTERVALLES entre releves, ne donne le rythme
+   mensuel que si l'on saisit tous les mois : les deux coincident alors, et le
+   defaut reste invisible. Un mois saute, et ils divergent : un releve de
+   janvier a 100 000 et un d'avril a 106 000 font UN intervalle de +6 000, donc
+   une "moyenne mensuelle" de 6 000 EUR pour un rythme reel de 2 000. Le
+   chiffre sert de rythme d'accumulation, il nourrit la trajectoire vers
+   l'objectif et l'ecart au budget : trois lectures triplees d'un coup, du
+   cote flatteur.
 
    Chaque point porte donc le nombre de MOIS que son ecart couvre, et la moyenne
    les additionne. Le mois, et non le jour : les releves sont des photos
@@ -103,10 +103,10 @@ function statsRythme(points) {
 
      Un point porte l'ecart entre deux releves, et sa date est celle du second :
      l'intervalle qu'il couvre commence donc au releve d'avant. Borner la fenetre
-     a la date du premier point laissait dehors tout ce qui etait entre pendant
-     son propre intervalle -- une succession du 15 mars ne comptait pas dans le
-     point du 30 avril, et le rythme continuait de la prendre pour de l'epargne.
-     C'est `depuis` que chaque point porte pour cela. */
+     a la date du premier point laisserait dehors tout ce qui est entre pendant
+     son propre intervalle -- une succession du 15 mars ne compterait pas dans
+     le point du 30 avril, et le rythme la prendrait pour de l'epargne. C'est
+     `depuis` que chaque point porte pour cela. */
   const debut = n ? String(points[0].depuis || points[0].date) : null;
   const fin = n ? String(points[n - 1].date) : null;
   const apports = n ? apportsTotal(debut, fin) : 0;
@@ -234,8 +234,8 @@ function defaultCashTarget(accountId) {
    Un mouvement d'especes vise toujours une PART : { compteId, partie }, ou
    `partie` est l'affectation d'une part existante du compte. Un ancien compte
    du modele `now` n'a qu'une part, 'solde'. Rien ne cree une part au passage :
-   un achat paye depuis un compte courant debitait une part "a investir"
-   creee a zero, et le solde devenait negatif alors que le compte avait
+   un achat paye depuis un compte courant debiterait sinon une part "a investir"
+   creee a zero, et le solde deviendrait negatif alors que le compte a
    l'argent.
 
    Une affectation est unique dans un compte. Un compte ou deux parts la
@@ -585,18 +585,18 @@ function sellPosition({ index, qty, price, fxSell, cashAccount, cashPart, date, 
 
 /* --- CEDER UN PLACEMENT NON COTE ----------------------------------------
 
-   POURQUOI CETTE PORTE EXISTE. Une ligne cotee se vendait ; tout le reste ne
-   pouvait que s'archiver, et archiver ne dit rien de l'argent. La valeur
-   quittait le patrimoine, le produit encaisse se retapait a la main en rentree,
-   et la plus-value realisee n'entrait nulle part -- ni au journal, ni dans la
-   performance. Sur la courbe, la baisse tombait dans "ce qui ne vient pas du
-   budget", c'est-a-dire dans la case de ce qu'on n'explique pas. Un total
-   egale la somme de ses parts, et une sortie de quinze mille euros ne peut pas
-   etre une difference inexpliquee.
+   POURQUOI CETTE PORTE EXISTE. Sans elle, tout ce qui n'est pas une ligne
+   cotee ne pourrait que s'archiver, et archiver ne dit rien de l'argent. La
+   valeur quitterait le patrimoine, le produit encaisse se retaperait a la main
+   en rentree, et la plus-value realisee n'entrerait nulle part -- ni au
+   journal, ni dans la performance. Sur la courbe, la baisse tomberait dans
+   "ce qui ne vient pas du budget", c'est-a-dire dans la case de ce qu'on
+   n'explique pas. Un total egale la somme de ses parts, et une cession ne
+   peut pas etre une difference inexpliquee.
 
-   L'asymetrie etait a l'envers du besoin : une ligne cotee se revend tous les
-   jours et avait tout le mecanisme ; un non cote se cede une fois en cinq ans,
-   c'est l'evenement dont on veut le plus garder la trace, et il n'avait rien.
+   Une ligne cotee se revend tous les jours ; un non cote se cede une fois en
+   cinq ans, et c'est l'evenement dont on veut le plus garder la trace : il
+   lui faut le meme mecanisme.
 
    TROIS NATURES, UNE SEULE MECANIQUE. Ce qui change est le mot et ce que le
    detenteur sait dire ; le calcul, lui, ne change jamais -- un produit encaisse,
@@ -614,8 +614,8 @@ function sellPosition({ index, qty, price, fxSell, cashAccount, cashPart, date, 
    la valeur : le prix de revient unitaire ne bouge pas, exactement comme pour
    une ligne cotee, et la ligne qui reste vaut ce qu'elle valait par part.
 
-   ET C'EST LE MEME JOURNAL QUE LES VENTES DE TITRES. Deux journaux auraient
-   demande deux ecrans, deux totaux annuels et deux facons de compter une
+   ET C'EST LE MEME JOURNAL QUE LES VENTES DE TITRES. Deux journaux
+   demanderaient deux ecrans, deux totaux annuels et deux facons de compter une
    plus-value -- donc, tot ou tard, deux chiffres qui se contredisent. La
    difference se dit par un mot porte sur l'enregistrement, pas par une seconde
    liste. */
@@ -626,8 +626,8 @@ function apercuCession(l, t, { parts, produit, capital } = {}) {
   const partOk = q !== null;
   const valeurEntiere = num(l && l.valeur);
   /* `null` quand le cout n'est pas connu, et il le reste jusqu'au bout : un
-     `|| 0` en faisait un cout nul, et la cession de parts dont personne n'a
-     jamais saisi le prix d'achat inscrivait tout le produit en plus-value. Un
+     `|| 0` en ferait un cout nul, et la cession de parts dont personne n'a
+     jamais saisi le prix d'achat inscrirait tout le produit en plus-value. Un
      cout nul DECLARE (prix, frais et travaux a zero) vaut zero, lui. */
   const coutEntier = coutAcquisition(l);
   const partsTotal = num(l && l.parts);
@@ -697,8 +697,8 @@ function cederPlacement({ compteId, index, nature = 'vente', parts, produit,
       ...(cashAccount ? { cashPart: String(cashPart || '').replace(/\+$/, '') } : {}),
       /* Les parts tiennent lieu de quantite, et les deux prix unitaires s'en
          derivent : le journal les affiche deja, et une cession de parts est une
-         vente de quantite comme une autre. Sans parts, les trois restent nuls :
-         `declarerVente()` a ouvert cette voie, le journal sait la lire. */
+         vente de quantite comme une autre. Sans parts, les trois restent nuls,
+         comme pour une vente de `declarerVente()` : le journal sait la lire. */
       qty: a.parts, currency: 'EUR', fxSell: 1, fxBuy: 1,
       price: a.parts ? round2(a.produit / a.parts) : null,
       buyPrice: a.parts && a.investi !== null ? round2(a.investi / a.parts) : null,
@@ -756,11 +756,11 @@ function cederPlacement({ compteId, index, nature = 'vente', parts, produit,
 
 /* --- VENDRE UN BIEN IMMOBILIER DETENU EN DIRECT ---------------------------
 
-   POURQUOI UN GESTE A PART. Un bien ne se cedait pas : il fallait l'archiver,
-   crediter le prix a la main, retirer le credit et sa charge a part, et rien
-   n'entrait au journal. Oublier un des trois laissait un patrimoine net faux.
-   La vente fait les trois ensemble, dans une seule transaction, et s'annule
-   en entier.
+   POURQUOI UN GESTE A PART. Vendre un bien, c'est archiver son compte,
+   encaisser le prix, retirer le credit et sa charge, et noter la vente au
+   journal. Faits a la main, en oublier un laisserait un patrimoine net faux.
+   La vente fait tout ensemble, dans une seule transaction, et s'annule en
+   entier.
 
    CE QUI SE VEND : le compte entier, tous ses lots (un appartement et son
    parking partent ensemble). Chaque lot a son prix, du lot ENTIER comme sa
@@ -1048,8 +1048,8 @@ function annulerVenteBienSansVerifier(i, v) {
   return v;
 }
 
-/*   C'est la reponse au chantier note dans ETAT.md : noter une vente sur un
-   PEA cloture demandait de recreer le compte, la ligne, de vendre, puis
+/* Une vente passee, pour memoire. Sans ce geste, noter une vente sur un PEA
+   cloture demanderait de recreer le compte, la ligne, de vendre, puis
    d'archiver -- quatre gestes pour fabriquer un fait passe. Ici la vente
    entre au journal telle qu'on s'en souvient, et n'ecrit RIEN d'autre :
    pas de position reduite (on ne la detient plus), pas de cash credite
@@ -1191,8 +1191,8 @@ function annulerCessionSansVerifier(i, v) {
 function rangeStart(range) {
   if (!range || range === 'all') return null;
   /* Une annee vaut son 1er janvier. La garde est ici et pas seulement chez
-     l'appelant : sans elle, `parseInt('2025')` faisait remonter de deux mille ans
-     et la plage rendait tout, sans erreur nulle part. */
+     l'appelant : sans elle, `parseInt('2025')` ferait remonter de deux mille
+     ans et la plage rendrait tout, sans erreur nulle part. */
   if (estAnnee(range)) return `${range}-01-01`;
   const now = new Date();
   const d = range === 'ytd'
@@ -1203,11 +1203,11 @@ function rangeStart(range) {
 
 /* Les totaux d'une liste de ventes, quelle qu'elle soit.
 
-   Extrait de `salesStats`, qui commencait par choisir ses ventes sur une plage
-   glissante. Le journal les choisit desormais par annee, et refaire ces cinq
-   sommes a cote aurait donne deux facons de compter la meme chose -- celle qu'on
-   oublie de corriger finit par contredire l'autre. Le filtre reste a l'appelant,
-   le calcul est ici. */
+   Le choix des ventes reste a l'appelant -- `salesStats` les prend sur une
+   plage, glissante ou annuelle -- et le calcul est ici, une seule fois.
+   Refaire ces cinq sommes a cote d'un autre filtre donnerait deux facons de
+   compter la meme chose, et celle qu'on oublie de corriger finit par
+   contredire l'autre. */
 const estNombre = x => x !== null && x !== undefined && x !== '' && isFinite(Number(x));
 const encaisseNetVente = v => (v && v.typeActif === 'bien' ? num(v.encaisse) : num(v && v.gross));
 
@@ -1241,7 +1241,7 @@ function statsDesVentes(ventes) {
     partiel: fiables.length < ventes.length,
     gross: ventes.reduce((s, v) => s + num(v.gross), 0),
     /* `null` et non 0 : sans vente, ou sans prix de revient sur celles qui
-       existent, il n'y a pas de base. Le zero s'affichait "+0,00 %" sur une
+       existent, il n'y a pas de base. Un zero s'afficherait "+0,00 %" sur une
        plage vide, ce qui affirme une performance nulle la ou il n'y a rien eu.
        La regle de la maison, deja tenue par `deltas()` : un pourcentage
        n'existe que sur une base positive, et l'ecran se contente de l'euro. */
@@ -1324,8 +1324,8 @@ function anneeParDefautTransactions(aujourdhui = todayISO()) {
    La CLASSE non plus : actions, obligations, foncieres cotees, metaux par ETC,
    fonds cotes, crypto vivent toutes dans cette liste, et la vue Marches les
    rend toutes sans distinction. Filtrer par classe reviendrait a tenir une
-   seconde liste a cote de la premiere, et c'est le defaut qui revient le plus
-   souvent ici.
+   seconde liste a cote de la premiere, et deux listes du meme fait finissent
+   par diverger.
 
    Une fonction plutot qu'un `positions.length` recopie : la condition se lit a
    cinq endroits, et cinq variantes finissent par ne plus dire la meme chose. */
@@ -1383,9 +1383,8 @@ function repartitionPortefeuille() {
      `basePortefeuilleMarches()` additionne trois choses : les positions cotees,
      les lignes manuelles des comptes de marche -- un fonds d'assurance-vie n'a
      pas de cours, il n'en est pas moins detenu -- et le cash qui attend d'etre
-     investi. N'en prendre qu'une aurait donne au meme nom deux montants sur
-     deux ecrans, ce que ce projet traque partout ailleurs : "Liquidites" a
-     deja valu deux choses sur deux pages, les deux totaux justes.
+     investi. N'en prendre qu'une donnerait au meme nom deux montants sur deux
+     ecrans, chacun juste et pourtant different de l'autre.
 
      LE CASH EST UNE PART, PAS UN OUBLI. Quelqu'un dont un cinquieme du
      portefeuille dort en attendant un point d'entree doit le VOIR sur son
@@ -1455,10 +1454,9 @@ function repartitionPortefeuille() {
 function latentPnl(ps = Store.state.positions) {
   /* La valeur est connue de toutes les lignes ; le resultat, non.
 
-     Le total soustrayait un prix de revient partiel d'une valeur complete : une
-     ligne sans base entrait dans `value` et pour zero dans `invested`, donc sa
-     valeur entiere ressortait en plus-value. Une seule ligne pesait la moitie
-     du resultat affiche.
+     Soustraire un prix de revient partiel d'une valeur complete ferait
+     ressortir en plus-value la valeur entiere de chaque ligne sans base,
+     comptee dans `value` et pour zero dans `invested`.
 
      Le resultat se calcule donc sur les lignes qui ont une base, des deux
      cotes. `value` ne bouge pas : c'est le portefeuille, il est connu, et c'est
@@ -1478,10 +1476,10 @@ function latentPnl(ps = Store.state.positions) {
 }
 
 /* --- l'ecart du non cote, tenu a part -----------------------------------
-   `latentPnl()` ne lit que `positions` : le non cote, l'immobilier et les biens
-   n'apparaissaient donc nulle part dans la page Performance, alors qu'ils
-   portent souvent la moitie d'un patrimoine et qu'un prix de revient y est
-   saisi.
+   `latentPnl()` ne lit que `positions` : sans cette carte, le non cote,
+   l'immobilier et les biens n'apparaitraient nulle part dans la page
+   Performance, alors qu'ils portent souvent la moitie d'un patrimoine et
+   qu'un prix de revient y est saisi.
 
    Une carte a part, et jamais un total commun avec les titres cotes. La raison
    n'est pas la prudence, c'est la nature du chiffre : une plus-value cotee est
@@ -1533,12 +1531,10 @@ const PROJECTION_HORIZONS = [3, 5, 10, 15, 20];
 /* Horizons proposes dans la liste deroulante : les reperes du tableau, puis des
    paliers de cinq ans jusqu'a 80 -- de quoi couvrir une vie d'epargne entiere.
 
-   Les cinq reperes en etaient exclus, au motif qu'ils figuraient deja dans le
-   tableau. Le raisonnement se tenait sur la redondance et ratait l'essentiel :
-   choisir un horizon ne designe pas une ligne, il change toute la page -- le
-   total en tete, la courbe, et la ligne mise en avant, qui suit `projHorizon`.
-   Le menu commencait donc a vingt-cinq ans, et tout le monde n'a pas
-   vingt-cinq ans devant soi.
+   Les reperes du tableau y figurent aussi : choisir un horizon ne designe pas
+   une ligne, il change toute la page -- le total en tete, la courbe, et la
+   ligne mise en avant, qui suit `projHorizon`. Un horizon court doit donc se
+   choisir comme un long, et tout le monde n'a pas vingt-cinq ans devant soi.
 
    La liste se derive des reperes, elle ne les recopie pas : deux listes ecrites
    a la main pour une seule verite finissent par se contredire, et c'est celle
@@ -1614,18 +1610,19 @@ const PHRASE_SCENARIO = {
   perso: 'Tes propres taux, posés plus bas.',
 };
 
-/* D'OU viennent les taux, et non a quoi ils ressemblent. Les deux questions ont
-   vecu sous un seul nom, et c'est ce qui rendait le retour impossible : remettre
-   6 % sur le marche laissait "personnalise" enfonce alors que les quatre
-   valeurs etaient exactement celles de Central. `detecteScenario()` repond a la
-   seconde question, celle que l'ecran pose.
+/* D'OU viennent les taux, et non a quoi ils ressemblent. Les deux questions
+   ont chacune leur fonction : sous un seul nom, remettre 6 % sur le marche
+   laisserait "personnalise" enfonce alors que les quatre valeurs sont
+   exactement celles de Central. `detecteScenario()` repond a la seconde
+   question, celle que l'ecran pose.
 
-   Celle-ci decide du calcul : la table d'un scenario nomme, ou l'etat. Et la
-   migration silencieuse qu'il ne faut pas faire -- un etat qui porte deja des
-   taux saisis a la main precede les scenarios. Lui appliquer "central"
-   changerait sa courbe sans qu'il ait rien demande, et c'est exactement ce
-   qu'une projection ne doit jamais faire. Ces etats-la lisent donc leurs propres
-   chiffres, intacts. Les autres partent sur le scenario central. */
+   Celle-ci decide du calcul : la table d'un scenario nomme, ou l'etat. Et
+   elle evite la migration silencieuse qu'il ne faut pas faire : un etat sans
+   scenario enregistre qui porte deja des taux saisis a la main. Lui appliquer
+   "central" changerait sa courbe sans qu'il ait rien demande, et c'est
+   exactement ce qu'une projection ne doit jamais faire. Ces etats-la lisent
+   donc leurs propres chiffres, intacts. Les autres partent sur le scenario
+   central. */
 function sourceDesTaux() {
   const m = Store.state.meta;
   if (m.projScenario) return m.projScenario;
@@ -1718,8 +1715,8 @@ function projectionSettings() {
      page.
 
      La distinction porte donc sur la presence de la clef, pas sur sa valeur.
-     Une migration a un coup retire les zeros deja enregistres, qui voulaient
-     dire automatique sous l'ancienne regle. */
+     Un zero enregistre sans le drapeau `projMonthlyZeroLu` veut dire
+     automatique : la migration a un coup qui pose ce drapeau le retire. */
   const regle = m.projMonthly !== undefined && m.projMonthly !== null
              && m.projMonthly !== '';
   return {
@@ -1728,14 +1725,14 @@ function projectionSettings() {
     monthlyAuto: !regle,
     rate: poches.marche,
     /* Le rendement des "autres actifs" : crypto, metaux precieux, non cote.
-       Zero par defaut, et c'est le pivot de tout le dispositif -- personne ne
-       voit ses chiffres bouger, l'application ne suggere aucun rendement sur ce
-       qu'elle ne sait pas projeter, et le gel qu'on appliquait devient le cas
-       particulier taux = 0. C'est a l'utilisateur de l'affirmer, pas a nous.
+       Zero par defaut, et c'est le pivot de tout le dispositif --
+       l'application ne suggere aucun rendement sur ce qu'elle ne sait pas
+       projeter, et une valeur constante n'est que le cas particulier
+       taux = 0. C'est a l'utilisateur de l'affirmer, pas a nous.
 
-       Un seul champ pour les trois, et la clef ne change pas : `projRateAutres`
-       porte ce nom depuis toujours et n'a jamais rien promis de plus fin. Un
-       etat enregistre le retrouve donc tel quel. */
+       Un seul champ pour les trois, sous la clef `projRateAutres` : elle
+       reste telle quelle, parce que des etats enregistres la portent et
+       doivent la retrouver. */
     rateAutres: poches.autres,
     rateGaranti: poches.garanti,
     versementVers: m.projVersementVers || 'marche',
@@ -1762,19 +1759,19 @@ function repartitionVersement(s = projectionSettings()) {
 
    `investable` et non `theoretical` : le capital rembourse sur un credit
    augmente le patrimoine net, mais il n'est pas disponible pour investir. Le
-   proposer comme versement mensuel le faisait capitaliser au taux des actifs de
-   marche, alors qu'il est deja parti avec la mensualite. Le patrimoine en tenait
-   compte deux fois : une fois par la dette qui baisse, une fois par un
-   placement imaginaire.
+   proposer comme versement mensuel le ferait capitaliser au taux des actifs de
+   marche, alors qu'il est deja parti avec la mensualite. Le patrimoine en
+   tiendrait compte deux fois : une fois par la dette qui baisse, une fois par
+   un placement imaginaire.
 
-   LE REPLI SUR LE RYTHME OBSERVE EST PARTI, et c'etait la meme faute d'un cran
-   plus loin. `realPerMonth` mesure la VARIATION DU PATRIMOINE d'un mois sur
-   l'autre : elle porte les gains de marche, la reevaluation d'un bien et le
-   capital rembourse. La reinjecter comme versement mensuel faisait capitaliser
-   la croissance sur elle-meme -- une hausse de marche de 900 EUR devenait
-   900 EUR verses chaque mois, qui produisaient a leur tour du rendement. La
-   projection s'emballait d'autant plus que le patrimoine avait monte, ce qui est
-   exactement l'inverse d'une prevision prudente.
+   PAS DE REPLI SUR LE RYTHME OBSERVE, pour la meme faute d'un cran plus loin.
+   `realPerMonth` mesure la VARIATION DU PATRIMOINE d'un mois sur l'autre :
+   elle porte les gains de marche, la reevaluation d'un bien et le capital
+   rembourse. La reinjecter comme versement mensuel ferait capitaliser la
+   croissance sur elle-meme -- une hausse de marche de 900 EUR deviendrait
+   900 EUR verses chaque mois, qui produiraient a leur tour du rendement. La
+   projection s'emballerait d'autant plus que le patrimoine a monte, ce qui
+   est exactement l'inverse d'une prevision prudente.
 
    Sans budget, la suggestion vaut donc zero, et l'ecran le dit : "aucune
    capacite d'epargne positive connue". Un zero annonce vaut mieux qu'un nombre
@@ -1789,12 +1786,12 @@ function suggestedMonthly() {
    rendement, soit l'apport immobilier, la valeur du bien moins tout le capital
    restant du.
 
-   Avant, un seul taux s'appliquait a l'ensemble du patrimoine net. L'apport
-   d'un appartement capitalisait donc a 5 % par an comme un ETF, ce qu'un bien
-   ne fait pas, et ce qui rendait fausse toute etiquette parlant de rendement
-   boursier. Chaque poche a donc son taux -- actifs de marche, autres actifs,
-   capital garanti, liquidites -- et un bien n'entre dans aucune : on ne prete un
-   rendement qu'a ce qu'il decrit, et le reste est porte a plat.
+   Les poches financieres ont chacune leur sort -- actifs de marche, autres
+   actifs, capital garanti, liquidites -- et un bien n'entre dans aucune. Un
+   seul taux sur tout le patrimoine net ferait capitaliser l'apport d'un
+   appartement comme un ETF, ce qu'un bien ne fait pas, et rendrait fausse
+   toute etiquette parlant de rendement boursier : on ne prete un rendement
+   qu'a ce qu'il decrit, et le reste est porte a plat.
 
    A plat et non exclu : l'apport reste dans le total, parce qu'il fait partie du
    patrimoine et qu'on veut le voir. On ne lui prete simplement aucune
@@ -1803,8 +1800,7 @@ function suggestedMonthly() {
 
    L'amortissement du pret, lui, EST modelise : `moteurProjection` rembourse mois
    par mois et ajoute le capital rendu a cette part plate, qui monte donc toute
-   seule. Ce commentaire disait le contraire, et un commentaire qui contredit le
-   calcul fait douter du chiffre juste.
+   seule.
 
    La part plate peut etre negative : un credit a la consommation sans bien en
    face, ou un bien qui vaut moins que son pret. C'est honnete, et ca evite
@@ -1812,15 +1808,15 @@ function suggestedMonthly() {
 /* Les biens de valeur y rejoignent l'immobilier : une montre ne capitalise
    pas, elle est posee -- la faire fructifier au taux du non cote serait le
    mensonge que cette poche refuse a un compte courant. Et sans elle nulle
-   part, la somme des poches de projection cessait de faire le patrimoine
+   part, la somme des poches de projection cesserait de faire le patrimoine
    net, la regle que ce fichier teste.
 
    LA PART GELEE EST EXACTEMENT CE QUE LE PERIMETRE FINANCIER ECARTE, moins
-   toutes les dettes. Elle se lisait `immo + biens`, donc par les classes, et
-   gelait ainsi une SCPI et le support immobilier d'une assurance-vie : cent
-   mille euros de placement portes a plat pendant vingt ans, sans qu'un mot le
-   dise. Les deux ecrans partagent un seul perimetre desormais, et la somme des
-   poches fait le patrimoine net par construction plutot que par coincidence. */
+   toutes les dettes. La lire par les classes (`immo + biens`) gelerait une
+   SCPI et le support immobilier d'une assurance-vie : du placement porte a
+   plat pendant vingt ans, sans qu'un mot le dise. Les deux ecrans partagent
+   un seul perimetre, et la somme des poches fait le patrimoine net par
+   construction plutot que par coincidence. */
 function partPlate(t = nowTotals()) {
   return num(t.horsFinancier) - num(t.dettes);
 }
@@ -1841,34 +1837,22 @@ function partPlateDetail(t = nowTotals()) {
            total: biens - dettesBiens - autresDettes };
 }
 
-/* Les trois poches de la projection, chacune avec son sort.
+/* Les poches de la projection, chacune avec son sort : `marche`, `autres` et
+   `garanti` capitalisent chacune a son taux ; `liquidites`, `projet` et `plat`
+   traversent la projection a plat. Voir partPlate() et partPlateDetail().
 
-   Un seul taux s'appliquait a tout, et il ne decrivait qu'une partie de ce
-   qu'il touchait : chez un patrimoine ou le non cote pese 38 % de la base,
-   "rendement annuel attendu" faisait capitaliser au taux des actions des
-   parts illiquides sans prix de marche, et un compte courant qui ne rapporte
-   rien. Trois poches, et chacune dit ce qu'elle est.
-
-   - `marche` : ce qui se cote. Les actifs de marche, la crypto, et le cash
-     "a investir" -- celui-la n'est pas encore place mais il va l'etre, c'est
-     sa definition. Les versements mensuels le rejoignent, pour la meme raison.
-   - `autres` : ce qui est pose sans se coter. Le non cote, le compte courant,
-     l'epargne de precaution. Un taux propre, zero par defaut.
-   - `plat` : les biens en direct nets de leurs credits, et les autres dettes,
-     geles. Voir partPlate() et partPlateDetail().
-
-   La propriete qui gouverne tout : la somme des trois fait le patrimoine net.
-   Elle est testee, parce que c'est elle qui garantit qu'aucun euro ne se perd
-   ni ne se dedouble en changeant de poche. */
+   La propriete qui gouverne tout : leur somme fait le patrimoine net. Elle
+   est testee, parce que c'est elle qui garantit qu'aucun euro ne se perd ni
+   ne se dedouble en changeant de poche. */
 /* La valeur des metaux precieux cotes, calculee a part et seulement pour ici.
 
    `POCHE_DE_CLASSE` fait `metaux -> actions`, donc `nowByGroup().bourse` les
    compte avec les actions. C'est juste partout ailleurs -- un ETC or se vend en
    seance comme un ETF, et Allocation, l'autonomie financiere et l'historique en
-   dependent -- et faux dans la projection, ou cela revenait a supposer 6 % l'an
-   sur de l'or parce qu'il se negocie sur un marche.
+   dependent -- et faux dans la projection, ou cela reviendrait a supposer 6 %
+   l'an sur de l'or parce qu'il se negocie sur un marche.
 
-   Rien ne bouge dans les autres ecrans : cette fonction lit la classe fine, et
+   Les autres ecrans n'en dependent pas : cette fonction lit la classe fine, et
    Projection seule s'en sert pour deplacer la frontiere de ses poches.
 
    Les metaux n'existent qu'en position de marche : `CLASSES_ACTIFS`, la table
@@ -1908,19 +1892,19 @@ function pochesProjection(t = nowTotals()) {
 
 /* --- le moteur, et lui seul ---------------------------------------------
 
-   Trois fonctions calculaient la meme courbe de trois facons. `capitalisation()`
-   capitalisait poche par poche, mois par mois. `targetRequirements()` portait sa
-   propre formule fermee d'annuite, qui faisait progresser TOUT le patrimoine
-   financier au taux des actifs de marche : 10 000 EUR de non cote a 0 % et
-   15 000 EUR de liquidites y rapportaient 6 % l'an. Elle annoncait donc un
+   La courbe (`capitalisation()`), le versement ou le rendement qui suffirait
+   (`targetRequirements()`) et le mois ou la cible se franchit passent tous par
+   ce noyau, qui capitalise poche par poche, mois par mois. Une formule fermee
+   d'annuite ferait progresser TOUT le patrimoine financier au taux des actifs
+   de marche, non cote a 0 % et liquidites compris : elle annoncerait un
    versement plus faible que celui qu'il faut vraiment, et la phrase "il
-   faudrait verser X" contredisait la courbe affichee juste au-dessus.
-   `targetReachedAt()` interpolait entre deux points annuels.
+   faudrait verser X" contredirait la courbe affichee juste au-dessus. Une
+   interpolation entre deux points annuels manquerait le mois du
+   franchissement.
 
-   Un seul noyau desormais, et les trois questions passent par lui. Une methode
-   numerique coute quelques milliers d'operations flottantes -- le prix d'un seul
-   rendu -- et supprime la seule chose qu'une formule fermee ne peut pas garantir
-   ici : dire la meme chose que la courbe. */
+   Une methode numerique coute quelques milliers d'operations flottantes -- le
+   prix d'un seul rendu -- et garantit la seule chose qu'une formule fermee ne
+   peut pas garantir ici : dire la meme chose que la courbe. */
 
 function configProjection(opts = {}) {
   const s = Object.assign(projectionSettings(), opts);
@@ -1929,13 +1913,12 @@ function configProjection(opts = {}) {
   const plat = opts.plat != null ? num(opts.plat) : poches.plat;
 
   /* `start` est la base qui capitalise, entiere. Imposee, tout va au marche :
-     c'est l'ancien comportement, et les appelants qui la forcent doivent
-     continuer de le trouver. Sinon chaque poche part de sa propre valeur.
+     les appelants qui la forcent comptent sur ce comportement. Sinon chaque
+     poche part de sa propre valeur.
 
-     Un prorata distribuait ce depart entre les poches quand `start` etait
-     impose. Il n'est plus la : les poches sont connues une par une, et une
-     repartition au prorata d'une somme qu'on possede deja n'apportait qu'un
-     arrondi a rattraper. */
+     Pas de prorata de ce depart entre les poches : elles sont connues une par
+     une, et repartir au prorata une somme qu'on possede deja n'apporterait
+     qu'un arrondi a rattraper. */
   const impose = opts.start != null;
   const start = impose ? num(opts.start) : poches.placees;
   const departMarche = impose ? start : poches.marche;
@@ -1971,12 +1954,11 @@ function configProjection(opts = {}) {
    ne sait pas separer capital et interets, et on ne devine pas. Meme regle que
    `capitalRembourseParMois()`, dont ceci est la version mois par mois.
 
-   UN ZERO DECLARE EST UN TAUX. `num(d.taux)` rendait zero pour un pret familial
-   a 0 % comme pour un pret dont personne n'a dit le taux, et le test `!taux`
-   confondait les deux : le pret le plus simple a projeter -- pas d'interets, la
-   mensualite entiere en capital -- etait le seul que la projection laissait
-   constant. Sa dette ne descendait jamais, et le patrimoine net de dix ans
-   plus tard etait faux de tout le capital rembourse.
+   UN ZERO DECLARE EST UN TAUX. `num(d.taux)` rend zero pour un pret familial a
+   0 % comme pour un pret dont personne n'a dit le taux, et un test `!taux`
+   confondrait les deux : le pret le plus simple a projeter -- pas d'interets,
+   la mensualite entiere en capital -- resterait constant, et le patrimoine net
+   de dix ans plus tard serait faux de tout le capital rembourse.
 
    `tauxCreditDeclare` distingue le zero de l'ignorance, et c'est deja la porte
    qu'empruntent l'echeancier et la projection d'un credit : trois lecteurs, une
@@ -2018,11 +2000,11 @@ function moteurProjection(c) {
   const total0 = c.marche + num(c.autres) + c.garanti + c.liquidites + c.plat;
   /* Le point de depart passe par le MEME constructeur que les autres.
 
-     Il etait ecrit a la main, et il portait donc quatre champs quand ses voisins
-     en portent treize : ni `mois`, ni `plat`, ni `poches`, ni le detail des gains
-     par poche. Une serie dont le premier point n'a pas la forme des suivants est
-     un piege pose pour le prochain lecteur -- une infobulle qui ventile la
-     composition ne trouve rien a l'annee zero, et rien ne le dit avant l'ecran.
+     Ecrit a la main, il porterait moins de champs que ses voisins -- ni
+     `mois`, ni `plat`, ni `poches`, ni le detail des gains par poche. Une
+     serie dont le premier point n'a pas la forme des suivants est un piege
+     pose pour le prochain lecteur -- une infobulle qui ventile la composition
+     ne trouverait rien a l'annee zero, et rien ne le dirait avant l'ecran.
 
      `pointDe(0)` rend exactement les memes nombres : aucun mois n'a tourne, le
      capital rendu vaut zero, et les poches valent leur depart. */
@@ -2056,9 +2038,9 @@ function moteurProjection(c) {
   }
 
   /* Le point de sortie, toujours construit, meme quand l'horizon ne tombe pas
-     sur une annee pleine : `points[points.length - 1]` rendait alors le point de
-     DEPART, en silence, et `targetRequirements()` cherchait un versement contre
-     un total qui n'avait pas bouge. Treize mois suffisaient a le declencher. */
+     sur une annee pleine : le dernier point annuel n'est alors pas la sortie
+     -- sous un an, c'est le point de DEPART -- et `targetRequirements()`
+     chercherait un versement contre un total qui n'a pas bouge. */
   const final = c.mois > 0 && c.mois % 12 === 0
     ? points[points.length - 1] : pointDe(c.mois);
 
@@ -2079,11 +2061,6 @@ function moteurProjection(c) {
       contributed: misMarche + misAutres + misGaranti + misLiquides + plat,
       gains: (marche - misMarche) + (autres - misAutres)
            + (garanti - misGaranti) + (liquidites - misLiquides),
-      /* Un gain par poche, chacun sous le nom de sa poche. `gainsAutres`
-         designait le non cote PLUS le garanti PLUS les liquidites, et la vue
-         l'affichait sous l'intitule "Rendement du non cote" : le rendement
-         d'un fonds euros se lisait donc comme celui de parts non cotees. Quatre
-         noms exacts valent mieux qu'un raccourci qui se trompe. */
       gainsMarche: marche - misMarche,
       gainsAutres: autres - misAutres,
       gainsGaranti: garanti - misGaranti,
@@ -2131,9 +2108,9 @@ function targetRequirements({ target, years, opts = {} } = {}) {
   };
 
   /* Les poches de depart, nommees une par une : la somme du moteur, pas une
-     seconde definition. Une poche renommee sans cette ligne rendait `undefined`,
-     donc NaN, donc "cible non atteignable" sur un patrimoine qui la depasse
-     deja -- et rien a l'ecran pour le dire. */
+     seconde definition. Une poche renommee sans cette ligne rendrait
+     `undefined`, donc NaN, donc "cible non atteignable" sur un patrimoine qui
+     la depasse deja -- et rien a l'ecran pour le dire. */
   if (base.marche + base.autres + base.garanti + base.liquidites + base.plat >= T) {
     out.reachable = true;
     return out;
@@ -2199,14 +2176,14 @@ function objectiveProjection() {
 }
 
 /* --- ce que la cloche annonce -------------------------------------------
-   Les controles de coherence, ranges par ce qui presse. Ils vivaient enterres
-   au bas de la page Donnees, la ou personne ne les cherchait.
+   Les controles de coherence, ranges par ce qui presse, et montres partout
+   plutot qu'au bas de la page Donnees, la ou personne ne les cherche.
 
-   Une seule source, et c'est le point : j'ai d'abord ajoute ici les deux
-   saisies en attente, avant de voir que `healthChecks` les portait deja -- deux
-   listes du meme fait, dont une seule respectait "Plus tard". Les deux
-   controles passent maintenant par `currentMonthPending` et
-   `depensesEnAttente`, qui decident seuls qu'une saisie reclame quelque chose.
+   Une seule source, et c'est le point : les saisies en attente viennent de
+   `healthChecks`, et non d'une seconde liste ici -- deux listes du meme fait
+   finiraient par traiter "Plus tard" chacune a sa facon. Les deux controles
+   passent par `currentMonthPending` et `depensesEnAttente`, qui decident
+   seuls qu'une saisie reclame quelque chose.
 
    `action` d'abord : ce sur quoi on peut agir tout de suite, avant les chiffres
    qu'il faut comprendre pour corriger. */
@@ -2251,7 +2228,7 @@ function notifications() {
   return healthChecks()
     /* UNE CLEF PEUT ETRE DONNEE, ET C'EST PARFOIS NECESSAIRE. `cleNotif` derive
        la sienne du TITRE, qui est traduit : eteindre une ligne en francais ne
-       l'eteignait pas en anglais, et un controle dont l'extinction commande
+       l'eteint pas en anglais, et un controle dont l'extinction commande
        autre chose ne peut pas reposer la-dessus. Une clef posee a la main ne
        depend d'aucune langue. */
     .filter(n => actives[n.sujet] !== false && !masquees.includes(n.cle || cleNotif(n)))

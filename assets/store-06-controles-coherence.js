@@ -27,12 +27,11 @@ function healthChecks() {
 
   /* --- LES PREMIERS PAS PASSENT DEVANT TOUT LE RESTE ---------------------
 
-     La cloche ne disait que des rappels d'exploitation : actualiser des cours,
-     enregistrer un releve, saisir des depenses. Elle s'adressait donc a
-     quelqu'un dont l'application est deja remplie, et le premier venu la
-     trouvait en train de reclamer "le releve de septembre" avant meme
-     d'avoir declare un compte. Un rappel qui suppose ce qui manque envoie vers
-     un geste impossible.
+     Les rappels d'exploitation -- actualiser des cours, enregistrer un releve,
+     saisir des depenses -- s'adressent a quelqu'un dont l'application est deja
+     remplie. Au premier venu, ils reclameraient un releve avant meme qu'il ait
+     declare un compte. Un rappel qui suppose ce qui manque envoie vers un
+     geste impossible.
 
      L'ORDRE DES ETAPES EST CELUI DES DONNEES, et non celui du calendrier :
      sans compte il n'y a rien a photographier, et sans inventaire complet la
@@ -95,7 +94,8 @@ function healthChecks() {
      Le serveur n'accepte une ecriture que de l'appareil qui a lu la version en
      place. Un refus veut donc dire : ce que tu viens d'enregistrer est ici, et
      nulle part ailleurs. C'est la seule situation ou fermer l'application fait
-     perdre quelque chose, et elle ne se disait que sur la page Donnees.
+     perdre quelque chose : elle se dit donc dans la cloche, la ou l'on se
+     trouve, et non sur la seule page Donnees.
 
      `typeof` et non un simple test : `store.js` se charge avant `cloudsync.js`,
      et un controle qui leve une exception emporterait toute la cloche. */
@@ -108,11 +108,10 @@ function healthChecks() {
 
   sujet = 'credits';
   /* --- un capital restant du negatif ---
-     Il ne peut plus se saisir : les trois portes passent par
-     `validerCreditSaisi`. Mais une regle neuve ne repare pas un fichier deja
-     ecrit, et celui-ci compte a l'envers -- la dette s'additionne en negatif,
-     donc elle AJOUTE au patrimoine net. Rien ne le trahit, puisque le total
-     penche du bon cote.
+     La saisie le refuse : les trois portes passent par `validerCreditSaisi`.
+     Mais un fichier deja ecrit peut en porter un, et celui-ci compte a
+     l'envers -- la dette s'additionne en negatif, donc elle AJOUTE au
+     patrimoine net. Rien ne le trahit, puisque le total penche du bon cote.
 
      Il ne se corrige pas tout seul : personne ne peut savoir si "-12 000"
      voulait dire 12 000 ou zero, et choisir a la place du detenteur ecrirait
@@ -288,18 +287,14 @@ function healthChecks() {
   }
 
   sujet = 'coherence';
-  /* Les cibles vivent dans `targets.classes` depuis que le reequilibrage
-     raisonne par classe d'actif. Ce controle additionnait encore `coreEtf`,
-     `satellites` et `gold`, disparus a la migration : trois `undefined` font
-     un NaN, et l'alerte reclamait donc 100 % en permanence a quelqu'un qui les
-     avait deja. Meme definition que `rebalanceRows()` -- une classe mise hors
-     jeu ne compte pas, son encours a quitte la base. */
+  /* Les cibles vivent dans `targets.classes`, une par classe d'actif, et
+     `sommeCibles()` les additionne comme `rebalanceRows()` -- une classe mise
+     hors jeu ne compte pas, son encours a quitte la base. */
   const sum = sommeCibles();
-  /* `rebalanceRows().base` et non le brut : le commentaire ci-dessus dit "tant
-     qu'aucun euro n'est place", et le brut compte le cash. Quelqu'un qui venait
-     de declarer son compte courant recevait donc un avertissement sur des cibles
-     par defaut qu'il n'avait jamais choisies, le premier jour. La base des cibles
-     est ce que ces cibles repartissent : c'est elle qui dit s'il y a matiere. */
+  /* `rebalanceRows().base` et non le brut : le brut compte le cash, et un
+     compte courant tout juste declare suffirait a declencher un avertissement
+     sur des cibles par defaut jamais choisies. La base des cibles est ce que
+     ces cibles repartissent : c'est elle qui dit s'il y a matiere. */
   if (sum > 0 && Math.abs(sum - 100) > 0.05 && rebalanceRows().base > 0.005)
     add('warn', trad('Cibles d’allocation à {v}').replace('{v}', fmtPct(sum, 1)),
       trad('La somme devrait faire 100 % pour que les montants cibles aient un sens'),
@@ -308,15 +303,14 @@ function healthChecks() {
   sujet = 'coherence';
   /* --- trous dans les deux historiques ---
 
-     Ce controle ne cherchait que les trous **encadres** par deux mois remplis :
-     il parcourait les index des lignes non vides et signalait les ecarts. Sauter
-     juillet et aout alors qu'on est en septembre n'en produit aucun -- rien ne
-     suit -- donc le cas le plus courant passait au travers. `moisVides()` part de
-     l'autre bout : tous les mois passes vides depuis le premier rempli.
+     Un trou n'a pas besoin d'etre encadre par deux mois remplis : les derniers
+     mois sautes n'ont rien apres eux, et c'est le cas le plus courant.
+     `moisVides()` part donc de l'autre bout : tous les mois passes vides
+     depuis le premier rempli.
 
-     Les depenses ont desormais le leur. Elles n'en avaient pas, alors que la
-     moyenne des depenses sert de cout de la vie a l'autonomie financiere et a la
-     cible d'epargne de precaution : un mois manquant y pese deux fois. */
+     Les depenses ont le leur, comme les releves : leur moyenne sert de cout de
+     la vie a l'autonomie financiere et a la cible d'epargne de precaution, et
+     un mois manquant y pese deux fois. */
   for (const [trous, quoi, vue] of [
     [trousReleves(), 'Trou dans l’historique des relevés', 'history'],
     [trousDepenses(), 'Trou dans l’historique des dépenses', 'budget'],
@@ -332,9 +326,9 @@ function healthChecks() {
 
   sujet = 'saisies';
   /* Le releve du mois en cours, et il passe par `currentMonthPending` : un
-     rappel repousse ou tu pour le mois ne doit pas ressortir ici. Ce controle
-     lisait l'etat brut, donc "Plus tard" eteignait le bandeau et la pastille
-     de la barre du bas, mais pas cette ligne -- ni la cloche qui la reprend.
+     rappel repousse ou tu pour le mois ne doit pas ressortir ici. Lire l'etat
+     brut laisserait cette ligne, et la cloche qui la reprend, parler encore
+     quand "Plus tard" a eteint le bandeau et la pastille de la barre du bas.
      Un seul endroit decide qu'une saisie reclame quelque chose.
 
      L'aide nomme le bouton que l'Historique montre : voir
@@ -351,8 +345,8 @@ function healthChecks() {
   const b = Store.state.budget;
   /* Les depenses reclamees sont celles du mois clos, pas du mois en cours : le
      2 aout, personne ne sait ce qu'aout coutera. `depensesEnAttente` porte cette
-     regle, et le report avec. Ce controle visait le mois courant, et allumait
-     donc une alerte du 1er au 31 sur un mois qu'on ne peut pas encore saisir. */
+     regle, et le report avec. Viser le mois courant allumerait une alerte du
+     1er au 31 sur un mois qu'on ne peut pas encore saisir. */
   /* Meme raison : la garde est dans `depensesEnAttente()`, partagee avec le
      bandeau de l'accueil et la pastille du menu. */
   const depEnAttente = depensesEnAttente();
@@ -367,46 +361,41 @@ function healthChecks() {
         .replace('{t}', fmtEUR0(f.target)).replace('{a}', fmtEUR0(f.available)), 'budget');
 
   sujet = 'budget';
-  /* "0 mois d'autonomie, 0 EUR pour 0 EUR de cout mensuel" etait la caricature de
-     la regle que ce projet s'est donnee : la cloche ne parle que de ce qui existe
-     chez celui qui la regarde.
+  /* La cloche ne parle que de ce qui existe chez celui qui la regarde. Sans
+     garde, cette alerte dirait a qui n'a rien saisi "0 mois d'autonomie, 0 EUR
+     pour 0 EUR de cout mensuel".
 
-     La garde ne porte pas sur `burn` : celui-ci retombe sur l'objectif de
-     depenses, pose par defaut, et vaut donc 1 000 EUR chez quelqu'un qui n'a
-     rien saisi. Elle porte sur le revenu declare, comme le rappel des depenses
-     et pour la meme raison -- c'est lui qui donne un cadre aux mois. */
+     La garde ne porte pas sur `burn` seul : sans depense saisie dans l'annee,
+     il retombe sur l'objectif de depenses, qui peut exister chez quelqu'un qui
+     n'a rien saisi d'autre. Elle porte sur le revenu declare : c'est lui qui
+     donne un cadre aux mois. */
   const rw = runway();
   if (!pasAFaire('revenus') && rw.burn > 0.005 && rw.immediateMonths < 3)
     /* Le montant cite est celui qui sert au calcul -- le palier "disponible
-       tout de suite". Le message affichait `nowByGroup().cash`, qui compte
-       aussi le cash pose chez un courtier : il annoncait donc une somme dont
-       les mois affiches ne tenaient pas compte, et l'ecart s'est creuse le
-       jour ou ce cash a rejoint les liquidites.
-       Et `toFixed(1)` ecrivait "0.7 mois", seul point decimal d'une
-       application qui met des virgules partout ailleurs. */
+       tout de suite" -- et non `nowByGroup().cash`, qui compte aussi le cash
+       pose chez un courtier : le message annoncerait une somme dont les mois
+       affiches ne tiennent pas compte.
+       Les mois passent par `fmtNombre` : l'application met des virgules
+       decimales partout. */
     add('warn', `${trad('Épargne de précaution')}${deuxPoints()} ${fmtNombre(Math.round(rw.immediateMonths * 10) / 10)} ${trad('mois')}`,
       `${trad('Disponible tout de suite')} ${fmtEUR0(rw.immediate)} ${trad('pour')} ${fmtEUR0(rw.burn)} ${trad('de coût mensuel, la règle courante est 3 à 6 mois')}`, 'overview');
 
   return out;
 }
 
-/*   `perfAnnualisee()` et `perfAnnualiseePortefeuille()` vivaient ici. Elles
-   etalaient la plus-value d'une ligne sur la duree depuis sa date d'achat, ce
-   qui ne tient que si l'argent est arrive d'un coup.
+/* Pas de performance annualisee par ligne : etaler la plus-value sur la
+   duree depuis la date d'achat ne tient que si l'argent est arrive d'un coup.
+   Une case "alimentee regulierement" ne sauverait pas le chiffre : les grosses
+   lignes sont justement celles qu'on alimente, et elle l'eteindrait la ou il
+   porte la valeur.
 
-   Une case "alimentee regulierement" a ete envisagee puis ecartee : elle
-   aurait demande du travail pour que l'application cesse de mentir, et sur un
-   portefeuille ou les grosses lignes sont justement celles qu'on alimente, elle
-   aurait eteint le chiffre la ou il portait la valeur.
+   Ce qui s'affiche est vrai : l'ecart en euros et en pourcentage, qui ne
+   depend pas de la facon dont la ligne s'est constituee. Pas de duree de
+   detention sur la fiche non plus : comme fait, elle n'apporte pas de quoi
+   payer sa place.
 
-   Ce qui reste dit vrai : l'ecart en euros et en pourcentage, qui ne depend pas
-   de la facon dont la ligne s'est constituee. Une duree de detention l'a
-   remplace sur la fiche, comme un fait plutot que comme un taux, puis elle est
-   partie aussi : elle n'apportait pas de quoi payer sa place.
-
-   `dateAchat` reste, et sert toujours : c'est elle qui empeche l'ecart du jour
-   de compter une baisse d'avant l'achat. Un champ qui pilote un calcul n'a pas
-   besoin de s'afficher. */
+   `dateAchat` sert au calcul, pas a l'affichage : c'est elle qui empeche
+   l'ecart du jour de compter une baisse d'avant l'achat (`acheteAujourdhui`). */
 
 function fmtDureeMois(mois) {
   const n = Math.max(0, Math.round(mois));
@@ -417,13 +406,12 @@ function fmtDureeMois(mois) {
   return m ? `${lesAns} ${trad('et')} ${lesMois}` : lesAns;
 }
 
-/* Le meme calcul que `latentPnl()`, au mot pres : valeur des positions, prix de
+/* Le meme calcul que `latentPnl()`, et un seul : valeur des positions, prix de
    revient, ecart, pourcentage. Deux exemplaires d'une meme somme finissent par
-   dire deux choses -- celui-ci rendait encore 0 % sur une base nulle quand
-   l'autre se taisait, et le meme ecran pouvait porter les deux. Le nom reste,
-   huit appelants le connaissent, mais il n'y a plus qu'un calcul.
+   dire deux choses, et le meme ecran porterait les deux. Le nom reste parce que
+   des appelants le connaissent.
 
    Declaration de fonction et non `const` : une liaison lexicale ne se hisse pas
-   et ne se pose pas sur `window`, deux pieges que ce depot connait deja. */
+   et ne se pose pas sur `window`. */
 function portfolioPnl() { return latentPnl(); }
 partieChargee('assets/store-06-controles-coherence.js');

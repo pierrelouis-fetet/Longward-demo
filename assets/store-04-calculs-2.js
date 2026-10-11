@@ -6,7 +6,7 @@
  */
 /* La couleur d'un etablissement. Elle se lit sur LUI, pas sur ses comptes : la
    famille est deja celle que sa fiche affiche au-dessus de son nom, et la
-   couleur cesse donc de contredire les mots qui la surplombent.
+   couleur ne contredit donc pas les mots qui la surplombent.
 
    `teinteDominante`, juste dessous, garde son role la ou le groupe EST une
    classe d'actif : l'onglet par type, et le groupe des lignes sans contenant.
@@ -214,10 +214,9 @@ function rebalanceRoles() {
 }
 
 /* --- fonds ou titre en direct -----------------------------------------
-   "Actions" couvre un MSCI World et une ligne Meta, qui ne portent pas le
-   meme risque : l'un est mille societes, l'autre une seule. La distinction
-   manquait a la lecture socle / satellite, ou les deux se fondaient dans un
-   meme total.
+   "Actions" couvre un MSCI World et une action isolee, qui ne portent pas le
+   meme risque : l'un est mille societes, l'autre une seule. Sans cette
+   distinction, la lecture socle / satellite les fondrait dans un meme total.
 
    Ce n'est pas une classe d'actif pour autant. Un ETF est une enveloppe : un
    MSCI World *est* des actions, un ETF obligataire *est* de l'obligation, un
@@ -249,13 +248,6 @@ function natureDe(p) {
   return nomSentLeFonds(p?.name) ? 'fonds' : 'titre';
 }
 
-/* Une seule table pour toutes les classes, poches comprises.
-   Il y en avait deux -- l'une pour les classes de marche, l'autre pour les
-   poches de patrimoine -- avec des valeurs qui divergeaient : les obligations
-   etaient `series-6` d'un cote et `series-7` de l'autre, et surtout les
-   metaux precieux partageaient `series-4` avec l'immobilier. Dans
-   "Allocation par actif", ou les deux apparaissent, un studio et un ETC or
-   se peignaient de la meme couleur. Sept cles, sept teintes, une table. */
 const TEINTE_CLASSE = {
   liquidites: 1, monetaire: 1,
   actions: 2,
@@ -267,8 +259,8 @@ const TEINTE_CLASSE = {
   diversifie: 8,
   /* La teinte de "multi-actifs", et c'est une paire volontaire de plus.
 
-     Aucune couleur neuve n'etait possible : mesure contre les neuf series et
-     les cinq couleurs de sens, en balayant teinte, saturation et clarte, le
+     Aucune couleur neuve n'y tient : mesure contre les neuf series et les
+     cinq couleurs de sens, en balayant teinte, saturation et clarte, le
      meilleur ecart atteignable sur tout le cercle vaut 17,6 degres en theme
      clair et 19,1 en sombre, quand la regle en exige vingt. Le cercle est
      plein.
@@ -277,8 +269,8 @@ const TEINTE_CLASSE = {
      est une poche du patrimoine, l'autre une classe de ligne cotee, et les deux
      vocabulaires ne se rencontrent sur aucun graphique -- `repartitionClasses()`
      dessine les poches, les cibles et les listes de lignes dessinent les
-     classes fines. Un controle le verifie desormais, pour que l'hypothese cesse
-     d'en etre une. */
+     classes fines. Un test le verifie, pour que ce ne soit pas une simple
+     hypothese. */
   garanti: 8,
   bienValeur: 9,
 };
@@ -287,24 +279,17 @@ const TEINTE_SANS_CLASSE = 12;
 const couleurClasse = ac =>
   `var(--series-${TEINTE_CLASSE[CLASSES_ALIAS[ac] || ac] || TEINTE_SANS_CLASSE})`;
 
-/* Ce qui est place, groupe par type d'enveloppe.
+/* Les avoirs, groupes par type d'enveloppe.
 
    Meme argent que `allocationByAccount()`, meme perimetre, meme base : les deux
    cartes de la page Patrimoine sont deux granularites d'un seul total, le type
    puis le compte. Leurs sommes sont donc egales, et un test le verifie.
 
-   Deux exclusions, et chacune a sa raison.
-
-   Le cash, parce que les liquidites posees sur un PEA en attente d'un achat
-   gonflaient la part de l'enveloppe sans qu'un euro soit place. Elles ont leur
-   propre lecture, dans les poches de patrimoine et dans Comptes. Un type qui ne
-   porte que du cash sort donc de la repartition.
-
-   Le levier, parce que c'est une dette et non une enveloppe. Attention : le
-   type `levier` ne figure pas dans `TYPES_COMPTE`, il vient de l'ancien modele,
-   donc `typeCompte('levier').groupe` ne vaut rien et le filtre sur le groupe ne
-   l'ecarte pas. Il faut le nommer. Une premiere version de cette fonction l'a
-   oublie, et le test l'a rattrapee. */
+   Le levier n'y entre pas, parce que c'est une dette et non une enveloppe.
+   Attention : le type `levier` ne figure pas dans `TYPES_COMPTE`, il vient de
+   l'ancien modele, donc `typeCompte('levier')` retombe sur un type generique
+   que rien ne distingue d'une enveloppe. Il faut le nommer, et un test le
+   verifie. */
 /* Meme base et meme perimetre que `allocationByAccount()`, un cran au-dessus :
    les deux graphiques de la carte sont deux granularites d'un seul total, et
    deux bases differentes en auraient fait deux cartes qui se contredisent. */
@@ -326,9 +311,9 @@ function byAccountType({ financier = false } = {}) {
     .sort((a, b) => b.value - a.value);
 }
 
-/* Ou l'on en est, en euros. Le pourcentage n'est plus ici : "patrimoine sur
-   cible" mesurait le chemin depuis zero, et un objectif de 30 000 pose a
-   28 000 s'annoncait atteint a 93 % le jour meme. L'avancement vit dans
+/* Ou l'on en est, en euros, sans pourcentage : "patrimoine sur cible"
+   mesurerait le chemin depuis zero, et un objectif de 30 000 pose a 28 000
+   s'annoncerait atteint a 93 % le jour meme. L'avancement vit dans
    `progressionObjectif()`, qui part du point de depart. */
 function objectiveStatus() {
   const { total } = nowTotals();
@@ -345,8 +330,9 @@ function objectiveStatus() {
    ajustement sans que personne l'ait demande. Il ne se change que par un geste
    qui le nomme. Retirer la cible retire l'objectif, et son depart avec lui.
 
-   Un objectif pose avant que ce point existe n'en a pas, et il ne s'invente
-   pas : ni zero, ni le 1er janvier. Sa barre attend qu'un depart soit choisi. */
+   Un objectif dont l'etat ne porte aucun point de depart n'en a pas, et il ne
+   s'invente pas : ni zero, ni le 1er janvier. Sa barre attend qu'un depart
+   soit choisi. */
 function departObjectif() {
   const d = Store.state.meta?.objectifDepart;
   if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(String(d.date || '')) || !Number.isFinite(Number(d.valeur))) return null;
@@ -391,20 +377,18 @@ function progressionObjectif(g = objectiveStatus(), d = departObjectif()) {
   return { etat, pct, depart: d, chemin, parcouru, barre: Math.min(100, Math.max(0, pct)) };
 }
 
-/*   Ce qu'elle faisait, pour memoire : le patrimoine du jour plus un nombre saisi
-   a la main. Ni marches, ni epargne, ni charges -- donc pas une projection, mais
-   une addition. La vraie vit dans l'onglet Projection, avec ses hypotheses.
-
-   `meta.expectedInflow` reste dans l'etat sans lecteur, comme `budget
-   .supplements` : un export d'avant doit continuer de se relire. */
+/* `meta.expectedInflow` reste dans l'etat sans lecteur, comme `budget
+   .supplements` : un export qui le porte doit continuer de se relire. Une
+   projection du patrimoine vit dans l'onglet Projection, avec ses
+   hypotheses, et nulle part ici. */
 
 /* La variation sur douze mois glissants, et rien d'autre.
 
-   "Depuis le 1er janvier" disait une chose differente en janvier et en
-   decembre : en janvier elle mesurait trois semaines, en decembre onze mois. Un
-   meme intitule pour une fenetre qui s'allonge toute l'annee ne se compare pas a
-   lui-meme d'un mois sur l'autre, et c'est pourtant l'usage qu'on en fait. Douze
-   mois glissants mesurent toujours douze mois.
+   Une fenetre "depuis le 1er janvier" dirait une chose differente en janvier
+   et en decembre : trois semaines en janvier, onze mois en decembre. Un meme
+   intitule pour une fenetre qui s'allonge toute l'annee ne se compare pas a
+   lui-meme d'un mois sur l'autre, et c'est pourtant l'usage qu'on en fait.
+   Douze mois glissants mesurent toujours douze mois.
 
    Le releve retenu est le plus proche de douze mois en arriere, avec une
    tolerance : au-dela de trois mois d'ecart, l'intitule mentirait. Un historique
@@ -449,11 +433,11 @@ function variationAn(aujourdhui = todayISO(), net = true) {
 
   /* LA VARIATION MESURE LA GRANDEUR QUI EST AFFICHEE, pas une autre.
 
-     Le bandeau bascule entre net et brut, et le chiffre du dessous ne suivait
-     pas : il mesurait toujours le net. Les deux ne bougent pas ensemble des
-     qu'un credit se rembourse -- 50 000 EUR d'avoirs en plus et 10 000 EUR de
-     capital rembourse font +50 000 au brut et +60 000 au net. Lire l'un sous
-     l'autre, c'est attribuer aux actifs ce que le remboursement a fait.
+     Le bandeau bascule entre net et brut, et le chiffre du dessous suit la
+     meme grandeur. Les deux ne bougent pas ensemble des qu'un credit se
+     rembourse -- 50 000 EUR d'avoirs en plus et 10 000 EUR de capital
+     rembourse font +50 000 au brut et +60 000 au net. Lire l'un sous l'autre,
+     c'est attribuer aux actifs ce que le remboursement a fait.
 
      ATTENTION AU MOT `total`, QUI DESIGNE DEUX CHOSES. Sur un releve passe,
      `total` est la somme des avoirs et `net` en retranche les credits ; sur
@@ -475,7 +459,7 @@ function variationAn(aujourdhui = todayISO(), net = true) {
 
      La tolerance admet neuf a quinze mois autour de douze : ecrire "12 mois"
      sous une comparaison qui en couvre quinze serait le meme mensonge que
-     l'ecrire sous quatre. Le repli sur le plus ancien releve n'a plus besoin
+     l'ecrire sous quatre. Le repli sur le plus ancien releve n'a pas besoin
      d'un intitule a lui non plus -- son age le dit.
 
      LE POURCENTAGE SE TAIT DES QUE SA BASE N'EN PORTE PAS UN. Base a zero :
@@ -632,7 +616,7 @@ const chargeMensuelle = c => auMois(c.amount, c);
 
 /* --- la repartition theorique d'une charge, entre plusieurs personnes ----
 
-   TROIS NOTIONS DISTINCTES, ET LES FONDRE EST LE DEFAUT DEJA COMMIS ICI.
+   TROIS NOTIONS DISTINCTES, QU'IL NE FAUT JAMAIS FONDRE.
 
      1. le MONTANT FACTURE : ce qui est debite du compte ;
      2. la PART THEORIQUE d'un autre : la repartition convenue entre vous ;
@@ -784,7 +768,7 @@ const isoDeDate = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2
 
    Le 31 janvier plus un mois n'est pas le 3 mars. `setMonth()` reporte le
    debordement sur le mois suivant en silence, et une charge trimestrielle
-   partant d'un 31 derivait alors d'un jour a chaque saut. On borne au dernier
+   partant d'un 31 deriverait alors d'un jour a chaque saut. On borne au dernier
    jour du mois vise, ce que fait n'importe quel echeancier reel. */
 function ajouterMois(iso, n) {
   const d = new Date(iso + 'T00:00:00');
@@ -835,15 +819,11 @@ function prochaineEcheance(c, aujourdhui = todayISO()) {
    autres rentrees. Une entree de 800 EUR et une sortie de 1 600 EUR donnent
    deja le bon solde ; il n'y a rien a retrancher une seconde fois.
 
-   LE PARTAGE A DONC QUITTE LES CALCULS ET L'ECRAN. Vivaient ici les
-   contributeurs, la part de chacun sur une charge, ce qui restait a sa charge et
-   les totaux de la page de partage. Deux endroits enregistraient le meme fait --
-   la part sur la ligne et la contribution en revenu -- et ils divergeaient. Un
-   seul reste.
-
-   `budget.contributors` et les `shares` de chaque charge NE SONT PAS EFFACES :
-   personne ne peut savoir ce qu'ils voulaient dire, et une donnee qu'on ne sait
-   pas relire ne se detruit pas. Plus rien ne les lit, voila tout. */
+   LE PARTAGE RESTE DONC HORS DES CALCULS. La part de chacun sur une ligne et
+   la contribution saisie en revenu enregistreraient le meme fait a deux
+   endroits, et elles divergeraient : seule la contribution compte. `shares` et
+   `budget.contributors` ne servent qu'a la repartition theorique, purement
+   informative, decrite plus haut, et cette fonction ne les lit pas. */
 function fixedTotal() {
   return B().fixedCharges.reduce((s, c) => s + chargeMensuelle(c), 0);
 }
@@ -936,12 +916,11 @@ function expenseYears() {
 
 /* De combien un mois depasse son objectif, en trois niveaux.
 
-   Le graphique peignait en rouge tout mois au-dessus de l'objectif, sans
-   graduation : sur huit mois, sept etaient rouges, et le rouge ne disait donc
-   plus rien. Une couleur d'alerte qui s'allume presque toujours est une couleur
-   decorative.
+   Un graphique qui peindrait en rouge tout mois au-dessus de l'objectif, sans
+   graduation, serait rouge presque partout, et le rouge ne dirait rien. Une
+   couleur d'alerte qui s'allume presque toujours est une couleur decorative.
 
-   Un tiers d'ecart est le seuil : en dessous, un mois se rattrape sur le
+   La moitie d'ecart est le seuil : en dessous, un mois se rattrape sur le
    suivant, c'est du bruit de la vie courante. Au-dela, il faut une decision.
    `SEUIL_DEPASSEMENT_GRAVE` le nomme pour que le graphique, le tableau et la
    liste ne puissent pas en avoir trois lectures.
@@ -1069,11 +1048,9 @@ function loyersCourantsProbables() {
 
 /* Les charges fixes, de la plus lourde a la plus legere.
 
-   IL Y AVAIT DEUX ORDRES, et un commutateur pour passer de l'un a l'autre : le
-   rang du tableau, deplacable a la poignee, et un tri par montant calcule a
-   l'affichage. Le tri reste, seul. Une liste de charges se lit pour savoir ce
-   qui pese ; cette reponse-la ne depend d'aucun rangement personnel, et le
-   commutateur demandait pourtant de choisir avant de lire.
+   UN SEUL ORDRE, celui du montant. Une liste de charges se lit pour savoir ce
+   qui pese ; cette reponse-la ne depend d'aucun rangement personnel, et un
+   second ordre, avec son commutateur, demanderait de choisir avant de lire.
 
    Le tri se fait sur l'equivalent MENSUEL, pas sur le montant saisi : une
    assurance a 600 EUR l'an pese 50 EUR par mois, et la ranger derriere un
@@ -1143,11 +1120,11 @@ function reprendreCategorie(cat) {
 
 /* Ne pas detailler ses depenses, pour qui ne veut pas de neuf cases par mois.
 
-   Aucun mecanisme nouveau, et c'est le point : `retirees` fait deja exactement
-   ca, une categorie a la fois. Il manquait le geste d'un coup, et le nom qui dit
-   ce qu'on fait. Un "total du mois" pose a cote de `v` aurait ete un second
-   champ pour la meme valeur -- treize endroits lisent `v`, dont `expenseRowTotal`,
-   et le total aurait cesse d'egaler la somme de ses parts chez ceux-la.
+   Le mecanisme est celui de `retirees`, qui fait deja exactement ca une
+   categorie a la fois : ce geste le fait d'un coup, sous un nom qui dit ce
+   qu'on fait. Un "total du mois" pose a cote de `v` serait un second champ
+   pour la meme valeur -- treize endroits lisent `v`, dont `expenseRowTotal`,
+   et le total cesserait d'egaler la somme de ses parts chez ceux-la.
 
    L'etat se derive, il ne se declare pas : ne rien detailler, c'est n'avoir plus
    qu'une case a remplir. Un drapeau `sansDistinction` aurait pu mentir des la
@@ -1169,9 +1146,9 @@ const CATEGORIE_TOUT = 'Tout confondu';
    a l'affichage renommerait une colonne au changement de langue et le mois
    precedent porterait l'autre nom.
    Mais c'est l'application qui le cree, pas le detenteur : elle l'ecrit dans la
-   langue en vigueur au moment du clic. Un anglophone recevait "Tout confondu".
-   La reconnaissance accepte les deux graphies, sinon changer de langue puis
-   recliquer creerait une seconde case a cote de la premiere. */
+   langue en vigueur au moment du clic, pour qu'un anglophone ne recoive pas
+   "Tout confondu". La reconnaissance accepte les deux graphies, sinon changer
+   de langue puis recliquer creerait une seconde case a cote de la premiere. */
 const NOMS_TOUT = () => [CATEGORIE_TOUT, trad(CATEGORIE_TOUT)];
 
 /* Les categories sont-elles desactivees ? Deux etats, pas trois.
@@ -1180,11 +1157,11 @@ const NOMS_TOUT = () => [CATEGORIE_TOUT, trad(CATEGORIE_TOUT)];
    depenses entre des categories, ou l'on ne remplit qu'une case. Le choix se
    fait dans la saisie du mois, la ou il a un sens, et l'affichage le suit.
 
-   Une preference d'affichage a ete essayee a cote, `meta.budgetDetail`, avec
-   deux crans en tete de page. C'etait un second systeme pour une question deja
-   tranchee : rien ne garantissait que les deux s'accordent, et l'ecran pouvait
-   proposer de detailler ce que la saisie ne detaillait plus. Deux portes sur un
-   meme champ sont saines, deux champs pour la meme valeur ne le sont pas.
+   Une preference d'affichage a cote, avec ses propres crans en tete de page,
+   serait un second systeme pour une question deja tranchee : rien ne
+   garantirait que les deux s'accordent, et l'ecran pourrait proposer de
+   detailler ce que la saisie ne detaille pas. Deux portes sur un meme champ
+   sont saines, deux champs pour la meme valeur ne le sont pas.
 
    Ce que cet etat ne touche pas : les montants. `retirerCategorie` n'efface
    rien, les mois passes gardent leur decoupage, et l'export le porte toujours.
@@ -1196,16 +1173,16 @@ function sansDistinction() {
 /* Les mois d'une annee qu'il y a lieu de montrer.
 
    Un mois a venir n'est pas un mois a zero euro : il n'a pas eu lieu. Le
-   calendrier ouvre les douze mois des le premier lancement, donc le graphique
-   annoncait "dec. 0 EUR" au mois d'aout, et quatre barres plates se lisaient
-   comme quatre mois sans depenses.
+   calendrier ouvre les douze mois des le premier lancement : sans ce filtre, le
+   graphique annoncerait "dec. 0 EUR" au mois d'aout, et quatre barres plates se
+   liraient comme quatre mois sans depenses.
 
    Une annee passee garde ses douze mois : un mois vide y est un vrai zero, et
    c'est une information. Une annee a venir ne montre que ce qui est deja saisi --
    quelqu'un peut preparer janvier en decembre, et cacher une saisie serait pire
    que montrer un vide.
 
-   Les statistiques, elles, n'ont jamais eu besoin de cette fonction :
+   Les statistiques, elles, n'ont pas besoin de cette fonction :
    `expenseYearStats` ecarte deja tout mois a zero, et le mois en cours de ses
    comparaisons. */
 function expenseSeriesVisible(year) {
@@ -1381,9 +1358,8 @@ const capitalDuMoisEstime = () => ETABS().some(e => (e.dettes || []).some(d => {
    Un tableau d'amortissement de banque tient en quatre grandeurs : capital
    emprunte, taux, nombre d'echeances, mensualite. Trois suffisent, la quatrieme
    s'en deduit. L'application declare le capital restant du, le taux et la
-   mensualite -- la duree se deduisait donc deja, sans etre affichee nulle part.
-   Le commentaire de la fiche l'annoncait pourtant : "le taux sert a lire le
-   contrat : date de fin, interets restants, part de capital".
+   mensualite : la duree s'en deduit, et avec elle la date de fin, les interets
+   restants et la part de capital du mois.
 
    Quatre champs saisissables pour trois faits seraient une faute : le jour ou ils
    se contredisent, aucun n'a raison. La duree se lit donc, elle ne s'ecrit pas.
@@ -1400,7 +1376,7 @@ function resteAPayer(d) {
            capitalDuMois, interetsDuMois, assuranceDuMois };
 }
 
-/* Deux grandeurs que rien ne separait, et elles ne veulent pas dire la meme
+/* Deux grandeurs a separer, parce qu'elles ne veulent pas dire la meme
    chose.
 
    `investable` est le cash qui reste sur le compte : revenus moins charges
@@ -1410,8 +1386,8 @@ function resteAPayer(d) {
    `theoretical` y ajoute le capital rembourse sur les credits. Cette part
    augmente bien le patrimoine net -- le bien ne bouge pas, la dette baisse -- mais
    elle n'arrive sur aucun compte : elle est deja partie avec la mensualite. La
-   confondre avec de l'epargne investissable faisait capitaliser a 6 % l'an un
-   argent qui n'existe nulle part. Sur la demonstration, 645 EUR par mois.
+   confondre avec de l'epargne investissable ferait capitaliser, dans une
+   projection, un argent qui n'existe nulle part.
 
    Les deux restent rendues : la croissance du patrimoine se lit avec le capital
    rembourse, le versement d'une projection sans lui. */
@@ -1499,17 +1475,15 @@ function encoursAProbleme() {
 }
 
 /* --- ce qu'un bien rapporte ---------------------------------------------
-   L'application savait qu'un studio vaut 120 000 EUR et qu'il reste 96 000 EUR a
-   rembourser. Elle ne savait pas ce qu'il rapporte -- or un proprietaire ne vit pas
-   sur la valeur de son bien, il vit sur le loyer moins la mensualite moins les
-   charges. Un appartement a 150 000 EUR qui sort 120 EUR par mois et un autre qui
-   en rentre 180 n'ont rien a voir, et l'ecran les affichait pareil.
+   Un proprietaire ne vit pas sur la valeur de son bien, il vit sur le loyer
+   moins la mensualite moins les charges. Un appartement a 150 000 EUR qui sort
+   120 EUR par mois et un autre qui en rentre 180 n'ont rien a voir, et un ecran
+   qui ne montrerait que leur valeur les afficherait pareil.
 
-   Les pieces existaient deja, mais separees : le loyer se declare en source de
-   revenus, la taxe fonciere en charge fixe, la mensualite en credit. Rien ne les
-   reliait au bien. C'est le meme chainon manquant que la charge fixe et le credit,
-   resolu de la meme facon : un `bienId` sur une source de revenus et sur une
-   charge, et le compte du bien devient le point de rassemblement.
+   Les pieces se declarent chacune a sa place : le loyer en source de revenus,
+   la taxe fonciere en charge fixe, la mensualite en credit. Un `bienId` sur une
+   source de revenus et sur une charge les rattache au bien, comme il rattache
+   le credit, et le compte du bien devient le point de rassemblement.
 
    Le lien pointe le **compte** et non la ligne : un compte immobilier porte un
    bien dans le cas normal, la mensualite est deja rattachee a son etablissement,
@@ -1518,12 +1492,12 @@ function encoursAProbleme() {
    Le rendement se calcule sur le prix d'acquisition quand on le connait -- c'est
    la convention, et c'est ce que la fiche annonce. A defaut, sur la valeur
    actuelle, en le disant : un rendement sur une estimation du jour n'est pas le
-   meme chiffre, et le taire serait la faute que ce projet corrige sans arret.
+   meme chiffre, et le taire ferait passer l'un pour l'autre.
 
-   Trois manques rendaient tous les rendements trop beaux, et tous du meme cote :
+   Trois oublis rendraient tous les rendements trop beaux, et tous du meme cote :
    douze mois de loyer supposes pleins, aucun impot, et la periode du loyer
-   ignoree. Un outil imprecis se trompe des deux cotes ; celui-la se trompait
-   toujours du cote flatteur.
+   ignoree. Un outil imprecis se trompe des deux cotes ; un outil qui les
+   oublierait se tromperait toujours du cote flatteur.
 
    La vacance et l'impot se **declarent**. L'application n'applique aucune regle
    fiscale : micro-foncier, reel, meuble, les regimes changent et le droit avec,
@@ -1532,21 +1506,20 @@ function encoursAProbleme() {
 /* Les credits qui financent un bien donne.
 
    Une dette vit sur l'ETABLISSEMENT qui l'a consentie, et c'est juste : c'est la
-   banque qui prete, pas le mur. Mais la fiche d'un bien lisait TOUTES les dettes
-   de son etablissement, donc deux biens chez la meme banque se partageaient
-   chaque credit : un parking de 20 000 EUR heritait des 180 000 EUR du credit de
-   l'appartement, de sa mensualite et de son capital rembourse. Trois chiffres
-   faux sur une fiche qui n'a jamais rien emprunte, et un cash-flow qui plonge
+   banque qui prete, pas le mur. Mais lire TOUTES les dettes de l'etablissement
+   ferait partager chaque credit entre ses biens : un parking heriterait du
+   credit de l'appartement, de sa mensualite et de son capital rembourse. Trois
+   chiffres faux sur une fiche qui n'a rien emprunte, et un cash-flow qui plonge
    sans raison.
 
-   `d.bienId` porte donc le lien. Le motif existait deja dans cette base -- une
-   charge fixe porte `bienId`, un loyer aussi -- il manquait au credit.
+   `d.bienId` porte donc le lien, sur le meme motif que la charge fixe et le
+   loyer, qui portent chacun un `bienId`.
 
-   Le repli, pour les etats d'avant la migration : un credit sans lien se
-   rattache au bien de l'etablissement quand il n'y en a QU'UN. Ce n'est pas une
-   supposition, c'est la seule lecture possible. Des qu'il y en a deux,
-   l'ambiguite est reelle et rien ne se rattache -- mieux vaut une fiche qui ne
-   montre pas son credit qu'une fiche qui montre celui du voisin.
+   Le repli, pour un credit sans lien : il se rattache au bien de
+   l'etablissement quand il n'y en a QU'UN. Ce n'est pas une supposition, c'est
+   la seule lecture possible. Des qu'il y en a deux, l'ambiguite est reelle et
+   rien ne se rattache -- mieux vaut une fiche qui ne montre pas son credit
+   qu'une fiche qui montre celui du voisin.
 
    Un lien qui pointe ailleurs n'entre jamais dans le repli : il est explicite,
    il a donc deja repondu. */
@@ -1591,7 +1564,7 @@ function biensImmobiliersParCompte() {
 /* L'etablissement ne tient-il qu'un seul compte, et est-ce celui-la ?
 
    La question ne passe PAS par le type du compte. `typeCompte(id).bienImmo`
-   semblait le bon filtre, mais un identifiant de type inconnu retombe sur un
+   semblerait le bon filtre, mais un identifiant de type inconnu retombe sur un
    defaut generique qui ne porte pas le drapeau -- et il suffit d'un type ecrit
    autrement pour qu'un bien cesse d'en etre un. Le nombre de comptes, lui, ne
    depend d'aucune table.
@@ -1615,8 +1588,8 @@ function comptesDuPreteur(etabId) {
 
      `ambigu`    aucun lien, et l'etablissement tient plusieurs comptes. Le repli
                  ne peut pas trancher, donc aucune fiche ne montre ce credit.
-     `mort`      le lien pointe vers un compte qui n'existe plus. Un bien
-                 supprime laissait cette reference derriere lui.
+     `mort`      le lien pointe vers un compte qui n'existe plus : un etat
+                 ancien ou importe peut porter cette reference.
      `ailleurs`  le lien pointe vers un compte d'un AUTRE etablissement. Deplacer
                  un compte de contenant suffit a le produire.
 
@@ -1747,11 +1720,11 @@ function creditsAClarifier() {
      DECLAREE   un montant annuel saisi. Le seul qui dise la verite : il sort
                 d'une declaration, pas d'un modele. Zero compris, qui est la
                 reponse juste d'un deficit foncier reporte.
-     LEGACY     un taux saisi du temps ou le montant n'existait pas. Il
-                s'applique comme avant -- au loyer moins les charges -- et
-                l'ecran le nomme estimation simplifiee a confirmer. La donnee ne
-                se migre JAMAIS : un taux n'est pas un montant, et le convertir
-                tout seul ecrirait une declaration que personne n'a faite.
+     LEGACY     un taux saisi, sans montant annuel. Il s'applique au loyer
+                moins les charges, et l'ecran le nomme estimation simplifiee
+                a confirmer. La donnee ne se migre JAMAIS : un taux n'est pas
+                un montant, et le convertir tout seul ecrirait une declaration
+                que personne n'a faite.
      INCONNUE   rien de saisi. Le mensuel vaut `null`, pas zero. "Zero euro
                 d'impot" est une affirmation, et personne ne l'a faite ; ecrire
                 zero ferait passer une donnee absente pour un calcul.
@@ -1789,8 +1762,8 @@ function fiscaliteBien(compte, baseMensuelle = null) {
 function cashFlowBien(compte) {
   if (!compte) return null;
   /* `revenuMensuel` et non le montant brut : la source porte sa periode, et un
-     loyer saisi a l'annee valait douze fois trop ici pendant que le budget
-     affichait le bon chiffre. Le meme libelle doit donner le meme montant sur
+     loyer saisi a l'annee vaudrait sinon douze fois trop ici, quand le budget
+     affiche le bon chiffre. Le meme libelle doit donner le meme montant sur
      tous les ecrans. */
   const sourcesLoyer = B().income
     .map((r, i) => ({ r, i }))
@@ -1825,8 +1798,8 @@ function cashFlowBien(compte) {
      departager le capital des interets, et annoncer "zero de capital" sur une
      mensualite de 620 EUR serait faux dans l'autre sens. */
   /* `capitalDuMois != null` plutot que `num(d.taux)` : un pret declare a 0 %
-     rembourse bien du capital, et le filtre par le taux l'ecartait. L'echeancier
-     porte la regle -- sans taux DECLARE, il rend `null`. */
+     rembourse bien du capital, et un filtre par le taux l'ecarterait.
+     L'echeancier porte la regle -- sans taux DECLARE, il rend `null`. */
   const amortis = credits.filter(d => echeancierCredit(d)?.capitalDuMois != null);
   const capitalMois = amortis.length ? amortis.reduce((s, d) =>
     s + (echeancierCredit(d)?.capitalDuMois || 0), 0) : null;
@@ -1871,8 +1844,7 @@ function cashFlowBien(compte) {
 
      `cashFlow` reste le chiffre de tete, et c'est l'ecran qui dit lequel des
      deux il montre : apres fiscalite quand elle est connue, avant elle sinon.
-     Le nombre ne change pas ; ce qui change est qu'il ne se fait plus passer
-     pour un net d'impot. */
+     Le nombre est le meme ; le dire empeche qu'il passe pour un net d'impot. */
   const cashFlowAvantImpot = loyers - charges - mensualite;
   const cashFlowApresImpot = impot === null ? null : cashFlowAvantImpot - impot;
   const cashFlow = impot === null ? cashFlowAvantImpot : cashFlowApresImpot;
@@ -1949,15 +1921,15 @@ function financementIndicatif(compte) {
 
 /* Ce qui a paye l'acquisition, poste par poste -- et non un verdict.
 
-   La version d'avant rendait un booleen `coherent`, vrai tant que l'ecart tenait
-   sous QUINZE POUR CENT DU PRIX. Un seuil de cette taille ne dit plus rien : sur
-   un bien a trois cent mille euros il laisse passer quarante-cinq mille euros
-   d'ecart sans un mot, c'est-a-dire tout ce qu'on voudrait justement voir. Et
-   quand il criait, il ne disait pas sur quoi.
+   Un verdict booleen, vrai tant que l'ecart tient sous un pourcentage du prix,
+   ne dirait rien : a quinze pour cent, sur un bien a trois cent mille euros, il
+   laisserait passer quarante-cinq mille euros d'ecart sans un mot,
+   c'est-a-dire tout ce qu'on voudrait justement voir. Et quand il crierait, il
+   ne dirait pas sur quoi.
 
-   Le detail remplace le verdict : le cout d'un cote, l'apport et le capital
-   emprunte de l'autre, et l'ecart nomme. La tolerance qui reste n'absorbe que
-   l'arrondi, un euro, parce qu'un centime d'ecart n'est pas une information.
+   Le detail tient lieu de verdict : le cout d'un cote, l'apport et le capital
+   emprunte de l'autre, et l'ecart nomme. La seule tolerance absorbe l'arrondi,
+   un euro, parce qu'un centime d'ecart n'est pas une information.
 
    UN ECART N'EST PAS UNE ERREUR. Des frais payes autrement, un pret travaux, une
    aide familiale, des frais finances : toutes ces acquisitions sont normales et
@@ -2029,9 +2001,9 @@ const PREMIERS_PAS = [
      dependent d'une serie -- l'evolution, le rythme -- n'ont que lui a demander.
 
      `aUnRelevePatrimonial` et non `aDejaServi` : la seconde repond "oui" des le
-     premier mois de depenses saisi, et ce pas se declarait franchi par quelqu'un
-     qui avait rempli son budget sans jamais photographier ses comptes. Des
-     depenses ne sont pas un releve, et elles ne l'ont jamais ete.
+     premier mois de depenses saisi, et ce pas se dirait franchi pour quelqu'un
+     qui a rempli son budget sans jamais photographier ses comptes. Des
+     depenses ne sont pas un releve.
 
      UN SEUL releve suffit, et le texte dit pourquoi il en faudra deux : une
      pente demande deux points. Reclamer le second bloquerait le premier pas sur
@@ -2048,9 +2020,9 @@ const PREMIERS_PAS = [
        `acquis` repond a "est-il franchi ?", et la reponse est non aussi --
        personne n'a pris de releve.
 
-       La liste de demarrage pose la SECONDE : avec la premiere, elle cochait
+       La liste de demarrage pose la SECONDE : avec la premiere, elle cocherait
        "Ton premier releve" sur une application vide, juste au-dessus de
-       "Tes comptes" qui restait a faire. On ne photographie pas des comptes
+       "Tes comptes" qui resterait a faire. On ne photographie pas des comptes
        qu'on n'a pas, et l'annoncer fait douter du reste. */
     acquis: () => aUnRelevePatrimonial(),
     ouvrable: () => aUnComptePropre(),
@@ -2135,9 +2107,9 @@ function chargesProposees(compte) {
   /* La meme frontiere que partout ailleurs : `bienImmo` sans `direct`. Un
      contexte, une liste -- et aucune ne connait les postes de l'autre. */
   if (!estBienEnDirect(compte)) return FRAIS_PIERRE_PAPIER;
-  /* `usage &&` : sans lui, un bien dont l'usage est inconnu lisait
+  /* `usage &&` : sans lui, un bien dont l'usage est inconnu lirait
      `CHARGES_BIEN['']`, qui est justement le socle commun -- les trois memes
-     charges etaient donc proposees deux fois dans la meme liste. Un usage
+     charges seraient donc proposees deux fois dans la meme liste. Un usage
      inconnu ne recoit que le generique, et une seule fois. */
   const usage = usageBien(compte);
   const propres = (usage && CHARGES_BIEN[usage]) || [];
@@ -2150,13 +2122,11 @@ function comptesBiens() {
 
 /* --- les rentrees exceptionnelles ---------------------------------------
    Un heritage, une prime, la vente d'une voiture : de l'argent qui entre une
-   fois. Il n'avait aucun endroit, et les trois qu'on pouvait croire bons etaient
-   faux. Les sources de revenus sont mensuelles -- 10 000 EUR y auraient valu
-   10 000 EUR par mois, a vie. "Rentree exceptionnelle", dans "Mois a venir",
-   est une prevision : un seul nombre, ecrase a chaque saisie, sans date. Et
-   monter le solde d'un compte marche pour le patrimoine mais ne dit pas d'ou
-   vient l'argent, si bien que "Rythme d'accumulation" compte l'heritage comme
-   de l'epargne.
+   fois. Il a son propre journal, parce que les endroits qu'on pourrait croire
+   bons sont faux. Les sources de revenus sont mensuelles -- 10 000 EUR y
+   vaudraient 10 000 EUR par mois, a vie. Et monter le solde d'un compte marche
+   pour le patrimoine mais ne dit pas d'ou vient l'argent, si bien que "Rythme
+   d'accumulation" compterait l'heritage comme de l'epargne.
 
    Ce dernier point est le vrai sujet : un apport n'est pas de l'epargne. Sans la
    distinction, la moyenne mensuelle bondit et la projection promet un rythme que
@@ -2164,8 +2134,8 @@ function comptesBiens() {
    puisse dire "dont tant d'apports exterieurs".
 
    `budget.supplements` n'est pas recycle, bien qu'il traine vide dans l'etat : un
-   champ qui a deja voulu dire autre chose -- des "complements alimentaires",
-   puis des "autres depenses" -- est un piege pour la migration. */
+   champ qui a deja porte d'autres sens dans d'anciens etats est un piege pour la
+   migration. */
 const APPORTS = () => (B().apports = B().apports || []);
 
 function apportsTries() {
@@ -2264,17 +2234,5 @@ function derniereVariation() {
   }
   return null;
 }
-
-/* --- autres depenses : retire -------------------------------------------
-   AUTRES_PERIODES, autreMensuelle() et supplementsTotal() vivaient ici pour
-   une carte "Autres depenses" qui ne comptait ni dans les charges fixes ni
-   dans le budget. Un memo chiffre a tenir a jour pour ne rien calculer : la
-   carte est partie, et ces trois-la avec elle.
-
-   Le champ `budget.supplements` reste dans l'etat, et la migration qui
-   normalise ses anciennes lignes reste en place plus haut : retirer un ecran
-   ne doit pas emporter ce que quelqu'un y avait saisi, et un export d'avant
-   doit continuer de se relire. Ce qui s'y trouvait se saisit desormais dans
-   les depenses du mois, ou ces euros comptent pour de vrai. */
 
 partieChargee('assets/store-04-calculs-2.js');

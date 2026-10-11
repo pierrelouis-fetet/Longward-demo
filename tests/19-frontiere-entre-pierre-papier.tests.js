@@ -614,9 +614,11 @@ suite('Un apport est un fait d’hier, pas un mouvement d’aujourd’hui', () =
       pres(round2(budgetFrame().income), avant.revenus, `apport ${v} : les revenus`);
       pres(round2(valeurCompte(compteById('c_cash'))), 12000, `apport ${v} : le cash`);
     }
-    /* Et rien ne l'ecrit dans un credit ni dans une poche. */
-    const st = lireSource('assets/store.js');
-    vrai(!/cash[^;]*=[^;]*apport|\.montant\s*=[^;]*apport/.test(st),
+    /* Et rien ne l'ecrit dans un credit ni dans une poche. Le code seul : un
+       commentaire sans point-virgule laisserait la recherche enjamber deux
+       instructions. Aucune chaine du store ne porte d'ouvrant de bloc. */
+    const st = lireSource('assets/store.js').replace(/\/\*[\s\S]*?\*\//g, ' ');
+    vrai(!/\bcash\w*\s*=(?![=>])[^;\n]*apport|\.montant\s*=(?![=>])[^;\n]*apport/i.test(st),
       'rien n’écrit un solde depuis l’apport');
   });
 

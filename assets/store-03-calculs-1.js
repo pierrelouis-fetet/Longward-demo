@@ -8,36 +8,6 @@
 function posValue(p) {
   return p.manual ? num(p.value) : num(p.qty) * num(p.price) * num(p.fx || 1);
 }
-/* Le taux auquel convertir le prix de revient d'une ligne : celui du jour, pour
-   les deux jambes.
-
-   Il s'est fige au jour de l'achat pendant longtemps, par `fxBuy`, et le
-   raisonnement se tenait : sans ca, le montant investi bougerait a chaque
-   variation de l'EUR/USD, et la plus-value d'une ligne qu'on n'a pas touchee
-   changerait toute seule.
-
-   Ce qui le fait tomber : une ligne se construit souvent en plusieurs achats, a
-   des dates et donc a des taux differents. Il n'y a pas UN taux d'achat a geler,
-   et un `fxBuy` unique n'est donc pas une approximation mais un chiffre
-   arbitraire presente comme une date.
-
-   Pire, il ne se figeait meme pas a un achat : `quotes.js` le posait au PREMIER
-   RAFRAICHISSEMENT des cours de la ligne. Deux titres achetes a des mois d'ecart
-   portaient le meme taux, celui du jour ou l'application les a vus pour la
-   premiere fois. L'ecart de change affiche mesurait le temps ecoule depuis
-   l'installation de l'app, pas une detention.
-
-   Les deux jambes au taux du jour, donc -- la convention du courtier. La
-   plus-value en euros devient "ce que cette ligne a gagne ou perdu, exprime en
-   euros d'aujourd'hui", et elle coincide avec ce que le courtier affiche. Le patrimoine
-   ne bouge pas d'un centime : il a toujours ete calcule au taux du jour.
-
-   Ce qu'on perd est reel et assume : l'application ne dit plus combien d'euros
-   sont reellement sortis du compte. Elle ne le savait pas -- elle le devinait.
-   Le dire vraiment demanderait un taux par achat, donc un carnet de lots, et ce
-   n'est pas ce projet.
-
-   Une ligne en euros vaut 1 sans discussion : c'est sa devise qui le dit. */
 function tauxAchat(p) {
   if ((p.currency || deviseBase()) === deviseBase()) return 1;
   return num(p.fx) || 1;
@@ -63,11 +33,10 @@ function posPerfPct(p) {
 }
 /* Et l'euro se tait avec lui.
 
-   `posValue - 0` rend la valeur entiere de la ligne. Un titre a 520 EUR sans
-   prix de revient saisi s'affichait donc en "+520 EUR de plus-value", soit
-   pres de la moitie du resultat annonce pour tout le portefeuille, avec un
-   "+0,0 %" a cote qui venait de la fonction du dessus. Un pourcentage muet et
-   un euro bavard sur le meme fait ne peuvent pas etre justes tous les deux. */
+   `posValue - 0` rendrait la valeur entiere de la ligne : un titre sans prix de
+   revient saisi s'afficherait en plus-value de toute sa valeur, a cote d'un
+   pourcentage muet. Un pourcentage muet et un euro bavard sur le meme fait ne
+   peuvent pas etre justes tous les deux. */
 function posPerfEur(p) {
   const inv = posInvested(p);
   return inv === 0 ? null : posValue(p) - inv;
@@ -182,7 +151,7 @@ function rangePosition(p) {
 
    `lastRun` dit si la passerelle repond ; celle-ci dit de quand datent les
    chiffres affiches. C'est la seconde question qu'on se pose devant un ecart
-   du jour, et rien ne la posait. */
+   du jour. */
 function coursAsOf() {
   const heures = Store.state.positions
     .filter(p => !p.manual)
@@ -237,11 +206,11 @@ function dayPerformance() {
 
 /* CE QUI A LE PLUS FAIT BOUGER LE PORTEFEUILLE AUJOURD'HUI.
 
-   La carte du jour deballait l'inventaire entier, et l'inventaire est deja en
-   bas de page sous "Lignes de titres". Neuf titres relus deux fois a trois
-   cents pixels d'intervalle : les deux cartes repondent a deux questions, et
-   elles se lisaient comme un doublon. Celle-ci garde la sienne -- qu'est-ce qui
-   a bouge, et de combien -- et n'en montre que la reponse courte.
+   L'inventaire entier est deja en bas de page sous "Lignes de titres". Le
+   reprendre ici ferait relire les memes titres a quelques centaines de pixels
+   d'intervalle : les deux cartes repondent a deux questions, et se liraient
+   comme un doublon. Celle-ci garde la sienne -- qu'est-ce qui a bouge, et de
+   combien -- et n'en montre que la reponse courte.
 
    TRIE PAR L'EFFET EN EUROS, en valeur absolue, et non par la variation. Une
    ligne a +1 % qui pese la moitie du portefeuille deplace plus d'argent qu'une
@@ -250,7 +219,7 @@ function dayPerformance() {
    a monte" -- une chute de cent euros passe devant une hausse de vingt.
 
    L'EFFET N'EST PAS RECALCULE : c'est `d.eur` de `posDayChange`, celui-la meme
-   que la colonne "Effet" affiche. Une seconde formule aurait fini par classer
+   que la colonne "Effet" affiche. Une seconde formule finirait par classer
    dans un ordre que le tableau ne montre pas.
 
    `horsSeance` ecarte : la ligne a une cloture de reference mais notre cours
@@ -344,17 +313,17 @@ function immobilierParDetention() {
 
    L'immobilier et les biens n'y entrent pas. Pour un mur et une montre c'est
    qu'ils sont deja portes a plat par `partPlate()`, et les marquer ne changerait
-   rien qu'un double comptage. Pour la pierre papier, qui rejoint desormais la
-   poche "autres actifs", c'est que cette poche vaut zero par defaut : la
-   reserver la laisserait plate de toute facon. Le jour ou quelqu'un affirme un
-   rendement sur ses autres actifs, une SCPI marquee "projet" suivrait ce taux
-   -- connu, et laisse tel quel plutot que corrige a moitie. */
+   rien qu'un double comptage. Pour la pierre papier, rangee dans la poche
+   "autres actifs", c'est que cette poche vaut zero par defaut : la reserver la
+   laisserait plate de toute facon. Le jour ou quelqu'un affirme un rendement
+   sur ses autres actifs, une SCPI marquee "projet" suivrait ce taux -- connu,
+   et laisse tel quel plutot que corrige a moitie. */
 function reserveProjet() {
   /* Les poches sont celles de `nowByGroup`, une par une, et non la poche
      "marche" de la projection qui en fusionne deux : la fenetre de la base
      affiche une ligne pour la bourse et une pour la crypto, et chacune doit
-     pouvoir retrancher ce qui lui a ete reserve. Fusionner ici obligeait a
-     defusionner la-bas, et la somme des lignes cessait de faire le total. */
+     pouvoir retrancher ce qui lui a ete reserve. Fusionner ici obligerait a
+     defusionner la-bas, et la somme des lignes cesserait de faire le total. */
   const out = { total: 0, bourse: 0, crypto: 0, nonCote: 0, garanti: 0 };
   for (const c of comptesOuverts()) {
     for (const l of lignesDe(c)) {
@@ -381,8 +350,8 @@ function nowTotals() {
   return { ...g, brut, dettes: p.dettes, net: brut - p.dettes,
            total: brut - p.dettes,          // "total" = patrimoine net, partout
            toInvest: p.investir,
-           /* `g.cash` couvre desormais toutes les liquidites, cash a investir
-              compris. Retrancher `p.investir` en plus le compterait deux fois :
+           /* `g.cash` couvre toutes les liquidites, cash a investir compris.
+              Retrancher `p.investir` en plus le compterait deux fois :
               "Investi" perdrait le cash a investir, qui reapparaitrait sur
               deux lignes de la carte du haut d'Allocation, "A investir" et
               "Argent disponible". Les trois parts feraient quand meme le brut
@@ -391,10 +360,10 @@ function nowTotals() {
            /* Deux formes du meme fait : le total pour l'afficher, le detail par
               poche pour que `pochesProjection` sache ou soustraire. */
            projet: reserve.total, projetParPoche: reserve,
-           /* Le perimetre, en trois faits, calcules une fois pour les six
-              lecteurs qui les demandaient chacun a sa facon. `immo` garde son
-              sens de CLASSE -- c'est la somme de POCHES_EVOLUTION qui doit faire
-              le brut, et un test l'exige. */
+           /* Le perimetre, en trois faits, calcules ici une fois : aucun lecteur n'a
+              a les refaire a sa facon. `immo` garde son sens de CLASSE --
+              c'est la somme de POCHES_EVOLUTION qui doit faire le brut, et un
+              test l'exige. */
            horsFinancier: horsFinancierTotal(),
            immoDirect: immo.direct, immoPapier: immo.papier,
            invested: brut - g.cash };
@@ -426,7 +395,7 @@ function partsDuReleve(v) {
     const defaut = a.gAff || a.group;
     /* Un compte fantome n'a pas de compte derriere lui : c'est une entree de
        l'ancien modele, qui ne porte ni lignes ni liquidites. Sans cette sortie,
-       `cashCompte(undefined)` levait une exception des qu'un releve portait un
+       `cashCompte(undefined)` leverait une exception des qu'un releve porte un
        montant sur l'un d'eux. */
     if (!a.compte) { parts[a.id] = { [defaut]: round2(total) }; continue; }
     const brut = {};
@@ -473,15 +442,13 @@ function rowGroups(row) {
     for (const k of Object.keys(g)) g[k] += num(row.poches[k]);
     return g;
   }
-  /* Sinon, le repli d'avant : la poche vient du type du compte. La cle
-     `garanti` existe desormais dans l'objet, sans quoi un compte range la y
-     ajoutait un nombre a `undefined`. */
+  /* Sinon, le dernier repli : la poche vient du type du compte. L'objet porte
+     deja la cle `garanti`, sans quoi un compte range la y ajouterait un nombre
+     a `undefined`. */
   for (const a of ACCOUNTS) g[a.gAff || a.group] += num(row.v[a.id]);
   return g;
 }
 function rowTotal(row) {
-  /* La somme se derive des poches, quelle que soit leur liste : la version
-     ecrite a la main a laisse `biens` dehors une fois deja. */
   return Object.values(rowGroups(row)).reduce((s, v) => s + v, 0);
 }
 function rowNet(row) {
@@ -489,25 +456,21 @@ function rowNet(row) {
 }
 /* Un releve est vide quand il ne porte NI avoir NI dette.
 
-   Le test ne regardait que `v`, les montants par compte : un releve a 0 EUR
-   d'avoirs et 20 000 EUR de dette passait donc pour vide, et disparaissait de
-   tout ce qui derive de cette notion -- le journal, les annees offertes au
-   selecteur, la courbe, les variations, le rythme. Son patrimoine net vaut
-   -20 000 EUR, ce qui est un fait, et le taire etait le seul moyen d'afficher
-   zero a la place.
+   Les montants par compte ne suffisent pas a le dire : un releve sans avoirs
+   mais charge d'une dette a un patrimoine net negatif, ce qui est un fait. Le
+   tenir pour vide le ferait disparaitre de tout ce qui derive de cette notion
+   -- le journal, les annees offertes au selecteur, la courbe, les variations,
+   le rythme -- et afficherait zero a la place.
 
-   VIDE N'EST PAS ZERO, et la nuance se lisait a l'envers. Le test valait
-   `every(x => !num(x))` : un releve ou chaque compte est declare a zero passait
-   donc pour vide lui aussi. Le cas est reel -- on vide un compte, on solde un
-   livret -- et c'est meme le seul moment ou la photo compte vraiment. Janvier
-   1 000, fevrier 0 : fevrier disparaissait du journal, de la courbe et des
-   variations, et l'ecart de -1 000 avec lui. La photo declarait un compte a
-   zero, l'application y lisait une absence de reponse.
+   VIDE N'EST PAS ZERO. Un releve ou chaque compte est declare a zero n'est pas
+   vide : on vide un compte, on solde un livret, et c'est meme le seul moment ou
+   la photo compte vraiment. Le tenir pour vide effacerait ce mois du journal,
+   de la courbe et des variations, et avec lui la baisse qui y mene.
 
-   La presence de la CLEF tranche desormais, et non la valeur : un champ jamais
-   rempli n'ecrit rien, un champ rempli ecrit ce qu'on y a mis, zero compris.
-   Les deux formes vides d'un ancien etat -- `null` et la chaine vide -- comptent
-   pour absentes, ce qu'elles ont toujours voulu dire. */
+   La presence de la CLEF tranche, et non la valeur : un champ jamais rempli
+   n'ecrit rien, un champ rempli ecrit ce qu'on y a mis, zero compris. `null`
+   et la chaine vide, les deux formes vides d'un ancien etat, comptent pour
+   absentes. */
 function rowIsEmpty(row) {
   const v = row.v || {};
   return !Object.keys(v).some(k => v[k] != null && v[k] !== '') && !num(row.dettes);
@@ -560,9 +523,9 @@ function rangeBornes(range) {
    La difference tient a un cran. Pour tracer une annee de courbe il faut
    treize points, qui donnent douze intervalles : le seuil les garde tous, et
    c'est juste. Mais la carte du rythme filtre les ecarts eux-memes, chacun
-   date du mois d'arrivee : celui date d'aout 2025 mesure la variation de
-   juillet a aout 2025, soit treize mois avant aujourd'hui. "1 an" comptait
-   donc treize mois.
+   date du mois d'arrivee : l'ecart date d'aout mesure la variation de juillet
+   a aout. Au meme seuil, "1 an" compterait treize ecarts ; le seuil avance donc
+   d'un mois.
    Seules les fenetres en annees sont concernees. "Depuis le 1er janvier"
    garde bien la variation de decembre a janvier : elle appartient a janvier,
    donc a l'annee en cours. */
@@ -577,7 +540,7 @@ function limitRange(points, range, { ecarts = false } = {}) {
     depuis = new Date(now.getFullYear() - ans, now.getMonth() + (ecarts ? 1 : 0), 1);
   }
   /* `toISOString()` convertit en UTC : a Paris, le 1er janvier local devient
-     le 31 decembre a 23 h, et le seuil "depuis le debut de l'annee" laissait
+     le 31 decembre a 23 h, et le seuil "depuis le debut de l'annee" laisserait
      passer la cloture du 31/12 de l'annee precedente. On assemble la date a
      partir de ses composantes locales. */
   const seuil = `${depuis.getFullYear()}-${String(depuis.getMonth() + 1).padStart(2, '0')}`
@@ -587,12 +550,12 @@ function limitRange(points, range, { ecarts = false } = {}) {
 }
 
 /* `dettes` : le capital restant du du mois, tel que la photo l'a note.
-   Sans lui, la courbe nette ne pouvait deduire les credits que du dernier
-   point -- le patrimoine net semblait plat pendant des annees puis
-   chutait d'un coup au bout. */
+   Sans lui, la courbe nette ne pourrait deduire les credits que du dernier
+   point -- le patrimoine net semblerait plat pendant des annees puis
+   chuterait d'un coup au bout. */
 /* `net` est rendu a cote du brut : les deux se lisent, et aucun appelant
-   n'a plus a refaire la soustraction -- c'est en la refaisant que le journal
-   avait fini par ne plus la faire du tout. */
+   n'a a refaire la soustraction -- un appelant qui la refait finit par
+   l'oublier. */
 /* `clotureLe` : le jour ou la photo a ete prise, pose par `appliquerReleve`.
    La courbe du heros s'en sert pour placer le releve dans le temps
    (`jourDuReleve`) ; un releve ancien ne le porte pas. */
@@ -623,10 +586,10 @@ function historySeries({ includeNow = true } = {}) {
 
      `net`       comment le patrimoine est valorise -- avoirs moins credits, ou
                  avoirs seuls. C'est le choix fait en tete de la page Aujourd'hui,
-                 sur le grand chiffre, et la courbe en herite. Elle a porte sa
-                 propre bascule Net / Brut pendant des mois : deux commutateurs
-                 pour une seule notion, dont on pouvait croire qu'ils reglaient
-                 des choses differentes.
+                 sur le grand chiffre, et la courbe en herite. Une bascule
+                 Net / Brut propre a la courbe ferait deux commutateurs pour une
+                 seule notion, et on pourrait croire qu'ils reglent des choses
+                 differentes.
      `financier` quel perimetre la courbe montre. L'immobilier physique pese 60 a
                  80 % d'un patrimoine ordinaire : sa bande ecrase l'echelle et les
                  placements deviennent un trait plat. La vue financiere l'ecarte,
@@ -640,18 +603,17 @@ function historySeries({ includeNow = true } = {}) {
    exactement ce que le net veut montrer. Seul le point du jour, quand la serie en
    porte un, utilise la dette d'aujourd'hui ; la carte d'evolution n'en porte pas
    (`aujourdhui: false`) et finit au dernier releve, avec la dette de ce releve.
-   Les mois anterieurs a ce champ n'ont pas la donnee : ils restent
-   traces bruts plutot que de se voir appliquer une dette d'aujourd'hui qui n'etait
-   pas la leur. La courbe se corrige d'elle-meme, un releve par mois.
+   Un releve qui n'a pas ce champ n'a pas la donnee : il reste trace brut plutot
+   que de se voir appliquer une dette d'aujourd'hui qui n'etait pas la sienne.
 
-   **En vue financiere, aucune dette ne se retranche de la COURBE, et la raison a
-   change.** Le modele porte desormais le lien : une dette declare le bien qu'elle
-   finance, et `detteLieeBienDirect` sait donc laquelle appartient au perimetre
-   financier. Ce que la courbe ne peut pas faire, c'est appliquer la dette
-   D'AUJOURD'HUI aux points d'HIER : un mois clos ne portait pas la marge ouverte
-   la semaine derniere, et la retrancher de son point ferait descendre un passe
-   qui n'a pas eu lieu. Seul le point du jour connait la dette du jour, et c'est
-   deja la regle de la vue globale : les mois anterieurs restent bruts.
+   **En vue financiere, aucune dette ne se retranche de la COURBE**, et ce n'est
+   pas faute de lien : une dette declare le bien qu'elle finance, et
+   `detteLieeBienDirect` sait laquelle appartient au perimetre financier. Ce que
+   la courbe ne peut pas faire, c'est appliquer la dette D'AUJOURD'HUI aux
+   points d'HIER : un mois clos ne portait pas la marge ouverte la semaine
+   derniere, et la retrancher de son point ferait descendre un passe qui n'a
+   pas eu lieu. Seul le point du jour connait la dette du jour, et c'est deja
+   la regle de la vue globale : un releve sans dette notee reste brut.
 
    La lecture d'AUJOURD'HUI, elle, retranche bien : la synthese de la page
    Allocation annonce les avoirs financiers, les dettes du perimetre et le net.
@@ -743,24 +705,6 @@ function capAFeter(avant, apres, date, dateDernier) {
   return nouveaux.length ? nouveaux[nouveaux.length - 1] : null;
 }
 
-/* --- Une bascule qui ne change rien ne se montre pas --------------------
-
-   La question n'est PAS "ce detenteur a-t-il un appartement" ni "a-t-il un
-   credit". Ces drapeaux repondent a cote, et l'un d'eux se trompe : quelqu'un
-   sans aucun bien physique mais avec une dette de courtier voit deja Financier
-   et Global diverger, parce que la vue financiere ne retranche aucune dette la
-   ou la vue globale nette les retranche. `aUnBien` aurait masque une bascule
-   utile, et personne ne l'aurait vu.
-
-   On compare donc les deux vues REELLEMENT calculees, sur la plage reellement
-   affichee. C'est la seule formulation qui ne peut pas se tromper, et elle ne
-   recopie aucune regle : le jour ou le perimetre change de definition, ces
-   fonctions suivent sans etre touchees.
-
-   Corollaire assume : le perimetre se juge a la lecture courante. Sans bien
-   physique, Financier et Global donnent la meme courbe BRUTE et deux courbes
-   NETTES differentes des qu'une dette existe -- la bascule apparait donc en Net
-   et disparait en Brut. C'est ce que la regle demande, et c'est vrai. */
 function memeCourbe(a, b) {
   if (a.length !== b.length) return false;
   return a.every((p, i) => {
@@ -815,7 +759,7 @@ function classesDeMarche() {
    code corrige le plus souvent.
 
    Deux prix et non un seul, parce que c'est leur ECART qui sert. Un prix de
-   revient isole ne se compare a rien : une part payee 1,33 EUR n'est ni chere ni
+   revient isole ne se compare a rien : une part payee 1 EUR n'est ni chere ni
    bon marche. Rapporte au prix d'aujourd'hui -- celui d'une levee, d'un pacte,
    d'une offre de rachat -- il dit enfin quelque chose.
 
@@ -850,8 +794,8 @@ function prixParPart(ligne) {
    MAIS LA QUESTION NE SE POSE PAS AUX CHAMPS DE LA LIGNE. `lignesDe` rend
    `valeur` et `prixDeRevient` toujours numeriques -- `num(l.valeur) * q` et
    `(acq.total || 0) * q` -- donc un cout jamais renseigne arrive ici en zero,
-   indiscernable d'un cout nul. Tester la presence de ces deux champs ne pouvait
-   rien attraper. C'est `acquisitionLigne` qui detient la reponse : elle seule
+   indiscernable d'un cout nul. Tester la presence de ces deux champs
+   n'attraperait rien. C'est `acquisitionLigne` qui detient la reponse : elle seule
    separe un zero tape d'un champ vide, et elle rend `total: null` quand le cout
    n'est pas connu.
 
@@ -899,10 +843,10 @@ function prixParPart(ligne) {
    especes n'a pas de plus-value, et une carte de zeros ne dirait rien. */
 /* CE QUI SORT DU CALCUL SE DIT EN DEUX PARTS. Une seule phrase pour le cash des
    comptes et les lignes sans prix de revient, "faute de prix de revient",
-   accuserait, chez un courtier ou 1 600 EUR de liquidites attendent d'etre
-   investis, des titres qui n'existent pas. Le cash n'a
-   pas de prix de revient par nature ; une ligne sans le sien, par oubli. Les
-   deux se lisent separement, et `horsBase` reste leur somme. */
+   accuserait, chez un courtier ou des liquidites attendent d'etre investies,
+   des titres qui n'existent pas. Le cash n'a pas de prix de revient par
+   nature ; une ligne sans le sien, par oubli. Les deux se lisent separement,
+   et `horsBase` reste leur somme. */
 function perfEtab(etabId) {
   let investi = 0, valeur = 0, cash = 0, sansBase = 0, lignes = 0;
   for (const c of COMPTES().filter(x => x.etabId === etabId && x.statut !== 'archive')) {
@@ -934,11 +878,11 @@ function perfLigne(ligne) {
 
 /* Le poids de chaque poche du patrimoine, et la base qui les rapporte a cent.
 
-   Ce calcul vivait dans la vue, avec les couleurs et les libelles. Il n'y etait
-   pas testable : le harnais ne charge pas `app.js`, si bien que l'invariant qui
-   compte -- la somme des parts fait la base -- ne se verifiait que par expression
-   rationnelle sur la source. Le meme deplacement a deja ete fait pour les points
-   de la courbe, et pour la meme raison.
+   Ce calcul vit dans le modele, et non dans la vue avec les couleurs et les
+   libelles : le harnais ne charge pas `app.js`, si bien que l'invariant qui
+   compte -- la somme des parts fait la base -- ne s'y verifierait que par
+   expression rationnelle sur la source. Les points de la courbe vivent ici
+   pour la meme raison.
 
    La vue garde ce qui est a elle : la couleur d'une poche, son nom traduit, la
    note "dont tant a investir". Le modele rend des nombres.
@@ -1071,13 +1015,13 @@ const inventaireDeclareComplet = () =>
 
 /* Existe-t-il au moins un RELEVE PATRIMONIAL ? Une question, une fonction.
 
-   Elle etait posee par `aDejaServi`, qui en pose une autre -- l'application
-   a-t-elle deja servi -- et repond oui des le premier mois de depenses saisi.
-   Le premier pas "enregistre ton premier releve" s'en servait, et se declarait
-   donc franchi par quelqu'un qui avait rempli son budget sans jamais
-   photographier ses comptes. Un releve et un mois de depenses sont deux objets
-   differents : la courbe, le rythme d'accumulation et l'autonomie sortent du
-   premier, jamais du second.
+   `aDejaServi` en pose une autre -- l'application a-t-elle deja servi -- et
+   repond oui des le premier mois de depenses saisi. Le premier pas
+   "enregistre ton premier releve" ne peut pas s'en servir : il se declarerait
+   franchi par quelqu'un qui a rempli son budget sans jamais photographier ses
+   comptes. Un releve et un mois de depenses sont deux objets differents : la
+   courbe, le rythme d'accumulation et l'autonomie sortent du premier, jamais
+   du second.
 
    La definition d'un releve rempli ne se reinvente pas ici : `rowIsEmpty` la
    porte deja, et c'est elle que la page des releves emploie. */
@@ -1137,9 +1081,9 @@ function moisVides(lignes, estVide) {
 const trousReleves = () => moisVides(Store.state.monthly, rowIsEmpty);
 /* Le mois clos est ecarte des trous de depenses, pour la raison qui ecarte le
    mois en cours des releves : il a son rappel, `depensesEnAttente()`, qui
-   attend son jour et se repousse. Le compter ici aussi le reclamait deux fois,
-   et des le 1er, malgre l'attente. Il devient un trou quand le mois suivant se
-   clot a son tour. */
+   attend son jour et se repousse. Le compter ici aussi le reclamerait deux
+   fois, et des le 1er, malgre l'attente. Il devient un trou quand le mois
+   suivant se clot a son tour. */
 const trousDepenses = () => {
   const clos = moisPrecedentKey();
   return moisVides(
@@ -1151,7 +1095,7 @@ const trousDepenses = () => {
 /* La date d'un `Date`, lue en heure locale.
 
    `toISOString()` convertit d'abord en UTC : a Paris, minuit local est la
-   veille a 22 h, et "aujourd'hui plus sept jours" en rendait six. Tout
+   veille a 22 h, et "aujourd'hui plus sept jours" en rendrait six. Tout
    calcul de jour dans ce fichier passe donc par ici. */
 function isoLocal(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -1283,11 +1227,11 @@ function allocationByAsset({ credits = true, financier = false, net = false, par
      `classeFinanceeParDette` reconnait, pas l'etablissement entier : un pret
      personnel pris chez un courtier ne se retranche pas de ses ETF.
 
-     Compter les lignes en brut sous une base nette donnait un appartement a
-     178,7 % du tout. L'autre issue -- poser le credit en ligne du classement,
-     ce que fait `credits` -- donne la meme barre a 178,7 %, rattrapee par une
-     barre a moins 97,6 % : deux fois illisible dans un classement dont chaque
-     barre se compare a la plus longue.
+     Compter les lignes en brut sous une base nette peut donner a un
+     appartement finance plus de 100 % du tout. L'autre issue -- poser le credit
+     en ligne du classement, ce que fait `credits` -- donne la meme barre
+     au-dela de 100 %, rattrapee par une barre negative : deux fois illisible
+     dans un classement dont chaque barre se compare a la plus longue.
 
      Le prorata plutot qu'une poche choisie : ici l'axe est la ligne, et deux
      appartements finances par deux prets doivent chacun porter le leur.
@@ -1312,8 +1256,8 @@ function allocationByAsset({ credits = true, financier = false, net = false, par
   }
   /* Les lignes manuelles telles que `lignesDe()` les rend, quote-part
      appliquee : c'est ce que le total compte. Lue sur la saisie, une ligne
-     detenue a moitie pesait ici sa valeur entiere, et les parts depassaient la
-     base. */
+     detenue a moitie peserait ici sa valeur entiere, et les parts
+     depasseraient la base. */
   const manuelles = c => lignesDe(c).filter(l => !l.marche);
   const assiette = c => manuelles(c).reduce((s, l) => s + num(l.valeur), 0);
   const valeurNette = (c, l) => {
@@ -1385,17 +1329,17 @@ function allocationByAsset({ credits = true, financier = false, net = false, par
     .sort((a, b) => b.value - a.value);
 }
 
-/* Le liquide entre dans cette repartition, et la base devient les avoirs.
+/* Le liquide entre dans cette repartition, et la base, ce sont les avoirs.
 
-   Elle l'excluait deux fois : les comptes du groupe `cash` etaient ecartes, et
-   `lignesDe()` ne voit pas le cash pose sur un compte-titres. Une page qui
-   s'appelle "Allocation" et qui cache quinze mille euros de liquidites ne
-   montre pas une allocation, elle montre un portefeuille -- et le cash est une
-   classe d'actif, celle qu'on choisit quand on ne choisit pas.
+   Les comptes du groupe `cash` y figurent, et le cash pose sur un
+   compte-titres aussi, que `lignesDe()` ne voit pas. Une page qui s'appelle
+   "Allocation" et qui cacherait ses liquidites ne montrerait pas une
+   allocation, mais un portefeuille -- et le cash est une classe d'actif, celle
+   qu'on choisit quand on ne choisit pas.
 
-   La base suit : `invested` valait le brut moins le cash, donc y ajouter le cash
-   aurait fait des parts qui depassent cent pour cent. C'est `valeurCompte()` qui
-   somme desormais, cash compris, et le total est le brut. */
+   La base suit : `valeurCompte()` somme chaque compte cash compris, et le
+   total est le brut. Rapportees a `invested`, le brut moins le cash, ces parts
+   depasseraient cent pour cent. */
 function allocationByAccount({ financier = false } = {}) {
   const base = financier ? totalFinancier() : nowTotals().brut;
   return comptesOuverts()
@@ -1418,8 +1362,8 @@ function allocationByAccount({ financier = false } = {}) {
 
    `net` retranche les dettes, comme la carte qui ouvre cette fiche. Sans lui,
    l'en-tete annoncerait "investi moins les dettes" au-dessus de lignes qui
-   les ignorent : avec un pret de 150 000 EUR, le total dirait 155 000 EUR et
-   ses parts en feraient 305 000. Un total egale la somme de ses parts, et cet
+   les ignorent : avec un pret, le total dirait l'investi moins la dette et ses
+   parts feraient l'investi entier. Un total egale la somme de ses parts, et cet
    ecart-la ne se voit pas chez qui n'a pas de credit.
 
    La dette se retranche des comptes de l'etablissement qui la porte, au prorata
@@ -1434,12 +1378,12 @@ function allocationByAccount({ financier = false } = {}) {
 /* Le troisieme axe de la meme somme : apres "ce que c'est" et "ou c'est
    pose", en combien de temps ca sort.
 
-   Le calcul existait deja, `poches().mobilisable`, mais il ne se lisait que par
-   l'autonomie financiere, qui en tire un nombre de mois. Un nombre de mois
-   repond a une autre question et ecrase la composition : savoir qu'un tiers du
-   patrimoine met des mois a se vendre ne se disait nulle part.
+   Le calcul est celui de `poches().mobilisable`, que l'autonomie financiere
+   resume en un nombre de mois. Un nombre de mois repond a une autre question
+   et ecrase la composition : savoir qu'un tiers du patrimoine met des mois a
+   se vendre demande cette carte.
 
-   Deux precautions, et la seconde a failli manquer.
+   Deux precautions.
 
    L'ordre est celui de la table, du plus liquide au moins, et non le
    decroissant des deux autres cartes : ici le rang porte du sens, et trier par
@@ -1529,13 +1473,11 @@ function stockTotals() {
 
 /* La base des poids du portefeuille Marches, et le poids lui-meme.
 
-   Il y en avait deux, et la fiche d'une ligne le disait en toutes lettres :
-   "d'ou deux pourcentages differents pour une meme ligne, et tous les deux
-   justes". Chacun se defendait -- l'un pour savoir si une variation du jour
-   pese, l'autre pour situer la ligne dans ce qu'on pilote -- mais la meme
-   position s'affichait a 66,8 % dans le tableau du jour et a 53,89 % sur sa
-   fiche, a un clic d'ecart. Deux nombres justes qui se contredisent a l'ecran
-   ne renseignent pas : ils font douter des deux.
+   Deux bases se defendraient chacune -- l'une pour savoir si une variation du
+   jour pese, l'autre pour situer la ligne dans ce qu'on pilote -- mais la meme
+   position afficherait alors deux pourcentages a un clic d'ecart, dans le
+   tableau du jour et sur sa fiche. Deux nombres justes qui se contredisent a
+   l'ecran ne renseignent pas : ils font douter des deux.
 
    Une seule convention, donc, celle qui repond a la question qu'on se pose
    devant un portefeuille : quelle part de l'argent que j'ai ici. Le
@@ -1544,9 +1486,9 @@ function stockTotals() {
    des positions fait alors la part des titres, et le cash a investir complete
    a 100 %.
 
-   Une fonction et non un calcul recopie : il l'etait a cinq endroits, et c'est
-   le quatrieme qui a diverge. `base` se passe en argument quand l'appelant en
-   affiche plusieurs, pour ne pas rappeler `stockTotals()` par ligne. */
+   Une fonction et non un calcul recopie : chaque copie finit par diverger des
+   autres. `base` se passe en argument quand l'appelant en affiche plusieurs,
+   pour ne pas rappeler `stockTotals()` par ligne. */
 const basePortefeuilleMarches = () => stockTotals().balance;
 
 function poidsPortefeuille(valeur, base = basePortefeuilleMarches()) {
@@ -1587,8 +1529,8 @@ function perimetreReequilibrage() {
 
 /* La cible d'une classe, qu'elle soit decoupee par role ou non. Une classe
    decoupee porte un objet a deux entrees : `num({core:70, satellite:25})` vaut
-   zero. Quatre endroits sommaient les cibles avec `num()`, et le bandeau
-   annoncait "tes cibles totalisent 10 %" a qui en avait pose 105. */
+   zero. Sommer les cibles avec `num()` ferait annoncer "tes cibles totalisent
+   10 %" a qui en a pose 105 : toute somme de cibles passe par ici. */
 function cibleDeClasse(v) {
   return (v !== null && typeof v === 'object')
     ? Object.values(v).reduce((s, x) => s + num(x), 0) : num(v);
@@ -1597,9 +1539,9 @@ const sommeCibleDe = cibleDeClasse;
 
 const CLE_TRESORERIE = 'cashToInvest';
 
-/* Le nom d'une ligne de cible, classe ou tresorerie. Les messages qui parlaient
-   d'exclusion lisaient `ASSET_CLASSES[cle]` et rendaient donc "undefined sortie
-   du reequilibrage" des que la cle etait celle de la tresorerie. */
+/* Le nom d'une ligne de cible, classe ou tresorerie. `ASSET_CLASSES[cle]` seul
+   rendrait "undefined" des que la cle est celle de la tresorerie : les messages
+   d'exclusion passent par ici. */
 const nomDeLaCible = cle =>
   cle === CLE_TRESORERIE ? AFFECTATION_LABEL.investir : (ASSET_CLASSES[cle] || cle);
 
@@ -1799,11 +1741,11 @@ function appliquerModeleCibles(id) {
   return effet;
 }
 
-/* LES CIBLES D'ORIGINE. Un profil cree avant ce changement a recu 90 % actions,
-   5 % metaux precieux et 5 % de tresorerie, que personne n'a choisis. Rien ne
-   les efface : une egalite de chiffres ne prouve pas qu'on ne les a pas
-   voulus. La page les signale, une fois, jusqu'a ce qu'on les garde ou qu'on
-   parte d'un modele (`origineRevue`). */
+/* LES CIBLES D'ORIGINE. Un profil ancien porte les cibles posees par defaut,
+   90 % actions, 5 % metaux precieux et 5 % de tresorerie, que personne n'a
+   choisies. Rien ne les efface : une egalite de chiffres ne prouve pas qu'on ne
+   les a pas voulues. La page les signale, une fois, jusqu'a ce qu'on les garde
+   ou qu'on parte d'un modele (`origineRevue`). */
 function ciblesDOrigine() {
   const tg = Store.state.targets || {};
   if (tg.origineRevue) return false;
@@ -1818,10 +1760,10 @@ function ciblesDOrigine() {
 
 /* Les placements derriere une ligne de cible.
 
-   "Actions core, 44,8 %" ne disait pas de quoi ce core etait fait. La
-   question se pose exactement au moment ou l'on regle la cible -- renforcer le
-   core, oui, mais quelle ligne -- et la reponse vivait deux ecrans plus loin,
-   dans Marches, ou il fallait lire le role ligne par ligne.
+   "Actions core" ne dit pas de quoi ce core est fait. La question se pose
+   exactement au moment ou l'on regle la cible -- renforcer le core, oui, mais
+   quelle ligne -- et sans cette liste la reponse serait deux ecrans plus loin,
+   dans Marches, a lire role par role.
 
    La cle est celle que `rebalanceRows()` pose sur la ligne : `classes.actions`
    pour une classe entiere, `classes.actions.core` pour une moitie de role. Une
@@ -1829,7 +1771,7 @@ function ciblesDOrigine() {
    positions, elle a sa propre fiche.
 
    Le total descend des memes positions que les lignes, il en est donc la somme
-   par construction. Relire `parClasse` aurait ete un second calcul, et deux
+   par construction. Relire `parClasse` serait un second calcul, et deux
    calculs du meme nombre finissent toujours par diverger. Ce qui garantit
    l'egalite avec la ligne affichee, c'est que `stockTotals()` filtre sur les
    deux memes predicats, `assetClassDe` et `roleDe` -- le test le verifie. */
@@ -1841,11 +1783,6 @@ function ciblesDOrigine() {
    lit bleu comme les liquidites. La couleur dit donc quelque chose de vrai, et
    d'utile au premier regard : quelle banque porte les actions, laquelle garde le
    cash.
-
-   Elle etait un hachage du nom du groupe, qui collisionnait et piochait au hasard
-   dans le vocabulaire des classes -- un etablissement de banque heritait du vert
-   des actifs de marche sans rien detenir de tel. Puis une teinte neutre unique, exacte mais
-   morte. Le contenu tranche mieux que les deux.
 
    Le precedent est dans `allocationByAccount`, qui colore deja un compte par sa
    classe dominante pour la meme raison : "le compte n'est qu'un contenant, c'est
