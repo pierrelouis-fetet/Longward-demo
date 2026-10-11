@@ -115,7 +115,7 @@ Object.assign(ACTIONS, {
       }
 
       /* Un montant et non un pourcentage : la clef `plafond` se lit `pct` par
-         defaut, et 22 950 depassait la borne de cent. */
+         defaut, et un plafond de 22 950 depasserait la borne de cent. */
       if (t.id === 'livret') champs.push({ cle: 'plafond', label: trad('Plafond de versement ({dev})'),
         type: 'nombre', genre: 'montant', valeur: valeur('plafond', num(c.plafond) || ''), exemple: 'ex. 22950',
         aide: trad('facultatif') });
@@ -193,17 +193,17 @@ Object.assign(ACTIONS, {
 
          Le compte et sa ligne unique sont la meme chose : le parcours de
          creation les ecrit ensemble, `nomCompteV2()` et `nomLignePlacement()`
-         se replient l'un sur l'autre pour l'afficher. Renommer par cette fenetre
-         ne touchait que le compte, et la fiche montrait alors "Studio Lyon 7e"
-         en titre au-dessus d'une ligne "studio lyon" : deux noms pour une
-         chose, ce que ce projet refuse partout ailleurs.
+         se replient l'un sur l'autre pour l'afficher. Renommer le compte seul
+         laisserait la fiche montrer un titre au-dessus d'une ligne qui garde
+         l'ancien nom : deux noms pour une chose, ce que ce projet refuse
+         partout ailleurs.
 
          La garde tient en trois conditions : un actif TERMINAL, une seule
          ligne, aucune espece. Terminal et non "detenu en direct" : une
          participation non cotee est tenue par un tiers et n'est pourtant pas
          davantage divisible qu'un appartement, le compte y EST le placement de
-         la meme facon. Restreinte au direct, la regle laissait une part de
-         societe porter deux noms qui divergeaient en silence. Des qu'un compte
+         la meme facon, et restreinte au direct, la regle laisserait une part de
+         societe porter deux noms qui divergent en silence. Des qu'un compte
          porte deux placements, chacun a son nom propre et rien ne l'ecrase. */
       if (compteEstUnPlacement(typeCompte(c.type))
           && (c.lignes || []).length === 1 && !(c.cash || []).length
@@ -214,8 +214,8 @@ Object.assign(ACTIONS, {
            carte de la liste des actifs affiche `etab.nom`. Une participation
            non cotee, non -- son contenant est le courtier qui la tient, et le
            renommer du nom de la part serait faux meme s'il n'en tenait qu'une.
-           Seconde condition, inchangee : seulement quand l'etablissement n'a
-           que ce compte, un parking rattache au meme contenant garde son nom. */
+           Seconde condition : seulement quand l'etablissement n'a que ce
+           compte, un parking rattache au meme contenant garde son nom. */
         const etab = estDetenuEnDirect(typeCompte(c.type)) ? etabById(c.etabId) : null;
         if (etab && COMPTES().filter(x => x.etabId === etab.id).length === 1) {
           etab.nom = String(v.libelle).trim();
@@ -338,8 +338,8 @@ Object.assign(ACTIONS, {
         options: [...typesCompteParRubrique(),
                   ['__nouveau', trad('+ Autre type…')]],
         /* Le defaut suit l'etablissement plutot que d'etre pose en dur : voir
-           `typeParDefautChez`. Chez une societe qui ne porte que des parts, la
-           fenetre proposait d'ouvrir un compte courant. */
+           `typeParDefautChez`. Pose en dur, il proposerait d'ouvrir un compte
+           courant chez une societe qui ne porte que des parts. */
         valeur: (btn?.dataset?.type && typesCompteChoix().some(t => t.id === btn.dataset.type))
           ? btn.dataset.type : typeParDefautChez(etabImpose) }],
     });
@@ -351,10 +351,8 @@ Object.assign(ACTIONS, {
     const t = typeCompte(e1.type);
     const mot = contenantDuType(t.id);
 
-    /*       `sansEtab` porte deja cette propriete sur le type -- les especes s'en
-       servent -- mais l'assistant ne la lisait pas : il n'avait jamais eu a le
-       faire, les especes etant posees par le code et non par ce formulaire.
-       L'etape saute, et le compte se cree sans contenant. */
+    /* `sansEtab` dit qu'un type n'a pas de contenant (un bien de valeur, les
+       especes) : l'etape saute, et le compte se cree sans etablissement. */
     let etabId = etabImpose;
     let nomNouveauContenant = null;      // cree apres le dernier ecran, pas avant
     const nomContenant = () => etabById(etabId)?.nom || nomNouveauContenant || '';
@@ -370,21 +368,21 @@ Object.assign(ACTIONS, {
        Rattacher un second bien au meme contenant reste possible, et c'est le
        bon chemin pour un parking sous l'appartement qu'il accompagne : le
        bouton "+ Bien" de la fiche pose `etabImpose`, et cette branche ne
-       s'execute pas. Le geste deliberat le fait, le parcours par defaut ne le
-       propose plus. */
+       s'execute pas. Le geste delibere le fait, le parcours par defaut ne le
+       propose pas. */
     else if (!etabId && estDetenuEnDirect(t)) etabId = '__nouveau';
     else if (!etabId) {
       /* Un contenant vide reste proposable, mais en dernier et jamais choisi
          d'avance.
 
-         Il n'a plus de famille : `contenantDeLEtab` la derive des comptes
-         rattaches, et sans compte elle retombe sur "banque ou courtier". Un
-         "Studio" dont le bien a ete supprime se proposait donc partout, et
-         `proposables[0]` en faisait le choix par defaut : la fenetre qui demande
-         chez quel assureur tenir un contrat s'ouvrait sur un studio. Le retirer
-         d'office serait pire -- on retaperait un nom qui existe, et deux
-         etablissements homonymes vivraient cote a cote -- mais rien n'oblige a
-         le mettre en tete ni a le preselectionner. */
+         Sans compte, il n'a pas de famille : `contenantDeLEtab` la derive des
+         comptes rattaches, et retombe sinon sur "banque ou courtier". Il se
+         propose donc sous n'importe quel type, et choisi par defaut il
+         ouvrirait sur un studio la fenetre qui demande chez quel assureur
+         tenir un contrat. Le retirer d'office serait pire -- on retaperait un
+         nom qui existe, et deux etablissements homonymes vivraient cote a
+         cote -- mais rien n'oblige a le mettre en tete ni a le
+         preselectionner. */
       const memeFamille = e => contenantDeLEtab(e.id).titre === mot.titre;
       const aDesComptes = e => COMPTES().some(c => c.etabId === e.id);
       /* La meme famille, puis un guichet compatible (une banque pour une
@@ -418,8 +416,8 @@ Object.assign(ACTIONS, {
     const classeDuBien = t.classes.find(c => c !== 'liquidites') || 'nonCote';
     /* Les champs d'un LOGEMENT -- prix, frais et travaux, usage, quote-part,
        apport -- ne vont qu'a l'immobilier detenu en direct. `estDetenuEnDirect`
-       seul les posait aussi sur un bien de valeur : une montre se voyait
-       demander si on l'habite, et ses trois couts ecrits au detail restaient
+       seul les poserait aussi sur un bien de valeur : une montre se verrait
+       demander si on l'habite, et ses trois couts ecrits au detail resteraient
        ensuite hors de portee du seul champ que sa fiche propose. */
     const immoDirect = bien && estImmoEnDirect(t);
     /* UN PLACEMENT TENU PAR UN TIERS, qui EST le compte : une part de societe,
@@ -450,10 +448,10 @@ Object.assign(ACTIONS, {
       ok: 'Créer',
       /* LES REGLES DE LA FENETRE, DANS L'ORDRE OU ELLES SE POSENT.
 
-         "OUI" DOIT CREER UN CREDIT. La creation ne posait la dette que si le
-         capital restant du etait positif : repondre "oui", laisser le champ
-         vide et saisir une mensualite creait un bien SANS credit, en silence, et
-         le patrimoine net naissait faux. Une reponse qui n'a pas de suite est
+         "OUI" DOIT CREER UN CREDIT. La dette ne se pose que si le capital
+         restant du est positif : sans ce refus, repondre "oui", laisser le champ
+         vide et saisir une mensualite creerait un bien SANS credit, en silence,
+         et le patrimoine net naitrait faux. Une reponse qui n'a pas de suite est
          pire qu'une question qu'on n'a pas posee.
 
          Un capital emprunte declare a ZERO alors qu'un capital restant est
@@ -495,10 +493,10 @@ Object.assign(ACTIONS, {
         ...(valeurAuPrixDeRetrait(t) ? [{ cle: 'nom', label: trad('Nom de la SCPI'), type: 'texte', requis: true,
           max: NOM_LIGNE_MAX, exemple: 'ex. Ma SCPI' }] : []),
         /* La valeur est OBLIGATOIRE, et `vide()` compte un zero comme vide sur un
-           champ nombre : un appartement a zero euro n'existe pas, et il entrait
-           pourtant au patrimoine sans un mot, faussant le brut, le net et toutes
-           les repartitions. Il n'y a rien a inventer pour la remplir -- c'est la
-           seule chose qu'on sache a coup sur en creant un bien. */
+           champ nombre : un appartement a zero euro n'existe pas, et il
+           entrerait pourtant au patrimoine sans un mot, faussant le brut, le net
+           et toutes les repartitions. Il n'y a rien a inventer pour la remplir --
+           c'est la seule chose qu'on sache a coup sur en creant un bien. */
         ...(t.parts ? [{ cle: 'parts', label: trad('Nombre de parts'),
           type: 'nombre', exemple: '0', requis: valeurAuPrixDeRetrait(t),
           aide: trad('il se déduit du montant investi, et commande la valeur du jour') }] : []),
@@ -536,31 +534,28 @@ Object.assign(ACTIONS, {
         /* La date de l'estimation, distincte de celle de l'achat.
 
            C'est le seul champ de cette fenetre qui devient faux sans que
-           personne y touche : une montre achetee 3 000 EUR en 2019 n'en vaut
-           plus 3 000 aujourd'hui, et rien a l'ecran ne dit depuis quand le
-           chiffre affiche n'a pas ete revu. Meme raison que `verifieLe` sur un
-           credit, et meme regle : c'est le geste de quelqu'un qui a regarde,
-           jamais une supposition. Pre-remplie au jour de la saisie, parce qu'on
-           saisit ce qu'on vient d'estimer. */
+           personne y touche : une montre achetee il y a des annees ne vaut plus
+           son prix d'achat, et rien a l'ecran ne dit depuis quand le chiffre
+           affiche n'a pas ete revu. Meme raison que `verifieLe` sur un credit,
+           et meme regle : c'est le geste de quelqu'un qui a regarde, jamais une
+           supposition. Pre-remplie au jour de la saisie, parce qu'on saisit ce
+           qu'on vient d'estimer. */
         { cle: 'estimeLe', label: trad(valeurAuPrixDeRetrait(t) ? 'Valeur au' : 'Estimée le'), type: 'date', valeur: todayISO(),
-          /* Elle ne promet plus de rappel : voir la note de `champsPlacement`.
-             La meme phrase vivait ici, et une promesse fausse recopiee est
-             deux fois fausse. */
+          /* Elle ne promet pas de rappel, pour la raison dite dans la note de
+             `champsPlacement` : une promesse fausse recopiee serait deux fois
+             fausse. */
           aide: trad(valeurAuPrixDeRetrait(t) ? 'le jour où tu as lu ce prix' : 'le jour où tu as établi ce chiffre') },
         /* Au bien DETENU EN DIRECT, et a lui seul : la classe `immobilier`
-           couvre aussi la SCPI, a qui l'on demandait donc si elle etait une
+           couvre aussi la SCPI, a qui l'on demanderait sinon si elle est une
            residence principale. Le drapeau `direct` du type tranche.
 
-           Et sans choix vide : pose plus tard dans une fiche, l'usage restait
-           vide chez presque tout le monde, et la fiche d'une residence
-           principale continuait de parler rendement. C'est le seul moment ou on
-           le sait a coup sur. */
+           Et le champ est requis : la creation est le seul moment ou on le
+           sait a coup sur. */
         /* L'option vide N'EST PAS une facilite : sans elle, un select rend son
            premier choix des l'ouverture, et `USAGES_BIEN` commence par "Mis en
-           location". Un bien cree sans jamais toucher au champ naissait donc
-           locatif, sans qu'aucune decision ait ete prise -- exactement ce que
-           `requis` devait empecher. Avec une valeur vide de depart, `requis`
-           mord enfin : `vide()` rend vrai sur la chaine vide. */
+           location". Un bien cree sans jamais toucher au champ naitrait donc
+           locatif, sans qu'aucune decision ait ete prise. Avec une valeur vide
+           de depart, `requis` mord : `vide()` rend vrai sur la chaine vide. */
         ...(immoDirect ? [{ cle: 'usageBien', label: trad('Usage'),
           type: 'liste', requis: true, valeur: '',
           options: [['', trad('Choisir…')], ...USAGES_BIEN],
@@ -570,8 +565,8 @@ Object.assign(ACTIONS, {
           aide: trad('À remplir seulement si tu détiens ce bien à plusieurs. La valeur saisie reste celle du bien entier ; ton patrimoine ne compte que ta part.') }] : []),
         ...(t.sansEtab ? [] : (() => {
         /* La question d'abord, les champs ensuite -- et seulement si la reponse
-           est oui. Un bien paye comptant traversait six champs de pret vides
-           avant d'arriver au bout, et rien ne disait qu'on pouvait les sauter.
+           est oui. Sans elle, un bien paye comptant traverserait six champs de
+           pret vides, sans rien qui dise qu'on peut les sauter.
            `montreSi` les fait disparaitre, et `valeurs()` ne lit pas un champ
            masque : repondre "oui", saisir, puis revenir a "non" ne cree
            donc aucun credit. */
@@ -677,14 +672,13 @@ Object.assign(ACTIONS, {
           libelle: `${trad('Crédit')} ${valeurAuPrixDeRetrait(t) && String(e3.nom || '').trim() || nomContenant()}`.trim(),
           montant: num(e3.credit), preteur: e3.preteur || '', note: '',
           /* Le capital emprunte au depart survit a la creation quand il est
-             declare, et reste absent sinon. Le `&& > 0` qui trainait ici rangeait
-             un ZERO DECLARE parmi les inconnus : c'est la faute que le reste du
-             code a deja corrigee partout ailleurs, et elle survivait sur ce seul
-             chemin. Un zero avec une dette qui reste est refuse plus haut, a la
-             validation -- pas efface en silence. */
+             declare, et reste absent sinon : `estDeclare`, et non un test
+             `> 0` qui rangerait un ZERO DECLARE parmi les inconnus. Un zero
+             avec une dette qui reste est refuse plus haut, a la validation --
+             pas efface en silence. */
           initial: estDeclare(e3.initial) ? num(e3.initial) : null,
           mensualite: estDeclare(e3.mensualite) ? num(e3.mensualite) : null,
-          /* Un taux declare a zero survit a la creation : `|| null` le rangeait
+          /* Un taux declare a zero survit a la creation : `|| null` le rangerait
              aussitot parmi les taux inconnus. */
           taux: estDeclare(e3.taux) ? num(e3.taux) : null,
           tauxAssurance: estDeclare(e3.tauxAssurance) ? num(e3.tauxAssurance) : null,
@@ -696,13 +690,12 @@ Object.assign(ACTIONS, {
         if (e3.charge) creerChargeDuCredit(et.dettes[et.dettes.length - 1]);
       }
     } else if (t.sansCash) {
-      /* Un contrat nait sans part de cash. L'etape 3 ne pose plus les trois
-         champs pour ces types-la, mais la creation les lisait quand meme : elle
-         ecrivait une part a zero portant une affectation `undefined`. La carte
-         de tresorerie, qui ne se masque que lorsqu'elle est vide, reapparaissait
-         donc aussitot avec son menu -- "Cash disponible" sur une assurance-vie,
-         exactement ce que `sansCash` devait retirer. Ne rien ecrire est la seule
-         facon de ne rien montrer. */
+      /* Un contrat nait sans part de cash. L'etape 3 ne pose pas les trois
+         champs pour ces types-la, et la creation ne les lit pas : une part a
+         zero portant une affectation `undefined` ferait reapparaitre la carte
+         de tresorerie, qui ne se masque que lorsqu'elle est vide -- "Cash
+         disponible" sur une assurance-vie, exactement ce que `sansCash`
+         retire. Ne rien ecrire est la seule facon de ne rien montrer. */
     } else {
       const saisi = m => (num(m) ? { saisiLe: todayISO() } : {});
       cash.push({ montant: num(e3.montant), affectation: e3.usage, ...saisi(e3.montant) });
@@ -949,11 +942,10 @@ Object.assign(ACTIONS, {
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     /* UN CHAMP INVALIDE BLOQUE L'ENREGISTREMENT.
 
-       `applyField` refusait deja d'ecrire une quote-part hors bornes, mais
-       refuser l'ecriture ne suffisait pas : "Enregistrer" sauvegardait le
-       reste, annoncait "Enregistre" et rendait la main. Le detenteur repartait
-       en croyant avoir saisi 150 % alors que l'ancienne valeur etait restee dans
-       les donnees -- le refus n'existait que pour le calcul, pas pour lui.
+       `applyField` refuse d'ecrire une quote-part hors bornes, mais refuser
+       l'ecriture ne suffit pas : si "Enregistrer" sauvegardait le reste et
+       annoncait "Enregistre", le detenteur repartirait en croyant avoir saisi
+       150 % alors que l'ancienne valeur serait restee dans les donnees.
 
        Le geste se refuse donc la ou il se fait : rien n'est enregistre, la fiche
        ne bouge pas, et le champ fautif recoit le curseur. "Annuler" reste
@@ -966,10 +958,10 @@ Object.assign(ACTIONS, {
       return;
     }
     /* LA TRANSITION SUIT LE GESTE, pas le rendu. La fiche porte un select qui
-       ecrit l'usage par `data-path` : changer un bien en residence principale
-       par ce chemin-la ne posait donc pas la question de l'ancien loyer, alors
-       que le petit atelier "Choisir l'usage" la posait. Deux chemins pour un
-       meme fait metier, et un seul des deux tenait la promesse.
+       ecrit l'usage par `data-path` : sans ce bloc, changer un bien en
+       residence principale par ce chemin-la ne poserait pas la question de
+       l'ancien loyer, que le petit atelier "Choisir l'usage" pose. Deux
+       chemins pour un meme fait metier tiennent la meme promesse.
 
        L'etat d'AVANT vient de l'instantane de la fiche, pris au premier rendu de
        la route : c'est lui qui dit si l'usage a change, et il evite de reposer
@@ -1129,11 +1121,10 @@ Object.assign(ACTIONS, {
     oublierCompteParDefaut(c.id);
     /* Le contenant part avec son dernier compte, comme ses credits juste avant.
 
-       Il restait, vide, et plus aucun ecran ne le montrait : la liste des comptes
-       saute les etablissements sans compte. Il ne reapparaissait que dans la
-       liste de l'etape 2 d'un ajout, ou la regle propose les vides sous
-       n'importe quel type -- d'ou l'impression d'une memoire residuelle, un
-       appartement qu'on avait supprime et qui revient proposer de s'y rattacher.
+       Reste vide, aucun ecran ne le montrerait -- la liste des comptes saute
+       les etablissements sans compte -- sauf l'etape 2 d'un ajout, qui propose
+       les vides sous n'importe quel type : un appartement supprime reviendrait
+       proposer qu'on s'y rattache.
 
        Apres la pierre tombale, jamais avant : celle-ci recopie le nom de
        l'etablissement dans son champ `broker`, et les releves passes s'en servent
@@ -1173,13 +1164,6 @@ Object.assign(ACTIONS, {
     const c = compteById(btn.dataset.id);
     if (!c) return;
     const t = typeCompte(c.type);
-    /* Une seule nature possible : la deduire est juste, et la demander serait
-       poser une question qui n'a qu'une reponse. Une enveloppe en porte cinq,
-       et la deduire revient a tirer au sort -- `find()` rendait "actions", donc
-       un fonds euros et une SCPI tombaient tous deux en actifs de marche sans
-       que rien ne le dise. La question se pose alors, et ses options se derivent
-       de la liste du type : celle qu'on y ajoutera demain y apparaitra sans
-       qu'on y pense. */
     /* Un contrat sans poche de cash (`sansCash`) garde `liquidites` pour ce
        qu'elle y veut dire : un fonds monetaire, qui est une ligne. Ailleurs le
        cash passe par les parts du compte, et la classe ne s'ajoute pas ici. */
@@ -1213,10 +1197,9 @@ Object.assign(ACTIONS, {
   /* La sortie d'un placement non cote, et les trois mouvements qu'elle ecrit.
 
      Elle passe par `cederPlacement()`, jamais par la fiche : une cession n'est
-     pas une correction de valeur. Corriger la valeur a zero puis archiver aurait
-     donne le meme patrimoine et perdu tout le reste -- le produit encaisse, la
-     plus-value realisee, la date. C'est ce que faisait "Archiver" tout seul,
-     et c'est ce qui manquait. */
+     pas une correction de valeur. Corriger la valeur a zero puis archiver
+     donnerait le meme patrimoine et perdrait tout le reste -- le produit
+     encaisse, la plus-value realisee, la date. */
   async 'ceder-placement'(btn) {
     const c = compteById(btn.dataset.id);
     const i = +btn.dataset.i;
@@ -1281,21 +1264,22 @@ Object.assign(ACTIONS, {
     }
     Object.assign(l, litPlacement(v, l, typeCompte(c.type)));
     appliquerChoixSociete(c, i, v);
-    /* L'AUTRE SENS DU MEME NOM, et il manquait. Sur un actif terminal le compte
-       EST le placement, mais c'est le nom du COMPTE que l'en-tete, la liste des
+    /* L'AUTRE SENS DU MEME NOM. Sur un actif terminal le compte EST le
+       placement, mais c'est le nom du COMPTE que l'en-tete, la liste des
        actifs et les menus lisent -- `nomCompteV2()` le prend en premier.
-       Renommer depuis cette fenetre-ci ne touchait que la ligne : le titre
-       gardait l'ancien nom au-dessus du nouveau, et rien a l'ecran ne disait
-       lequel comptait ni ou le corriger. Meme garde qu'au retour, et meme refus
-       d'ecrire une chaine vide. */
+       Renommer la ligne seule laisserait le titre porter l'ancien nom
+       au-dessus du nouveau, sans rien qui dise lequel compte ni ou le
+       corriger. Meme garde qu'au retour, et meme refus d'ecrire une chaine
+       vide. */
     if (compteEstUnPlacement(typeCompte(c.type))
         && (c.lignes || []).length === 1 && !(c.cash || []).length) {
       if (String(v.libelle || '').trim()) c.libelle = String(v.libelle).trim();
       /* La date fait le meme chemin que le nom, pour la meme raison : la fiche
          lit `c.ouvertLe` quand ce formulaire-ci ecrit `l.dateAcquisition`.
-         Deux dates pour une seule entree, et celle qui s'affichait n'etait pas
-         celle qu'on venait de saisir. Vide, elle s'efface plutot que d'ecrire
-         une chaine vide, comme le fait `pose()` de l'autre cote. */
+         Sans ce report, deux dates pour une seule entree, et celle qui
+         s'affiche ne serait pas celle qu'on vient de saisir. Vide, elle
+         s'efface plutot que d'ecrire une chaine vide, comme le fait `pose()`
+         de l'autre cote. */
       if ('dateAcquisition' in v) {
         if (v.dateAcquisition) c.ouvertLe = v.dateAcquisition;
         else delete c.ouvertLe;
@@ -1319,8 +1303,8 @@ Object.assign(ACTIONS, {
          charges les verrait retirees deux fois, et son cash-flow baisserait
          d'autant.
 
-         Les montants deja saisis ne sont pas touches : personne ne peut savoir
-         comment un ancien texte a ete lu. Seule la convention des saisies a venir
+         Les montants deja saisis ne sont pas touches : rien ne dit sous quelle
+         convention chacun l'a ete. Seule la convention des saisies a venir
          compte, et l'aide la dit. */
       sous: direct
         ? trad('Le loyer hors charges récupérables que tu perçois personnellement. Les charges du propriétaire se déclarent séparément et sont déduites une seule fois.')
@@ -1349,7 +1333,7 @@ Object.assign(ACTIONS, {
     if (!c) return;
     /* Les postes d'un bien sont proposes, pas imposes : taxe fonciere,
        copropriete, travaux, plus l'assurance qui va avec son usage. Un champ
-       vide obligeait a se souvenir de ce qu'un logement coute, et la provision
+       vide obligerait a se souvenir de ce qu'un logement coute, et la provision
        pour travaux est justement celle qu'on oublie. Ceux deja nommes sur un
        autre bien suivent, sans doublon.
 
@@ -1436,10 +1420,10 @@ Object.assign(ACTIONS, {
       libelle: v.libelle, montant: num(v.montant),
       initial: estDeclare(v.initial) ? num(v.initial) : null,
       mensualite: estDeclare(v.mensualite) ? num(v.mensualite) : null,
-      /* `estDeclare` et non `|| null` : un pret familial a 0 % perdait son taux
-         a l'enregistrement meme, et se retrouvait aussitot dans l'etat "taux
-         inconnu" -- celui ou l'application refuse de projeter quoi que ce soit.
-         Le defaut n'etait pas seulement a la lecture. */
+      /* `estDeclare` et non `|| null` : un pret familial a 0 % perdrait son taux
+         a l'enregistrement meme, et tomberait aussitot dans l'etat "taux
+         inconnu" -- celui ou l'application refuse de projeter quoi que ce
+         soit. */
       taux: estDeclare(v.taux) ? num(v.taux) : null,
       tauxAssurance: estDeclare(v.tauxAssurance) ? num(v.tauxAssurance) : null,
       part: lirePartCredit(v.partCredit),
@@ -1495,8 +1479,8 @@ Object.assign(ACTIONS, {
           valeur: estDeclare(d.mensualite) ? num(d.mensualite) : '',
           aide: trad('facultatif. Mieux : rattache-le à une charge fixe, le montant ne sera alors saisi qu’une fois') }]),
         { cle: 'taux', label: trad('Taux annuel (%)'), type: 'nombre',
-          /* `estDeclare` : rouvrir la fenetre d'un pret a 0 % affichait un champ
-             vide, et l'enregistrer sans y toucher effacait donc le taux. */
+          /* `estDeclare` : sans lui, la fenetre d'un pret a 0 % s'ouvrirait sur un
+             champ vide, et l'enregistrer sans y toucher effacerait le taux. */
           valeur: estDeclare(d.taux) ? num(d.taux) : '',
           aide: trad('facultatif, il sert à suivre le capital qui reste') },
         { cle: 'tauxAssurance', label: trad('Taux d’assurance (%)'), type: 'nombre',
@@ -1548,7 +1532,7 @@ Object.assign(ACTIONS, {
     d.initial = estDeclare(v.initial) ? num(v.initial) : null;
     if (v.mensualite !== undefined)
       d.mensualite = estDeclare(v.mensualite) ? num(v.mensualite) : null;
-    /* Un taux declare a zero reste zero : `|| null` le renvoyait dans l'etat
+    /* Un taux declare a zero reste zero : `|| null` le renverrait dans l'etat
        "taux inconnu" a chaque enregistrement. */
     d.taux = estDeclare(v.taux) ? num(v.taux) : null;
     d.tauxAssurance = estDeclare(v.tauxAssurance) ? num(v.tauxAssurance) : null;

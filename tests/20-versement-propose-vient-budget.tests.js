@@ -1914,7 +1914,7 @@ suite('Le bruit informatif', () => {
     const app = lireSource('assets/app.js');
     const dv = app.indexOf('function viewBudget(');
     const vue = app.slice(dv, app.indexOf('\nfunction ', dv + 10)).replace(/<!--[\s\S]*?-->/g, '');
-    const brique = vue.slice(vue.indexOf('<div class="hero card-cliquable">'), vue.indexOf('<!-- Le second champ') > 0 ? vue.indexOf('<!-- Le second champ') : vue.indexOf('class="grid g-4 g-tuiles"'));
+    const brique = vue.slice(vue.indexOf('<div class="hero card-cliquable">'), vue.indexOf('class="grid g-4 g-tuiles"'));
     vrai(brique.length > 500, 'la brique du mois doit être trouvable');
     vrai(!/trad\('Moyenne'\)/.test(brique), 'la brique du mois ne porte plus la moyenne');
     eq((vue.match(/\$\{trad\('Moyenne'\)\} \$\{esc\(year\)\}/g) || []).length, 1,

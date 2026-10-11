@@ -12,12 +12,6 @@ function paliersCible(courant) {
   return p.sort((a, b) => a - b);
 }
 
-/* `paliersObjectif()` vivait ici : les cent-en-cent d'une liste deroulante
-   pour l'objectif de depenses. Elle est partie avec la liste. Un objectif se
-   saisit maintenant a l'euro, parce que quelqu'un qui vit avec 640 EUR par mois
-   doit pouvoir viser juste, et que les paliers ronds ne servaient qu'a essayer
-   des hypotheses -- un champ libre le fait aussi bien. */
-
 function mountBudget() {
   const year = budgetAnnee();
   /* `expenseSeriesVisible` et non `expenseSeries` : un mois a venir n'est pas
@@ -267,16 +261,15 @@ function mountData() {
     }
     /* LIRE, VALIDER, SAUVEGARDER L'ANCIEN, PUIS SEULEMENT REMPLACER.
 
-       L'ordre etait l'inverse : `Store.state = data` s'executait avant
-       `Store.migrate()`, et un fichier qui passait la garde sommaire --
-       `{ positions: [], monthly: [] }` la passe -- faisait echouer la migration
-       APRES avoir remplace l'etat. L'ecran annoncait "Import impossible" et
-       le patrimoine etait deja perdu : zero compte, zero releve, zero euro.
+       La garde sommaire ne regarde que la forme -- `positions`, `monthly` et
+       `budget` -- et un fichier qui la passe peut encore faire echouer
+       `Store.migrate()`. Un etat remplace sans retour laisserait alors l'ecran
+       annoncer "Import impossible" sur un patrimoine deja perdu : zero compte,
+       zero releve, zero euro.
 
-       La migration s'execute donc sur un candidat, l'etat courant revient si
-       elle echoue, et une sauvegarde est posee avant de toucher a quoi que ce
-       soit. C'est le geste le plus destructeur de l'application ; il est le
-       seul a n'avoir eu aucun filet. */
+       Une sauvegarde est donc posee avant de toucher a quoi que ce soit,
+       l'etat courant est garde a part, et il revient si la migration echoue.
+       C'est le geste le plus destructeur de l'application. */
     try {
       const brut = await file.text();
       let data;
@@ -320,7 +313,7 @@ function download(filename, content, type = 'application/json') {
 const stamp = () => new Date().toISOString().slice(0, 10);
 
 /* Une cellule de tableur est du texte affiche : sans `trad()`, l'export d'une
-   application en anglais sortait "Quotidien" et "Non cote". La fonction
+   application en anglais sortirait ses poches en francais. La fonction
    plutot qu'un objet constant, parce que la langue peut changer entre deux
    exports dans la meme session. */
 const POCKET = () => ({
@@ -674,10 +667,11 @@ function makeDeleter(listKey, what, nameOf) {
   };
 }
 
-/* Les credits proposables au rattachement d'une charge fixe.
+/* Les credits proposables au rattachement d'une charge fixe, que donne
+   `creditsRattachables()`.
 
    Hors de l'objet ACTIONS : ce n'est pas une action, et une declaration `const`
-   dans un litteral d'objet ne se parse pas -- le fichier entier tombait.
+   dans un litteral d'objet ne se parse pas -- le fichier entier tomberait.
 
    Un credit deja rembourse par une autre charge n'y figure pas : deux charges sur
    le meme credit doubleraient la mensualite lue, et la premiere trouvee
@@ -703,7 +697,7 @@ const AIDE_VALEUR_PARTS = 'Tes parts au prix que publie la société de gestion 
 
 function champsPlacement(classe, l = null, prete = false, type = null) {
   const echeancier = !!prete;
-  /* Quatre notions voisines, et les confondre s'est deja paye : une valeur
+  /* Quatre notions voisines, que le formulaire ne confond pas : une valeur
      qu'on ESTIME soi-meme (une montre, un appartement), une valeur qu'un tiers
      PUBLIE (la VL d'un fonds), une valeur qu'on RELEVE sur le document d'un
      assureur ou d'un teneur de compte (le fonds en euros d'un contrat mixte),
@@ -713,20 +707,20 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
      `estime` et `releve` commandent le nom du montant : "Valeur estimee" pour
      ce qu'on apprecie soi-meme, "Derniere valeur connue" pour ce qu'un releve
      donne et qui date de lui, "Valeur aujourd'hui" pour ce qu'on lit publie.
-     Une VL rangee sous "Valeur estimee" aurait fait passer un chiffre publie
-     pour une opinion, ce qui est exactement l'inverse de ce qu'il est.
+     Une VL rangee sous "Valeur estimee" ferait passer un chiffre publie pour
+     une opinion, ce qui est exactement l'inverse de ce qu'il est.
 
      `datee` commande la presence du champ de date, `publiee` et `releve` son
      nom, `publiee` seul sa cadence. Un seul champ pour les trois natures : la
-     date a laquelle ce chiffre a ete etabli. Un second aurait ete deux
-     ecritures du meme fait. */
+     date a laquelle ce chiffre a ete etabli. Un second serait deux ecritures
+     du meme fait. */
   const publiee = !!(type && type.vl);
   /* `estValeurEstimee` et non `estDetenuEnDirect` : une part de societe se
      valorise soi-meme autant qu'une montre, et c'est deja ce que dit la liste
      des comptes en ecrivant "estimation actuelle" sous son montant. Restreinte
-     au direct, la question "depuis quand ce chiffre tient-il ?" ne se posait
+     au direct, la question "depuis quand ce chiffre tient-il ?" ne se poserait
      pas la ou elle se pose le plus -- une valeur de part vieillit entre deux
-     levees, et rien a l'ecran ne disait depuis quand.
+     levees, et rien a l'ecran ne dirait depuis quand.
      Un seul predicat pour un seul fait : celui qui decide du mot "estimation"
      decide aussi de la date qui l'accompagne. */
   const estime = estValeurEstimee(type);
@@ -761,9 +755,10 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
     ...(type && type.parts ? [{ cle: 'section_invest', label: 'Coût d’achat', type: 'section' }] : []),
     { cle: 'prixDeRevient', label: trad('Montant investi ({dev})'), type: 'nombre',
       /* Le COUT EFFECTIF, et non le seul champ legacy : une ligne creee avec
-         prix, frais et travaux (un ancien bien de valeur) montrait ici un champ
-         vide, et ce qu'on y tapait ne changeait rien -- `acquisitionLigne`
-         prefere le detail complet. Voir `litPlacement`, qui l'efface alors. */
+         prix, frais et travaux (un ancien bien de valeur) montrerait ici un
+         champ vide, et ce qu'on y taperait ne changerait rien --
+         `acquisitionLigne` prefere le detail complet. Voir `litPlacement`, qui
+         l'efface alors. */
       valeur: l && coutAcquisition(l) !== null ? coutAcquisition(l) : '', exemple: '0',
       aide: trad('facultatif, il donne la plus-value'),
       ...(type && type.parts

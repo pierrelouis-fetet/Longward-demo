@@ -107,13 +107,6 @@ Object.assign(ACTIONS, {
     render();
     toast(`${fmtMonth(r.month)} · ${fmtEUR0(expenseRowTotal(r))}`);
   },
-  /* LES DEUX ACTES QUI GERAIENT LES PERSONNES ONT DISPARU.
-
-     Une charge fixe vaut ce qui est DEBITE du compte. Ce que quelqu'un reverse
-     est une entree, saisie une fois avec le salaire -- et c'est le seul endroit
-     ou elle doit vivre. Enregistrer sa part ici en plus la comptait deux fois,
-     et les deux saisies divergeaient. `budget.contributors` et les `shares`
-     restent dans les donnees, sans que rien ne les lise. */
 
   async 'add-category'() {
     const nom = await askText('Nouvelle catégorie de dépenses',
@@ -167,13 +160,6 @@ Object.assign(ACTIONS, {
     Store.save(); render();
     toast(`${trad('Colonne')} ${guill(cat)} ${trad('supprimée')}`);
   },
-  /* "add-expense-month" est partie avec son bouton : elle ouvrait douze lignes
-     vides pour l'annee suivante, et une annee doit apparaitre quand des donnees
-     existent, non parce qu'on a appuye. Les mois se creent a la demande, la ou
-     l'on saisit -- "saisir-mois-courant" et "saisir-mois-en-attente" posent
-     la ligne du mois vise si le calendrier ne la porte pas.
-     Une action sans bouton pour l'appeler est du code mort, et le balayage de
-     verification cherche justement les `data-action` qui ne menent a rien. */
   async 'del-expense-month'(btn) {
     const i = +btn.dataset.i, r = Store.state.budget.expenses[i];
     if (!r) return;
@@ -254,14 +240,14 @@ Object.assign(ACTIONS, {
     toast(`${guill(a.libelle)} · ${fmtSigned(a.montant)}`);
   },
 
-  /* On en saisit rarement une seule. Depuis que le tableau passe par la fenetre,
-     poser dix charges demandait dix allers-retours par "+ Ligne" : le bouton
-     d'enchainement enregistre et rouvre une fenetre vide, curseur sur le poste.
+  /* On en saisit rarement une seule. Sans enchainement, poser dix charges
+     demanderait dix allers-retours par "+ Ligne" : le bouton d'enchainement
+     enregistre et rouvre une fenetre vide, curseur sur le poste.
 
      La boucle vit ici et non dans `askForm` parce que c'est ici qu'on sait quoi
      recalculer entre deux saisies : les credits deja rattaches changent des que
      la charge precedente en prend un, et `creditsRattachables()` les ecarte. Une
-     boucle generique aurait resservi la liste d'avant. */
+     boucle generique resservirait la liste d'avant. */
   async 'add-charge'() {
     if (!await devisePosee()) return;
     for (;;) {
@@ -450,11 +436,11 @@ Object.assign(ACTIONS, {
   },
   /* Une source de revenu, modifiable depuis ailleurs que la page Budget.
 
-     Elle ne s'editait qu'en place, dans la liste des revenus : un loyer affiche
-     sur la fiche de son bien n'avait donc aucune porte, et rien a l'ecran ne
-     disait ou aller le corriger. La page Budget garde ses champs en place, c'est
-     sa nature -- on y saisit en serie. Cette fenetre est la seconde porte sur le
-     meme champ, pas un second champ : les deux ecrivent `budget.income[i]`.
+     Un loyer affiche sur la fiche de son bien doit pouvoir se corriger depuis
+     cette fiche : sans cette porte, rien a l'ecran ne dirait ou aller. La liste
+     des revenus garde ses champs en place, c'est sa nature -- on y saisit en
+     serie. Cette fenetre est la seconde porte sur le meme champ, pas un second
+     champ : les deux ecrivent `budget.income[i]`.
 
      Meme forme que sa jumelle des charges fixes, case de suppression comprise :
      deux fenetres qui font le meme geste sur deux listes voisines n'ont pas de

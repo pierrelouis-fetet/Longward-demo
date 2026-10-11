@@ -526,9 +526,9 @@ function espaceBien(c, idx, t) {
 
    Il ecrit et il reste, comme dans une fenetre de saisie en serie : une fiche de
    bien porte une dizaine de champs et trois cartes de chiffres derives, et on
-   vient justement voir ce que la saisie a change. "Enregistrer et fermer"
-   emportait l'ecran avant qu'on ait pu relire les comptes, et il fallait
-   revenir. Le depart, lui, se fait par la navigation, qui ne perd rien.
+   vient justement voir ce que la saisie a change. Fermer en enregistrant
+   emporterait l'ecran avant qu'on ait pu relire les comptes. Le depart, lui,
+   se fait par la navigation, qui ne perd rien.
 
    "Annuler" reste, et rend la fiche telle qu'elle etait au dernier point
    connu -- l'ouverture, ou le dernier "Enregistrer". */
@@ -536,7 +536,7 @@ function espaceBien(c, idx, t) {
 
    Elle appartient au formulaire qu'elle valide : c'est la qu'on vient de taper, et
    une rangee posee hors des cartes flotterait dans une page ou tout est encadre.
-   Rassemblee avec Archiver et Cloturer-supprimer, elle formait un mur de quatre
+   Rassemblee avec Archiver et Cloturer-supprimer, elle formerait un mur de quatre
    rectangles identiques sous un seul titre, sans ordre de lecture.
 
    `.fiche-actes` porte la geometrie, la meme pour toutes les rangees de boutons
@@ -765,14 +765,14 @@ function viewFicheCompte(id) {
   </div>`}
 
   ${(() => {
-    /* Le financement, sur toute fiche de compte et non plus seulement sur celle
+    /* Le financement, sur toute fiche de compte et pas seulement sur celle
        d'un bien.
 
-       Un courtier qui prete sur marge se declare comme un credit, et le seul endroit ou on pouvait le saisir etait la fiche de
-       l'etablissement, un etage au-dessus. Or la question se pose en regardant le
-       compte qui porte les titres achetes avec cet argent : c'est la qu'on vient
-       la poser, et il n'y avait rien. Un bien immobilier, lui, avait sa carte
-       depuis le debut, par `espaceBien()`.
+       Un courtier qui prete sur marge se declare comme un credit, range sur
+       l'etablissement. Or la question se pose en regardant le compte qui porte
+       les titres achetes avec cet argent : c'est la qu'on vient la poser, et non
+       sur la fiche de l'etablissement, un etage au-dessus. Un bien immobilier a
+       sa propre carte, par `espaceBien()`, d'ou le retour vide pour lui.
 
        La dette reste rangee sur l'etablissement, elle n'est pas recopiee ici : le
        bouton ecrit au meme endroit que la fiche du dessus, et le sous-titre nomme
@@ -976,8 +976,8 @@ function viewFicheEtab(id) {
 /* Glisser une ligne vers la gauche revele Modifier / Archiver.
 
    Le geste ne s'engage qu'une fois le sens decide -- sinon un defilement
-   vertical du doigt entrainait la ligne de quelques pixels sur le cote, et
-   toute la liste tremblait pendant qu'on la parcourait.
+   vertical du doigt entrainerait la ligne de quelques pixels sur le cote, et
+   toute la liste tremblerait pendant qu'on la parcourt.
 
    La position se pose dans une trame d'animation, pas a chaque evenement
    tactile : un doigt emet jusqu'a 120 evenements par seconde la ou l'ecran
@@ -1131,9 +1131,9 @@ let depCatsEntre = false;
 function budgetAnnee() {
   const annees = expenseYears();
   const courante = todayISO().slice(0, 4);
-  /* "Toutes les annees" a quitte le selecteur de Budget : une valeur `all`
-     restee d'avant (ou posee par un vieux geste) retombe sur l'annee en
-     cours, sans quoi la page afficherait un choix que le menu n'offre plus. */
+  /* Le selecteur de Budget n'offre pas "Toutes les annees" : une valeur `all`
+     encore stockee, ou posee par un ancien geste, retombe sur l'annee en
+     cours, sans quoi la page afficherait un choix que le menu ne propose pas. */
   if (budgetYear === 'all') budgetYear = null;
   return budgetYear ?? (annees.includes(courante) ? courante : annees[annees.length - 1]);
 }
@@ -1142,14 +1142,14 @@ const viewBudgetCadre = () => viewBudget('cadre');
 
 /* LA BRIQUE DU MOIS AVANT LA PREMIERE DEPENSE.
 
-   Sur un profil vierge, l'onglet ouvrait sur "0 EUR", puis "Objectif mensuel
-   0 EUR", "Reste sur l'objectif 0 EUR", "Moyenne 2026 0 EUR" : quatre nombres
-   qui disent tous la meme chose -- rien n'est saisi -- et qui font croire a un
-   tableau casse plutot qu'a un produit qui accompagne. Les tuiles et le
-   graphique avaient deja leur garde, `aDesDepensesSaisies()` ; la brique la
-   recoit, et fait ce que font les autres etats vides de l'application : dire
-   ce que la section permet, et tendre le geste qui la remplit. Un objectif
-   deja regle se lit ; sinon on propose de le regler, jamais "0 EUR". */
+   Sur un profil vierge, la brique ordinaire afficherait "0 EUR", puis
+   "Objectif mensuel 0 EUR", "Reste sur l'objectif 0 EUR" : des nombres qui
+   disent tous la meme chose -- rien n'est saisi -- et qui font croire a un
+   tableau casse plutot qu'a un produit qui accompagne. Elle partage la garde des
+   tuiles et du graphique, `aDesDepensesSaisies()`, et fait ce que font les
+   autres etats vides de l'application : dire ce que la section permet, et
+   tendre le geste qui la remplit. Un objectif deja regle se lit ; sinon on
+   propose de le regler, jamais "0 EUR". */
 function briqueDepensesVide(f) {
   return `
     <div class="card">
@@ -1174,10 +1174,6 @@ function viewBudget(section = 'depenses') {
     .map((r, i) => ({ r, i }))
     .filter(({ r }) => year === 'all' || String(r.month).startsWith(year));
   const cur = currentExpenseMonth();
-  /* `savingsReconciliation()` etait lu ici, pour la carte "Epargne et
-     croissance" qui a rejoint l'accueil. Elle en etait le seul lecteur de cette
-     vue : la ligne est partie avec elle, sans quoi c'etait un appel dont plus
-     personne ne se servait -- la moitie qu'on oublie en retirant un affichage. */
   const b = Store.state.budget;
 
   const resteObjectif = f.target - (cur ? cur.total : 0);
@@ -1258,8 +1254,8 @@ function viewBudget(section = 'depenses') {
             + 'dépenses. C’est le montant que tu vises, là où la capacité d’épargne est ce '
             + 'que tes dépenses réelles laissent.')],
         ];
-        /* Le motif vient de `PREMIERS_PAS` : il est ne ici, et les deux autres
-           invites le reprennent depuis la meme table plutot que de le recopier. */
+        /* Le motif vient de `PREMIERS_PAS` : les trois invites le lisent dans la
+           meme table plutot que de le recopier. */
         if (!f.income) return invitePremierPas('revenus', { secondaire: true });
         if (chargesInconnues()) return `
         <button type="button" class="flux-total" data-action="toggle-revenus"

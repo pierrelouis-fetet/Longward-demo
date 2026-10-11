@@ -239,8 +239,8 @@ Object.assign(ACTIONS, {
     poserTriPositions(v, v === tri.key && tri.dir === 'desc' ? 'asc' : 'desc');
     render();
   },
-  /* Le journal n'a plus de borne propre : elle est celle de la page, et le menu
-     des annees a rejoint les crans de la plage. `sales-year` est parti avec. */
+  /* Le journal n'a pas de borne propre : il suit la periode de la page, et les
+     annees sont des crans de la meme plage, servis par `sales-range`. */
   'open-sale'(btn) { openApercu('vente', btn.dataset.i); },
   'tri-ventes'(btn) { triVentes = btn.dataset.tri; render(); },
   'journal-effacer'(btn) {
@@ -336,17 +336,6 @@ Object.assign(ACTIONS, {
     }
   },
 
-  /* "add-supplement" et "del-supplement" sont partis avec la carte
-     "Autres depenses". Une action sans bouton pour l'appeler est du code
-     mort, et le balayage de verification cherche justement des `data-action`
-     qui ne menent a rien : autant ne pas lui laisser l'inverse a trouver. */
-
-  /* "add-month" est partie avec le calendrier : elle ouvrait douze lignes
-     vides pour l'annee suivante, ce qui n'a plus de sens depuis que le journal
-     n'affiche que les releves renseignes -- elle n'aurait plus rien ajoute de
-     visible. Rien n'en dependait : `ensureCalendarMonths()` ouvre l'annee en
-     cours a chaque migration, et "Ajouter un releve" cree la ligne du mois
-     demande, quelle que soit son annee. */
   async 'resolve-row'(btn) {
     const p = Store.state.positions[+btn.dataset.i];
     if (!p) return;
@@ -388,10 +377,9 @@ Object.assign(ACTIONS, {
     try {
       const { changes, empty } = await Quotes.refresh();
       /* Les lignes dont le cours a REELLEMENT bouge, avant le rendu qui les
-         affiche. `changes` porte deja le `from` et le `to` de chaque ligne : la
-         donnee existait, elle etait jetee. Un rafraichissement qui ne change
-         rien n'allume donc rien -- c'est ce qui separe "ce chiffre est frais"
-         d'un appui sur un bouton. */
+         affiche, lues dans `changes`, qui porte le `from` et le `to` de chaque
+         ligne. Un rafraichissement qui ne change rien n'allume donc rien --
+         c'est ce qui separe "ce chiffre est frais" d'un appui sur un bouton. */
       coursFraichis = new Set(changes
         .filter(c => !c.error && Math.abs(num(c.to) - num(c.from)) > 1e-9)
         .map(c => c.symbol));

@@ -16,8 +16,10 @@ suite('Les boutons d’une fiche ont une géométrie et une place', () => {
     /* Rassembles avec Archiver et Cloturer-supprimer, les quatre boutons formaient
        un mur : quatre rectangles de meme taille sous un seul titre, sans ordre de
        lecture. La validation appartient au formulaire qu'elle valide. */
-    const barre = src.slice(src.indexOf('function barreValiderFiche'),
-                            src.indexOf('function barreValiderFiche') + 2400);
+    /* La fonction, de sa tete a son accolade fermante : une longueur fixe
+       varierait avec la taille d'un commentaire. */
+    const debutBarre = src.indexOf('function barreValiderFiche');
+    const barre = src.slice(debutBarre, src.indexOf('\n}\n', debutBarre) + 3);
     vrai(/<div class="fiche-actes apres-champs">/.test(barre),
       'elle porte la géométrie commune, et le filet qui la sépare des champs');
     vrai(!/class="card"/.test(barre), 'et ne fabrique pas sa propre carte');

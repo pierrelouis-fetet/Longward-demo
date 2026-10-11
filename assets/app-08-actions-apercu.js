@@ -25,8 +25,8 @@ function litPlacement(v, base, t) {
     ...(v.projetLe !== undefined ? { projetLe: v.projetLe || '' } : {}),
   };
   /* Un montant investi tape par-dessus un detail (prix, frais, travaux) le
-     remplace : sans ca, `acquisitionLigne` continuait de lire le detail et la
-     correction n'existait nulle part. Inchange, le detail reste -- un zero
+     remplace : sans ca, `acquisitionLigne` lirait encore le detail et la
+     correction ne compterait nulle part. Inchange, le detail reste -- un zero
      declare aux trois postes n'est pas un champ vide. */
   const DETAIL = ['prixAchat', 'fraisAcquisition', 'travauxInitiaux'];
   const tape = estDeclare(v.prixDeRevient) ? num(v.prixDeRevient) : null;
@@ -228,10 +228,6 @@ const ACTIONS = {
     Store.state.meta.jourRappel = Number(v);
     Store.save(); render();
   },
-  /* L'interrupteur bascule ce qu'il trouve, il ne recoit plus une valeur.
-     C'etait un `data-action-change` sur une liste deroulante, qui lisait
-     `sel.value` ; c'est un bouton, et l'etat vit dans les reglages. Lire l'etat
-     plutot que le recevoir supprime la question "et si les deux divergent". */
   'famille-notif'(btn) {
     const cle = btn.dataset.cle;
     const actif = !reglagesNotifs()[cle];
@@ -302,8 +298,8 @@ const ACTIONS = {
      la repartition et les autres cartes lisent le patrimoine complet, et c'est
      voulu -- voir `evoFinancier`.
 
-     `evo-base` vivait ici, jumeau de `hero-base` : deux commandes pour une seule
-     variable. Elle est partie avec la bascule Net / Brut du graphique. */
+     Le Net / Brut ne se regle pas ici : `hero-base` le gouverne seul, et une
+     seconde commande sur la meme variable ferait deux portes pour un reglage. */
   'evo-perimetre'(btn) {
     const voulu = btn.dataset.perimetre === 'financier';
     if (voulu === evoFinancier) return;
@@ -334,9 +330,8 @@ const ACTIONS = {
     Store.save(); render();
   },
   /* Le seul commutateur Net / Brut de la page, et il la gouverne entiere : le
-     grand chiffre, la repartition qui le decompose, et la courbe plus bas. Son
-     jumeau `evo-base` vivait sur le graphique, sur la meme variable ; il est
-     parti, la courbe herite. */
+     grand chiffre, la repartition qui le decompose, et la courbe plus bas. La
+     courbe n'a pas de bascule a elle : elle lit `evoNet`, comme le reste. */
   'hero-base'(btn) {
     const voulu = !!btn.dataset.net;
     if (voulu === evoNet) return;
@@ -367,17 +362,12 @@ const ACTIONS = {
 
   'sous-onglet'(btn) {
     retourHaptique();
-    /* Plus de remise a zero ici : `render()` retient une position par vue, et
-       sous-onglet compris. La poser a zero avant de router faisait retenir zero
-       pour l'onglet qu'on quitte, donc lui faisait perdre sa place. */
+    /* Pas de remise a zero ici : `render()` retient une position par vue,
+       sous-onglet compris. La poser a zero avant de router ferait retenir zero
+       pour l'onglet qu'on quitte, donc lui ferait perdre sa place. */
     tapeSousOnglets = true;
     location.hash = '#/' + btn.dataset.route;
   },
-  /* "proj-extra-clear" est parti avec la ligne libre du tableau "Par
-     horizon" : les deux selecteurs de la page ecrivent desormais le meme
-     reglage, il n'y a plus de ligne surnumeraire a retirer. Une action sans
-     bouton pour l'appeler est du code mort, et le balayage de verification
-     cherche justement les `data-action` qui ne menent a rien. */
   'toggle-masque'() { setMasque(!masqueActif()); render(); },
   'pace-range'(btn) { paceRange = btn.dataset.range; render(); },
 };
