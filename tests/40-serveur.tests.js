@@ -102,7 +102,7 @@ suite('La passerelle de marché a un frein', () => {
               ({ ticker: t, exchCode: 'FP', name: 'societe ' + t, securityType: 'Common Stock' })) }]), { status: 200 });
           }
           if (u.includes('/finance/search')) {
-            const quotes = cas === 'noms' && /q=US0378331005/.test(u)
+            const quotes = cas === 'noms' && /q=ZZ0000000008/.test(u)
               ? Array.from({ length: 6 }, (_, i) => ({ symbol: 'N' + i, longname: 'Nom ' + i }))
               : [];
             return new Response(JSON.stringify({ quotes }), { status: 200 });
@@ -110,7 +110,7 @@ suite('La passerelle de marché a un frein', () => {
           return new Response('{}', { status: 404 });
         };
         const w = await serveurNeuf();
-        const r = await w.fetch(requeteServeur('/api/isin?code=US0378331005'), {});
+        const r = await w.fetch(requeteServeur('/api/isin?code=ZZ0000000008'), {});
         vrai(r.status !== 429, `${cas} : la résolution passe le frein`);
         vrai(n >= 2 && n <= 13, `${cas} : ${n} appels sortants, treize au plus`);
       }

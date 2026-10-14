@@ -1,14 +1,12 @@
 partieDeTests('tests/01-socle.tests.js');
-/* Ce que ces tests protègent.
+/* Ce que ces tests protegent.
 
-   Chacune des suites ci-dessous correspond à un défaut réellement trouvé dans
-   l'application, à la main, en pilotant un navigateur. Aucun n'était exotique,
-   et tous auraient été pris en une seconde par les assertions qui suivent.
+   Chacune des suites ci-dessous garde un defaut qu'on ne voit qu'en pilotant
+   l'application dans un navigateur, et qu'une assertion prend en une seconde.
 
-   La règle qui les gouverne : **un total doit égaler la somme de ses parts**.
-   Presque tous les bugs de calcul rencontrés étaient des violations de cette
-   phrase, et aucun ne se voyait à l'écran — les chiffres avaient l'air justes,
-   ils étaient simplement faux. */
+   La regle qui les gouverne : **un total doit egaler la somme de ses parts**.
+   Un bug de calcul viole presque toujours cette phrase, et ne se voit pas a
+   l'ecran -- les chiffres ont l'air justes, ils sont simplement faux. */
 
 const { suite, test, pres, eq, vrai, leve } = Tests;
 
@@ -18,16 +16,16 @@ const { suite, test, pres, eq, vrai, leve } = Tests;
    publique avec son patrimoine fictif, et la beta, qui part a vide pour qu'un
    testeur pose ses propres chiffres sans faire le menage d'abord.
 
-   LE SIGNAL EST LA GRAINE ELLE-MEME, et non un drapeau pose a cote. Une
-   premiere version lisait `SEED_VERSION`, qui n'existe que dans la graine de la
-   demonstration — mais le depot prive n'en porte pas non plus, et sa graine est
-   pleine : le controle s'y serait cru sur un arbre vide et aurait exige d'une
-   graine bien garnie qu'elle ne porte aucun compte. Un drapeau qui repond a
-   cote de la question finit toujours par repondre faux.
+   LE SIGNAL EST LA GRAINE ELLE-MEME, et non un drapeau pose a cote.
+   `SEED_VERSION` n'existe que dans la graine de la demonstration : la beta
+   n'en porte pas, le depot prive non plus, et sa graine est pleine. Un
+   controle fonde sur ce drapeau s'y croirait sur un arbre vide, et exigerait
+   d'une graine bien garnie qu'elle ne porte aucun compte. Un drapeau qui
+   repond a cote de la question finit toujours par repondre faux.
 
-   LES CONTROLES CONCERNES NE SE TAISENT PAS POUR AUTANT. « Le jeu porte deux
-   comptes de titres » n'a pas d'objet sur un arbre vide ; « sa graine ne porte
-   aucun compte » en a un, et c'est la verite de cet arbre-la. Un controle qui
+   LES CONTROLES CONCERNES NE SE TAISENT PAS POUR AUTANT. "Le jeu porte deux
+   comptes de titres" n'a pas d'objet sur un arbre vide ; "sa graine ne porte
+   aucun compte" en a un, et c'est la verite de cet arbre-la. Un controle qui
    se tait est pire qu'absent : il compte pour un vert. */
 function sansGraineDeDemo(quoi) {
   const garnie = (SEED.accounts || []).length || (SEED.positions || []).length;
@@ -41,26 +39,21 @@ function sansGraineDeDemo(quoi) {
 
    Deux sortes de tests s'en servent. Les regles qui vivent dans `app.js` ne
    peuvent etre verifiees que comme du texte, puisque le harnais ne charge pas
-   ce fichier — mais quand la fonction visee ne depend de rien, on la reconstruit
+   ce fichier -- mais quand la fonction visee ne depend de rien, on la reconstruit
    depuis sa source et on l'execute pour de vrai : une assertion sur le
    comportement vaut mieux qu'une recherche de motif dans une chaine. */
 /* Lue une fois par chargement de page, et retenue.
 
-   Cinq cent douze appels partaient d'ici, dont trois cent quarante-six sur
-   `app.js`, qui pese pres d'un mega-octet : trois cent quarante mega-octets
-   relus en XHR SYNCHRONE, donc sur le fil principal, a chaque execution. Deux
-   consequences, et la seconde etait prise pour une fatalite :
-
-   - la suite mettait cent douze secondes, dont l'essentiel a relire les memes
-     octets ;
-   - une lecture tombait de temps en temps — « Failed to execute 'send' » — sur
-     un test qui changeait a chaque fois, ce qui obligeait a relancer avant de
-     pouvoir croire un rouge. Le defaut n'etait pas dans la suite, il etait dans
-     le nombre de lectures.
+   Des centaines d'appels partent d'ici, la plupart sur `app.js`, qui pese
+   plus d'un mega-octet, en XHR SYNCHRONE, donc sur le fil principal. Relire
+   les memes octets a chaque appel rendrait la suite lente, et ferait tomber de
+   temps en temps une lecture -- "Failed to execute 'send'" -- sur un test
+   different a chaque fois : un rouge qu'il faudrait relancer avant de pouvoir
+   le croire. Le defaut serait dans le nombre de lectures, pas dans la suite.
 
    Le casse-cache reste, et il garde son role : au PREMIER appel, il interdit au
    navigateur de servir une copie d'avant la modification qu'on vient d'ecrire.
-   Dans un meme chargement, en revanche, un fichier ne change pas — le relire ne
+   Dans un meme chargement, en revanche, un fichier ne change pas -- le relire ne
    peut rien apprendre. Recharger la page vide la memoire et relit tout.
 
    Un echec de lecture n'est pas retenu : il serait resservi a toutes les suites
@@ -82,9 +75,9 @@ function membreAction(src, nom) {
 
 function lireSource(fichier) {
   if (SOURCES.has(fichier)) return SOURCES.get(fichier);
-  /* Un fichier decoupe se lit comme avant : ses parties, dans l'ordre du
+  /* Un fichier decoupe se lit d'un seul tenant : ses parties, dans l'ordre du
      manifeste et privees de leurs lignes de marqueur, rendent le texte
-     d'origine. Les controles qui cherchent une fonction dans `assets/app.js`
+     entier. Les controles qui cherchent une fonction dans `assets/app.js`
      ne savent pas en combien de fichiers elle vit. */
   const parties = partiesDuGroupe(fichier);
   let texte;
@@ -120,22 +113,21 @@ function auJour(iso, faire) {
 
    Meme `finally` que ci-dessus, et pour une raison plus grave : cette page
    partage son origine avec l'application, donc son `localStorage`. La langue
-   qu'on deplace ici est la vraie, celle du detenteur — un echec au milieu
+   qu'on deplace ici est la vraie, celle du detenteur -- un echec au milieu
    laisserait son application en anglais. Le masque suit la meme regle : un
    montant masque rend un oeil barre, sur lequel aucun format ne se lit. */
-/* La langue dans laquelle l'application s'ouvre, lue dans `i18n.js`.
+/* La langue de repli de l'application, lue dans `i18n.js`.
 
-   C'est la seule divergence entre les deux depots — la demonstration ouvre en
-   anglais, l'instance privee en francais — et plusieurs controles en dependent.
-   La recopier dans chacun d'eux aurait fait deux tests a editer pour un depot,
-   et un test faux pour l'autre. */
-/* LA LANGUE PAR DEFAUT N'EST PLUS UNE CONSTANTE, C'EST UN REPLI.
+   C'est la seule divergence entre les deux depots -- la demonstration retombe
+   sur l'anglais, l'instance privee sur le francais -- et plusieurs controles
+   en dependent. La recopier dans chacun d'eux ferait deux tests a editer pour
+   un depot, et un test faux pour l'autre. */
+/* LA LANGUE PAR DEFAUT EST UN REPLI, PAS UNE CONSTANTE.
 
-   L'application ouvrait en anglais pour tout le monde ; elle suit desormais
-   les langues annoncees par le navigateur, et ne retombe sur une valeur fixe
-   que si aucune n'est reconnue. C'est cette valeur-la que les fichiers servis
-   declarent — un fichier statique ne peut pas deviner qui le lit — et c'est
-   donc elle que les controles doivent comparer.
+   L'application suit les langues annoncees par le navigateur, et ne retombe
+   sur une valeur fixe que si aucune n'est reconnue. C'est cette valeur-la que
+   les fichiers servis declarent -- un fichier statique ne peut pas deviner qui
+   le lit -- et c'est donc elle que les controles doivent comparer.
 
    Elle se lit dans `langueDuNavigateur()`, sur son dernier `return` : le seul
    chemin qui ne depend ni du stockage ni du navigateur. */
@@ -164,12 +156,11 @@ function enLangue(code, faire) {
 /* Le corps d'une fonction, de sa declaration a son accolade de fin en colonne
    zero.
 
-   Deux controles de la page Allocation lisaient une fenetre de taille fixe,
-   2000 et 1400 caracteres. Ajouter six lignes de commentaire a pousse le
-   troisieme anneau hors de la fenetre : le controle a cesse de le voir et a
-   continue de passer sur ce qui restait. Un test qui rapetisse en silence est
-   pire qu'un test absent, parce qu'il rassure. Une borne comptee en caracteres
-   n'est pas une borne. */
+   Une fenetre de taille fixe rapetisse en silence : quelques lignes de
+   commentaire ajoutees dans la fonction poussent sa fin hors de la fenetre, et
+   le controle continue de passer sur ce qui reste. Un test qui rapetisse en
+   silence est pire qu'un test absent, parce qu'il rassure. Une borne comptee
+   en caracteres n'est pas une borne. */
 function corpsDe(src, nom) {
   const d = src.indexOf('function ' + nom);
   if (d < 0) return '';
@@ -181,18 +172,18 @@ suite('Les totaux égalent la somme de leurs parts', () => {
 
   test('un premier lancement rend un état complet, pas une coquille', () => {
     if (sansGraineDeDemo('le premier lancement')) return;
-    /* `load()` ne migrait que l'etat relu du stockage. Sur une machine vierge
-       elle posait la graine telle quelle, dans l'ancien modele, et rendait la
-       main : `comptes` n'existait pas, et tout ce qui en descend valait zero.
-       L'accueil affichait « 0 € » sous ses huit cartes.
+    /* Sur une machine vierge, `load()` pose la graine : sans la migration, elle
+       resterait dans l'ancien modele, `comptes` n'existerait pas, et tout ce
+       qui en descend vaudrait zero. L'accueil afficherait "0 EUR" sous chacune
+       de ses cartes.
 
-       Le defaut ne durait qu'un instant — la premiere sauvegarde repassait par
-       la migration — donc il etait invisible en developpement, ou le stockage
-       est toujours deja rempli. Il ne se voyait qu'a la premiere visite, la
+       Le defaut ne durerait qu'un instant -- la premiere sauvegarde repasse par
+       la migration -- donc il serait invisible en developpement, ou le stockage
+       est toujours deja rempli. Il ne se verrait qu'a la premiere visite, la
        seule qui compte pour une demonstration publique.
 
        Le controle rejoue ce chemin sans toucher au stockage. Le harnais ne lit
-       ni n'ecrit jamais `localStorage` — `tests.html` l'annonce — et un test qui
+       ni n'ecrit jamais `localStorage` -- `tests.html` l'annonce -- et un test qui
        effacerait la cle effacerait les donnees de qui lance les tests. On pose
        donc la graine a la main, exactement comme `load()` le fait, et on la
        passe par la migration. Que `load()` appelle bien cette migration est
@@ -254,9 +245,9 @@ suite('Les totaux égalent la somme de leurs parts', () => {
   });
 
   test('l’allocation par actif refait le patrimoine net', () => {
-    /* Net et non brut : la liste porte une ligne « Crédits en cours »
-       négative. Sans dette dans les données, les deux coïncident et le test
-       ne prouverait rien — le fixture en a une. */
+    /* Net et non brut : la liste porte une ligne "Credits en cours"
+       negative. Sans dette dans les donnees, les deux coincident et le test
+       ne prouverait rien -- le fixture en a une. */
     Fixture.poser();
     const somme = allocationByAsset().reduce((s, x) => s + x.value, 0);
     pres(somme, nowTotals().total, 'allocationByAsset()');
@@ -364,18 +355,18 @@ suite('Comptes séparés et authentification', () => {
       'le jeton se vérifie côté serveur, sinon le widget n’est qu’une image');
     vrai(/env\.TURNSTILE_SITE_KEY \? ' https:\/\/challenges\.cloudflare\.com' : ''/.test(worker),
       'la CSP ne s’ouvre au script tiers que si le widget existe');
-    /* Le motif vise la chaîne construite, pas le commentaire qui la décrit :
-       une première version cherchait « script-src … unsafe-inline » partout et
-       tombait sur la prose qui explique justement qu’il n’y en a pas. */
+    /* Le motif vise la chaine construite, pas le commentaire qui la decrit : un
+       motif "script-src ... unsafe-inline" cherche partout tomberait sur la
+       prose qui explique justement qu'il n'y en a pas. */
     vrai(/"default-src 'self'; script-src 'self'"/.test(worker),
       'et elle ne s’ouvre jamais aux scripts en ligne');
   });
 
   test('l’ancienne porte se ferme dès que les comptes servent', () => {
     /* Le mot de passe unique ne porte aucune identite : sa session retombe sur
-       `state:default`, partage par tous ceux qui le connaissent. La consigne
-       de ne pas le definir vivait dans un document ; elle vit maintenant dans
-       le code, ou personne n'a besoin de se la rappeler. */
+       `state:default`, partage par tous ceux qui le connaissent. La regle qui
+       l'ecarte des que les comptes servent vit dans le code, ou personne n'a
+       besoin de se la rappeler. */
     const worker = lireSource('_worker.js');
     vrai(/const motDePasseAdmis = !!pwd && !emailAuthReady;/.test(worker),
       'le mot de passe partagé cesse d’ouvrir quand les comptes existent');
@@ -385,8 +376,8 @@ suite('Comptes séparés et authentification', () => {
 
   test('se déconnecter marche même sans JavaScript', () => {
     /* Le lien est une ancre : si le script qui intercepte le clic n'a pas pris,
-       elle part en GET. La route ne repondait qu'au POST, donc le bouton de
-       sortie affichait « route inconnue » et laissait la session ouverte. */
+       elle part en GET. Une route qui ne repondrait qu'au POST ferait afficher
+       "route inconnue" au bouton de sortie, et laisserait la session ouverte. */
     const worker = lireSource('_worker.js');
     vrai(/path === '\/api\/logout' && \(request\.method === 'POST' \|\| request\.method === 'GET'\)/
       .test(worker), 'la déconnexion répond aussi à une simple navigation');
@@ -395,15 +386,16 @@ suite('Comptes séparés et authentification', () => {
   });
 
   test('une adresse revenue sous un nouvel identifiant retrouve son patrimoine', () => {
-    /* `ON CONFLICT(id)` ne couvre pas l'index unique de l'adresse : un compte
-       supprime puis recree chez le fournisseur faisait lever l'instruction,
-       annulait le lot, et la personne ne pouvait plus entrer. */
+    /* `ON CONFLICT(id)` ne couvre pas l'index unique de l'adresse : sans
+       reaffectation prealable, un compte supprime puis recree chez le
+       fournisseur ferait lever l'instruction, annulerait le lot, et la
+       personne ne pourrait plus entrer. */
     const worker = lireSource('_worker.js');
     const schema = lireSource('schema.sql');
     vrai(/UPDATE users SET id = \?1, updated_at = unixepoch\(\) WHERE email = \?2 AND id <> \?1/
       .test(worker), 'la ligne existante est réaffectée avant l’insertion');
-    /* Les deux lignes de table, pas un compte d’occurrences : le commentaire
-       qui explique la cascade en portait une troisième. */
+    /* Les deux lignes de table, pas un compte d'occurrences : le commentaire
+       qui explique la cascade en porte une de plus. */
     vrai(/user_id TEXT NOT NULL REFERENCES users\(id\) ON DELETE CASCADE ON UPDATE CASCADE/
       .test(schema), 'les sessions suivent le nouvel identifiant');
     vrai(/owner_id TEXT PRIMARY KEY REFERENCES users\(id\) ON DELETE CASCADE ON UPDATE CASCADE/
@@ -423,19 +415,19 @@ suite('Comptes séparés et authentification', () => {
   });
 
   test('deux actions ne portent jamais le même nom', () => {
-    /* UNE CLEF EN DOUBLE NE SE SIGNALE PAS, ET LA DERNIERE GAGNE. Un ecran du
-       compte a pose `supprimer-compte` sans voir que le nom etait pris : dans
-       cette application un compte est un compte BANCAIRE, et l'action existante
-       en supprime un. Le bouton d'effacement du compte et des donnees appelait
-       donc la suppression d'une ligne d'actifs, sans qu'aucune erreur ne le
-       dise. C'est le meme defaut que deux clefs identiques dans le
+    /* UNE CLEF EN DOUBLE NE SE SIGNALE PAS, ET LA DERNIERE GAGNE. Dans cette
+       application un compte est un compte BANCAIRE : un ecran du profil qui
+       poserait `supprimer-compte` reprendrait le nom d'une action qui en
+       supprime un, et son bouton d'effacement du compte et des donnees
+       appellerait la suppression d'une ligne d'actifs, sans qu'aucune erreur ne
+       le dise. C'est le meme defaut que deux clefs identiques dans le
        dictionnaire, et il merite le meme garde-fou.
 
        Le motif vise les methodes posees a deux espaces d'indentation : c'est la
        forme des entrees d'`ACTIONS`. */
     const src = lireSource('assets/app.js');
-    /* La tranche s'arrête à la première accolade fermante en colonne zéro :
-       hors d'`ACTIONS`, deux objets peuvent légitimement porter la même clef. */
+    /* La tranche s'arrete a la premiere accolade fermante en colonne zero :
+       hors d'`ACTIONS`, deux objets peuvent legitimement porter la meme clef. */
     const debut = src.indexOf('const ACTIONS = {');
     vrai(debut >= 0, 'ACTIONS doit être trouvable');
     /* ACTIONS vit en plusieurs fichiers : le litteral, puis un Object.assign
@@ -445,9 +437,9 @@ suite('Comptes séparés et authentification', () => {
       ...[...src.matchAll(/^Object\.assign\(ACTIONS, \{\n([\s\S]*?)^\}\);$/gm)].map(m => m[1])].join('\n');
     const vus = new Map();
     const doubles = [];
-    /* Les deux formes coexistent : la méthode abrégée `'nom'() {` et la
-       propriété `'nom': makeDeleter(...)`. N'en chercher qu'une laissait
-       passer la moitié des actions. */
+    /* Les deux formes coexistent : la methode abregee `'nom'() {` et la
+       propriete `'nom': makeDeleter(...)`. N'en chercher qu'une laisserait
+       passer la moitie des actions. */
     for (const m of table.matchAll(/^ {2}(?:async )?'([a-z0-9-]+)'\s*[:(]/gm)) {
       if (vus.has(m[1])) doubles.push(m[1]);
       else vus.set(m[1], true);
@@ -455,7 +447,7 @@ suite('Comptes séparés et authentification', () => {
     vrai(vus.size > 40, `${vus.size} actions relevées : le motif ne les voit plus`);
     eq(doubles.length, 0, 'noms déclarés deux fois : ' + doubles.join(', '));
 
-    /* Et tout bouton doit désigner une action qui existe : un nom mal recopié
+    /* Et tout bouton doit designer une action qui existe : un nom mal recopie
        donne un bouton muet, ce qui ne se voit qu'en cliquant. */
     const manquantes = [];
     for (const m of src.matchAll(/data-action="([a-z0-9-]+)"/g)) {
@@ -465,15 +457,14 @@ suite('Comptes séparés et authentification', () => {
   });
 
   test('la connexion parle la langue de l’application', () => {
-    /* `currentLang()` rend 'en' en dur quand rien n'est stocké : l'application
-       est anglaise par défaut, par décision et non par détection. Les pages du
-       worker étaient les seules chaînes françaises codées en dur du projet, et
-       le parcours basculait de langue au milieu — connexion française, courriel
-       français, puis application anglaise.
+    /* Sans choix enregistre, l'application suit les langues annoncees par le
+       navigateur. Les pages du worker font le meme calcul : sinon le parcours
+       basculerait de langue au milieu -- connexion et courriel dans une langue,
+       application dans l'autre.
 
        Ces pages ne peuvent pas appeler `trad()` : le worker les construit sans
-       le dictionnaire. Une seule langue est donc possible, et c'est celle de
-       l'application. Le contrôle porte sur cet accord, pas sur l'anglais. */
+       le dictionnaire. Elles tiennent leur propre table, dans les deux langues,
+       et le controle porte sur leur accord avec l'application. */
     const i18n = lireSource('assets/i18n.js');
     vrai(/navigator\.languages/.test(i18n),
       'le navigateur annonce une liste ordonnée, et c’est elle qu’on lit');
@@ -482,8 +473,8 @@ suite('Comptes séparés et authentification', () => {
 
     const worker = lireSource('_worker.js');
     /* Le serveur fait le meme calcul que le navigateur, sur `Accept-Language`.
-       Cet en-tete est une liste PONDEREE : « en-US,en;q=0.9,fr;q=0.8 » annonce
-       un anglophone qui comprend le francais. Chercher « fr » dedans le
+       Cet en-tete est une liste PONDEREE : "en-US,en;q=0.9,fr;q=0.8" annonce
+       un anglophone qui comprend le francais. Chercher "fr" dedans le
        prendrait pour un francophone, d'ou la lecture des poids. */
     vrai(/function langueDemandee\(request, url\)/.test(worker),
       'le worker déduit la langue de l’en-tête du navigateur, à défaut de choix explicite');
@@ -505,9 +496,9 @@ suite('Comptes séparés et authentification', () => {
     vrai(en.length > 15, `${en.length} clefs relevées : le motif ne les voit plus`);
     eq(fr.join(','), en.join(','), 'les deux langues doivent porter les mêmes clefs');
 
-    /* Et aucune page ne reçoit une chaîne écrite à la main : elle échapperait
-       à la traduction sans que personne s'en aperçoive. C'est arrivé deux fois
-       au même message, resté français dans une page anglaise. */
+    /* Et aucune page ne recoit une chaine ecrite a la main : elle echapperait
+       a la traduction sans que personne s'en apercoive, et resterait francaise
+       dans une page anglaise. */
     for (const m of worker.matchAll(/page(?:Connexion|Code)\(([^)]*)\)/g)) {
       vrai(!/'[A-Za-zÀ-ÿ]/.test(m[1]),
         `« ${m[1]} » : un message doit passer par la table, pas par une chaîne`);
@@ -515,12 +506,11 @@ suite('Comptes séparés et authentification', () => {
   });
 
   test('le témoin d’enregistrement ne promet que ce qui est fait', () => {
-    /* Il annonçait « Sauvegardé localement » en toutes circonstances, ce qui
-       était vrai tant que rien ne partait ailleurs. Depuis que les comptes
-       rangent le patrimoine en base, la phrase est fausse la moitié du temps,
-       et fausse dans le mauvais sens : elle laisse croire qu'un changement
-       n'a pas quitté l'appareil. L'inverse serait pire — annoncer le cloud
-       avant l'aboutissement ferait fermer l'onglet trop tôt. */
+    /* Les comptes rangent le patrimoine en base : un temoin qui annoncerait
+       "Sauvegarde localement" en toutes circonstances serait faux la moitie du
+       temps, et faux dans le mauvais sens -- il laisserait croire qu'un
+       changement n'a pas quitte l'appareil. L'inverse serait pire : annoncer le
+       cloud avant l'aboutissement ferait fermer l'onglet trop tot. */
     const app = lireSource('assets/app.js');
     vrai(/function libelleEnregistrement\(\)/.test(app),
       'le libellé se dérive de l’état de synchronisation');
@@ -533,8 +523,8 @@ suite('Comptes séparés et authentification', () => {
        `lastPush` ne vaut que pour la page en cours : arriver sur une
        application deja synchronisee ne declenche aucun envoi, et un temoin
        qui le lirait annoncerait localement alors que tout est en ligne. */
-    /* Les commentaires partent avant le contrôle : celui qui explique cette
-       erreur-là cite justement `lastPush`, et le motif tombait dessus. Un test
+    /* Les commentaires partent avant le controle : celui qui explique cette
+       erreur-la cite justement `lastPush`, et le motif tomberait dessus. Un test
        qui lit de la prose finit par accuser une explication. */
     const code = fn.replace(/\/\*[\s\S]*?\*\//g, '');
     vrai(!/lastPush/.test(code),
@@ -562,27 +552,25 @@ suite('Comptes séparés et authentification', () => {
   });
 
   test('la politique de confidentialité se lit avant de donner son adresse', () => {
-    /* Cloudflare Pages redirige `/confidentialite.html` vers `/confidentialite`
-       par un 308, avant le worker. Seule la première écriture était déclarée
-       publique : la redirection tombait sur le garde-fou et la page renvoyait
-       l'écran de connexion. Mesuré en ligne, pas déduit — le formulaire
-       d'inscription y renvoie, et l'information doit précéder la collecte. */
+    /* L'hebergeur redirige `/confidentialite.html` vers `/confidentialite` par
+       un 308, avant le worker : les deux ecritures doivent etre publiques, sinon
+       la redirection tombe sur le garde-fou et la page renvoie l'ecran de
+       connexion. Le formulaire d'inscription y renvoie, et l'information doit
+       preceder la collecte. */
     const worker = lireSource('_worker.js');
     const publics = worker.slice(worker.indexOf('const PUBLIC = ['),
                                  worker.indexOf('];', worker.indexOf('const PUBLIC = [')));
-    /* Les deux langues et les deux écritures de chacune : Pages redirige la
-       forme `.html` vers la forme nue, et la redirection doit atterrir sur une
-       adresse publique elle aussi. */
+    /* Les deux langues et les deux ecritures de chacune : l'hebergeur redirige
+       la forme `.html` vers la forme nue, et la redirection doit atterrir sur
+       une adresse publique elle aussi. */
     for (const chemin of ["'/confidentialite.html'", "'/confidentialite'",
                           "'/privacy.html'", "'/privacy'"]) {
       vrai(publics.includes(chemin), `${chemin} doit être lisible sans session`);
     }
-    /* Le motif tient l'adresse, pas le libellé : une première version citait
-       « politique », et la traduction de la page l'a fait tomber sur un lien
-       pourtant juste. Ce qui compte ici est le chemin.
-
-       Il pointe l'anglais, comme tout ce que le worker construit ; le français
-       est à un clic depuis la page. */
+    /* Le motif tient l'adresse, pas le libelle : un motif sur le mot
+       "politique" tomberait des que la page se traduit, sur un lien pourtant
+       juste. Ce qui compte ici est le chemin, que le formulaire tire de la
+       table de sa langue. */
     vrai(/href="\$\{T\.confidentialite\}"/.test(worker),
       'le formulaire pointe l’adresse canonique, sans saut de redirection');
     /* Une adresse par langue, et les deux sont publiques : un francophone ne
@@ -602,7 +590,7 @@ suite('Comptes séparés et authentification', () => {
     vrai(/href="\/confidentialite">Français<\/a>/.test(en), 'et réciproquement');
     vrai(/<html lang="fr"/.test(fr) && /<html lang="en"/.test(en),
       'chacune déclare sa langue');
-    /* Les deux textes doivent nommer les mêmes destinataires : une version qui
+    /* Les deux textes doivent nommer les memes destinataires : une version qui
        en oublie un dit autre chose que l'autre, et c'est un document
        juridique. */
     for (const tiers of ['Cloudflare', 'Supabase', 'Resend', 'CNIL']) {
@@ -623,7 +611,7 @@ suite('Comptes séparés et authentification', () => {
     const fn = worker.slice(worker.indexOf('async function sessionIdentity'),
                             worker.indexOf('async function supabaseAuth'));
     /* Le plafond part de la CREATION : lu sur `expires_at`, il glisserait avec
-       la fenêtre et ne plafonnerait plus rien. */
+       la fenetre et ne plafonnerait plus rien. */
     vrai(/s\.created_at \+ \? > unixepoch\(\)/.test(fn),
       'le plafond se compte depuis la création, jamais depuis la dernière visite');
     vrai(/UPDATE sessions SET expires_at/.test(fn), 'chaque visite repousse la fenêtre');
@@ -633,30 +621,30 @@ suite('Comptes séparés et authentification', () => {
     vrai(/vise > row\.expires_at \+ 86400/.test(fn),
       'la base n’est réécrite qu’une fois par jour et par session');
 
-    /* Le cookie porte le PLAFOND, pas la fenêtre : le renvoyer a chaque
-       prolongation demanderait de toucher toutes les réponses. Il ne donne
+    /* Le cookie porte le PLAFOND, pas la fenetre : le renvoyer a chaque
+       prolongation demanderait de toucher toutes les reponses. Il ne donne
        aucun droit, c'est la base qui tranche. */
     vrai(/lw_session=\$\{session\}[^`]*Max-Age=\$\{SESSION_PLAFOND \* 86400\}/.test(worker),
       'le cookie vit aussi longtemps que le plafond, et pas plus');
   });
 
   test('effacer un compte se revérifie, le reste non', () => {
-    /* Une session ouverte suffit pour tout lire, et c'est le prix assumé de ne
-       pas redemander un code a chaque visite. Mais lire se répare, effacer non :
-       la seule action irréversible redemande la preuve de la boîte e-mail. */
+    /* Une session ouverte suffit pour tout lire, et c'est le prix assume de ne
+       pas redemander un code a chaque visite. Mais lire se repare, effacer non :
+       la seule action irreversible redemande la preuve de la boite e-mail. */
     const worker = lireSource('_worker.js');
     vrai(/path === '\/api\/account\/delete-code' && request\.method === 'POST'/.test(worker),
       'un code se demande avant d’effacer');
     const bloc = worker.slice(worker.indexOf("path === '/api/account/delete'"),
                               worker.indexOf("path === '/api/health'"));
     vrai(/\/auth\/v1\/verify/.test(bloc), 'le code se vérifie chez le fournisseur');
-    /* Et son résultat doit désigner LA MEME personne : un code valide pour une
+    /* Et son resultat doit designer LA MEME personne : un code valide pour une
        autre adresse ne peut pas ouvrir cette suppression-ci. */
     vrai(/verifie\.data\?\.user\?\.id !== appIdentity\.id/.test(bloc),
       'le code vérifié doit désigner le compte qu’on efface');
     vrai(/code:mail:\$\{appIdentity\.email\}/.test(bloc),
       'les essais sont comptés, comme à la connexion');
-    /* La demande de code passe par les mêmes freins : une porte de suppression
+    /* La demande de code passe par les memes freins : une porte de suppression
        sans limite serait un moyen commode de faire partir du courrier. */
     const envoi = worker.slice(worker.indexOf("path === '/api/account/delete-code'"),
                                worker.indexOf("path === '/api/account/delete'"));
@@ -666,13 +654,10 @@ suite('Comptes séparés et authentification', () => {
 
   test('le diagnostic rend l’adresse du compte, pas seulement celle du portail', () => {
     /* `/api/health` est la seule source d'identite du navigateur : l'ecran du
-       profil affiche ce qu'elle renvoie. La ligne ne lisait que l'adresse
-       fournie par un portail d'entreprise, qui n'existe pas quand on se
-       connecte par code — le serveur rendait donc un identifiant SANS adresse,
-       et le profil s'affichait vide sur une session pourtant valide.
-
-       Vu a l'ecran, puis confirme en interrogeant la route : `userId` etait
-       renseigne et `user` nul. La base, elle, portait bien l'adresse. */
+       profil affiche ce qu'elle renvoie. L'adresse fournie par un portail
+       d'entreprise n'existe pas quand on se connecte par code : une route qui
+       ne lirait qu'elle rendrait un identifiant SANS adresse, et le profil
+       s'afficherait vide sur une session pourtant valide. */
     const worker = lireSource('_worker.js');
     const sante = worker.slice(worker.indexOf("if (path === '/api/health')"),
                                worker.indexOf("if (path === '/api/quotes')"));
@@ -715,9 +700,9 @@ suite('Comptes séparés et authentification', () => {
 suite('Chaque écran dit son nom', () => {
   test('toute entrée de menu porte son titre et son sous-titre, dans les deux langues', () => {
     /* L'en-tete compose ses clefs : `view.<vue>` et `view.<vue>.sub`. Une vue
-       ajoutee sans elles n'echoue pas — `t()` rend la clef quand elle manque,
-       donc l'ecran affiche « view.profil » en gros titre. C'est arrive, et
-       seule une capture d'ecran l'a dit.
+       ajoutee sans elles n'echoue pas -- `t()` rend la clef quand elle manque,
+       donc l'ecran afficherait "view.profil" en gros titre, et seul l'ecran le
+       dirait.
 
        La liste se DERIVE du menu plutot que de se recopier : une entree
        ajoutee demain entre dans ce controle sans qu'on y pense. */
@@ -738,14 +723,14 @@ suite('Chaque écran dit son nom', () => {
 });
 
 /* ------------------------------------------------------------------
-   2. Le cash « à investir » est rangé d'un seul côté
+   2. Le cash "a investir" est range d'un seul cote
    ------------------------------------------------------------------ */
 suite('Le cash à investir est rangé d’un seul côté', () => {
 
   test('accueil et Allocation comptent les mêmes liquidités', () => {
     /* `poches().classes.liquidites` et `nowByGroup().cash` doivent ranger le
        cash pose chez un courtier au meme endroit. Sinon deux ecrans, le mot
-       « Liquidites », un ecart de ce cash, et deux totaux justes : rien pour
+       "Liquidites", un ecart de ce cash, et deux totaux justes : rien pour
        le signaler. */
     Fixture.poser();
     pres(nowByGroup().cash, poches().classes.liquidites,
@@ -769,15 +754,14 @@ suite('Le cash à investir est rangé d’un seul côté', () => {
 
   test('le cash raconte la même histoire partout', () => {
     /* Trois ecrans affichent les liquidites, et ils doivent concorder. Une
-       carte qui agregerait courant + precaution + projet sous « Argent
-       disponible » (3 300 EUR) porterait un montant que l'accueil ne connait
-       pas, sous presque le nom d'une de ses propres parts, « Cash disponible »
-       (3 250 EUR) : cinquante euros d'ecart, invisibles tant que la precaution
-       reste petite.
+       carte qui agregerait courant + precaution + projet sous "Argent
+       disponible" porterait un montant que l'accueil ne connait pas, sous
+       presque le nom d'une de ses propres parts, "Cash disponible" : un ecart
+       invisible tant que la precaution reste petite.
 
-       La regle desormais : « Liquidites » nomme le tout, les quatre
-       affectations le composent, aucun agregat intermediaire n'existe. Ce test
-       verrouille les deux egalites qui le garantissent. */
+       La regle : "Liquidites" nomme le tout, les quatre affectations le
+       composent, aucun agregat intermediaire n'existe. Ce test verrouille les
+       deux egalites qui le garantissent. */
     Fixture.poser();
     /* `poches` est deja une fonction globale : la liste s'appelle autrement,
        sinon elle l'occulte et l'assertion suivante leve. */
@@ -798,9 +782,9 @@ suite('Le cash à investir est rangé d’un seul côté', () => {
   });
 
   test('l’épargne de précaution ignore le cash posé chez un courtier', () => {
-    /* Un autre axe : la disponibilité. Ce cash est bien liquide, mais il n'est
-       pas mobilisable dans la seconde, et il est déjà destiné. Le compter en
-       réserve d'urgence gonflerait l'autonomie à tort. */
+    /* Un autre axe : la disponibilite. Ce cash est bien liquide, mais il n'est
+       pas mobilisable dans la seconde, et il est deja destine. Le compter en
+       reserve d'urgence gonflerait l'autonomie a tort. */
     Fixture.poser();
     pres(runway().immediate, 5000,
       'seuls le compte courant et le livret comptent comme disponibles tout de suite');
@@ -808,14 +792,14 @@ suite('Le cash à investir est rangé d’un seul côté', () => {
 });
 
 /* ------------------------------------------------------------------
-   3. Les relevés mensuels couvrent toutes les poches
+   3. Les releves mensuels couvrent toutes les poches
    ------------------------------------------------------------------ */
 suite('Un relevé mensuel couvre toutes les poches', () => {
 
   test('le total d’une ligne additionne les cinq poches', () => {
-    /* Le bug d'origine : la colonne « Total » n'additionnait que cash, bourse
-       et non coté. La crypto et l'immobilier disparaissaient — 120 000 € de
-       studio absents d'un total nommé « total ». */
+    /* La colonne "Total" additionne les cinq poches : sans la crypto et
+       l'immobilier, les 120 000 EUR du studio de la fixture manqueraient a un
+       total nomme "total". */
     const s = Fixture.poser();
     pres(rowTotal(s.monthly[0]), Fixture.BRUT,
       'rowTotal() doit couvrir cash, bourse, crypto, non coté et immobilier');
@@ -832,27 +816,27 @@ suite('Un relevé mensuel couvre toutes les poches', () => {
 });
 
 /* ------------------------------------------------------------------
-   4. Le classement d'une ligne de marché
+   4. Le classement d'une ligne de marche
    ------------------------------------------------------------------ */
 suite('Classement d’une ligne de marché', () => {
 
   test('une classe découpée laisse place à ses deux rôles, à plat', () => {
-    /* « 90 % d'actions » ne disait pas si le prochain versement va au fonds
-       mondial ou a une conviction, et viser un core a 70 % obligeait a regler
+    /* "90 % d'actions" ne dit pas si le prochain versement va au fonds
+       mondial ou a une conviction, et viser un core a 70 % obligerait a regler
        les actions a 90 % en esperant tomber juste. Une classe detenue dans les
        deux roles peut donc porter deux cibles.
 
-       A plat : « Actions core » et « Actions satellite » remplacent « Actions »
-       dans la liste, sans ligne parente. Un seul axe de cibles, plus fin — pas
+       A plat : "Actions core" et "Actions satellite" remplacent "Actions"
+       dans la liste, sans ligne parente. Un seul axe de cibles, plus fin -- pas
        deux series croisees, qui se contrediraient en silence.
 
-       Le libelle porte la classe et pas seulement le role : « Core » seul
+       Le libelle porte la classe et pas seulement le role : "Core" seul
        promettrait tout le core du portefeuille alors que la ligne ne compte que
        les actions, et un metal precieux passe en core n'y figurerait jamais.
 
        Ce que le test verrouille : les deux lignes remplacent la classe sans en
-       perdre un euro, leurs cibles font celle d'avant, et ni la base ni le total
-       des cibles ne bougent. */
+       perdre un euro, leurs cibles font celle d'avant le decoupage, et ni la
+       base ni le total des cibles ne bougent. */
     const action = (id, role, qty) => ({
       id, name: role === 'core' ? 'ETF Monde' : 'Une conviction', isin: '',
       symbol: role === 'core' ? 'IWDA' : 'CONV', currency: 'EUR',
@@ -871,9 +855,8 @@ suite('Classement d’une ligne de marché', () => {
     pres(actions.targetPct, 90, 'et porte la cible saisie');
 
     /* Decoupage au prorata, tel que l'action le calcule : 30 % de satellite sur
-       10 000 EUR font 27 %, et le reste, 63, va au core. L'arrondi tombait sur
-       le palier de 5 le plus proche — 25 et 65 — tant que la liste deroulante
-       n'en proposait pas d'autres ; elle va de 1 en 1 depuis. */
+       10 000 EUR font 27 %, et le reste, 63, va au core. La liste deroulante va
+       de 1 en 1 : aucun arrondi au palier de 5. */
     poser({ core: 63, satellite: 27 });
     const apres = rebalanceRows();
     vrai(!apres.classes.some(c => c.cle === 'classes.actions'),
@@ -901,12 +884,12 @@ suite('Classement d’une ligne de marché', () => {
   });
 
   test('la jauge d’une cible ouvre exactement les placements qu’elle compte', () => {
-    /* « Actions core, +1 200 EUR a renforcer » ne disait pas laquelle renforcer.
+    /* Une ligne "Actions core, a renforcer" ne dit pas laquelle renforcer.
        La barre s'ouvre donc sur ses placements. Ce que ce test verrouille est la
        regle cardinale du projet, appliquee a une fiche de plus : le total de la
        fiche egale la somme de ses lignes, et il egale le montant de la ligne
-       affichee sur la page. Deux calculs du meme nombre finissent par diverger,
-       et c'est arrive ici trois fois deja, sur trois ecrans differents. */
+       affichee sur la page. Deux calculs du meme nombre finissent par
+       diverger. */
     const action = (id, role, qty) => ({
       id, name: `${role} ${qty}`, isin: '', symbol: id, currency: 'EUR',
       qty, buyPrice: 100, price: 100, fx: 1, fxBuy: 1, account: 'c_pea',
@@ -962,16 +945,16 @@ suite('Classement d’une ligne de marché', () => {
   });
 
   test('« Satellite » ne compte pas la même chose selon la barre qu’on ouvre', () => {
-    /* Deux barres de la page Objectifs portent le mot « Satellite », et elles ne
+    /* Deux barres de la page Objectifs portent le mot "Satellite", et elles ne
        comptent pas le meme argent : la carte des roles compte tous les
        satellites, la ligne de cible ne compte que ceux d'une classe. L'ecart,
        c'est l'or, la crypto, tout ce qui n'est pas une action.
 
-       C'est exactement le defaut que ce projet a corrige trois fois — un meme
-       libelle pour deux montants — sauf qu'ici les deux sont voulus. Ce qui le
-       rend supportable est que chaque fiche dise ce qu'elle compte, et c'est ce
-       que ce test verrouille : la fiche de role nomme la classe de chaque ligne,
-       et la somme des fiches de classe fait la fiche de role. */
+       C'est le defaut d'un meme libelle pour deux montants, sauf qu'ici les
+       deux sont voulus. Ce qui le rend supportable est que chaque fiche dise ce
+       qu'elle compte, et c'est ce que ce test verrouille : la fiche de role
+       nomme la classe de chaque ligne, et la somme des fiches de classe fait la
+       fiche de role. */
     const pos = (id, classe, role, qty) => ({
       id, name: `${classe} ${role}`, isin: '', symbol: id, currency: 'EUR',
       qty, buyPrice: 100, price: 100, fx: 1, fxBuy: 1, account: 'c_pea',
@@ -1044,14 +1027,14 @@ suite('Classement d’une ligne de marché', () => {
   });
 
   test('une cible se règle de 1 en 1 : 92 % doit être proposé', () => {
-    /* Le pas etait de 5, au motif que personne ne vise 63 % d'actions. C'etait
-       faux : une cible se deduit souvent des autres. Qui pose 3 % d'or et 5 % de
-       crypto a 92 % a repartir, et le pas de 5 lui refusait de l'ecrire — le
-       total devait tomber juste a 100 avec un outil qui comptait de cinq en cinq.
+    /* Une cible se deduit souvent des autres : qui pose 3 % d'or et 5 % de
+       crypto a 92 % a repartir, et un pas de 5 lui refuserait de l'ecrire -- le
+       total doit tomber juste a 100, ce qu'un outil qui compte de cinq en cinq
+       empeche.
 
        `paliersCible()` vit dans app.js, que le harnais ne charge pas. Elle ne
        depend que de `num`, donc on la reconstruit depuis la source et on
-       l'execute pour de vrai, plutot que de chercher « v += 1 » dans du texte. */
+       l'execute pour de vrai, plutot que de chercher "v += 1" dans du texte. */
     const src = lireSource('assets/app.js');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
     const m = src.match(/function paliersCible\(courant\) \{[\s\S]*?\n\}/);
@@ -1073,9 +1056,9 @@ suite('Classement d’une ligne de marché', () => {
     eq(paliersCible(140).filter(v => v > 100).length, 0,
       'une valeur hors bornes ne crée pas de palier au-delà de 100');
 
-    /* Et le decoupage d'une classe suit le meme pas : il arrondissait au palier
-       de 5 tant que la liste n'en offrait pas d'autres. Une classe a 90 %
-       detenue 70/30 se coupait en 65 et 25, la ou le prorata dit 63 et 27. */
+    /* Et le decoupage d'une classe suit le meme pas, sans arrondi au palier de
+       5 : une classe a 90 % detenue 70/30 se coupe en 63 et 27, comme le dit
+       le prorata, et non en 65 et 25. */
     const p7030 = partageDeCible(90, { core: 7000, satellite: 3000 });
     eq(p7030.satellite, 27, 'le prorata donne 27, pas le palier de 5 le plus proche');
     eq(p7030.core, 63, 'et le reste va au core');
@@ -1098,14 +1081,14 @@ suite('Classement d’une ligne de marché', () => {
   });
 
   test('un nom de fonds se reconnaît, et l’utilisateur garde le dernier mot', () => {
-    /* Une detection par `/\b(etf|ucits|msci|s&p|index|indice|world)\b/` fait
-       passer sept noms de fonds courants sur quatorze pour des actions en
-       direct, dont un fonds thematique au nom sans aucun de ces mots. Le champ
-       Nature reste modifiable et non verrouille, parce qu'une regle sur un nom
-       se trompe ; mais elle ne doit pas se tromper une fois sur deux.
+    /* Une detection par `/\b(etf|ucits|msci|s&p|index|indice|world)\b/` seule
+       fait passer des noms de fonds courants pour des actions en direct, dont
+       un fonds thematique au nom sans aucun de ces mots. Le champ Nature reste
+       modifiable et non verrouille, parce qu'une regle sur un nom se trompe ;
+       mais elle ne doit pas se tromper sur les noms les plus courants.
 
-       L'emetteur est le signal le plus fiable : personne n'appelle une action
-       Amundi ni iShares. */
+       L'emetteur est le signal le plus fiable : personne ne donne a une action
+       le nom d'un emetteur de fonds. */
     const fonds = ['Amundi MSCI World', 'Lyxor Nasdaq-100', 'iShares Core S&P 500',
       'Vanguard FTSE All-World', 'SPDR Gold Shares', 'Amundi Euro Stoxx 50',
       'BNP Paribas Easy CAC 40', 'iShares Physical Gold',
@@ -1120,19 +1103,19 @@ suite('Classement d’une ligne de marché', () => {
 
     /* Et les indecidables, qui justifient le menu a eux seuls. Un ETF thematique
        nomme d'apres sa seule strategie ne porte ni emetteur, ni habillage
-       juridique, ni indice : rien dans « Future of Defence » ne le distingue du
-       nom d'une societe. Aucune regle sur un nom ne tranchera jamais ce cas, et
+       juridique, ni indice : rien dans un tel nom ne le distingue de celui
+       d'une societe. Aucune regle sur un nom ne tranchera jamais ce cas, et
        c'est pourquoi le champ Nature reste ouvert au lieu d'etre verrouille.
        Le test ne demande donc pas le bon resultat : il demande que le repli soit
-       le moins dommageable — « titre en direct », qui n'invente aucune
+       le moins dommageable -- "titre en direct", qui n'invente aucune
        diversification que la ligne n'aurait pas. */
     for (const n of ['Future of Defence', 'Global Clean Energy', 'Cybersecurity'])
       eq(natureDe({ name: n }), 'titre',
         `« ${n} » est indécidable : le repli prudent est « titre en direct »`);
 
-    /* Les deux pieges que la table doit eviter : « Trust » figure dans le nom
-       d'une fonciere americaine, et « Accenture » commence par « acc », suffixe
-       de classe de parts. */
+    /* Les deux pieges que la table doit eviter : "Trust" figure dans le nom
+       d'une fonciere americaine, et un nom de societe peut commencer par
+       "acc", suffixe de classe de parts. */
     eq(natureDe({ name: 'Realty Income Real Estate Investment Trust' }), 'titre',
       'un REIT est une action, malgré le mot Trust');
     eq(natureDe({ name: 'Accenture' }), 'titre', 'et Accenture n’est pas une part « acc »');
@@ -1149,9 +1132,9 @@ suite('Classement d’une ligne de marché', () => {
   });
 
   test('une charge fixe se ramène au mois, quelle que soit sa périodicité', () => {
-    /* Deux periodicites seulement, « mois » ou « an », obligeaient a diviser de
-       tete un loyer de garage trimestriel puis a refaire le calcul a chaque
-       changement de tarif — ce que cette table existe pour eviter.
+    /* Deux periodicites seulement, "mois" ou "an", obligeraient a diviser de
+       tete un loyer de garage trimestriel, puis a refaire le calcul a chaque
+       changement de tarif : cette table existe pour l'eviter.
 
        Le facteur est le nombre de mois que couvre un versement. La semaine vaut
        52/12 et non 4 : douze mois de quatre semaines feraient quarante-huit
@@ -1166,7 +1149,7 @@ suite('Classement d’une ligne de marché', () => {
     /* 52/12 et non 4 : l'ecart se voit sur l'annee. */
     pres(mensuel(30, 'semaine') * 12, 1560, 'soit 52 semaines de 30 EUR sur l’année');
 
-    /* Une periode inconnue — un etat d'avant, un export bricole — retombe sur le
+    /* Une periode inconnue -- un etat d'avant, un export bricole -- retombe sur le
        mois, la valeur qui ne deforme rien. */
     pres(mensuel(100, undefined), 100, 'périodicité absente : traitée au mois');
     pres(mensuel(100, 'lustre'), 100, 'périodicité inconnue : traitée au mois');
@@ -1194,14 +1177,15 @@ suite('Classement d’une ligne de marché', () => {
   });
 
   test('chaque poche de cash a sa propre définition', () => {
-    /* Sur la carte du haut de Patrimoine, « Cash disponible » et « Épargne de
-       précaution » ouvraient la même fiche sans argument : on cliquait une
-       ligne de 20 EUR et on obtenait les 5 100 EUR des quatre poches. Le total
-       était juste, la question posée n'était pas celle à laquelle on répondait.
+    /* Sur la carte du haut de Patrimoine, "Cash disponible" et "Epargne de
+       precaution" ouvrent chacune sa fiche : une fiche commune, sans argument,
+       repondrait par les quatre poches a qui clique une seule ligne. Le total
+       serait juste, mais la question posee ne serait pas celle a laquelle on
+       repond.
 
-       Le modèle porte déjà la découpe, `pochesLiquidites()`. Ce test verrouille
-       ce dont la fiche a besoin : chaque poche est identifiable, nommée, et la
-       somme des quatre fait les liquidités entières — donc filtrer sur l'une
+       Le modele porte deja la decoupe, `pochesLiquidites()`. Ce test verrouille
+       ce dont la fiche a besoin : chaque poche est identifiable, nommee, et la
+       somme des quatre fait les liquidites entieres -- donc filtrer sur l'une
        d'elles ne peut ni perdre ni compter deux fois un euro. */
     Fixture.poser();
     const poches = pochesLiquidites();
@@ -1210,22 +1194,22 @@ suite('Classement d’une ligne de marché', () => {
       vrai(!!AFFECTATION_LABEL[p.cle], `${p.cle} porte un libellé partagé`);
       eq(p.nom, AFFECTATION_LABEL[p.cle], 'et la fiche le nommera comme la carte');
     }
-    /* La somme des poches égale les liquidités : c'est ce qui rend le filtrage
-       honnête. Si une poche débordait sur une autre, une fiche restreinte
+    /* La somme des poches egale les liquidites : c'est ce qui rend le filtrage
+       honnete. Si une poche debordait sur une autre, une fiche restreinte
        afficherait un montant introuvable ailleurs. */
     const p = patrimoine();
     pres(poches.reduce((s, x) => s + x.value, 0), p.classes.liquidites,
       'les quatre poches font les liquidités, sans reste');
 
-    /* Les clés sont distinctes : deux poches partageant une clé rendraient le
+    /* Les cles sont distinctes : deux poches partageant une cle rendraient le
        filtre ambigu. */
     eq(new Set(poches.map(x => x.cle)).size, poches.length, 'quatre clés distinctes');
   });
 
   test('la trésorerie se retire comme une classe', () => {
-    /* Quelqu'un qui place tout le jour meme garde une ligne « Cash a investir »
+    /* Quelqu'un qui place tout le jour meme garde une ligne "Cash a investir"
        a zero, sous un intitule de groupe, pour rien. Elle se retire donc, par la
-       meme liste d'exclusions que les classes — un seul mecanisme, donc un seul
+       meme liste d'exclusions que les classes -- un seul mecanisme, donc un seul
        chemin de retour.
 
        Ce que le test verrouille, et qui est le piege de ce genre d'ajout : sa
@@ -1259,7 +1243,7 @@ suite('Classement d’une ligne de marché', () => {
     pres(r.exclues[0].value, Fixture.CASH_A_INVESTIR, 'avec son montant');
 
     /* Le retour restitue la cible mise de cote, a la racine et non dans
-       `classes` — s'y tromper aurait cree une classe fantome « cashToInvest ». */
+       `classes` -- s'y tromper aurait cree une classe fantome "cashToInvest". */
     tg.exclues = [];
     tg.cashToInvest = tg.ciblesRetirees[CLE_TRESORERIE];
     delete tg.ciblesRetirees[CLE_TRESORERIE];
@@ -1269,7 +1253,7 @@ suite('Classement d’une ligne de marché', () => {
     pres(sommeCibles(), 100, 'le total retrouve ses 100 %');
     pres(rebalanceRows().base, baseAvant, 'et la base son montant d’origine');
 
-    /* Le libelle partage, pour que les messages ne disent pas « undefined ». */
+    /* Le libelle partage, pour que les messages ne disent pas "undefined". */
     eq(nomDeLaCible(CLE_TRESORERIE), AFFECTATION_LABEL.investir,
       'la trésorerie porte son nom dans les messages');
     eq(nomDeLaCible('actions'), ASSET_CLASSES.actions, 'et une classe le sien');
@@ -1313,22 +1297,22 @@ suite('Classement d’une ligne de marché', () => {
     pres(roles.reduce((s, l) => s + l.targetPct, 0), 90, 'avec leurs 90 % partagés');
 
     /* `sommeCibleDe` sert aux vues pour annoncer la cible gardee : elle doit
-       descendre dans l'objet, sinon le toast annoncerait « cible 0 % ». */
+       descendre dans l'objet, sinon le toast annoncerait "cible 0 %". */
     pres(sommeCibleDe({ core: 70, satellite: 20 }), 90, 'la cible gardée s’annonce entière');
     pres(sommeCibleDe(5), 5, 'et un nombre reste lui-même');
   });
 
   test('la somme des cibles descend dans une classe découpée', () => {
-    /* Le bandeau annonçait « tes cibles totalisent 10 %, il en manque 90 » à
-       quelqu'un qui venait d'en poser 105 : trois copies du calcul sommaient
-       avec `num(v)`, et `num({core:70, satellite:25})` vaut zéro. La classe
-       découpée disparaissait donc du total, et la seule copie juste était celle
-       du pied de carte — deux totaux contradictoires sur le même écran.
+    /* `num({core:70, satellite:25})` vaut zero : un calcul qui sommerait les
+       cibles avec `num(v)` ferait disparaitre la classe decoupee du total, et le
+       bandeau annoncerait "tes cibles totalisent 10 %, il en manque 90" a
+       quelqu'un qui en a pose 105, a cote d'un pied de carte juste -- deux
+       totaux contradictoires sur le meme ecran.
 
-       Une seule définition maintenant, `sommeCibles()`, que le bandeau, le pied
-       de carte, la fenêtre « Suivre une classe » et le contrôle de cohérence
-       partagent. Le test la compare au pied de carte, qui a toujours été juste :
-       si une quatrième copie réapparaît, elle divergera ici. */
+       Une seule definition, `sommeCibles()`, que le bandeau, le pied de carte,
+       la fenetre "Suivre une classe" et le controle de coherence partagent. Le
+       test la compare au pied de carte : une seconde copie du calcul
+       divergerait ici. */
     const poser = cible => Fixture.poser(e => {
       e.positions = [
         { id: 'a1', name: 'ETF Monde', isin: '', symbol: 'IWDA', currency: 'EUR',
@@ -1350,20 +1334,20 @@ suite('Classement d’une ligne de marché', () => {
     pres(sommeCibles(), rebalanceRows().invested.targetPct + num(Store.state.targets.cashToInvest),
       'même total que le pied de carte, à la définition près');
 
-    /* Une classe sortie du rééquilibrage ne compte plus : son encours a quitté
-       la base, lui réclamer une part de 100 % n'aurait pas de sens. */
+    /* Une classe sortie du reequilibrage ne compte plus : son encours a quitte
+       la base, lui reclamer une part de 100 % n'aurait pas de sens. */
     Store.state.targets.exclues = ['metaux'];
     pres(sommeCibles(), 100, 'la classe hors jeu quitte aussi le total des cibles');
   });
 
   test('chaque classe d’actif est câblée partout', () => {
-    /* Trois tables suivaient ASSET_CLASSES en étant écrites à la main : la
-       poche du patrimoine où la classe atterrit, sa teinte, et son encours dans
-       le rééquilibrage. Ajouter une classe sans penser à l'une des trois la
-       faisait disparaître en silence — sortie de la base, les pourcentages ne
-       totalisaient plus 100 % et rien ne le disait.
+    /* Trois tables suivent ASSET_CLASSES : la poche du patrimoine ou la classe
+       atterrit, sa teinte, et son encours dans le reequilibrage. Ajouter une
+       classe sans penser a l'une des trois la ferait disparaitre en silence --
+       sortie de la base, les pourcentages ne totaliseraient plus 100 % et rien
+       ne le dirait.
 
-       Ce test remplace la vigilance : il parcourt la table de référence, donc
+       Ce test remplace la vigilance : il parcourt la table de reference, donc
        il tombera sur la classe qu'on ajoutera demain. */
     for (const [cle, label] of Object.entries(ASSET_CLASSES)) {
       vrai(!!label && !/^\s*$/.test(label), `${cle} porte un libellé`);
@@ -1373,49 +1357,48 @@ suite('Classement d’une ligne de marché', () => {
       vrai(cle in TEINTE_CLASSE, `${cle} a une teinte, sinon sa barre serait grise`);
       vrai(/^var\(--series-\d\)$/.test(couleurClasse(cle)), `${cle} rend une couleur valide`);
       vrai(cle in stockTotals().parClasse, `${cle} a un encours dans le rééquilibrage`);
-      /* Une classe cotée n'est jamais rangée dans la poche « immobilier » ni
-         « nonCote » : celles-là sont réputées lentes à vendre, et y ranger un
-         REIT aurait fait mentir l'autonomie financière de tout son montant. */
+      /* Une classe cotee n'est jamais rangee dans la poche "immobilier" ni
+         "nonCote" : celles-la sont reputees lentes a vendre, et y ranger un
+         REIT aurait fait mentir l'autonomie financiere de tout son montant. */
       vrai(poche !== 'immobilier' && poche !== 'nonCote',
         `${cle} est coté, il ne peut pas être rangé dans une poche lente`);
     }
   });
 
   test('la clé d’un ISIN se calcule, donc une faute se répare', () => {
-    /* Un ISIN mal saisi : `US67066G104D`. Le douzieme caractere d'un
-       ISIN est toujours un chiffre — un « D » y est impossible par construction —
-       et il se calcule a partir des onze premiers. L'application acceptait le
-       code avec un simple toast, puis le signalait comme une erreur dans les
-       controles de coherence : elle se contredisait, et ne disait jamais quel
-       code il fallait ecrire alors qu'elle pouvait le calculer.
-
-       `isinIsValid` faisait deja ce calcul, pour le jeter aussitot. */
-    eq(cleIsin('US67066G104'), '0', 'la clé de NVIDIA vaut zéro');
-    eq(isinCorrige('US67066G104D'), 'US67066G1040', 'un D se répare en 0');
-    eq(isinCorrige('us67066g104d'), 'US67066G1040', 'et la casse ne gêne pas');
-    eq(isinCorrige('US67066G1040'), null, 'un code déjà juste n’a rien à corriger');
-    vrai(isinIsValid('US67066G1040'), 'et il est valide');
-    vrai(!isinIsValid('US67066G104D'), 'là où l’autre ne l’est pas');
+    /* Le douzieme caractere d'un ISIN est toujours un chiffre -- un "D" y est
+       impossible par construction -- et il se calcule a partir des onze
+       premiers. Une application qui accepterait `ZZ000000004D` avec un simple
+       toast, puis le signalerait comme une erreur dans les controles de
+       coherence, se contredirait, et ne dirait jamais quel code ecrire alors
+       qu'elle peut le calculer. Le meme calcul de cle, `cleIsin`, sert donc a
+       valider et a corriger. */
+    eq(cleIsin('ZZ000000004'), '0', 'la clé de cet ISIN vaut zéro');
+    eq(isinCorrige('ZZ000000004D'), 'ZZ0000000040', 'un D se répare en 0');
+    eq(isinCorrige('zz000000004d'), 'ZZ0000000040', 'et la casse ne gêne pas');
+    eq(isinCorrige('ZZ0000000040'), null, 'un code déjà juste n’a rien à corriger');
+    vrai(isinIsValid('ZZ0000000040'), 'et il est valide');
+    vrai(!isinIsValid('ZZ000000004D'), 'là où l’autre ne l’est pas');
 
     /* Onze caracteres : la cle manque, elle s'ajoute. C'est l'etat dans lequel
        une saisie interrompue laisse le champ. */
-    eq(isinCorrige('US67066G104'), 'US67066G1040', 'un corps sans clé reçoit la sienne');
+    eq(isinCorrige('ZZ000000004'), 'ZZ0000000040', 'un corps sans clé reçoit la sienne');
 
     /* Rien a proposer sur ce qui n'a pas la forme d'un ISIN : rendre un chiffre
        laisserait croire a une correction possible. */
-    for (const nawak of ['', 'BONJOUR', '12', 'U567066G1040', null, undefined])
+    for (const nawak of ['', 'BONJOUR', '12', 'Z50000000040', null, undefined])
       eq(cleIsin(nawak), null, `${JSON.stringify(nawak)} n’a pas de clé`);
     eq(isinCorrige('BONJOUR'), null, 'et rien à corriger');
 
     /* La correction est idempotente : la rejouer ne bouge plus rien. Sinon un
        bouton clique deux fois aurait pu deriver. */
-    const une = isinCorrige('US67066G104D');
+    const une = isinCorrige('ZZ000000004D');
     eq(isinCorrige(une), null, 'corriger deux fois donne le même code');
     vrai(isinIsValid(une), 'et le résultat est toujours valide');
 
     /* Sur quelques ISIN reels et bien formes, la cle calculee est celle qui y
        figure : c'est ce qui prouve que le calcul est le bon, et non seulement
-       cohérent avec lui-même. */
+       coherent avec lui-meme. */
     for (const bon of ['IE00B4L5Y983', 'FR0000120271', 'US0378331005', 'LU1681043599']) {
       eq(cleIsin(bon), bon[11], `la clé de ${bon} est retrouvée`);
       eq(isinCorrige(bon), null, `${bon} n’a rien à corriger`);
@@ -1423,15 +1406,15 @@ suite('Classement d’une ligne de marché', () => {
   });
 
   test('un dépassement de budget se gradue en trois niveaux', () => {
-    /* Le graphique peignait en rouge tout mois au-dessus de l'objectif. Sur les
-       huit mois saisis, sept l'etaient : une couleur d'alerte qui s'allume
-       presque toujours devient decorative, et le mois reellement mauvais ne se
-       distinguait plus du mois a 20 EUR pres.
+    /* Une couleur d'alerte qui s'allume presque toujours devient decorative :
+       si tout mois au-dessus de l'objectif se peignait en rouge, le mois
+       reellement mauvais ne se distinguerait plus du mois a quelques euros
+       pres.
 
        Le seuil vit dans le modele, donc le graphique et les deux tableaux ne
        peuvent pas en avoir trois lectures. Ce que le test verrouille : les
-       bornes exactes, et le fait qu'un mois vide n'ait aucun niveau — le
-       compter comme « sous l'objectif » en ferait une reussite alors que rien
+       bornes exactes, et le fait qu'un mois vide n'ait aucun niveau -- le
+       compter comme "sous l'objectif" en ferait une reussite alors que rien
        n'est saisi. */
     eq(niveauDepassement(0, 1000), null, 'un mois vide n’a pas de niveau');
     eq(niveauDepassement(null, 1000), null, 'ni un mois absent');
@@ -1457,8 +1440,8 @@ suite('Classement d’une ligne de marché', () => {
 
 
   test('aucun écran ne mélange une poche et une classe de ligne', () => {
-    /* Deux paires de teintes reposent sur cette condition, et elle n'etait
-       qu'une phrase dans un commentaire : immobilier partage sa couleur avec
+    /* Deux paires de teintes reposent sur cette condition, et ce test la garde
+       plutot qu'une phrase de commentaire : immobilier partage sa couleur avec
        immobilier cote, capital garanti avec multi-actifs, et chaque fois parce
        que l'une est une poche du patrimoine et l'autre une classe de ligne
        cotee. Le jour ou un ecran les met cote a cote, deux choses sans rapport
@@ -1469,7 +1452,7 @@ suite('Classement d’une ligne de marché', () => {
     const src = lireSource('assets/app.js');
     /* Les deux tables ne se lisent jamais dans la meme expression de couleur ni
        dans la meme legende. On regarde ligne a ligne : c'est grossier, et c'est
-       exactement ce qu'il faut — une seule ligne qui les nomme toutes les deux
+       exactement ce qu'il faut -- une seule ligne qui les nomme toutes les deux
        est le debut du melange. */
     const fautives = src.split('\n')
       .map((l, i) => ({ n: i + 1, l }))
@@ -1489,28 +1472,27 @@ suite('Classement d’une ligne de marché', () => {
   });
 
   test('un actif porte la même couleur partout', () => {
-    /* La couleur est le seul repère qui traverse les écrans sans être écrit :
-       on reconnaît l'immobilier à sa teinte avant de lire son nom. Deux listes
-       de teintes écrites à la main avaient déjà divergé — les obligations
-       étaient `series-6` d'un côté et `series-7` de l'autre, et un studio se
-       peignait de la couleur d'un ETC or dans « Allocation par actif », où les
-       deux apparaissent côte à côte.
+    /* La couleur est le seul repere qui traverse les ecrans sans etre ecrit :
+       on reconnait l'immobilier a sa teinte avant de lire son nom. Deux listes
+       de teintes ecrites a la main divergent : une classe y prend deux
+       couleurs, ou un studio celle d'un ETC or dans "Allocation par actif", ou
+       les deux apparaissent cote a cote.
 
        Ce test verrouille trois choses : une seule table attribue les teintes,
-       deux classes différentes ne partagent jamais une teinte sauf paire
-       déclarée, et toute fonction qui distribue des couleurs passe par cette
+       deux classes differentes ne partagent jamais une teinte sauf paire
+       declaree, et toute fonction qui distribue des couleurs passe par cette
        table. */
 
-    /* 1. Les paires volontaires, et rien d'autre. Liquidités et monétaire sont
-          le même argent vu de deux étages ; immobilier et immobilier coté ont
-          le même sous-jacent. Toute autre collision est un accident. */
-    /* La troisième paire suit le motif de la deuxième : une poche du patrimoine
-       et une classe de ligne cotée, qui ne se rencontrent sur aucun graphique.
-       Elle n'a pas été choisie, elle a été subie — mesuré en balayant teinte,
-       saturation et clarté contre les neuf séries et les cinq couleurs de sens,
-       le meilleur écart atteignable sur tout le cercle vaut 17,6° en thème
-       clair et 19,1° en sombre, quand la règle en exige 20. Le cercle est
-       plein, et le test qui suit garde la condition qui rend la paire sûre. */
+    /* 1. Les paires volontaires, et rien d'autre. Liquidites et monetaire sont
+          le meme argent vu de deux etages ; immobilier et immobilier cote ont
+          le meme sous-jacent. Toute autre collision est un accident. */
+    /* La troisieme paire suit le motif de la deuxieme : une poche du patrimoine
+       et une classe de ligne cotee, qui ne se rencontrent sur aucun graphique.
+       Elle est subie, pas choisie : mesure en balayant teinte, saturation et
+       clarte contre les neuf series et les cinq couleurs de sens, le meilleur
+       ecart atteignable sur tout le cercle vaut 17,6 deg en theme clair et
+       19,1 deg en sombre, quand la regle en exige 20. Le cercle est plein, et
+       le test qui suit garde la condition qui rend la paire sure. */
     const paires = [['liquidites', 'monetaire'], ['immobilier', 'immobilierCote'],
                     ['garanti', 'diversifie']];
     const memeCouple = (a, b) => paires.some(p => p.includes(a) && p.includes(b));
@@ -1523,9 +1505,9 @@ suite('Classement d’une ligne de marché', () => {
       }
     }
 
-    /* 2. Chaque teinte attribuée existe vraiment dans la feuille de style. Une
+    /* 2. Chaque teinte attribuee existe vraiment dans la feuille de style. Une
           classe pointant sur `--series-13` rendrait une couleur vide, donc une
-          barre transparente : invisible au test, visible à l'écran. */
+          barre transparente : invisible au test, visible a l'ecran. */
     for (const cle of cles) {
       const n = TEINTE_CLASSE[cle];
       vrai(n >= 1 && n <= TEINTES_DISPONIBLES,
@@ -1536,15 +1518,15 @@ suite('Classement d’une ligne de marché', () => {
         `--series-${n} doit être une couleur, reçu « ${resolue} » pour ${cle}`);
     }
 
-    /* 3. Une classe inconnue tombe sur la teinte « sans classe » et non sur
-          celle d'une vraie classe : elle se lit comme non classée. */
+    /* 3. Une classe inconnue tombe sur la teinte "sans classe" et non sur
+          celle d'une vraie classe : elle se lit comme non classee. */
     eq(couleurClasse('unePoubelleInconnue'), `var(--series-${TEINTE_SANS_CLASSE})`,
       'une classe sans attribution ne vole pas la couleur d’une autre');
     vrai(!Object.values(TEINTE_CLASSE).includes(TEINTE_SANS_CLASSE),
       'et cette teinte de repli n’est attribuée à aucune classe');
 
-    /* 4. Le même libellé ne peut pas porter deux couleurs, à travers toutes les
-          fonctions qui en distribuent. C'est la formulation exacte de la règle :
+    /* 4. Le meme libelle ne peut pas porter deux couleurs, a travers toutes les
+          fonctions qui en distribuent. C'est la formulation exacte de la regle :
           un actif, une couleur, partout. */
     Fixture.poser();
     const vues = [];
@@ -1568,10 +1550,10 @@ suite('Classement d’une ligne de marché', () => {
   });
 
   test('un REIT n’est plus compté comme une action', () => {
-    /* Une foncière est cotée, vendable en séance, mais son risque est
-       l'immobilier. Tout cela tombait dans « Actions » : 20 % de foncières se
-       lisaient comme 20 % d'actions de plus, et l'écart affiché envoyait
-       renforcer une classe déjà pleine. */
+    /* Une fonciere est cotee, vendable en seance, mais son risque est
+       l'immobilier. Rangee dans "Actions", 20 % de foncieres se liraient comme
+       20 % d'actions de plus, et l'ecart affiche enverrait renforcer une classe
+       deja pleine. */
     const ligne = (id, classe, qty) => ({
       id, name: classe === 'immobilierCote' ? 'ETF Foncières' : 'ETF Monde',
       isin: '', symbol: classe === 'immobilierCote' ? 'REIT' : 'IWDA', currency: 'EUR',
@@ -1597,16 +1579,17 @@ suite('Classement d’une ligne de marché', () => {
     pres(r.classes.reduce((s, c) => s + c.value, 0), r.invested.value,
       'et la somme des lignes fait le placé en bourse, sans reste');
     pres(sommeCibles(), 100, 'les trois cibles font 100 %');
-    /* Les écarts s'annulent sur la base entière, trésorerie comprise : le
-       fixture porte du cash à investir, qui entre dans la base et tire les
-       trois classes vers le bas. Sommer les seules classes laissait un reste
-       égal à ce cash, et l'assertion accusait le calcul de ce qu'elle oubliait. */
+    /* Les ecarts s'annulent sur la base entiere, tresorerie comprise : le
+       fixture porte du cash a investir, qui entre dans la base et tire les
+       trois classes vers le bas. Sommer les seules classes laisserait un reste
+       egal a ce cash, et l'assertion accuserait le calcul de ce qu'elle
+       oublie. */
     pres(r.classes.reduce((s, c) => s + c.delta, 0) + r.cash.delta, 0,
       'à cibles exactes, ce qu’il faut acheter finance exactement ce qu’il faut vendre');
 
-    /* Le sous-jacent est de l'immobilier, mais la liquidité est celle d'un
-       titre : la poche du patrimoine est « actifs de marché », pas
-       « immobilier ». Sinon l'autonomie financière compterait ces 2 000 EUR
+    /* Le sous-jacent est de l'immobilier, mais la liquidite est celle d'un
+       titre : la poche du patrimoine est "actifs de marche", pas
+       "immobilier". Sinon l'autonomie financiere compterait ces 2 000 EUR
        comme vendables en quelques mois. */
     eq(pocheDeClasse('immobilierCote'), 'actions',
       'un REIT reste un actif de marché pour la disponibilité');
@@ -1615,12 +1598,11 @@ suite('Classement d’une ligne de marché', () => {
   test('la composition d’un rôle sépare la classe de la nature', () => {
     /* Ce que la phrase de synthese doit pouvoir agreger. `composition` est
        indexee par classe ET par nature : une classe detenue a la fois en fonds
-       et en direct y occupe deux entrees. La phrase prenait la premiere et
-       l'annoncait comme la classe entiere — « 57 % actions » quand les actions
-       faisaient 83 % des satellites. Le chiffre etait juste, son intitule
-       mentait.
+       et en direct y occupe deux entrees. Une phrase qui prendrait la premiere
+       et l'annoncerait comme la classe entiere donnerait un chiffre juste sous
+       un intitule qui ment.
 
-       Le fixture pose exactement ce cas : deux lignes d'actions satellites, un
+       Le test pose exactement ce cas : deux lignes d'actions satellites, un
        fonds et un titre en direct. */
     const ligne = (id, nature, qty) => ({
       id, name: nature === 'fonds' ? 'ETF Small Caps' : 'Une société',
@@ -1634,7 +1616,7 @@ suite('Classement d’une ligne de marché', () => {
     vrai(sat.length >= 2, 'la même classe en deux natures fait deux entrées');
     eq([...new Set(sat.map(x => x.classe))].length, 1, 'et une seule classe');
     /* L'agregation par classe vaut le total du role : c'est ce que la phrase
-       annonce, et ce que la premiere entree seule ne valait pas. */
+       annonce, et ce que la premiere entree seule ne vaut pas. */
     const parClasse = new Map();
     for (const p of sat) parClasse.set(p.classe, (parClasse.get(p.classe) || 0) + p.value);
     const total = rr.roles.find(x => x.cle === 'satellite').value;
@@ -1644,10 +1626,10 @@ suite('Classement d’une ligne de marché', () => {
   });
 
   test('deux titres homonymes gardent chacun leur identité', () => {
-    /* Le bug : l'ecran retrouvait une ligne du jour par son nom avec .find().
-       Le meme titre sur deux comptes — un MSCI World au PEA et au CTO —
-       recevait deux fois le poids et la fiche du premier. Le nom est un
-       libelle, jamais une identite : dayPerformance porte l'indice reel. */
+    /* Le nom est un libelle, jamais une identite : retrouver une ligne du jour
+       par son nom avec .find() donnerait au meme titre sur deux comptes -- un
+       MSCI World au PEA et au CTO -- deux fois le poids et la fiche du premier.
+       dayPerformance porte donc l'indice reel. */
     const homonyme = (id, qty, compte) => ({
       id, name: 'MSCI World', isin: '', symbol: 'IWDA', currency: 'EUR',
       qty, buyPrice: 80, price: 90, prevClose: 88, fx: 1, fxBuy: 1,
@@ -1667,11 +1649,11 @@ suite('Classement d’une ligne de marché', () => {
   });
 
   test('une matière première n’a pas de pays', () => {
-    /* Le bug : la regex portait deux vrais caractères « retour arrière »
-       (0x08) là où `\b` était voulu. Elle ne pouvait plus reconnaître
-       « gold », et un ETC or coté en dollars tombait sur la règle de repli
-       `currency === 'USD'`, donc en « Amérique du Nord » — exactement ce que
-       le commentaire au-dessus de la fonction interdit. */
+    /* Un ETC or cote en dollars doit se reconnaitre par son nom avant la regle
+       de repli `currency === 'USD'` : sinon il tombe en "Amerique du Nord",
+       exactement ce que le commentaire au-dessus de la fonction interdit. Un
+       vrai caractere "retour arriere" (0x08) glisse dans la regex a la place
+       de `\b` suffit a ne plus reconnaitre "gold". */
     Fixture.poser();
     eq(devineZone({ name: 'Amundi Physical Gold ETC', symbol: 'GOLD.PA', currency: 'USD' }),
       'monde', 'un ETC or en dollars n’est pas un actif américain');
@@ -1706,10 +1688,10 @@ suite('Créer une ligne débite le compte choisi, sans le redemander', () => {
   };
 
   test('la question est une case cochée, plus une liste qui s’ouvre sur « ne rien faire »', () => {
-    /* La liste demandait de quel compte l'argent sort alors que le compte est
-       choisi deux champs plus haut, et son premier choix etait « aucun compte,
-       ne pas toucher aux especes » : acheter ne debitait donc rien tant qu'on
-       n'avait pas repondu, et le cash d'un compte-titres ne baissait jamais. */
+    /* Le compte est choisi deux champs plus haut : une liste qui redemanderait
+       de quel compte l'argent sort, avec "aucun compte, ne pas toucher aux
+       especes" en premier choix, ferait qu'acheter ne debite rien tant qu'on
+       n'a pas repondu, et le cash d'un compte-titres ne baisserait jamais. */
     const f = fenetre();
     vrai(/cle: 'debiter', type: 'case', valeur: !contratSansCash\(/.test(f),
       'la case existe, et elle est cochée, sauf sur un contrat qui ne tient pas de cash');
@@ -1747,8 +1729,8 @@ suite('Créer une ligne débite le compte choisi, sans le redemander', () => {
                      'Ce compte ne porte pas d’espèces, rien n’a été débité']) {
       vrai(!!I18N.en[k], `« ${k} » est traduite`);
     }
-    /* « Paid since » annonçait une date pour un champ qui demande une
-       provenance. La liste a quitté la création, pas la fenêtre d'achat. */
+    /* Le champ demande une provenance : "Paid since" y annoncerait une date.
+       La liste vit dans la fenetre d'achat, pas dans la creation. */
     eq(I18N.en['Payé depuis'], 'Paid from', 'et le champ restant ne parle plus de date');
   });
 
@@ -1772,8 +1754,8 @@ suite('Créer une ligne débite le compte choisi, sans le redemander', () => {
   });
 
   test('une case et son libellé tiennent sur une ligne', () => {
-    /* Le gabarit posait `field-case` sans qu'aucune regle ne la ramasse : la
-       case tombait sur sa propre ligne, au-dessus du texte qu'elle commande. */
+    /* Le gabarit pose `field-case` : sans regle qui la ramasse, la case
+       tomberait sur sa propre ligne, au-dessus du texte qu'elle commande. */
     const css = lireSource('assets/styles.css');
     const r = css.slice(css.indexOf('.field-case {'), css.indexOf('.field-case {') + 220);
     vrai(/display: flex;/.test(r), 'la classe du gabarit a une règle en face');
@@ -1789,15 +1771,16 @@ suite('La carte Portefeuille se lit de haut en bas', () => {
   const carte = () => {
     const a = app();
     /* La borne de fin se cherche DEPUIS le debut de la carte : la carte du jour
-       apparait plus haut dans le fichier, et un `indexOf` depuis zero rendait
+       apparait plus haut dans le fichier, et un `indexOf` depuis zero rendrait
        une tranche vide, donc des controles verts pour rien. */
     const d = a.indexOf('const st = stockTotals();');
     return a.slice(d, a.indexOf('const j = dayPerformance();', d));
   };
 
   test('le chiffre de tête est le total, et il porte son nom', () => {
-    /* Ouvrir la carte sur « Titres 21 600 EUR · 94,7 % » presenterait une part
-       comme si elle etait le sujet, sans meme dire de quoi elle est la part. */
+    /* Ouvrir la carte sur la ligne des titres et sa part en pourcentage
+       presenterait une part comme si elle etait le sujet, sans meme dire de
+       quoi elle est la part. */
     const c = carte();
     vrai(/<p class="ptf-lab">\$\{trad\('Valeur du portefeuille'\)\}<\/p>/.test(c),
       'le total est annoncé');
@@ -1811,9 +1794,9 @@ suite('La carte Portefeuille se lit de haut en bas', () => {
     vrai(/<dl class="ptf-compo">/.test(c), 'deux lignes sobres, intitulé puis montant');
     vrai(/label: 'Placements'/.test(c) && /label: 'Espèces disponibles'/.test(c),
       'les deux postes sont nommés');
-    /* LA BARRE ET LES POURCENTAGES SONT PARTIS. Le rapport se lit deja sur deux
-       montants alignes ; une jauge presque pleine au-dessus d'une jauge presque
-       vide le redisait une troisieme fois pour trente pixels chacune. */
+    /* NI BARRE NI POURCENTAGES. Le rapport se lit deja sur deux montants
+       alignes ; une jauge presque pleine au-dessus d'une jauge presque vide le
+       redirait une troisieme fois, pour trente pixels chacune. */
     vrai(!/ptf-barre|ptf-part\b/.test(c), 'la barre segmentée a disparu');
     vrai(!/fmtPct\(x\.pct/.test(c), 'et les pourcentages de composition avec elle');
     /* `balance` vaut `invested + cashToInvest + autres` : le troisieme terme
@@ -1846,16 +1829,16 @@ suite('La carte Portefeuille se lit de haut en bas', () => {
     vrai(/Longward ne suit aucun dividende/.test(c), 'et nomme ce qu’il ne suit pas');
     /* La portee se lit dans le texte de l'aide, pas dans la tranche entiere :
        un commentaire de code qui explique pourquoi on ne parle pas des frais
-       contient le mot « frais ». */
+       contient le mot "frais". */
     const bulle = c.slice(c.indexOf('Écart entre la valeur actuelle'),
                           c.indexOf('aucun dividende.') + 16);
     vrai(!/frais|impôt|fiscal/.test(bulle), 'sans rien affirmer que le moteur ignore');
     /* LA PORTEE SE DIT SOUS LE CHIFFRE. Sans elle, la plus-value se lit comme
        la performance de tout le portefeuille depuis le debut, ventes comprises. */
     vrai(/trad\('sur les positions détenues'\)/.test(c), 'la portée est écrite sous le chiffre');
-    /* ET LE COUT D'ACHAT N'EST PLUS UNE ACTION : il vivait en lien pointille au
-       rang d'un renvoi. Le montant reste atteignable, le panneau de la
-       plus-value l'ecrit sous son total. */
+    /* ET LE COUT D'ACHAT N'EST PAS UNE ACTION : un lien pointille le
+       ravalerait au rang d'un renvoi. Le montant reste atteignable, le panneau
+       de la plus-value l'ecrit sous son total. */
     vrai(!/data-apercu="investiTitres"/.test(c), 'le coût d’achat n’est plus un bouton');
     const a2 = app();
     vrai(/trad\('sur.investis', 'sur'\)\} \$\{fmtEUR0\(pnl\.invested\)\}/.test(a2),
@@ -1863,7 +1846,7 @@ suite('La carte Portefeuille se lit de haut en bas', () => {
   });
 
   test('une base absente ne devient jamais zéro', () => {
-    /* Sans prix d'achat, « valeur moins zero » rendrait la valeur entiere : le
+    /* Sans prix d'achat, "valeur moins zero" rendrait la valeur entiere : le
        chiffre le plus faux de l'application serait aussi le plus gros. */
     const c = carte();
     vrai(/const pvVal = pnl\.pct == null \? null/.test(c), 'la garde précède le calcul');
@@ -1883,8 +1866,8 @@ suite('La carte Portefeuille se lit de haut en bas', () => {
        il vit sur Allocation, dont c'est le sujet. */
     vrai(!/ptf-roles|Core et satellite/.test(c), 'Core et Satellite sont partis');
     /* `concentration()` compte sur les actifs financiers, le patrimoine net ou
-       le patrimoine brut, jamais sur le portefeuille de marche : mesure, 66 551
-       contre 52 177 pour tout le reste de la carte. */
+       le patrimoine brut, jamais sur le portefeuille de marche : sa base differe
+       de celle du reste de la carte. */
     vrai(!/trad\('Concentration'\)/.test(c), 'la concentration aussi');
     Fixture.poser();
     const st = stockTotals();
@@ -1904,8 +1887,8 @@ suite('Le tri des lignes de titres', () => {
   };
 
   test('le défaut est la valeur décroissante, et il se mémorise', () => {
-    /* L'ordre de saisie ne repond a aucune question ; « qu'est-ce qui pese le
-       plus » est la premiere qu'on se pose devant une liste de positions. */
+    /* L'ordre de saisie ne repond a aucune question ; "qu'est-ce qui pese le
+       plus" est la premiere qu'on se pose devant une liste de positions. */
     const a = app();
     vrai(/const TRI_POSITIONS_DEFAUT = \{ key: 'value', dir: 'desc' \};/.test(a),
       'la valeur décroissante ouvre la carte');
@@ -1923,8 +1906,8 @@ suite('Le tri des lignes de titres', () => {
 
   test('une donnée absente passe dernière, dans les deux sens', () => {
     /* `posPerfEur()` et `posPerfPct()` rendent null sans prix de revient, et
-       c'est voulu. Mais `null - 5` vaut -5 : le tri les rangeait comme des
-       zeros, au milieu des pertes en decroissant et en tete en croissant. */
+       c'est voulu. Mais `null - 5` vaut -5 : un tri naif les rangerait comme
+       des zeros, au milieu des pertes en decroissant et en tete en croissant. */
     const c = comparateur();
     vrai(/const aVide = va == null, bVide = vb == null;/.test(c), 'le vide se reconnaît');
     vrai(/\(aVide \? 1 : -1\)/.test(c), 'et il part au bout, quel que soit le sens');
@@ -1936,7 +1919,7 @@ suite('Le tri des lignes de titres', () => {
   });
 
   test('à égalité, le nom tranche, et toujours dans le même sens', () => {
-    /* Sans ce depart, deux lignes de meme valeur changeaient de place d'un
+    /* Sans ce depart, deux lignes de meme valeur changeraient de place d'un
        rendu a l'autre : l'ordre d'arrivee suit l'ordre de saisie, que le filtre
        par compte modifie sans prevenir. */
     const c = comparateur();
@@ -1954,8 +1937,8 @@ suite('Le tri des lignes de titres', () => {
       vrai(bloc.includes(`'${cle}'`) && bloc.includes(`'${mot}'`), `${mot} est proposé`);
       vrai(!!POS_SORT_KEYS_PRESENT(cle, a), `${cle} existe dans le moteur de tri`);
     }
-    /* Pas le vocabulaire d'un tableur : « montant total » et « performance
-       relative » disent la meme chose et ne se retiennent pas. */
+    /* Pas le vocabulaire d'un tableur : "montant total" et "performance
+       relative" disent la meme chose et ne se retiennent pas. */
     vrai(!/Montant total|Performance absolue|Performance relative/.test(bloc),
       'et aucun mot de tableur');
     for (const k of ['Trier les lignes', 'Plus-value €', 'Plus-value %'])
@@ -1969,9 +1952,10 @@ suite('Le tri des lignes de titres', () => {
 
   test('le tri s’atteint au doigt, là où le tableau disparaît', () => {
     /* Sous 768 px, le tableau devient une liste et ses en-tetes triables
-       partent avec lui : le classement n'etait plus ni lisible ni modifiable.
-       Un declencheur, pas quatre boutons : une rangee de criteres prendrait
-       toute la largeur et disputerait l'attention a « Positions | Cible ». */
+       partent avec lui : sans declencheur, le classement ne serait ni lisible
+       ni modifiable. Un declencheur, pas quatre boutons : une rangee de
+       criteres prendrait toute la largeur et disputerait l'attention a
+       "Positions | Cible". */
     const a = app();
     vrai(/data-action="trier-positions"/.test(a), 'un déclencheur existe');
     vrai(/class="btn sm ghost tri-lignes"/.test(a), 'discret, comme ses voisins');
@@ -1993,7 +1977,7 @@ suite('Robustesse numérique : ce qui entre, et ce qu’on en dit', () => {
   test('lireNombre lit comme un humain tape, et refuse le reste', () => {
     /* `Number('1e30')` vaut dix puissance trente, `Number('12,5')` vaut NaN :
        deux surprises pour qui saisit en francais. Ici la virgule passe, les
-       espaces aussi, la notation savante non — personne ne la tape, un collage
+       espaces aussi, la notation savante non -- personne ne la tape, un collage
        l'apporte. */
     eq(lireNombre('12,5'), 12.5, 'la virgule française est un point');
     eq(lireNombre('1 250 000'), 1250000, 'les espaces de milliers s’ignorent');
@@ -2038,17 +2022,18 @@ suite('Robustesse numérique : ce qui entre, et ce qu’on en dit', () => {
   });
 
   test('une valeur aberrante déjà dans le modèle se marque, ne se corrige pas', () => {
-    /* Le cas observe : une quantite a dix puissance vingt-six arrivee par la
-       porte que rien ne bornait. Elle ne devient ni zero ni le plafond — l'un
-       et l'autre seraient une donnee inventee — elle se nomme. */
+    /* Une quantite a dix puissance vingt-six peut deja vivre dans un etat
+       enregistre, importe ou venu d'une porte sans borne. Elle ne devient ni
+       zero ni le plafond -- l'un et l'autre seraient une donnee inventee -- elle
+       se nomme. */
     Fixture.poser();
     const s = structuredClone(Store.state);
-    s.positions[0].qty = 4.9928e26;
+    s.positions[0].qty = 5e26;
     const marques = signalerInvalides(s);
     eq(marques.length, 1, 'une seule ligne est marquée');
     eq(marques[0].chemin, 'positions.0.qty', 'et c’est la bonne');
-    eq(marques[0].valeur, 4.9928e26, 'avec sa valeur telle qu’elle est');
-    eq(s.positions[0].qty, 4.9928e26, 'la donnée n’a pas bougé');
+    eq(marques[0].valeur, 5e26, 'avec sa valeur telle qu’elle est');
+    eq(s.positions[0].qty, 5e26, 'la donnée n’a pas bougé');
     eq(signalerInvalides(Fixture.etat()).length, 0, 'et la graine saine ne marque rien');
     /* La porte d'entree du modele l'appelle : chargement, import et cloud
        passent tous par migrate(). */

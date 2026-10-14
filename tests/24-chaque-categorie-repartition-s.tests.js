@@ -1,7 +1,7 @@
 partieDeTests('tests/24-chaque-categorie-repartition-s.tests.js');
 /* ------------------------------------------------------------------
-   Repartition : je touche une categorie, je trouve ce qui la compose,
-   je mets a jour
+   Repartition : chaque categorie s'ouvre sur ce qui la compose, et dit
+   comment la mettre a jour
    ------------------------------------------------------------------ */
 suite('Chaque catégorie de la répartition s’ouvre, et dit comment la mettre à jour', () => {
   const app = () => lireSource('assets/app.js');
@@ -21,7 +21,7 @@ suite('Chaque catégorie de la répartition s’ouvre, et dit comment la mettre 
     vrai(/\.repart-synthese \.repart-ligne \{[^}]*isolation: isolate;/.test(c), 'et reste sous le texte');
     vrai(/\.repart-synthese \.repart-ligne:focus-visible \{ outline: 2px solid var\(--accent\);/.test(c),
       'l’anneau de l’application au clavier');
-    /* Le groupe « Autres » porte le meme chevron, au meme endroit : il pivote
+    /* Le groupe "Autres" porte le meme chevron, au meme endroit : il pivote
        quand le groupe se deplie. */
     vrai(/<span class="ml-chev repart-chev" aria-hidden="true">›<\/span>/.test(app()), 'le groupe aussi, à droite');
     vrai(/\.repart-autres\[aria-expanded="true"\] \.repart-chev \{ transform: rotate\(90deg\); \}/.test(c), 'et il pivote');
@@ -91,8 +91,9 @@ suite('Chaque catégorie de la répartition s’ouvre, et dit comment la mettre 
     vrai(/trad\(lignes\.length > 1 \? '\{n\} placements' : '\{n\} placement'\)/.test(p), 'le nombre de placements');
     vrai(!/placement\$\{lignes\.length > 1/.test(p), 'plus de pluriel écrit à la main');
     vrai(/cta: trad\(surMarche \? 'Ouvrir Marchés' : 'Ouvrir Actifs'\)/.test(p), 'et le bouton du pied');
-    /* La fenetre de l'immobilier portait son titre en francais dans les deux
-       langues, sous une ligne qui disait « Property ». */
+    /* Le titre de la fenetre de l'immobilier se prend a CLASSES_ACTIFS, qui se
+       traduit : ecrit en dur, il resterait en francais dans les deux langues,
+       sous une ligne qui dit "Property". */
     vrai(/titre: CLASSES_ACTIFS\.immobilier,/.test(p) && !/titre: 'Immobilier'/.test(p), 'le titre de l’immobilier aussi');
     for (const c of ['Mettre à jour un compte', 'Mettre à jour un actif', 'ouvrir sa fiche pour le mettre à jour', 'Solde, {c}',
                      'Corrige le solde d’un compte ci-dessous, puis enregistre.', 'Mettre à jour {n}', 'Mettre à jour ce bien',
@@ -108,13 +109,13 @@ suite('Chaque catégorie de la répartition s’ouvre, et dit comment la mettre 
 /* ------------------------------------------------------------------
    Mettre a jour sans hesiter : le geste et sa validation, ensemble
    ------------------------------------------------------------------
-   Tout s'ecrit a la frappe, et « Enregistrer » ne fait que confirmer et
-   reposer le point de retour d'« Annuler ». Mais sur un telephone, le bouton
-   se trouvait un ecran plus bas que le champ, et l'on partait sans savoir si
-   le chiffre etait pris. La barre suit desormais le champ qu'on revient
-   corriger chaque mois ; la liste « À mettre a jour » d'Actifs mene au bon
-   compte et au bon champ ; un bien porte ses deux chiffres qui bougent en tete
-   de fiche ; et une estimation ne se presente plus comme un prix de vente. */
+   Tout s'ecrit a la frappe, et "Enregistrer" ne fait que confirmer et
+   reposer le point de retour d'"Annuler". Sur un telephone, un bouton un
+   ecran plus bas que le champ laisserait partir sans savoir si le chiffre
+   est pris : la barre suit donc le champ qu'on revient corriger chaque mois ;
+   la liste "A mettre a jour" d'Actifs mene au bon compte et au bon champ ;
+   un bien porte ses deux chiffres qui bougent en tete de fiche ; et une
+   estimation ne se presente pas comme un prix de vente. */
 suite('Mettre à jour sans hésiter : le geste et sa validation, ensemble', () => {
   const app = () => lireSource('assets/app.js');
   const store = () => lireSource('assets/store.js');
@@ -348,7 +349,7 @@ suite('« Enregistrer » date le montant de son formulaire, et lui seul', () => 
     eq(etabById('e_bien').dettes[0].montant, capital, 'le capital non plus');
     vrai(!etabById('e_banque').dettes[0].verifieLe, 'un crédit d’un autre établissement reste tel quel');
     /* Une date ecrite a la main pendant la visite gagne : elle differe de
-       l'instantane, et « Enregistrer » la laisse. */
+       l'instantane, et "Enregistrer" la laisse. */
     const inst2 = instantaneFiche('compte:c_immo');
     c.lignes[0].estimeLe = '2026-03-01';
     eq(confirmerBien(c, inst2, '2026-09-26'), 1, 'seul le capital se redate');
@@ -386,8 +387,8 @@ suite('« Enregistrer » date le montant de son formulaire, et lui seul', () => 
 /* ------------------------------------------------------------------
    Audit de la partie compte
    ------------------------------------------------------------------
-   Quatre constats d'une relecture exterieure, et l'assertion qui aurait
-   attrape chacun avant elle. */
+   Quatre constats sur la partie compte, et l'assertion qui garde
+   chacun. */
 suite('Audit de la partie compte : quatre constats', () => {
   const app = () => lireSource('assets/app.js');
   const parcoursCreation = () => {
@@ -397,7 +398,7 @@ suite('Audit de la partie compte : quatre constats', () => {
   };
 
   test('un bien de valeur ne se voit demander ni usage, ni quote-part, ni frais de notaire', () => {
-    /* Le drapeau `direct` dit « on le detient soi-meme », et une montre le
+    /* Le drapeau `direct` dit "on le detient soi-meme", et une montre le
        porte autant qu'un appartement. Mais une montre ne s'habite pas, n'a pas
        de frais de notaire, et sa fiche ne propose ensuite qu'un montant investi. */
     vrai(estImmoEnDirect(typeCompte('immo')), 'un logement détenu en direct');
@@ -416,9 +417,9 @@ suite('Audit de la partie compte : quatre constats', () => {
   });
 
   test('corriger le montant investi d’un bien de valeur change son coût', () => {
-    /* Une montre creee avant ce correctif porte un detail complet, et sa fiche
-       ne propose que « Montant investi » : le champ arrivait vide, et ce qu'on y
-       tapait n'etait jamais lu. */
+    /* Une montre peut porter un detail complet (prix, frais, travaux) alors
+       que sa fiche ne propose que "Montant investi" : le champ montre le cout
+       effectif, et ce qu'on y tape doit etre lu. */
     const l = { id: 'l', classe: 'bienValeur', libelle: 'Montre', valeur: 9000,
                 prixAchat: 6000, fraisAcquisition: 200, travauxInitiaux: 0 };
     pres(coutAcquisition(l), 6200, 'le détail complet fait le coût');
@@ -473,7 +474,7 @@ suite('Audit de la partie compte : quatre constats', () => {
       eq(compteById('c_b').lignes[0].usage, dit, 'l’usage déclaré n’a pas bougé');
       eq(compteById('c_b').lignes[1].usage, undefined, 'et le muet reste muet : rien n’est inventé');
     }
-    /* Deux lots d'accord, et un seul lot muet, gardent leurs reponses d'avant. */
+    /* Deux lots d'accord font l'usage du compte ; un seul lot muet se demande. */
     bien(['principale', 'principale']);
     eq(usageEffectifBien(compteById('c_b')).usage, 'principale');
     bien(['']);
@@ -539,7 +540,7 @@ suite('Audit de la partie compte : quatre constats', () => {
 });
 
 /* ------------------------------------------------------------------
-   La démonstration n'est jamais en retard
+   La demonstration n'est jamais en retard
    ------------------------------------------------------------------
    Le serveur fabrique les mois ecoules depuis la graine, l'application les
    pose. Ces controles executent le calcul du serveur tel qu'il est ecrit dans
@@ -742,11 +743,11 @@ suite('La démonstration n’est jamais en retard', () => {
 });
 
 /* ------------------------------------------------------------------
-   Marchés se range, et garde un journal des achats pour mémoire
+   Marches se range, et garde un journal des achats pour memoire
    ------------------------------------------------------------------ */
 suite('Marchés se range, et garde un journal des achats pour mémoire', () => {
   const app = () => lireSource('assets/app.js');
-  const achat = (x = {}) => ({ date: '2026-03-12', name: 'MSCI World', qty: 10, price: 5.8,
+  const achat = (x = {}) => ({ date: '2026-03-12', name: 'ETF Monde', qty: 10, price: 6,
                                currency: 'EUR', note: 'renfort', ...x });
   /* Ce qu'aucun geste du journal ne doit toucher, pris d'un bloc. */
   const empreinte = () => JSON.stringify({
@@ -773,7 +774,7 @@ suite('Marchés se range, et garde un journal des achats pour mémoire', () => {
     eq(Object.keys(a).sort().join(), 'currency,date,declaree,id,name,note,price,qty',
       'ni total, ni montant en euros, ni prix de revient stockés');
     eq(a.declaree, true, 'il est pour mémoire');
-    pres(montantAchat(a), 58, 'le montant est la quantité fois le prix');
+    pres(montantAchat(a), 60, 'le montant est la quantité fois le prix');
   });
 
   test('une saisie invalide est refusée sans rien toucher', () => {
@@ -923,7 +924,7 @@ suite('Marchés se range, et garde un journal des achats pour mémoire', () => {
 });
 
 /* ------------------------------------------------------------------
-   Marchés : les journaux en bas, repliés, et une seule période
+   Marches : les journaux en bas, replies, et une seule periode
    ------------------------------------------------------------------ */
 suite('Marchés : les journaux en bas, repliés, et une seule période', () => {
   const app = () => lireSource('assets/app.js');
@@ -937,8 +938,8 @@ suite('Marchés : les journaux en bas, repliés, et une seule période', () => {
   });
 
   test('une disposition ancienne se lit sans les cartes retirées, et rien ne s’écrit à l’ouverture', () => {
-    /* Format 1 : un bloc « ventes » qui reunissait trois cartes. Il reste le
-       journal des ventes, a sa place, masque s'il l'etait. */
+    /* Format 1 : un bloc "ventes" y reunit trois cartes. Il se lit comme le
+       journal des ventes, a sa place, masque s'il l'est. */
     Fixture.poser(s => { s.meta.marches = { ordre: ['titres', 'aujourdhui', 'retenir', 'reperes', 'achats', 'ventes'],
                                             masquees: ['ventes', 'reperes'] }; });
     let d = dispositionMarches();
@@ -1017,7 +1018,7 @@ suite('Marchés : les journaux en bas, repliés, et une seule période', () => {
 });
 
 /* ------------------------------------------------------------------
-   Une période commune aux ventes et aux achats
+   Une periode commune aux ventes et aux achats
    ------------------------------------------------------------------ */
 suite('Une période commune aux ventes et aux achats', () => {
   const app = () => lireSource('assets/app.js');
@@ -1219,7 +1220,7 @@ suite('Des journaux longs : tout, par mois, et un nom pour retrouver', () => {
 });
 
 /* ------------------------------------------------------------------
-   Un seul sélecteur d'année pour les transactions
+   Un seul selecteur d'annee pour les transactions
    ------------------------------------------------------------------ */
 suite('Un seul sélecteur d’année pour les transactions', () => {
   const app = () => lireSource('assets/app.js');
@@ -1286,7 +1287,7 @@ suite('Un seul sélecteur d’année pour les transactions', () => {
 });
 
 /* ------------------------------------------------------------------
-   Les règles vivent dans AGENTS.md, et CLAUDE.md l'importe
+   Les regles vivent dans AGENTS.md, et CLAUDE.md l'importe
    ------------------------------------------------------------------ */
 suite('Les règles vivent dans AGENTS.md, et CLAUDE.md l’importe', () => {
   const agents = () => lireSource('AGENTS.md');
@@ -1323,7 +1324,7 @@ suite('Les règles vivent dans AGENTS.md, et CLAUDE.md l’importe', () => {
 });
 
 /* ------------------------------------------------------------------
-   Le journal des ventes porte le résultat net, et dit ses limites
+   Le journal des ventes porte le resultat net, et dit ses limites
    ------------------------------------------------------------------ */
 suite('Le journal des ventes porte le résultat net, et dit ses limites', () => {
   const app = () => lireSource('assets/app.js');
@@ -1917,7 +1918,7 @@ suite('Les espèces bougent par des parts désignées', () => {
 });
 
 /* ------------------------------------------------------------------
-   Les cas limites des especes : chacun a failli passer
+   Les cas limites des especes ne passent pas
    ------------------------------------------------------------------ */
 suite('Les cas limites des espèces ne passent pas', () => {
   const poser = (f) => Fixture.poser(s => {

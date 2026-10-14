@@ -20,15 +20,15 @@ suite('Une ligne de projection annonce le taux qu’elle subit', () => {
      et demande a `capitalisation()` ce qu'elle fait reellement de chaque poche. */
 
   /* La fiche vit dans app.js, que le harnais ne charge pas. On l'en extrait et
-     on l'exécute pour de vrai : une assertion sur ce qu'elle produit vaut mieux
-     qu'une recherche de motif dans une chaîne. Seule `A_PLAT` lui manque, elle
-     lui est passée en paramètre — depuis sa propre déclaration, pour qu'une
-     phrase réécrite là-bas n'ait pas à l'être ici. */
+     on l'execute pour de vrai : une assertion sur ce qu'elle produit vaut mieux
+     qu'une recherche de motif dans une chaine. Seule `A_PLAT` lui manque, elle
+     lui est passee en parametre -- depuis sa propre declaration, pour qu'une
+     phrase reecrite la-bas n'ait pas a l'etre ici. */
   function fiche() {
     const src = lireSource('assets/app.js');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
     /* A_PLAT se traduit a sa declaration : la phrase francaise reste la clef,
-       et c'est elle que la fiche recoit — les tests tournent en francais. */
+       et c'est elle que la fiche recoit -- les tests tournent en francais. */
     const phrase = src.match(/const A_PLAT = trad\('([^']+)'\)/);
     vrai(phrase, 'la phrase « à plat » doit vivre à un seul endroit, dans A_PLAT : '
       + 'recopiée, c’est l’un des exemplaires qui finit par mentir');
@@ -48,8 +48,8 @@ suite('Une ligne de projection annonce le taux qu’elle subit', () => {
       `la ligne des liquidités annonce « ${liq.meta} » alors que la projection ne `
       + 'leur applique aucun rendement');
 
-    /* Et ce que fait vraiment le calcul, sur la même hypothèse : les liquidités
-       traversent la projection sans produire un centime. C'est la moitié qui
+    /* Et ce que fait vraiment le calcul, sur la meme hypothese : les liquidites
+       traversent la projection sans produire un centime. C'est la moitie qui
        rend l'assertion ci-dessus autre chose qu'une opinion. */
     const d = capitalisation({ years: 10 }).points.at(-1);
     pres(d.gainsLiquidites, 0, 'les liquidités ne produisent rien sur dix ans');
@@ -57,8 +57,8 @@ suite('Une ligne de projection annonce le taux qu’elle subit', () => {
   });
 
   test('le taux annoncé par une ligne est celui que le calcul lui applique', () => {
-    /* La règle, énoncée pour toutes les lignes plutôt que pour celle qui a
-       cassé : une ligne qui affiche un pourcentage doit produire du gain, une
+    /* La regle, enoncee pour toutes les lignes plutot que pour celle qui a
+       casse : une ligne qui affiche un pourcentage doit produire du gain, une
        ligne qui n'en affiche pas ne doit rien produire. Elle vaudra pour la
        poche qu'on ajoutera. */
     Fixture.poser(s => { s.meta.projRate = 5; s.meta.projRateAutres = 8; });
@@ -85,8 +85,8 @@ suite('Une ligne de projection annonce le taux qu’elle subit', () => {
   });
 
   test('la somme des parts fait le total de la fiche', () => {
-    /* La règle du projet, sur la fiche qu'on vient de réécrire : retirer une
-       ligne — « Cash à investir » est partie — ne doit pas laisser le total
+    /* La regle du projet, sur la fiche qu'on vient de reecrire : retirer une
+       ligne -- "Cash a investir" est partie -- ne doit pas laisser le total
        compter ce que plus aucune ligne ne montre. */
     Fixture.poser(s => { s.meta.projRateAutres = 8; });
     const f = fiche();
@@ -116,17 +116,17 @@ suite('La projection n’a qu’un seul horizon', () => {
     const src = lireSource('assets/app.js');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
 
-    /* Aucune seconde variable d'horizon ne doit renaître. */
+    /* Aucune seconde variable d'horizon ne doit renaitre. */
     vrai(!/^\s*let projExtra/m.test(src),
       'une seconde variable d’horizon est revenue : deux valeurs pour une seule '
       + 'question finissent toujours par se contredire à l’écran');
 
-    /* Et les deux menus sortent du même générateur : deux gabarits recopiés
-       auraient pu diverger sur la liste des durées, si bien qu'un choix fait
+    /* Et les deux menus sortent du meme generateur : deux gabarits recopies
+       auraient pu diverger sur la liste des durees, si bien qu'un choix fait
        dans l'un n'aurait eu aucune option correspondante dans l'autre. */
-    /* Un seul `<select>` écrit à la main. L'attribut, lui, apparaît une seconde
-       fois dans l'écouteur qui l'attrape : compter l'attribut nu aurait fait
-       échouer ce test sur son propre câblage. */
+    /* Un seul `<select>` ecrit a la main. L'attribut, lui, apparait une seconde
+       fois dans l'ecouteur qui l'attrape : compter l'attribut nu aurait fait
+       echouer ce test sur son propre cablage. */
     const gabarits = src.match(/<select data-action-change="proj-horizon"/g) || [];
     eq(gabarits.length, 1,
       `le sélecteur d’horizon est écrit ${gabarits.length} fois : il doit sortir `
@@ -136,17 +136,17 @@ suite('La projection n’a qu’un seul horizon', () => {
     eq(appels.length, 2,
       `la page doit porter ses deux portes sur ce réglage, elle en a ${appels.length}`);
 
-    /* L'écouteur écrit bien l'état, et le sauvegarde : un horizon qui ne
-       survivrait pas au rechargement redeviendrait un réglage local. */
+    /* L'ecouteur ecrit bien l'etat, et le sauvegarde : un horizon qui ne
+       survivrait pas au rechargement redeviendrait un reglage local. */
     vrai(/projHorizon = \+sel\.value;\s*\n?\s*Store\.save\(\); render\(\);/.test(src),
       'changer l’horizon doit écrire l’état et le sauvegarder');
   });
 
   test('l’horizon choisi a toujours sa ligne dans le tableau', () => {
-    /* Ce qui rend la corrélation visible : régler 40 ans depuis le pied du
-       tableau doit faire apparaître la ligne 40 ans dans ce même tableau. Sans
-       cette garantie, le sélecteur du bas déplacerait le graphique sans que rien
-       ne bouge à côté de lui. C'est `capitalisation()` qui la tient. */
+    /* Ce qui rend la correlation visible : regler 40 ans depuis le pied du
+       tableau doit faire apparaitre la ligne 40 ans dans ce meme tableau. Sans
+       cette garantie, le selecteur du bas deplacerait le graphique sans que rien
+       ne bouge a cote de lui. C'est `capitalisation()` qui la tient. */
     Fixture.poser();
     for (const h of [3, 25, 40, 80]) {
       const jalons = capitalisation({ years: h }).jalons.map(j => j.horizon);
@@ -159,7 +159,7 @@ suite('La projection n’a qu’un seul horizon', () => {
 });
 
 /* ------------------------------------------------------------------
-   Toucher un graphique pour défiler n'ouvre pas son infobulle
+   Toucher un graphique pour defiler n'ouvre pas son infobulle
    ------------------------------------------------------------------ */
 suite('Un graphique ne prend pas le geste de défilement', () => {
 
@@ -175,22 +175,22 @@ suite('Un graphique ne prend pas le geste de défilement', () => {
      avec un element et des minuteurs de comedie. Une assertion sur le
      comportement vaut mieux qu'une recherche de motif -- et celle-ci decrit
      exactement les quatre gestes qu'un doigt peut faire. */
-  function geste() {
+  function geste(options) {
     const src = lireSource('assets/charts.js');
     vrai(src, 'assets/charts.js doit être lisible pour ce contrôle');
-    const bloc = src.match(/\n  function cablerInfobulle\(cible, montrer, masquer\) \{[\s\S]*?\n  \}\n/);
+    const bloc = src.match(/\n  function cablerInfobulle\(cible, montrer, masquer, options = \{\}\) \{[\s\S]*?\n  \}\n/);
     vrai(bloc, 'cablerInfobulle doit être trouvable dans charts.js');
 
-    /* Le seuil et le délai viennent de leur propre déclaration : les réécrire
+    /* Le seuil et le delai viennent de leur propre declaration : les reecrire
        ici en ferait une seconde source, et le test continuerait de passer sur
        des valeurs que le code n'a plus. */
     const seuil = +(src.match(/const SEUIL_GLISSE = (\d+)/) || [])[1];
     const delai = +(src.match(/const DELAI_APPUI = (\d+)/) || [])[1];
     vrai(seuil > 0 && delai > 0, 'le seuil et le délai du geste doivent être déclarés');
 
-    /* Les minuteurs ne s'exécutent pas tout seuls : le harnais est synchrone, et
+    /* Les minuteurs ne s'executent pas tout seuls : le harnais est synchrone, et
        un test qui attend vraiment 130 ms serait un test qui dort. Ils sont
-       rangés, et `echoir()` les déclenche à la demande. */
+       ranges, et `echoir()` les declenche a la demande. */
     const enAttente = [];
     const poser = fn => enAttente.push(fn);
     const retirer = id => { if (id) enAttente[id - 1] = null; };
@@ -204,7 +204,7 @@ suite('Un graphique ne prend pas le geste de défilement', () => {
       setPointerCapture: () => {},
     };
     const vu = [];
-    cabler(cible, ev => vu.push({ quoi: 'montre', x: ev.clientX }), () => vu.push({ quoi: 'cache' }));
+    cabler(cible, ev => vu.push({ quoi: 'montre', x: ev.clientX }), () => vu.push({ quoi: 'cache' }), options);
 
     return {
       vu, seuil,
@@ -222,7 +222,7 @@ suite('Un graphique ne prend pas le geste de défilement', () => {
     const g = geste();
     g.emettre('pointerdown', doigt(100, 100));
     eq(g.montres(), 0, 'poser le doigt n’ouvre plus rien tout de suite');
-    /* Franchement au-delà du seuil, et vers le bas : un défilement. */
+    /* Franchement au-dela du seuil, et vers le bas : un defilement. */
     g.emettre('pointermove', doigt(101, 100 + g.seuil * 3));
     g.echoir();
     eq(g.montres(), 0,
@@ -237,8 +237,8 @@ suite('Un graphique ne prend pas le geste de défilement', () => {
   });
 
   test('un glissement horizontal ouvre sans attendre', () => {
-    /* Parcourir la courbe est un geste franc, et il n'a rien à voir avec le
-       défilement : le faire attendre un dixième de seconde se sentirait. */
+    /* Parcourir la courbe est un geste franc, et il n'a rien a voir avec le
+       defilement : le faire attendre un dixieme de seconde se sentirait. */
     const g = geste();
     g.emettre('pointerdown', doigt(100, 100));
     g.emettre('pointermove', doigt(100 + g.seuil * 3, 102));
@@ -248,8 +248,8 @@ suite('Un graphique ne prend pas le geste de défilement', () => {
   });
 
   test('la souris, elle, n’attend rien', () => {
-    /* Un survol ne prend le geste de personne : lui imposer le même seuil
-       rendrait le graphique poussif là où il n'y a aucun conflit. */
+    /* Un survol ne prend le geste de personne : lui imposer le meme seuil
+       rendrait le graphique poussif la ou il n'y a aucun conflit. */
     const g = geste();
     g.emettre('pointerdown', doigt(100, 100, { pointerType: 'mouse' }));
     eq(g.montres(), 1, 'la souris ouvre au clic');
@@ -258,12 +258,12 @@ suite('Un graphique ne prend pas le geste de défilement', () => {
   });
 
   test('une infobulle ouverte survit à l’annulation du pointeur, une autre non', () => {
-    /* Les deux moitiés du même événement, et c'est ce qui distingue ce correctif
-       de celui du 5 août plutôt que de le défaire. Ouverte, l'infobulle reste :
+    /* Les deux moities du meme evenement, et c'est ce qui distingue ce correctif
+       de celui du 5 aout plutot que de le defaire. Ouverte, l'infobulle reste :
        `touch-action: pan-y` fait annuler le pointeur au moindre tremblement, et
        on tient justement le doigt en place pour lire. Pas encore ouverte,
-       l'annulation est le signal le plus sûr qui existe — le navigateur vient de
-       décider que ce geste est un défilement. */
+       l'annulation est le signal le plus sur qui existe -- le navigateur vient de
+       decider que ce geste est un defilement. */
     const ouverte = geste();
     ouverte.emettre('pointerdown', doigt(100, 100));
     ouverte.echoir();
@@ -287,18 +287,67 @@ suite('Un graphique ne prend pas le geste de défilement', () => {
     eq(g.caches(), 1, 'et la levée referme');
   });
 
-  test('les deux graphiques tactiles passent par le même geste', () => {
-    /* La courbe d'évolution et la sparkline avaient chacune leur câblage, à cent
-       lignes d'écart. Deux copies d'un geste, c'est une copie qu'on oublie de
-       corriger. */
+  test('un tap court montre le point, et sa bulle tient un instant', () => {
+    /* Avec `options.tap`, le doigt leve avant l'armement montre ce qu'il a
+       touche. La fermeture vient plus tard, et rien d'autre ne la devance :
+       ni la levee, ni le `pointerleave` qui la suit toujours au doigt. */
+    const g = geste({ tap: 1400 });
+    g.emettre('pointerdown', doigt(100, 100));
+    g.emettre('pointerup', doigt(100, 100));
+    g.emettre('pointerleave', doigt(100, 100));
+    eq(g.montres(), 1, 'le tap montre le point touché');
+    eq(g.caches(), 0, 'ni la levée ni la sortie ne ferment la bulle d’un tap');
+    g.echoir();
+    eq(g.caches(), 1, 'puis elle se ferme, une fois le délai écoulé');
+  });
+
+  test('le second tap n’est pas fermé par le minuteur du premier', () => {
+    const g = geste({ tap: 1400 });
+    g.emettre('pointerdown', doigt(100, 100));
+    g.emettre('pointerup', doigt(100, 100));
+    g.emettre('pointerdown', doigt(160, 100));
+    g.emettre('pointerup', doigt(160, 100));
+    eq(g.montres(), 2, 'deux taps, deux points montrés');
+    g.echoir();
+    eq(g.caches(), 1, 'une seule fermeture : celle du premier tap est annulée par le second');
+  });
+
+  test('sans l’option, un tap ne montre rien ; avec, une lecture tenue se ferme à la levée', () => {
+    const sans = geste();
+    sans.emettre('pointerdown', doigt(100, 100));
+    sans.emettre('pointerup', doigt(100, 100));
+    sans.echoir();
+    eq(sans.montres(), 0, 'la courbe de l’accueil se lit en appuyant, pas d’un tap');
+    const tenu = geste({ tap: 1400 });
+    tenu.emettre('pointerdown', doigt(100, 100));
+    tenu.echoir();
+    eq(tenu.montres(), 1, 'le doigt tenu ouvre');
+    tenu.emettre('pointerup', doigt(100, 100));
+    eq(tenu.caches(), 1, 'et la levée ferme aussitôt, sans délai');
+  });
+
+  test('avec l’option, une annulation après l’ouverture ferme plus tard', () => {
+    const g = geste({ tap: 1400 });
+    g.emettre('pointerdown', doigt(100, 100));
+    g.echoir();
+    g.emettre('pointercancel', doigt(100, 108));
+    eq(g.caches(), 0, 'pas sur l’instant : on tient peut-être le doigt pour lire');
+    g.echoir();
+    eq(g.caches(), 1, 'mais elle ne reste pas ouverte sans doigt pour la fermer');
+  });
+
+  test('les graphiques tactiles passent par le même geste', () => {
+    /* La courbe d'evolution, la sparkline et les barres mensuelles des
+       depenses : trois graphiques, un seul cablage. Deux copies d'un geste,
+       c'est une copie qu'on oublie de corriger. */
     const src = lireSource('assets/charts.js');
     const appels = src.match(/cablerInfobulle\((svg|el),/g) || [];
-    eq(appels.length, 2,
-      `les deux graphiques tactiles doivent partager ce geste (${appels.length} trouvé·s)`);
-    /* Et sur le SVG, pas sur le conteneur : `mount` rejoue le rendu à chaque
-       redimensionnement, et des écouteurs posés sur un élément qui lui survit
-       s'empileraient à chaque fois. Les propriétés `on…` d'avant s'écrasaient et
-       masquaient ce piège. */
+    eq(appels.length, 3,
+      `les trois graphiques tactiles doivent partager ce geste (${appels.length} trouvé·s)`);
+    /* Et sur le SVG, pas sur le conteneur : `mount` rejoue le rendu a chaque
+       redimensionnement, et des ecouteurs poses sur un element qui lui survit
+       s'empileraient a chaque fois. Les proprietes `on...` d'avant s'ecrasaient et
+       masquaient ce piege. */
     vrai(!/\bel\.onpointer(down|move|up|leave)\s*=/.test(src),
       'plus aucune propriété « onpointer… » : elles cachaient l’empilement '
       + 'd’écouteurs sur un conteneur qui survit au rendu');
@@ -331,9 +380,9 @@ suite('Une ligne sans nom se supprime quand même', () => {
   });
 
   test('la règle vit dans askForm, pas dans chacun de ses appelants', () => {
-    /* Il y a une dizaine de fenêtres de ce type, et la onzième aurait oublié la
-       question. La règle est donc au seul endroit qu'elles traversent toutes —
-       et ce test vérifie que la convention de nom tient : une case qui
+    /* Il y a une dizaine de fenetres de ce type, et la onzieme aurait oublie la
+       question. La regle est donc au seul endroit qu'elles traversent toutes --
+       et ce test verifie que la convention de nom tient : une case qui
        s'appellerait autrement serait muette pour askForm. */
     const src = lireSource('assets/app.js');
     /* Le libelle passe par `trad()` depuis qu'il se traduit : c'est la clef
@@ -342,7 +391,7 @@ suite('Une ligne sans nom se supprime quand même', () => {
     vrai(cases.length >= 3,
       `les fenêtres qui suppriment par une case doivent toutes employer cette clé `
       + `(${cases.length} trouvée·s)`);
-    /* Et chacune fait bien quelque chose de la réponse. */
+    /* Et chacune fait bien quelque chose de la reponse. */
     const lectures = src.match(/if \(v\.supprimer\)/g) || [];
     eq(lectures.length, cases.length,
       `${cases.length} cases de suppression pour ${lectures.length} lectures : `
@@ -350,12 +399,12 @@ suite('Une ligne sans nom se supprime quand même', () => {
   });
 
   test('une ligne sans nom ne se fait pas désigner par un vide', () => {
-    /* « Supprimer la charge fixe «  » ? » désignait un vide par un vide. */
+    /* "Supprimer la charge fixe "" ?" designait un vide par un vide. */
     const src = lireSource('assets/app.js');
     const bloc = src.match(/function makeDeleter\([\s\S]*?\n\}/);
     vrai(bloc, 'makeDeleter doit être trouvable');
     /* Les guillemets suivent la langue depuis `guill()` : l'anglais n'ecrit pas
-       « x » mais “x”, et la citation d'un nom saisi traversait les deux langues. */
+       "x" mais "x", et la citation d'un nom saisi traversait les deux langues. */
     vrai(/nom \? ` \$\{guill\(nom\)\}` :/.test(bloc[0]),
       'la question doit rester lisible quand la ligne n’a pas de nom');
   });
@@ -391,8 +440,8 @@ suite('Une ligne de titres se supprime depuis sa fiche', () => {
 
   test('la suppression se traite avant tout ce qui compte en index', () => {
     /* `suite.supprimer`, `suite.vendre` et `suite.acheter` sont des index dans
-       `Store.state.positions`. Retirer une ligne les décale tous : la
-       suppression doit donc être la première branche, et elle doit sortir. */
+       `Store.state.positions`. Retirer une ligne les decale tous : la
+       suppression doit donc etre la premiere branche, et elle doit sortir. */
     const src = lireSource('assets/app.js');
     const bloc = src.match(/async 'open-position'\(btn\) \{[\s\S]*?\n  \},/);
     vrai(bloc, 'l’ouverture d’une fiche doit être trouvable');
@@ -406,17 +455,17 @@ suite('Une ligne de titres se supprime depuis sa fiche', () => {
   });
 
   test('« Enregistrer » repeint la fiche, il ne retouche pas des nœuds', () => {
-    /* « La plus-value ne se met pas à jour en changeant le PRU. » Elle ne le
-       pouvait pas : « Enregistrer » reprenait deux nœuds à la main, le montant
-       en tête et le total investi, et laissait tout le reste sur les anciens
-       chiffres — la plus-value, sa part du portefeuille, l'écart du jour. La
-       fiche se contredisait dans une même fenêtre, et sur le chiffre qu'on
+    /* La plus-value ne se mettait pas a jour en changeant le PRU. Elle ne le
+       pouvait pas : "Enregistrer" reprenait deux noeuds a la main, le montant
+       en tete et le total investi, et laissait tout le reste sur les anciens
+       chiffres -- la plus-value, sa part du portefeuille, l'ecart du jour. La
+       fiche se contredisait dans une meme fenetre, et sur le chiffre qu'on
        venait justement relire.
 
-       C'est le défaut que ce projet nomme depuis longtemps : une liste écrite à
-       la main pour une seule vérité. Un sixième chiffre ajouté demain aurait été
-       oublié comme les trois autres. Le contrôle porte donc sur le mécanisme —
-       une peinture unique — et non sur la présence de tel ou tel rafraîchissement,
+       C'est le defaut que ce projet nomme depuis longtemps : une liste ecrite a
+       la main pour une seule verite. Un sixieme chiffre ajoute demain aurait ete
+       oublie comme les trois autres. Le controle porte donc sur le mecanisme --
+       une peinture unique -- et non sur la presence de tel ou tel rafraichissement,
        qui se satisferait de la version fautive. */
     const src = lireSource('assets/app.js');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
@@ -430,7 +479,7 @@ suite('Une ligne de titres se supprime depuis sa fiche', () => {
     vrai(!/innerHTML/.test(enr[0]),
       'et il ne retouche aucun nœud à la main : le chiffre oublié serait le suivant');
 
-    /* La peinture doit vraiment tout refaire, sinon « repeindre » ne veut rien
+    /* La peinture doit vraiment tout refaire, sinon "repeindre" ne veut rien
        dire : le corps, mais aussi l'en-tete, que le nom et le compte alimentent. */
     vrai(/const peindre = \(\) => \{[\s\S]{0,400}?\$\('#modalBody'\)\.innerHTML =/.test(bloc[0]),
       'la peinture reconstruit le corps de la fiche');
@@ -478,7 +527,7 @@ suite('Une vente s’ajoute depuis le journal des ventes', () => {
       'et elle porte le bouton qui l’alimente');
     /* Il fut desactive faute de ligne a vendre, au motif qu'une fenetre qui
        s'ouvre pour se refermer ne vaut pas mieux qu'une erreur. La fenetre ne se
-       referme plus : son menu propose « une vente passee, pour memoire », et
+       referme plus : son menu propose "une vente passee, pour memoire", et
        s'ouvre dessus quand il n'y a rien a vendre. Un bouton grise qui ne dit
        pourquoi que dans une infobulle est pire, au doigt, qu'une fenetre qui
        montre ce qu'elle peut. */
@@ -489,21 +538,21 @@ suite('Une vente s’ajoute depuis le journal des ventes', () => {
   });
 
   test('aucun écran n’envoie plus chercher ce bouton ailleurs', () => {
-    /* La phrase qui donnait l'itinéraire. Elle était juste et c'était le
-       problème : une application qui explique où trouver son geste avoue qu'il
-       n'est pas là où on le cherche. */
+    /* La phrase qui donnait l'itineraire. Elle etait juste et c'etait le
+       probleme : une application qui explique ou trouver son geste avoue qu'il
+       n'est pas la ou on le cherche. */
     const src = lireSource('assets/app.js');
     vrai(!/se trouve dans Marchés/.test(src),
       'un écran envoie encore chercher le bouton de vente dans un autre onglet');
   });
 
   test('les deux portes mènent à la même saisie', () => {
-    /* Deux boutons sur une même action sont sains — c'est la règle du projet,
-       celle du sélecteur d'année du journal. Ce qui serait fautif, ce serait
-       deux fenêtres de saisie de vente.
+    /* Deux boutons sur une meme action sont sains -- c'est la regle du projet,
+       celle du selecteur d'annee du journal. Ce qui serait fautif, ce serait
+       deux fenetres de saisie de vente.
 
        Les deux portes sont le journal des ventes et la fiche de chaque ligne.
-       L'en-tête des lignes de titres n'en porte plus : à côté d'Ajouter, un
+       L'en-tete des lignes de titres n'en porte plus : a cote d'Ajouter, un
        geste rare y pesait autant que le geste courant. */
     const src = lireSource('assets/app.js');
     const boutons = src.match(/data-action="sell-position"/g) || [];
@@ -536,8 +585,8 @@ suite('Aucun survol ne peut rester collé au doigt', () => {
      il n'y a pas d'exception a tenir a jour, et la regle que quelqu'un ecrira
      demain est deja couverte. */
 
-  /* Les zones protégées, et le texte hors commentaires : un `:hover` cité en
-     prose dans un commentaire n'est pas une règle. */
+  /* Les zones protegees, et le texte hors commentaires : un `:hover` cite en
+     prose dans un commentaire n'est pas une regle. */
   function survolsNus() {
     const css = lireSource('assets/styles.css');
     vrai(css, 'assets/styles.css doit être lisible pour ce contrôle');
@@ -572,10 +621,10 @@ suite('Aucun survol ne peut rester collé au doigt', () => {
   });
 
   test('le clavier n’a pas été emporté avec le doigt', () => {
-    /* Trois sélecteurs mélangeaient survol et focus — `.aide:hover,
-       .aide:focus-visible` et deux autres. Enfermer la règle entière aurait
-       supprimé l'indication au clavier en même temps que la tache au doigt :
-       elles ont été coupées en deux, et la moitié focus est restée dehors. */
+    /* Trois selecteurs melangeaient survol et focus -- `.aide:hover,
+       .aide:focus-visible` et deux autres. Enfermer la regle entiere aurait
+       supprime l'indication au clavier en meme temps que la tache au doigt :
+       elles ont ete coupees en deux, et la moitie focus est restee dehors. */
     const css = lireSource('assets/styles.css');
     const nu = css.replace(/\/\*[\s\S]*?\*\//g, '');
     for (const sel of ['.aide:focus-visible', '.col-aide:focus-visible', '.cible-champ:focus']) {
@@ -586,9 +635,9 @@ suite('Aucun survol ne peut rester collé au doigt', () => {
   });
 
   test('l’appui tactile garde son propre retour', () => {
-    /* Ce qui remplace le survol au doigt existe déjà et ne bouge pas : `:active`
-       et les classes posées par un écouteur tactile, qui elles se lèvent. Retirer
-       le survol sans elles laisserait le téléphone sans aucun retour. */
+    /* Ce qui remplace le survol au doigt existe deja et ne bouge pas : `:active`
+       et les classes posees par un ecouteur tactile, qui elles se levent. Retirer
+       le survol sans elles laisserait le telephone sans aucun retour. */
     const nu = lireSource('assets/styles.css').replace(/\/\*[\s\S]*?\*\//g, '');
     vrai(/\.brand\.tape\s+\.brand-mark/.test(nu), 'le logo garde son relais tactile');
     vrai(/\.tabbar\.tape/.test(nu), 'la barre du bas aussi');
@@ -597,7 +646,7 @@ suite('Aucun survol ne peut rester collé au doigt', () => {
 });
 
 /* ------------------------------------------------------------------
-   Un repère de synchronisation ne ment pas
+   Un repere de synchronisation ne ment pas
    ------------------------------------------------------------------ */
 suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
 
@@ -631,8 +680,8 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
       + 'cloud ni rien envoyer : il déclarait aligné ce qui ne l’était pas');
     /* L'egalite des deux horodatages est desormais nommee par l'arbitre, et
        `init()` ne fait que poser le repere sur son verdict. Le controle suit la
-       regle la ou elle vit : la suite « Une estampille fraiche ne prouve aucun
-       contenu frais » l'execute, celui-ci verifie qu'aucun autre chemin ne
+       regle la ou elle vit : la suite "Une estampille fraiche ne prouve aucun
+       contenu frais" l'execute, celui-ci verifie qu'aucun autre chemin ne
        marque un alignement. */
     vrai(/if \(verdict === 'aligne'\) \{[\s\S]*?if \(local === lastPayload\) \{\s*markSynced\(localAt\);/.test(init[0])
       && (init[0].replace(/\/\*[\s\S]*?\*\//g, '').match(/markSynced\(localAt\)/g) || []).length === 1,
@@ -643,10 +692,10 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
   });
 
   test('un appareil en avance envoie au lieu d’attendre', () => {
-    /* L'autre moitié. Un état local plus récent que le cloud est un état jamais
-       envoyé : l'envoi différé de huit secondes ne suffit pas quand l'app passe
+    /* L'autre moitie. Un etat local plus recent que le cloud est un etat jamais
+       envoye : l'envoi differe de huit secondes ne suffit pas quand l'app passe
        en veille avant, et `sendBeacon` ne passe pas toujours. On l'envoie au
-       démarrage plutôt que d'attendre la frappe suivante. */
+       demarrage plutot que d'attendre la frappe suivante. */
     const src = sourceSync();
     vrai(/aEnvoyer: verdict === 'envoyer'/.test(src),
       'init() doit dire à l’appelant que cet appareil porte des modifications non envoyées');
@@ -656,8 +705,8 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
        le cloud et de le trouver plus ancien, donc la base connue ne peut pas
        correspondre, donc le garde-fou de filiation refuserait a tort.
 
-       Sa premisse etait fausse. « Plus ancien » y voulait dire « estampille plus
-       ancienne », et le rafraichissement des cours datait l'etat a chaque
+       Sa premisse etait fausse. "Plus ancien" y voulait dire "estampille plus
+       ancienne", et le rafraichissement des cours datait l'etat a chaque
        ouverture : un ordinateur rouvert apres plusieurs jours portait l'heure la
        plus fraiche et le contenu le plus vieux. `force=1` demandait alors au
        serveur de sauter exactement le controle pose pour empecher cette
@@ -673,17 +722,17 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
   });
 
   test('l’horodatage envoyé est celui qu’on a envoyé', () => {
-    /* `markSynced(Store.state.meta.savedAt)` lisait l'état APRÈS l'aller-retour
-       réseau. Une frappe pendant ce temps — et l'application écrit à chaque
-       caractère — et l'on marquait comme synchronisé un état plus récent que
-       celui réellement transmis. */
+    /* `markSynced(Store.state.meta.savedAt)` lisait l'etat APRES l'aller-retour
+       reseau. Une frappe pendant ce temps -- et l'application ecrit a chaque
+       caractere -- et l'on marquait comme synchronise un etat plus recent que
+       celui reellement transmis. */
     const src = sourceSync();
     /* `pushMaintenant` porte l'envoi lui-meme ; `push` ne fait plus que garder
        qu'un seul soit en vol a la fois. C'est la premiere qu'on inspecte. */
     const push = src.match(/async function pushMaintenant\([\s\S]*?\n  \}/);
     vrai(push, 'pushMaintenant() doit être trouvable');
     /* Sans les commentaires : celui de cette fonction cite justement la ligne
-       fautive pour expliquer pourquoi elle est partie, et le contrôle se serait
+       fautive pour expliquer pourquoi elle est partie, et le controle se serait
        fait prendre par la prose qui le justifie. */
     const code = push[0].replace(/\/\*[\s\S]*?\*\//g, '');
     vrai(/const envoyeAt = Store\.state\?\.meta\?\.savedAt;/.test(code),
@@ -694,8 +743,8 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
 
   test('remplacer tout l’état laisse un point de retour', () => {
     /* L'adoption silencieuse remplace le patrimoine entier sur la foi d'un
-       repère. Le repère a déjà menti une fois ; une sauvegarde rend l'erreur
-       réparable au lieu d'être définitive, et ne coûte rien. */
+       repere. Le repere a deja menti une fois ; une sauvegarde rend l'erreur
+       reparable au lieu d'etre definitive, et ne coute rien. */
     /* La sauvegarde a demenage dans la porte commune, celle que les trois
        chemins d'adoption empruntent desormais. Le controle porte donc sur la
        delegation : c'est elle qui garantit qu'aucun chemin ne remplace l'etat
@@ -748,8 +797,7 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
        Cloudflare Pages, un `_worker.js` a la racine prend toute la main et le
        dossier `functions/` n'est jamais charge : le defaut est reste en
        production, et un controle qui lisait le fichier mort passait au vert. Le
-       depot public l'a note des le 9 aout — « functions/api/ etait du code mort,
-       c'est _worker.js qui traite les requetes » — et a supprime le dossier.
+       depot public l'a note des le 9 aout et a supprime le dossier.
 
        Deux surfaces pour un fait, dont une morte : tant que la copie existe ici,
        ce controle exige qu'elles disent la meme chose. La vraie reponse est de
@@ -792,7 +840,7 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
     const src = sourceSync();
     vrai(/const noterVersionLue = \(at, corps, revision\) => \{\s*markSynced\(at\);/.test(src),
       'cloudsync expose de quoi noter une version lue');
-    /* Plus de branche « charger celle en ligne » : il n'y a plus de question, et
+    /* Plus de branche "charger celle en ligne" : il n'y a plus de question, et
        les trois chemins passent par la meme porte. C'est elle qui note. */
     const st = lireSource('assets/store.js');
     const i = st.indexOf('  adopterVersionEnLigne(donnees, quand');
@@ -823,17 +871,17 @@ suite('La synchronisation ne se déclare pas alignée sans l’être', () => {
 });
 
 /* ------------------------------------------------------------------
-   Budget : le moteur dit quel poste a bougé, ou il se tait
+   Budget : le moteur dit quel poste a bouge, ou il se tait
    ------------------------------------------------------------------ */
 suite('Budget : le moteur dit quel poste a bougé, ou il se tait', () => {
 
   /* CES CONTROLES JOUENT LES REGLES, ils ne lisent pas leur source. Chacun pose
      un budget choisi et demande au moteur ce qu'il en tire : c'est la seule
-     forme sous laquelle « ne montrer un insight que s'il est reellement utile »
+     forme sous laquelle "ne montrer un insight que s'il est reellement utile"
      se verifie, puisque la moitie de la promesse est un SILENCE.
 
      Le fil qui les relie : un insight de depenses ne sort que si le mouvement
-     est a la fois RELATIF — il bouge d'au moins un sixieme — et MATERIEL — il
+     est a la fois RELATIF -- il bouge d'au moins un sixieme -- et MATERIEL -- il
      pese au moins un vingtieme du budget du mois. Une seule des deux conditions
      laisse passer du bruit, et le bruit est ce que cette carte ne doit pas
      porter. */
@@ -904,7 +952,7 @@ suite('Budget : le moteur dit quel poste a bougé, ou il se tait', () => {
   test('un petit poste qui double ne passe pas devant un gros qui bouge', () => {
     /* LE PIEGE DU POURCENTAGE SEUL. Un abonnement de huit euros qui passe a
        seize fait +100 %, et ce +100 % couronnerait le bruit. La condition de
-       poids l'écarte : huit euros ne pèsent rien dans un budget de cinq cents. */
+       poids l'ecarte : huit euros ne pesent rien dans un budget de cinq cents. */
     poserBudget([
       { Courses: 400, Abo: 8 }, { Courses: 400, Abo: 8 }, { Courses: 400, Abo: 8 },
       { Courses: 400, Abo: 16 }, { Courses: 400, Abo: 16 }, { Courses: 400, Abo: 16 },
@@ -927,9 +975,9 @@ suite('Budget : le moteur dit quel poste a bougé, ou il se tait', () => {
 
   test('un poste qui s’éteint ne se dit pas : il n’appelle aucune décision', () => {
     /* Une reparation imprevue parait un mois puis disparait. La fenetre suivante
-       la voit tomber a zero, donc « −100 % », et ce moins-cent-pour-cent
+       la voit tomber a zero, donc "-100 %", et ce moins-cent-pour-cent
        sortirait en tete tous les trimestres sans que personne ait rien a en
-       faire. Le mois exceptionnel, lui, est deja dit par sa propre règle. */
+       faire. Le mois exceptionnel, lui, est deja dit par sa propre regle. */
     poserBudget([
       { Courses: 400, Imprevu: 300 }, { Courses: 400, Imprevu: 300 }, { Courses: 400, Imprevu: 300 },
       { Courses: 400 }, { Courses: 400 }, { Courses: 400 },
@@ -983,10 +1031,10 @@ suite('Budget : le moteur dit quel poste a bougé, ou il se tait', () => {
     /* La hausse tenue par un seul poste : il doit etre nomme.
 
        LES MOIS DE REFERENCE VARIENT, ET C'EST LA REGLE QUI L'EXIGE : elle
-       compare l'écart à la dispersion habituelle de cette personne, et une série
+       compare l'ecart a la dispersion habituelle de cette personne, et une serie
        parfaitement plate ferait de trois euros une anomalie. Sans dispersion
-       mesurable, elle se tait — ce qui est juste, et ce qu'un fixture trop
-       régulier prenait pour un défaut. */
+       mesurable, elle se tait -- ce qui est juste, et ce qu'un fixture trop
+       regulier prenait pour un defaut. */
     poserBudget([
       { Courses: 380 }, { Courses: 420 }, { Courses: 400 }, { Courses: 410 },
       { Courses: 390 }, { Courses: 400 }, { Courses: 400, Travaux: 1400 },
@@ -998,8 +1046,8 @@ suite('Budget : le moteur dit quel poste a bougé, ou il se tait', () => {
     /* La hausse repartie sur cinq postes : aucun ne l'explique, on n'en cite
        aucun plutot que de laisser croire que les deux premiers suffisent. */
     /* La dispersion se mesure sur le TOTAL du mois, pas sur ses postes : des
-       mois qui varient au-dedans mais tombent tous sur le même total sont
-       parfaitement plats pour cette règle. Ce sont donc les totaux qui bougent. */
+       mois qui varient au-dedans mais tombent tous sur le meme total sont
+       parfaitement plats pour cette regle. Ce sont donc les totaux qui bougent. */
     poserBudget([
       { A: 80, B: 100, C: 100, D: 100, E: 100 }, { A: 120, B: 100, C: 100, D: 100, E: 100 },
       { A: 100, B: 100, C: 100, D: 100, E: 100 }, { A: 110, B: 100, C: 100, D: 100, E: 100 },
@@ -1016,8 +1064,8 @@ suite('Budget : le moteur dit quel poste a bougé, ou il se tait', () => {
 
   test('deux règles ne racontent jamais la même chose sur la même carte', () => {
     /* `spending_shift` dit que le total a change de niveau, `spending_category_shift`
-       dit quel poste l'a fait. Elles partagent un groupe de déduplication, donc
-       la plus forte sort seule — et c'est celle qui nomme le poste, parce qu'elle
+       dit quel poste l'a fait. Elles partagent un groupe de deduplication, donc
+       la plus forte sort seule -- et c'est celle qui nomme le poste, parce qu'elle
        contient l'autre information en plus de la sienne. */
     poserBudget(SIX_MOIS_AVEC_DERIVE);
     const ids = budgetSortis().map(x => x.id);
@@ -1029,7 +1077,7 @@ suite('Budget : le moteur dit quel poste a bougé, ou il se tait', () => {
   test('un insight de dépenses ne s’affiche plus sur l’Aperçu', () => {
     /* L'ADRESSAGE PAR ONGLET, ET CE QU'IL CORRIGE. Une remarque sur les
        restaurants s'affichait sur la page du patrimoine, ou personne ne vient la
-       chercher, et elle occupait une des trois places au détriment d'une lecture
+       chercher, et elle occupait une des trois places au detriment d'une lecture
        patrimoniale. */
     poserBudget(SIX_MOIS_AVEC_DERIVE);
     const surApercu = insightsDeLOnglet('overview', {}).map(x => x.id);
@@ -1053,14 +1101,14 @@ suite('Budget : le moteur dit quel poste a bougé, ou il se tait', () => {
 });
 
 /* ------------------------------------------------------------------
-   Un non coté se cède, et la cession s'inscrit quelque part
+   Un non cote se cede, et la cession s'inscrit quelque part
    ------------------------------------------------------------------ */
 suite('Un non coté se cède, et la cession s’inscrit quelque part', () => {
 
   /* Une ligne cotee se vendait ; tout le reste ne pouvait que s'archiver, et
      archiver ne dit rien de l'argent. La valeur quittait le patrimoine, le
      produit se retapait a la main, et la plus-value realisee n'entrait nulle
-     part — la baisse tombait dans « ce qui ne vient pas du budget », c'est-a-dire
+     part -- la baisse tombait dans "ce qui ne vient pas du budget", c'est-a-dire
      dans la case de ce qu'on n'explique pas.
 
      Ces controles JOUENT la cession sur un etat pose, et verifient les trois
@@ -1131,7 +1179,7 @@ suite('Un non coté se cède, et la cession s’inscrit quelque part', () => {
     const c = compteById('c_parts');
     eq((c.lignes || []).length, 0, 'la ligne s’en va');
     /* UN ACTIF TERMINAL EST SON PLACEMENT : vide, il n'a plus de raison de
-       figurer dans la liste des actifs, et le laisser ouvert a zéro euro y
+       figurer dans la liste des actifs, et le laisser ouvert a zero euro y
        ferait une ligne morte que personne ne saurait plus pourquoi fermer. */
     eq(c.statut, 'archive', 'et le compte, qui EST le placement, s’archive');
     eq(c.clotureLe, '2026-09-20', 'à la date de la cession');
@@ -1139,8 +1187,8 @@ suite('Un non coté se cède, et la cession s’inscrit quelque part', () => {
   });
 
   test('un remboursement partiel de financement participatif rend les intérêts', () => {
-    /* Le fixture porte un prêt de 2 000 EUR. Il en rembourse la moitié, et
-       verse 1 100 : mille de capital, cent d'intérêts. */
+    /* Le fixture porte un pret de 2 000 EUR. Il en rembourse la moitie, et
+       verse 1 100 : mille de capital, cent d'interets. */
     Fixture.poser();
     const a = cederPlacement({ compteId: 'c_pe', index: 0, nature: 'remboursement',
                                capital: 1000, produit: 1100,
@@ -1172,8 +1220,8 @@ suite('Un non coté se cède, et la cession s’inscrit quelque part', () => {
     annulerVente(0);
 
     /* Le defaut qu'on evite ici : `annulerVente()` rendait des TITRES. Sur une
-       cession de non coté, elle aurait poussé dans `positions` une ligne cotée
-       fantôme, avec un cours et un prix, pour un actif qui n'en a pas. */
+       cession de non cote, elle aurait pousse dans `positions` une ligne cotee
+       fantome, avec un cours et un prix, pour un actif qui n'en a pas. */
     eq(Store.state.positions.length, titresAvant,
       'aucune position n’est fabriquée : un non coté n’est pas une ligne de titres');
     pres(valeurCompte(compteById('c_courant')), cashAvant, 'les espèces repartent');
@@ -1207,13 +1255,13 @@ suite('Un non coté se cède, et la cession s’inscrit quelque part', () => {
 
   test('le journal ne montre pas « 0 × 0 € » sous une cession sans parts', () => {
     /* Vu a l'ecran avant d'etre corrige : la cession d'un fonds non cote
-       s'affichait « 20/09/2026 · 0 × 0,00 € ». Les deux zeros sont des cases
-       vides — un placement sans parts n'a ni quantite ni prix unitaire — et ils
+       s'affichait "20/09/2026 . 0 x 0,00 EUR". Les deux zeros sont des cases
+       vides -- un placement sans parts n'a ni quantite ni prix unitaire -- et ils
        se lisaient comme des faits.
 
        La question se pose donc a la DONNEE et non au drapeau `declaree` : celui-
-       ci repondait « ce n'est pas une vente declaree, donc elle a une
-       quantite », ce qui n'a jamais ete la meme question. */
+       ci repondait "ce n'est pas une vente declaree, donc elle a une
+       quantite", ce qui n'a jamais ete la meme question. */
     const app = lireSource('assets/app.js');
     const i = app.indexOf("action: 'open-sale'");
     vrai(i > 0, 'la ligne du journal doit être trouvable');
@@ -1238,7 +1286,7 @@ suite('Un non coté se cède, et la cession s’inscrit quelque part', () => {
 });
 
 /* ------------------------------------------------------------------
-   Une estampille fraîche ne prouve aucun contenu frais
+   Une estampille fraiche ne prouve aucun contenu frais
    ------------------------------------------------------------------ */
 suite('Une estampille fraîche ne prouve aucun contenu frais', () => {
 
@@ -1253,11 +1301,11 @@ suite('Une estampille fraîche ne prouve aucun contenu frais', () => {
      d'arbitrage est donc une fonction pure, extraite de `cloudsync.js` et
      EXECUTEE ici sur des dates choisies.
 
-     Le defaut tenait en une phrase : l'application demandait « qui porte
-     l'estampille la plus fraiche ? » la ou il fallait demander « le cloud
-     est-il encore la ou cet appareil l'avait laisse ? ». Les deux questions ont
+     Le defaut tenait en une phrase : l'application demandait "qui porte
+     l'estampille la plus fraiche ?" la ou il fallait demander "le cloud
+     est-il encore la ou cet appareil l'avait laisse ?". Les deux questions ont
      la meme reponse tant qu'un seul appareil ecrit. Elles divergent des que
-     `Store.save()` est appele par autre chose qu'une decision — le
+     `Store.save()` est appele par autre chose qu'une decision -- le
      rafraichissement des cours, toutes les cinq minutes et a chaque
      ouverture. */
   let arbitreMemo = null;
@@ -1266,7 +1314,7 @@ suite('Une estampille fraîche ne prouve aucun contenu frais', () => {
     const src = lireSource('assets/cloudsync.js');
     vrai(src, 'assets/cloudsync.js doit être lisible pour ce contrôle');
     /* Les bornes sont du CODE et non des commentaires : une phrase se reformule,
-       et un `indexOf` sur une phrase vaut -1 le jour où elle bouge. */
+       et un `indexOf` sur une phrase vaut -1 le jour ou elle bouge. */
     const d = src.indexOf('function arbitrer({');
     const f = src.indexOf('\n  }', d) + 4;
     vrai(d > 0 && f > d,
@@ -1276,14 +1324,14 @@ suite('Une estampille fraîche ne prouve aucun contenu frais', () => {
   }
 
   /* Trois jours, deux appareils, et la perte telle qu'elle s'est produite. */
-  const J17 = '2026-09-17T09:57:00.000Z';   // les deux appareils s'alignent
-  const J19 = '2026-09-19T18:20:00.000Z';   // le telephone saisit, et pousse
-  const J20 = '2026-09-20T08:05:00.000Z';   // l'ordinateur rouvre et rafraichit
+  const J17 = '2026-03-17T09:00:00.000Z';   // les deux appareils s'alignent
+  const J19 = '2026-03-19T18:00:00.000Z';   // le telephone saisit, et pousse
+  const J20 = '2026-03-20T08:00:00.000Z';   // l'ordinateur rouvre et rafraichit
 
   test('l’ordinateur rouvert après trois jours ne s’impose plus au téléphone', () => {
     /* L'ordinateur porte le patrimoine du 17 et l'estampille du 20, gagnee sur
        un rafraichissement de cours. Le telephone a saisi le 19 et pousse. La
-       comparaison d'horloges donnait « le local est en avance » — donc envoi en
+       comparaison d'horloges donnait "le local est en avance" -- donc envoi en
        force, donc la saisie du telephone effacee sans un mot. */
     eq(arbitre()({ localAt: J20, remoteAt: J19, syncedAt: J17 }), 'conflit',
       'un contenu périmé portant une estampille fraîche ne doit jamais '
@@ -1292,7 +1340,7 @@ suite('Une estampille fraîche ne prouve aucun contenu frais', () => {
   });
 
   test('et l’arbitrage rendu est celui du détenteur : la version en ligne', () => {
-    /* « conflit » n'est pas une question posee a l'utilisateur — le detenteur a
+    /* "conflit" n'est pas une question posee a l'utilisateur -- le detenteur a
        tranche le 15 septembre : c'est toujours la version en ligne, sans
        demander, avec une sauvegarde et un message qui dit ou la retrouver. Le
        verdict designe donc la branche `newer`, celle qui passe par la porte
@@ -1369,8 +1417,8 @@ suite('Une estampille fraîche ne prouve aucun contenu frais', () => {
 
   test('le démarrage n’impose plus rien, le bouton d’arbitrage garde sa porte', () => {
     /* La distinction qui compte : un ecrasement en force est une decision, et
-       une decision se prend par quelqu'un. Le bouton « imposer les donnees de
-       cet appareil » le demande et l'annonce ; le demarrage, lui, s'executait
+       une decision se prend par quelqu'un. Le bouton "imposer les donnees de
+       cet appareil" le demande et l'annonce ; le demarrage, lui, s'executait
        tout seul au reveil d'un onglet. */
     const app = lireSource('assets/app.js');
     const d = app.indexOf('const cloud = modeDemo()');
@@ -1386,8 +1434,8 @@ suite('Une estampille fraîche ne prouve aucun contenu frais', () => {
   test('un cours rafraîchi ne date pas l’état', () => {
     /* LA CAUSE, et non plus seulement sa consequence. Tant que `Quotes.refresh()`
        estampille `savedAt`, ouvrir l'application suffit a faire passer un
-       appareil pour porteur d'une modification, et la question « qui est en
-       avance ? » reste sans reponse fiable. */
+       appareil pour porteur d'une modification, et la question "qui est en
+       avance ?" reste sans reponse fiable. */
     const store = lireSource('assets/store.js');
     vrai(/if \(!opts\.derive\) this\.state\.meta\.savedAt = horodatageApres\(opts\.apres, this\.state\.meta\.savedAt\);/
       .test(store),
@@ -1417,7 +1465,7 @@ suite('Un compte archivé reste consultable et daté', () => {
   test('l’entrée des archivés mène à leur écran, elle ne déplie plus une liste', () => {
     /* Le groupe repliait une liste de lignes, et chaque ligne ouvrait la fiche
        du compte. C'etait juste tant qu'on ne faisait que LIRE. Depuis que la
-       gestion de ces comptes vit ici — restaurer, supprimer — un groupe ne
+       gestion de ces comptes vit ici -- restaurer, supprimer -- un groupe ne
        suffit plus : ses lignes sont des boutons, et un bouton dans un bouton
        n'existe pas. L'entree mene donc a un ecran, qui porte les gestes. */
     const src = lireSource('assets/app.js');
@@ -1435,7 +1483,7 @@ suite('Un compte archivé reste consultable et daté', () => {
     /* Le bouton avait ete retire de la liste des archives d'Actifs, et pour une
        raison precise : il y etait a portee de pouce ET SANS QUESTION. C'est la
        question qui manquait, et elle vit desormais dans l'acte lui-meme. Le
-       bouton peut donc revenir la ou ces comptes se GERENT — leur ecran — sans
+       bouton peut donc revenir la ou ces comptes se GERENT -- leur ecran -- sans
        que le geste redevienne muet. La page Actifs, elle, ne fait que mener. */
     const src = lireSource('assets/app.js');
     const acte = src.match(/async 'restaurer-compte'\(btn\) \{[\s\S]*?\n  \},/);
@@ -1454,8 +1502,8 @@ suite('Un compte archivé reste consultable et daté', () => {
   });
 
   test('archiver demande la date, restaurer l’efface', () => {
-    /* Un état se déclare, il ne se déduit pas : la date se pose au moment où on
-       la connaît, et un compte rouvert ne peut pas rester « clôturé le… ». */
+    /* Un etat se declare, il ne se deduit pas : la date se pose au moment ou on
+       la connait, et un compte rouvert ne peut pas rester "cloture le...". */
     const src = lireSource('assets/app.js');
     const arch = src.match(/async 'archiver-compte'\(btn\) \{[\s\S]*?\n  \},/);
     vrai(arch, 'l’archivage doit être trouvable');
@@ -1471,9 +1519,9 @@ suite('Un compte archivé reste consultable et daté', () => {
   });
 
   test('la date ne s’affiche et ne s’édite que sur un compte clôturé', () => {
-    /* L'offrir sur un compte ouvert ferait du formulaire une seconde façon de
-       clôturer, muette et sans confirmation — deux surfaces pour un seul fait,
-       et la plus discrète l'emporterait. */
+    /* L'offrir sur un compte ouvert ferait du formulaire une seconde facon de
+       cloturer, muette et sans confirmation -- deux surfaces pour un seul fait,
+       et la plus discrete l'emporterait. */
     const src = lireSource('assets/app.js');
     const fiche = src.match(/function viewFicheCompte\(id\) \{[\s\S]*?\n\}/);
     vrai(fiche, 'la fiche d’un compte doit être trouvable');
@@ -1492,7 +1540,7 @@ suite('Un compte archivé reste consultable et daté', () => {
 });
 
 /* ------------------------------------------------------------------
-   Marchés ne liste plus trois fois les mêmes lignes
+   Marches ne liste plus trois fois les memes lignes
    ------------------------------------------------------------------ */
 suite('Une page ne liste pas trois fois les mêmes positions', () => {
 
@@ -1564,16 +1612,16 @@ suite('Une page ne liste pas trois fois les mêmes positions', () => {
     vrai(/<div class="card-head"><h2>\$\{trad\('Portefeuille'\)\}<\/h2><\/div>/.test(carte),
       'la carte de synthèse porte un titre');
     eq(I18N.en['Portefeuille'], 'Portfolio', 'et il est traduit');
-    /* Le titre nomme, il ne décrit pas : la carte est déjà dense. */
+    /* Le titre nomme, il ne decrit pas : la carte est deja dense. */
     vrai(!/Résumé du portefeuille|Vue d’ensemble des positions|Investissements actuels/.test(vue),
       'et le titre reste un nom, pas une description');
-    /* Rien n'est ajouté à son contenu : les deux barres, le prix de revient et
+    /* Rien n'est ajoute a son contenu : les deux barres, le prix de revient et
        la plus-value latente, et pas un indicateur de plus. */
     vrai(/apercu: 'portefeuille'/.test(carte) && /apercu: 'cashInvestir'/.test(carte),
       'les deux barres et leurs aperçus sont intacts');
-    /* Les deux chiffres sont restés, leur rang a changé : la plus-value monte
-       en tête avec sa propre ligne d'intitulé, le prix de revient recule d'un
-       cran sous elle. « Prix de revient des titres » a perdu son suffixe, qui
+    /* Les deux chiffres sont restes, leur rang a change : la plus-value monte
+       en tete avec sa propre ligne d'intitule, le prix de revient recule d'un
+       cran sous elle. "Prix de revient des titres" a perdu son suffixe, qui
        redisait le sujet de la carte. */
     vrai(/trad\('Plus-value latente'\)/.test(carte) && /label: 'Placements'/.test(carte),
       'la plus-value et la composition sont toujours là');
@@ -1585,7 +1633,7 @@ suite('Une page ne liste pas trois fois les mêmes positions', () => {
 });
 
 /* ------------------------------------------------------------------
-   Un réglage se voit
+   Un reglage se voit
    ------------------------------------------------------------------ */
 suite('L’objectif de dépenses se voit comme un réglage', () => {
 
@@ -1617,8 +1665,8 @@ suite('L’objectif de dépenses se voit comme un réglage', () => {
   });
 
   test('les deux écarts voisins restent en gris', () => {
-    /* C'est le contraste qui désigne. Peindre les trois ferait de l'accent une
-       décoration, et il ne dirait plus lequel se règle. */
+    /* C'est le contraste qui designe. Peindre les trois ferait de l'accent une
+       decoration, et il ne dirait plus lequel se regle. */
     const src = lireSource('assets/app.js');
     const vue = src.match(/function viewBudget\([\s\S]*?\n\}/);
     vrai(vue, 'la vue Budget doit être trouvable');
@@ -1629,14 +1677,14 @@ suite('L’objectif de dépenses se voit comme un réglage', () => {
   });
 
   test('les deux portes de l’objectif mènent au même réglage', () => {
-    /* Le montant de la carte du mois et la barre « Objectif dépenses » ouvrent
-       la même fenêtre. Deux portes sur un même champ sont saines ; deux champs
-       ne le seraient pas, et c'est ce qui avait été retiré. */
+    /* Le montant de la carte du mois et la barre "Objectif depenses" ouvrent
+       la meme fenetre. Deux portes sur un meme champ sont saines ; deux champs
+       ne le seraient pas, et c'est ce qui avait ete retire. */
     const src = lireSource('assets/app.js');
     const portes = src.match(/data-action="regler-objectif-depenses"/g) || [];
-    /* Trois dans le code, deux à l'écran : la brique du mois a une version
-       vide, avant la première dépense, qui porte sa propre porte — et ne se
-       rend jamais en même temps que la pleine. Sans elle, un profil vierge
+    /* Trois dans le code, deux a l'ecran : la brique du mois a une version
+       vide, avant la premiere depense, qui porte sa propre porte -- et ne se
+       rend jamais en meme temps que la pleine. Sans elle, un profil vierge
        sans revenu n'aurait aucun chemin vers l'objectif. */
     eq(portes.length, 3, `trois portes attendues, ${portes.length} trouvée·s`);
     const dv = src.indexOf('function briqueDepensesVide(');
@@ -1650,7 +1698,7 @@ suite('L’objectif de dépenses se voit comme un réglage', () => {
 });
 
 /* ------------------------------------------------------------------
-   La barre du haut revient après un battement, pas au premier tremblement
+   La barre du haut revient apres un battement, pas au premier tremblement
    ------------------------------------------------------------------ */
 suite('La barre du haut ne revient pas au moindre geste', () => {
 
@@ -1688,16 +1736,16 @@ suite('La barre du haut ne revient pas au moindre geste', () => {
       scrollY: 0, innerHeight: hauteur,
       addEventListener: (nom, fn) => { (ecouteurs[nom] = ecouteurs[nom] || []).push(fn); },
     };
-    /* `modalesOuvertes` est passé à zéro : ce contrôle porte sur le geste de
-       lecture, pas sur la garde des fenêtres, qui a sa propre raison d'être. */
+    /* `modalesOuvertes` est passe a zero : ce controle porte sur le geste de
+       lecture, pas sur la garde des fenetres, qui a sa propre raison d'etre. */
     new Function('window', 'document', 'modalesOuvertes', bloc[0])(fenetre, { body: corps }, 0);
 
     return {
       hauteur,
       cachee: () => classes.has('haut-cache'),
       sousPage: () => classes.add('sous-page'),
-      /* Un geste, en une fois : le mécanisme ne compte que des distances, la
-         vitesse ne l'intéresse pas. */
+      /* Un geste, en une fois : le mecanisme ne compte que des distances, la
+         vitesse ne l'interesse pas. */
       vers: y => { fenetre.scrollY = y; (ecouteurs.scroll || []).forEach(fn => fn()); },
       changerDePage: () => (ecouteurs.hashchange || []).forEach(fn => fn()),
     };
@@ -1734,25 +1782,25 @@ suite('La barre du haut ne revient pas au moindre geste', () => {
   });
 
   test('le battement se cumule, et une reprise vers le bas le remet à zéro', () => {
-    /* C'est ce zéro qui distingue lire de vouloir revenir : une remontée hachée
-       de corrections successives ne doit pas finir par déclencher le retour. */
+    /* C'est ce zero qui distingue lire de vouloir revenir : une remontee hachee
+       de corrections successives ne doit pas finir par declencher le retour. */
     const b = barre(900);
     b.vers(1200);
-    for (let i = 1; i <= 4; i++) b.vers(1200 - i * 50);      // 200 px cumulés
+    for (let i = 1; i <= 4; i++) b.vers(1200 - i * 50);      // 200 px cumules
     vrai(b.cachee(), 'quatre corrections de cinquante pixels restent sous le battement');
     b.vers(1050);                                            // on repart vers le bas
     b.vers(1000);
-    b.vers(950);                                             // 100 px, compteur remis à zéro
+    b.vers(950);                                             // 100 px, compteur remis a zero
     vrai(b.cachee(), 'le compteur est reparti de zéro, la barre reste retirée');
 
-    /* Et un vrai geste, lui, la ramène d'un coup. */
+    /* Et un vrai geste, lui, la ramene d'un coup. */
     b.vers(600);
     vrai(!b.cachee(), 'un lancer de trois cent cinquante pixels la ramène');
   });
 
   test('revenir au sommet la ramène sans battement', () => {
-    /* Sinon la page du haut pourrait rester décapitée : sur un écran haut, le
-       tiers demandé peut dépasser ce qui reste à remonter. */
+    /* Sinon la page du haut pourrait rester decapitee : sur un ecran haut, le
+       tiers demande peut depasser ce qui reste a remonter. */
     const b = barre(900);
     b.vers(200);
     vrai(b.cachee(), 'elle est retirée');
@@ -1774,8 +1822,8 @@ suite('La barre du haut ne revient pas au moindre geste', () => {
   });
 
   test('le battement se mesure en fraction d’écran, pas en pixels', () => {
-    /* Sur un iPhone SE et sur une tablette, le même geste couvre une fraction
-       d'écran comparable, pas une distance comparable. */
+    /* Sur un iPhone SE et sur une tablette, le meme geste couvre une fraction
+       d'ecran comparable, pas une distance comparable. */
     const petit = barre(600), grand = barre(1200);
     petit.vers(900); grand.vers(900);
     petit.vers(900 - 250); grand.vers(900 - 250);
@@ -1785,7 +1833,7 @@ suite('La barre du haut ne revient pas au moindre geste', () => {
 });
 
 /* ------------------------------------------------------------------
-   La barre latérale reste, et se laisse parcourir
+   La barre laterale reste, et se laisse parcourir
    ------------------------------------------------------------------ */
 suite('La barre latérale ne s’en va pas avec la page', () => {
 
@@ -1826,12 +1874,12 @@ suite('La barre latérale ne s’en va pas avec la page', () => {
   });
 
   test('la première règle « body » est bien celle de la police', () => {
-    /* Le contrôle de la police des montants cherche « le bloc dont le sélecteur
-       est exactement body », et prend le premier. Il y en a plusieurs — les
-       requêtes média en portent — mais celui de tête doit rester le principal :
-       une règle du même nom glissée avant lui ferait lire autre chose que ce
-       qu'il croit lire. C'est arrivé en écrivant ce correctif, et c'est le test
-       de la police qui l'a attrapé. */
+    /* Le controle de la police des montants cherche "le bloc dont le selecteur
+       est exactement body", et prend le premier. Il y en a plusieurs -- les
+       requetes media en portent -- mais celui de tete doit rester le principal :
+       une regle du meme nom glissee avant lui ferait lire autre chose que ce
+       qu'il croit lire. C'est arrive en ecrivant ce correctif, et c'est le test
+       de la police qui l'a attrape. */
     const nu = cssNuDeLaFeuille();
     const premier = nu.split('}').find(b => b.split('{')[0].trim() === 'body');
     vrai(premier, 'la règle « body » doit exister');
@@ -1841,10 +1889,10 @@ suite('La barre latérale ne s’en va pas avec la page', () => {
   });
 
   test('elle reste collée en haut, et défile en elle-même si elle déborde', () => {
-    /* Deux choses distinctes, et la seconde est l'autre moitié du défaut :
-       dans une fenêtre de 560 px de haut, son contenu en fait 655. Sans
-       défilement interne, le pied — patrimoine net et témoin de sauvegarde —
-       était purement inatteignable. */
+    /* Deux choses distinctes, et la seconde est l'autre moitie du defaut :
+       dans une fenetre de 560 px de haut, son contenu en fait 655. Sans
+       defilement interne, le pied -- patrimoine net et temoin de sauvegarde --
+       etait purement inatteignable. */
     const nu = cssNuDeLaFeuille();
     const regle = nu.split('}').find(b => b.split('{')[0].trim() === '.sidebar'
       && /position:/.test(b));
@@ -1860,7 +1908,7 @@ suite('La barre latérale ne s’en va pas avec la page', () => {
 });
 
 /* ------------------------------------------------------------------
-   Un montant masqué reste un dessin, jamais du balisage en clair
+   Un montant masque reste un dessin, jamais du balisage en clair
    ------------------------------------------------------------------ */
 suite('Le mode masqué n’imprime pas ses balises', () => {
 
@@ -1895,10 +1943,10 @@ suite('Le mode masqué n’imprime pas ses balises', () => {
   });
 
   test('les notes saisies restent échappées', () => {
-    /* L'autre moitié, et elle compte autant : `escMontant` sur une note tapée
+    /* L'autre moitie, et elle compte autant : `escMontant` sur une note tapee
        par l'utilisateur laisserait passer un fragment de balisage si quelqu'un
-       collait le dessin de l'œil dans un commentaire de mois. Ces notes-là
-       gardent l'échappement strict. */
+       collait le dessin de l'oeil dans un commentaire de mois. Ces notes-la
+       gardent l'echappement strict. */
     const src = lireSource('assets/app.js');
     vrai(/\$\{esc\(cur\.note\)\}/.test(src),
       'le commentaire d’un mois est une saisie : il reste échappé');
@@ -1911,7 +1959,7 @@ suite('Le mode masqué n’imprime pas ses balises', () => {
   });
 
   test('escMontant ne laisse passer que ce que nous produisons', () => {
-    /* Le fragment restitué est comparé à celui que nous avons fabriqué, échappé.
+    /* Le fragment restitue est compare a celui que nous avons fabrique, echappe.
        Rien d'autre ne traverse : c'est ce qui distingue cette variante d'un
        simple `innerHTML`. */
     const src = lireSource('assets/app.js');
@@ -1945,7 +1993,7 @@ suite('Le mode masqué n’imprime pas ses balises', () => {
 
     /* Et les canaux des apercus, la ou la photo a ete prise : le sous-titre,
        la note du total et les meta de lignes recoivent des chaines composees
-       par une quarantaine de producteurs — ils passent par escMontant, a
+       par une quarantaine de producteurs -- ils passent par escMontant, a
        l'ouverture comme au rafraichissement. */
     for (const canal of [/#modalSub'\)\.innerHTML = escMontant\(a\.sous/g,
                          /escMontant\(noteApercu\(a\)\)/g,
@@ -1958,7 +2006,7 @@ suite('Le mode masqué n’imprime pas ses balises', () => {
 });
 
 /* ------------------------------------------------------------------
-   L'échelle visuelle est fermée
+   L'echelle visuelle est fermee
 
    Une interface dont aucun coin ne repond au voisin a l'air assemblee, pas
    dessinee. Vingt-trois rayons distincts, seize graisses et des ombres noires
@@ -1977,12 +2025,12 @@ suite('L’échelle visuelle est fermée', () => {
     .replace(/\/\*[\s\S]*?\*\//g, '');
 
   test('les rayons viennent de l’échelle, pas du pifomètre', () => {
-    /* Autorisé : les jetons (var), 0, les pourcentages, les micro-arrondis
-       jusqu'à 4 px (ils suivent la hauteur d'une barre ou d'une coche, pas
-       l'échelle), et 16 px et plus (le tiroir mobile arrondit à 20, un cran
+    /* Autorise : les jetons (var), 0, les pourcentages, les micro-arrondis
+       jusqu'a 4 px (ils suivent la hauteur d'une barre ou d'une coche, pas
+       l'echelle), et 16 px et plus (le tiroir mobile arrondit a 20, un cran
        au-dessus des cartes, et c'est voulu : c'est une surface d'un autre
-       ordre). Interdit : tout rayon nu de 5 à 15 px — il a un jeton — et les
-       pilules écrites 99 ou 999. */
+       ordre). Interdit : tout rayon nu de 5 a 15 px -- il a un jeton -- et les
+       pilules ecrites 99 ou 999. */
     const css = feuille();
     vrai(css, 'assets/styles.css doit être lisible pour ce contrôle');
     const decls = [...css.matchAll(/border-radius:([^;}]*)/g)];
@@ -2000,11 +2048,11 @@ suite('L’échelle visuelle est fermée', () => {
   });
 
   test('les graisses viennent de l’échelle', () => {
-    /* Huit paliers, chacun un rôle : 400 prose, 500 interface, 550 libellé
-       appuyé, 600 accentué, 650 titres et chiffres, 680 titres Manrope, 700
-       gras fort, 720 héros de page. Les 450, 560, 620, 640, 740, 750 et 760
-       qui vivaient entre deux paliers n'étaient pas des nuances : personne ne
-       distingue 640 de 650, et chaque écart était une occasion de diverger. */
+    /* Huit paliers, chacun un role : 400 prose, 500 interface, 550 libelle
+       appuye, 600 accentue, 650 titres et chiffres, 680 titres Manrope, 700
+       gras fort, 720 heros de page. Les 450, 560, 620, 640, 740, 750 et 760
+       qui vivaient entre deux paliers n'etaient pas des nuances : personne ne
+       distingue 640 de 650, et chaque ecart etait une occasion de diverger. */
     const css = feuille();
     const permis = new Set([400, 500, 550, 600, 650, 680, 700, 720]);
     const decls = [...css.matchAll(/font-weight: *(\d+)(?! *\d)/g)];
@@ -2016,12 +2064,12 @@ suite('L’échelle visuelle est fermée', () => {
   });
 
   test('aucune ombre noire écrite en dur : trois niveaux, réglés par thème', () => {
-    /* Un menu, une infobulle et une fenêtre portaient chacun leur propre noir,
-       le même dans les deux thèmes : 45 % de noir sous un menu en thème clair
-       pèse trois fois trop lourd. `--shadow` pose, `--ombre-flottante`
-       détache, `--ombre-fenetre` recouvre — et chaque thème règle sa densité
-       dans son bloc de jetons, seul endroit où le noir a le droit de
-       s'écrire. */
+    /* Un menu, une infobulle et une fenetre portaient chacun leur propre noir,
+       le meme dans les deux themes : 45 % de noir sous un menu en theme clair
+       pese trois fois trop lourd. `--shadow` pose, `--ombre-flottante`
+       detache, `--ombre-fenetre` recouvre -- et chaque theme regle sa densite
+       dans son bloc de jetons, seul endroit ou le noir a le droit de
+       s'ecrire. */
     const css = feuille();
     for (const d of css.matchAll(/box-shadow:([^;}]*)/g)) {
       /* Les biseaux `inset` sont de la matiere, pas de l'elevation : le verre
@@ -2032,8 +2080,8 @@ suite('L’échelle visuelle est fermée', () => {
       vrai(!/rgba\(0, ?0, ?0/.test(d[1]),
         `ombre noire en dur hors jetons : ${d[0].slice(0, 70)}`);
     }
-    /* Et les jetons existent dans les deux thèmes, sans quoi le sombre
-       hériterait des densités du clair. */
+    /* Et les jetons existent dans les deux themes, sans quoi le sombre
+       heriterait des densites du clair. */
     const brut = lireSource('assets/styles.css') || '';
     for (const jeton of ['--ombre-flottante', '--ombre-fenetre']) {
       vrai((brut.match(new RegExp(`${jeton}:`, 'g')) || []).length === 2,
@@ -2042,10 +2090,10 @@ suite('L’échelle visuelle est fermée', () => {
   });
 
   test('les règles d’une tuile vivent une fois', () => {
-    /* Les trois règles de tuile existaient en deux exemplaires contradictoires
-       à quarante lignes d'écart — 23/700 contre 24/620 pour le chiffre. L'écran
-       rendait la fusion des deux, propriété par propriété : retoucher un
-       exemplaire ne changeait que la moitié du rendu, sans erreur nulle part. */
+    /* Les trois regles de tuile existaient en deux exemplaires contradictoires
+       a quarante lignes d'ecart -- 23/700 contre 24/620 pour le chiffre. L'ecran
+       rendait la fusion des deux, propriete par propriete : retoucher un
+       exemplaire ne changeait que la moitie du rendu, sans erreur nulle part. */
     const css = feuille();
     for (const sel of ['.tile .t-label', '.tile .t-value', '.tile .t-meta']) {
       const n = (css.match(new RegExp(sel.replace(/[.]/g, '\\.') + ' *\\{', 'g')) || []).length;
@@ -2054,12 +2102,12 @@ suite('L’échelle visuelle est fermée', () => {
   });
 
   test('l’espacement en ligne suit les paliers 4, 8 et 12', () => {
-    /* 196 styles en ligne dans les gabarits, dont des marges à 6, 10, 12, 14
-       et 16 px pour le même geste — pousser un bloc sous son voisin. Personne
-       ne choisissait entre 10 et 12 : c'était la valeur du jour. Trois paliers
-       suffisent — micro, serré, courant ; au-delà, c'est une classe de la
-       feuille qui décide. Les marges composées (quatre valeurs, ou mêlées à
-       une autre propriété) restent hors du contrôle : elles règlent des cas
+    /* 196 styles en ligne dans les gabarits, dont des marges a 6, 10, 12, 14
+       et 16 px pour le meme geste -- pousser un bloc sous son voisin. Personne
+       ne choisissait entre 10 et 12 : c'etait la valeur du jour. Trois paliers
+       suffisent -- micro, serre, courant ; au-dela, c'est une classe de la
+       feuille qui decide. Les marges composees (quatre valeurs, ou melees a
+       une autre propriete) restent hors du controle : elles reglent des cas
        de mise en page, pas un empilement. */
     const src = lireSource('assets/app.js') || '';
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');

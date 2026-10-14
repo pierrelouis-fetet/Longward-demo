@@ -1,7 +1,7 @@
 partieDeTests('tests/28-les-chiffres-se-lisent.tests.js');
 /* ------------------------------------------------------------------
    Ce qui ne doit pas avoir l'air casse : un separateur de milliers qui se
-   voit, un « de » elide, une encre qui se lit, une porte a toutes les
+   voit, un "de" elide, une encre qui se lit, une porte a toutes les
    largeurs, une cible qui recoit le doigt, et le grand chiffre qui part de
    son dernier releve. Montants fictifs.
    ------------------------------------------------------------------ */
@@ -13,8 +13,8 @@ suite('Les chiffres se lisent, les portes se trouvent', () => {
   };
 
   test('aucun formateur ne rend l’espace fine que Windows efface', () => {
-    /* Segoe UI dessine U+202F sur un ou deux pixels : « 1639 » au lieu de
-       « 1 639 ». Le controle porte sur ce que les formateurs RENDENT, a des
+    /* Segoe UI dessine U+202F sur un ou deux pixels : "1639" au lieu de
+       "1 639". Le controle porte sur ce que les formateurs RENDENT, a des
        montants qui ont des milliers, et en francais, la ou l'espace existe. */
     enLangue('fr', () => {
       const sorties = [fmtEUR(12345.6), fmtEUR0(1234567), fmtPct(1234.5, 1), fmtCur(1234.5, 'USD'),

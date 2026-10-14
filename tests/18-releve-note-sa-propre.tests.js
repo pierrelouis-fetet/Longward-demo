@@ -5,14 +5,14 @@ partieDeTests('tests/18-releve-note-sa-propre.tests.js');
    liquidites : le meme argent dans deux poches selon le point de la courbe. */
 suite('Un relevé note sa propre ventilation', () => {
 
-  /* Ce que « prendre la photo » inscrit : un montant par compte, tel que
+  /* Ce que "prendre la photo" inscrit : un montant par compte, tel que
      `nowValue` le rend. */
   const photo = () => Object.fromEntries(
     ACCOUNTS.map(a => [a.id, round2(nowValue(a.id))]));
   const somme = o => Object.values(o).reduce((s, x) => s + num(x), 0);
 
   test('l’export dit un total qui est vraiment le total', () => {
-    /* « Total net worth » valait `cash + bourse + pe` : trois poches sur sept.
+    /* "Total net worth" valait `cash + bourse + pe` : trois poches sur sept.
        La crypto, l'immobilier, les biens de valeur et le capital garanti en
        etaient absents, et il n'etait pas net non plus. Un fichier qu'on ouvre
        justement pour verifier ne peut pas se tromper sur sa colonne de total. */
@@ -122,7 +122,7 @@ suite('Un relevé note sa propre ventilation', () => {
   });
 
   test('la ventilation se garde compte par compte', () => {
-    /* « Combien de cash sur le PEA en mars ? » ne se repond que si la ligne
+    /* "Combien de cash sur le PEA en mars ?" ne se repond que si la ligne
        garde le detail. Le total global s'en derive ; l'inverse est perdu. */
     Fixture.poser();
     const cpt = Store.state.comptes.find(c => typeCompte(c.type).titres);
@@ -149,9 +149,9 @@ suite('Un relevé note sa propre ventilation', () => {
   test('un compte de l’ancien modèle ne fait pas tomber le calcul', () => {
     /* Une entree orpheline n'a pas de compte derriere elle : `cashCompte` y
        levait une exception des qu'un releve portait un montant dessus. Ce
-       chemin-la existe vraiment — des releves de 2025 en portent. */
+       chemin-la existe vraiment -- des releves de 2025 en portent. */
     Fixture.poser();
-    Store.state.accounts = [{ id: 'c_vieux', label: 'TR PEA (2025)', group: 'bourse' }];
+    Store.state.accounts = [{ id: 'c_vieux', label: 'Ancien PEA (2025)', group: 'bourse' }];
     refreshAccounts();
     const parts = partsDuReleve({ c_vieux: 1500 });
     pres(parts.c_vieux.bourse, 1500,
@@ -178,7 +178,7 @@ suite('Un relevé note sa propre ventilation', () => {
 /* Le deplacement lui-meme : Donnees n'en parle plus, Actifs porte tout. */
 suite('Les anciens comptes se gèrent depuis Actifs, et nulle part ailleurs', () => {
 
-  /* Deux comptes archives — ils ont une fiche, donc ils se restaurent — et une
+  /* Deux comptes archives -- ils ont une fiche, donc ils se restaurent -- et une
      entree de l'ancien modele, qu'un releve mentionne. */
   const poser = () => {
     Fixture.poser();
@@ -216,12 +216,12 @@ suite('Les anciens comptes se gèrent depuis Actifs, et nulle part ailleurs', ()
   });
 
   test('un compte clos n’est pas une anomalie', () => {
-    /* « Ce compte est clos et peut etre supprime » n'est pas un defaut : c'est
+    /* "Ce compte est clos et peut etre supprime" n'est pas un defaut : c'est
        la fin normale de la vie d'un compte. Une page de controles qui liste du
        normal apprend a etre ignoree.
 
        Le controle nomme les comptes de la fixture plutot que de chercher le mot
-       « clos » : un MOIS clos en est un aussi, et le diagnostic a bien le droit
+       "clos" : un MOIS clos en est un aussi, et le diagnostic a bien le droit
        de le reclamer. */
     poser();
     const dits = JSON.stringify(healthChecks() || []);
@@ -291,8 +291,8 @@ suite('Les anciens comptes se gèrent depuis Actifs, et nulle part ailleurs', ()
     vrai(clos.every(x => !x.restaurable), 'le second n’a pas de fiche à rouvrir');
     vrai(!archives.some(x => x.id === 'c_ouvert') && !clos.some(x => x.id === 'c_ouvert'),
       'et un compte ouvert n’entre dans aucune des deux listes');
-    /* UN ETAT, UNE ACTION. Un archive ne porte que « Restaurer », un clos que
-       la poubelle : « Restaurer » a cote d'une poubelle demanderait de choisir
+    /* UN ETAT, UNE ACTION. Un archive ne porte que "Restaurer", un clos que
+       la poubelle : "Restaurer" a cote d'une poubelle demanderait de choisir
        entre garder et detruire sur un compte qu'on a mis de cote pour le
        garder, et les deux etats cesseraient de se distinguer. */
     const l = tranche('const ligne = x => `', 'const section = (titre');
@@ -475,9 +475,8 @@ suite('Un compte clos ne part que si rien ne le retient', () => {
   });
 
   test('aucun total de relevé ne bouge après le retrait', () => {
-    /* L'invariant qui compte, et celui que le detenteur redoutait : « laisse le
-       champ s'il a ete enregistre dans un historique, sinon ça degage les mois
-       suivants ». On mesure avant et apres. */
+    /* L'invariant qui compte, et celui que le detenteur redoutait : un retrait
+       ne doit rien changer aux mois deja enregistres. On mesure avant et apres. */
     poser({ dansReleve: { c_fantome: 250 }, archiveValeur: 400 });
     const avant = Store.state.monthly.map(r => round2(rowTotal(r)));
     const brutAvant = round2(patrimoine().brut);
@@ -583,8 +582,8 @@ suite('Un compte clos que des relevés portent se supprime aussi', () => {
 
   test('le montant saisi reste dans le relevé', () => {
     /* Retirer une fiche n'oblige pas a detruire ce qui a ete saisi ce mois-la.
-       Plus rien ne le lit — les ecrans ne montrent que les comptes qui existent
-       — et il n'est pas efface pour autant. */
+       Plus rien ne le lit -- les ecrans ne montrent que les comptes qui existent
+       -- et il n'est pas efface pour autant. */
     poser({ dansReleve: { c_fantome: 250 } });
     retirerComptesClos(['c_fantome']);
     pres(num(mois().v.c_fantome), 250, 'ce qui a été saisi ce mois-là est toujours là');
@@ -600,7 +599,7 @@ suite('Un compte clos que des relevés portent se supprime aussi', () => {
   });
 
   test('un relevé détaillé par compte garde son détail', () => {
-    /* `parts` est la forme complète : le total s'en dérive, et y toucher
+    /* `parts` est la forme complete : le total s'en derive, et y toucher
        changerait le mois. La suppression ne l'approche pas. */
     poser({ dansReleve: { c_fantome: 250 }, forme: 'parts' });
     const total = round2(rowTotal(mois()));
@@ -613,8 +612,8 @@ suite('Un compte clos que des relevés portent se supprime aussi', () => {
   test('sans identifiant, rien ne part', () => {
     /* Les identifiants sont OBLIGATOIRES, et c'est le garde-fou du geste : la
        suppression se demande depuis la ligne d'un compte, jamais en bloc. Un
-       appel qui n'en nomme aucun ne peut pas se replier sur « tous ceux que
-       rien ne retient » — ce serait exactement le bouton global retire. */
+       appel qui n'en nomme aucun ne peut pas se replier sur "tous ceux que
+       rien ne retient" -- ce serait exactement le bouton global retire. */
     poser({ dansReleve: { c_fantome: 250 } });
     Store.state.comptes.push({ id: 'c_clos', type: 'courant', label: 'Vieux livret',
       statut: 'archive', cash: [], lignes: [] });
@@ -672,8 +671,8 @@ suite('Un zéro saisi n’est pas un champ vide', () => {
 
   test('les mois loués : vide vaut douze, zéro vaut zéro', () => {
     /* `num(compte.moisLoues) || 12` rendait douze sur un zero saisi : un bien
-       vide toute l'annee se voyait prêter douze mois de loyer, et son rendement
-       affichait le plein. Le pire sens de l'erreur — il flatte. */
+       vide toute l'annee se voyait preter douze mois de loyer, et son rendement
+       affichait le plein. Le pire sens de l'erreur -- il flatte. */
     for (const [saisi, attendu, quoi] of [
       [undefined, 12, 'absent'], ['', 12, 'vide'], [null, 12, 'nul'],
       [0, 0, 'zéro reste zéro'], ['0', 0, 'zéro en texte aussi'],
@@ -726,7 +725,7 @@ suite('Un zéro saisi n’est pas un champ vide', () => {
   test('un prêt familial à 0 % s’amortit tout droit', () => {
     /* `num(d.taux) &&` ecartait ce pret de deux lignes de la carte des credits :
        il perdait son taux et sa part de capital, alors que sa mensualite
-       rembourse du capital — toute sa mensualite, meme. */
+       rembourse du capital -- toute sa mensualite, meme. */
     Fixture.poser();
     const d = credit({ taux: 0, mensualite: 500, montant: 10000, initial: 12000 });
     const e = echeancierCredit(d);
@@ -757,7 +756,7 @@ suite('Un zéro saisi n’est pas un champ vide', () => {
 
   test('avec un taux déclaré à zéro, la projection projette', () => {
     /* Le pendant du controle precedent : zero est un taux, et un pret a zero se
-       projette parfaitement — c'est meme le cas le plus simple. */
+       projette parfaitement -- c'est meme le cas le plus simple. */
     Fixture.poser();
     const d = credit({ taux: 0, mensualite: 500, montant: 10000,
                        verifieLe: '2026-01-01' });
@@ -770,7 +769,7 @@ suite('Un zéro saisi n’est pas un champ vide', () => {
   test('les deux moteurs répondent la même chose sur le même crédit', () => {
     /* La regle qui gouverne tout ce chantier : jamais deux moteurs pour une
        meme donnee. Sur chacun de ces trois etats du taux, l'echeancier et la
-       projection doivent etre d'accord sur la question « sait-on amortir ? ». */
+       projection doivent etre d'accord sur la question "sait-on amortir ?". */
     Fixture.poser();
     for (const [taux, quoi] of [[undefined, 'taux absent'], [0, 'taux à zéro'],
                                 [1.55, 'taux positif']]) {
@@ -836,8 +835,8 @@ suite('Un crédit sait quel bien il finance', () => {
 
   test('un lien mort ou dépaysé se signale, et la dette reste comptée', () => {
     /* Trois defauts, aucun ne se devine. Dans les trois cas la dette reste dans
-       le patrimoine net — c'est de l'argent qu'on doit, quel que soit l'etat du
-       lien — mais elle n'est attribuee a aucun bien. */
+       le patrimoine net -- c'est de l'argent qu'on doit, quel que soit l'etat du
+       lien -- mais elle n'est attribuee a aucun bien. */
     deuxBiens([PRET({ bienId: 'c_efface' })]);
     const morts = creditsAClarifier();
     eq(morts.length, 1, 'le lien vers un compte disparu se voit');
@@ -875,7 +874,7 @@ suite('Un crédit sait quel bien il finance', () => {
 
   test('un seul compte chez le prêteur : ses crédits le financent', () => {
     /* Le repli des donnees d'avant, et il n'est pas une supposition : c'est la
-       seule lecture possible. Plusieurs credits sur un meme bien sont normaux —
+       seule lecture possible. Plusieurs credits sur un meme bien sont normaux --
        un pret principal et un pret travaux. */
     Fixture.poser(s => {
       s.etabs = [{ id: 'e_bq', nom: 'Banque', notes: '', dettes: [
@@ -894,8 +893,8 @@ suite('Un crédit sait quel bien il finance', () => {
   });
 
   test('la migration pose le lien quand il ne fait aucun doute, et jamais sinon', () => {
-    /* Elle ne change aucun chiffre dans le cas simple — c'est deja ce que le
-       repli rend — mais elle fige le lien avant qu'un second bien n'arrive et
+    /* Elle ne change aucun chiffre dans le cas simple -- c'est deja ce que le
+       repli rend -- mais elle fige le lien avant qu'un second bien n'arrive et
        ne rende la lecture ambigue. */
     deuxBiens([PRET()]);
     Store.migrate();
@@ -918,7 +917,7 @@ suite('Un crédit sait quel bien il finance', () => {
   test('la fiche ouvre le bon crédit, malgré le filtre', () => {
     /* Le rang d'un credit sert a l'ecrire. Filtrer la liste sans retrouver le
        rang dans les dettes de l'ETABLISSEMENT ferait modifier le credit du
-       voisin — le defaut classique d'un index pris dans une liste derivee. */
+       voisin -- le defaut classique d'un index pris dans une liste derivee. */
     deuxBiens([{ id: 'd_park', libelle: 'Prêt parking', montant: 5000,
                  mensualite: 80, bienId: 'c_park' }, PRET({ bienId: 'c_appt' })]);
     const cf = cashFlowBien(compteById('c_appt'));
@@ -931,7 +930,7 @@ suite('Un crédit sait quel bien il finance', () => {
   test('un crédit mal rattaché déclenche une alerte de cohérence', () => {
     /* Une fonction qui ne sert nulle part ne protege de rien : le controle doit
        parler, sinon la dette reste invisible sur toutes les fiches sans que rien
-       ne le signale — le pire genre d'erreur, un chiffre faux que rien ne
+       ne le signale -- le pire genre d'erreur, un chiffre faux que rien ne
        trahit. */
     deuxBiens([PRET()]);
     const dits = healthChecks().filter(c => /non rattaché/.test(c.title || ''));
@@ -960,7 +959,7 @@ suite('Un crédit sait quel bien il finance', () => {
 
 /* Trois gestes qui effacent, et une seule regle : rien ne doit garder une
    reference vers ce qui n'existe plus. Une reference morte ne se voit nulle
-   part — c'est le pire genre d'erreur, un chiffre faux que rien ne trahit. */
+   part -- c'est le pire genre d'erreur, un chiffre faux que rien ne trahit. */
 suite('Aucune référence ne survit à ce qu’elle désigne', () => {
 
   /* Un preteur, deux biens, un credit sur le premier, et sa charge. */
@@ -1031,7 +1030,7 @@ suite('Aucune référence ne survit à ce qu’elle désigne', () => {
   });
 
   test('un bien supprimé ne laisse ni loyer ni charge rattachés au vide', () => {
-    /* Les flux restent — ce sont de vrais mouvements du budget — mais ils
+    /* Les flux restent -- ce sont de vrais mouvements du budget -- mais ils
        cessent de designer un compte disparu. */
     poser();
     const n = delierDuBien('c_appt');
@@ -1089,8 +1088,8 @@ suite('Aucune référence ne survit à ce qu’elle désigne', () => {
   });
 });
 
-/* Trois questions vivaient eparpillees dans les vues — l'usage est-il rempli, y
-   a-t-il un loyer, que montrer sinon — et chacune repondait a sa facon.
+/* Trois questions vivaient eparpillees dans les vues -- l'usage est-il rempli, y
+   a-t-il un loyer, que montrer sinon -- et chacune repondait a sa facon.
    `usageEffectifBien` les rejoint, et dit toujours d'ou vient sa reponse. */
 suite('L’usage d’un bien dit toujours d’où il vient', () => {
 
@@ -1265,8 +1264,8 @@ suite('Le choix de l’usage doit être un vrai choix', () => {
 
   test('le select de création ne choisit pas à la place du détenteur', () => {
     /* `requis: true` sans option vide ne protege de rien : un select rend son
-       premier choix des l'ouverture, et USAGES_BIEN commence par « Mis en
-       location ». Un bien cree sans toucher au champ naissait donc locatif. */
+       premier choix des l'ouverture, et USAGES_BIEN commence par "Mis en
+       location". Un bien cree sans toucher au champ naissait donc locatif. */
     eq(USAGES_BIEN[0][0], 'locative',
       'la liste commence par le locatif : c’est ce que le select aurait rendu');
     const src = lireSource('assets/app.js');
@@ -1353,7 +1352,7 @@ suite('Le choix de l’usage doit être un vrai choix', () => {
   });
 });
 
-/* Une cascade se lit ; un cash-flow isole se subit. « −15 EUR » tout seul ne se
+/* Une cascade se lit ; un cash-flow isole se subit. "-15 EUR" tout seul ne se
    verifie contre rien, et personne ne sait s'il faut s'en inquieter. */
 suite('Un bien loué montre ses flux en cascade', () => {
 
@@ -1445,7 +1444,7 @@ suite('Un bien loué montre ses flux en cascade', () => {
     vrai(x.cashFlow !== x.loyers - x.vacanceEuros - x.charges - x.mensualite - x.impot,
       'et surtout pas deux : ce calcul-là donnerait un autre chiffre');
     /* A l'ecran : la vacance s'ecrit une fois, et le loyer retenu est un
-       SOUS-TOTAL — il ferme les lignes du dessus au lieu de s'y ajouter. */
+       SOUS-TOTAL -- il ferme les lignes du dessus au lieu de s'y ajouter. */
     const lignes = bloc('lignesDuMois');
     eq((lignes.match(/cf\.vacanceEuros/g) || []).length, 2,
       'la vacance n’apparaît qu’à sa garde et à sa ligne');
@@ -1464,7 +1463,7 @@ suite('Un bien loué montre ses flux en cascade', () => {
     /* A l'ecran, il est dans son propre bloc, hors de la liste qui totalise. */
     const carte = bloc('carteLocatif');
     /* Ancre sur la MISE EN FORME du total et non sur son libelle : celui-ci dit
-       « avant » ou « apres fiscalite » selon ce qu'on en sait. */
+       "avant" ou "apres fiscalite" selon ce qu'on en sait. */
     const iTotal = carte.indexOf('${cls(cf.cashFlow)}');
     vrai(iTotal > 0, 'le cash-flow doit être trouvable');
     /* La mesure part du cash-flow et non du debut de la fonction : la branche
@@ -1497,7 +1496,7 @@ suite('Un bien loué montre ses flux en cascade', () => {
     vrai(iCash > 0 && iBrut > iCash, 'le cash-flow précède les rendements');
     vrai(/<dd class="\$\{cls\(cf\.cashFlow\)\}"><b>/.test(carte),
       'lui seul est en gras et coloré');
-    /* « Net d'impot » annonçait une verite forte que la fiscalite actuelle ne
+    /* "Net d'impot" annoncait une verite forte que la fiscalite actuelle ne
        porte pas : elle est declarative, pas modelisee. Le libelle le dit. */
     vrai(!/Net d'impôt/.test(carte), 'l’ancien libellé, trop affirmatif, est parti');
     vrai(/Rendement après fiscalité/.test(carte), 'le nouveau reste honnête, et court');
@@ -1510,7 +1509,7 @@ suite('Un bien loué montre ses flux en cascade', () => {
        cette carte : quatre pourcentages sous une cascade de sept lignes font une
        carte qu'on ne parcourt plus, et celui-la repondait a une question
        d'investisseur quand les trois autres decrivent le bien. Le modele le
-       calcule toujours, l'apport se lit dans « Financement ». */
+       calcule toujours, l'apport se lit dans "Financement". */
     vrai(!/Rendement sur apport/.test(carte), 'le quatrième a quitté la carte');
     vrai(!/cashOnCash/.test(carte), 'et son calcul avec lui');
     eq((carte.match(/ligneRendement\(\{/g) || []).length, 3,
@@ -1550,9 +1549,9 @@ suite('Un bien loué montre ses flux en cascade', () => {
   });
 
   test('la pierre papier a sa propre fiche, et n’emprunte plus celle du locatif', () => {
-    /* Elle prenait la carte du bien loue en direct : « Loyer potentiel »,
-       « Vacance moyenne », « Mois loues par an » sur une SCPI. Or sa societe de
-       gestion porte deja tout cela et distribue NET de sa propre vacance —
+    /* Elle prenait la carte du bien loue en direct : "Loyer potentiel",
+       "Vacance moyenne", "Mois loues par an" sur une SCPI. Or sa societe de
+       gestion porte deja tout cela et distribue NET de sa propre vacance --
        saisir la sienne l'aurait retranchee une seconde fois. */
     bien({ type: 'scpi', usage: null, loyer: 900 });
     eq(estBienEnDirect(compteById('c_b')), false, 'une SCPI n’est pas détenue en direct');
@@ -1606,15 +1605,15 @@ suite('Les usages qu’on ne peut pas trancher ne se tranchent pas', () => {
       .test(bloc('carteUsageBien')), 'un usage sans carte tombe sur la carte neutre');
     const neutre = bloc('carteUsageInconnu');
     vrai(/trad\('Usage du bien'\)/.test(neutre), 'elle se nomme');
-    /* Et n'offre AUCUN bouton : le bandeau du haut porte deja « Choisir
-       l'usage », et deux boutons identiques sur un meme ecran font douter qu'ils
+    /* Et n'offre AUCUN bouton : le bandeau du haut porte deja "Choisir
+       l'usage", et deux boutons identiques sur un meme ecran font douter qu'ils
        fassent la meme chose. */
     vrai(!/data-action="choisir-usage"/.test(neutre), 'sans reposer la question du bandeau');
     for (const mot of ['Rendement', 'Cash-flow', 'Total payé', 'Vacance', 'moisLoues'])
       vrai(!new RegExp(mot).test(neutre.replace(/\/\*[\s\S]*?\*\//g, '')),
         `« ${mot} » suppose une réponse qui n’a pas été donnée`);
     /* Rien ne disparait pour autant : la mensualite et les charges restent
-       lisibles dans « Financement » et dans le budget. */
+       lisibles dans "Financement" et dans le budget. */
     pres(coutBien(compteById('c_b')).totalSorties, 1250, 'le coût reste calculable');
     pres(round2(budgetFrame().fixed), 250, 'et le budget est intact');
   });
@@ -1638,8 +1637,8 @@ suite('Les usages qu’on ne peut pas trancher ne se tranchent pas', () => {
   });
 
   test('un ancien bien déduit locatif garde son écran, et demande confirmation', () => {
-    /* Le comportement historique est preserve — ces fiches affichaient un
-       rendement, elles continuent — mais l'ecran dit que c'est une DEDUCTION, et
+    /* Le comportement historique est preserve -- ces fiches affichaient un
+       rendement, elles continuent -- mais l'ecran dit que c'est une DEDUCTION, et
        rien n'est ecrit dans les donnees tant que personne n'a tranche. */
     bien({ usages: [''], loyer: 900 });
     const u = usageEffectifBien(compteById('c_b'));
@@ -1742,8 +1741,8 @@ suite('Changer la fiche d’un bien ne change pas le patrimoine', () => {
   });
 });
 
-/* La pierre papier portait la fiche du locatif : « Loyer potentiel », « Vacance
-   moyenne », « Mois loues par an » sur une SCPI. Or sa societe de gestion porte
+/* La pierre papier portait la fiche du locatif : "Loyer potentiel", "Vacance
+   moyenne", "Mois loues par an" sur une SCPI. Or sa societe de gestion porte
    deja tout cela, et distribue NET de sa propre vacance : saisir la sienne
    l'aurait retranchee une seconde fois. */
 suite('Un placement immobilier n’est pas un appartement', () => {
@@ -1779,7 +1778,7 @@ suite('Un placement immobilier n’est pas un appartement', () => {
     vrai(!/carteLocatif/.test(aiguillage.slice(0, aiguillage.indexOf('usageEffectifBien'))),
       'et plus celle du bien loué en direct');
     /* La distinction vient du MODELE : `bienImmo` sans `direct`. Aucune liste de
-       noms, aucun libelle — un support ajoute demain entre tout seul. */
+       noms, aucun libelle -- un support ajoute demain entre tout seul. */
     const src = lireSource('assets/store.js');
     vrai(/const estImmoEnDirect = t => !!t && !!t\.bienImmo && estDetenuEnDirect\(t\);/.test(src),
       'la frontière est celle des drapeaux du type');
@@ -1803,7 +1802,7 @@ suite('Un placement immobilier n’est pas un appartement', () => {
     const fiche = bloc('cartePierrePapier');
     vrai(/\$\{boutonsPierrePapier\(c\)\}/.test(fiche),
       'le placement a ses propres boutons');
-    /* Le mot decide de ce qu'on croit devoir saisir, et « Loyer » reste au bien
+    /* Le mot decide de ce qu'on croit devoir saisir, et "Loyer" reste au bien
        loue en direct. Deux fonctions plutot qu'un helper a trois libelles :
        chacune se lit d'un coup. */
     const pp = bloc('boutonsPierrePapier');
@@ -1815,7 +1814,7 @@ suite('Un placement immobilier n’est pas un appartement', () => {
     vrai(/usage !== 'locative' \? '' :/.test(boutons),
       '« Loyer » reste réservé au bien loué en direct');
     /* La fenetre elle-meme suit le modele : on ne demande pas a une SCPI son
-       « loyer hors charges recuperables ». */
+       "loyer hors charges recuperables". */
     const src = lireSource('assets/app.js');
     const action = src.slice(src.indexOf("async 'ajouter-loyer'(btn) {"),
                              src.indexOf("async 'ajouter-charge-bien'(btn) {"));
@@ -1829,7 +1828,7 @@ suite('Un placement immobilier n’est pas un appartement', () => {
     placement({ revenu: 900 });
     eq(usageEffectifBien(compteById('c_p')).action, null, 'même avec un revenu rattaché');
     /* Et le select d'usage disparait de ses lignes : il y etait pose sur chacune
-       d'elles, proposant « Residence principale » a des parts de SCPI. */
+       d'elles, proposant "Residence principale" a des parts de SCPI. */
     const src = lireSource('assets/app.js');
     const espace = src.slice(src.indexOf('function espaceBien'),
                              src.indexOf('function barreValiderFiche'));
@@ -1874,9 +1873,9 @@ suite('Un placement immobilier n’est pas un appartement', () => {
   });
 });
 
-/* Zero et l'inconnu s'ecrivaient pareil : « 0,00 % » sur un bien sans base, et
+/* Zero et l'inconnu s'ecrivaient pareil : "0,00 %" sur un bien sans base, et
    rien du tout sur un capital rembourse reellement nul. Les deux erreurs sont
-   symetriques — l'une invente une mesure, l'autre efface une reponse. */
+   symetriques -- l'une invente une mesure, l'autre efface une reponse. */
 suite('Zéro est une réponse, l’inconnu n’en est pas une', () => {
 
   const bloc = (nom) => {
@@ -1904,8 +1903,8 @@ suite('Zéro est une réponse, l’inconnu n’en est pas une', () => {
   const cf = () => cashFlowBien(compteById('c_b'));
 
   test('sans base, le rendement n’existe pas — il ne vaut pas zéro', () => {
-    /* « 0,00 % » dit « le rendement est nul ». Sans valeur estimee ni prix paye,
-       la verite est « on ne sait pas sur quoi le calculer », et ecrire zero fait
+    /* "0,00 %" dit "le rendement est nul". Sans valeur estimee ni prix paye,
+       la verite est "on ne sait pas sur quoi le calculer", et ecrire zero fait
        passer une donnee absente pour une mesure : un chiffre s'affiche, donc
        personne ne cherche. */
     bien({ valeur: 0, achat: 0, charges: [{ label: 'Taxe', amount: 250,
@@ -2040,7 +2039,7 @@ suite('La valeur nette et le choix de l’usage ne se disent qu’une fois', () 
   test('un bien sans dette a une valeur nette, et elle vaut sa valeur', () => {
     /* Elle ne s'affichait qu'avec un credit : la ligne la plus importante de la
        fiche disparaissait chez qui a fini de rembourser. La valeur nette d'un
-       bien sans dette n'est pas « sans objet », elle vaut sa valeur. */
+       bien sans dette n'est pas "sans objet", elle vaut sa valeur. */
     bien({ credit: 0 });
     pres(round2(patrimoine().brut), 350000, 'le bien vaut trois cent cinquante mille');
     pres(round2(dettesTotal()), 0, 'et ne doit rien');
@@ -2077,7 +2076,7 @@ suite('La valeur nette et le choix de l’usage ne se disent qu’une fois', () 
     vrai(/Les indicateurs mensuels apparaîtront une fois l’usage précisé/.test(carte),
       'elle dit seulement ce qui attend');
     vrai(/Le choix se fait en haut de cette fiche/.test(carte), 'et où le faire');
-    /* Un seul « choisir-usage » sur toute la fiche d'un bien : le bandeau. */
+    /* Un seul "choisir-usage" sur toute la fiche d'un bien : le bandeau. */
     const fiche = src.slice(src.indexOf('function espaceBien'),
                             src.indexOf('function barreValiderFiche'))
       + src.slice(src.indexOf('function carteUsageInconnu'),

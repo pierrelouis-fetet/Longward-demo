@@ -5,9 +5,9 @@ partieDeTests('tests/39-synchronisation.tests.js');
    `cloudsync.js` et `quotes.js` s'evaluent dans un bac a sable : un faux
    serveur qui applique la regle de base du worker KV, un faux stockage, un faux
    `sendBeacon` dont on livre le corps quand on veut. Aucune requete ne part, et
-   le stockage reel de cette origine n'est jamais touche. Les relectures de
-   source qui gardaient ces chemins ne jouaient aucune rencontre entre deux
-   etats ; celles-ci les jouent.
+   le stockage reel de cette origine n'est jamais touche. Une relecture de
+   source ne jouerait aucune rencontre entre deux etats ; ces tests les
+   jouent.
    ------------------------------------------------------------------ */
 const BacASable = (() => {
   function stockage() {
@@ -363,7 +363,7 @@ suite('Le témoin suit le corps, pas seulement la date', () => {
 });
 
 /* --- Le protocole des revisions ------------------------------------------------
-   La filiation se prouve par le jeton que le serveur rend, plus par la date. */
+   La filiation se prouve par le jeton que le serveur rend, et non par la date. */
 suite('La revision vient du serveur, et chaque ecriture dit son protocole', () => {
   test('aucune écriture ne part sans proto=2, beacon compris', async () => {
     const { srv, store, cs } = await appareilAligne({ beacon: () => true });
@@ -768,8 +768,9 @@ suite('Un cours qui change de devise prend son propre change', () => {
   });
 
   test('un taux sans provenance ne sert pas, même sous une marque globale à jour', async () => {
-    /* L'etat que laissait l'ancien rafraichissement : un taux garde d'une
-       autre devise, une marque globale a jour, aucune marque de ligne. */
+    /* Un etat stocke peut porter un taux garde d'une autre devise, une marque
+       globale a jour, et aucune marque de ligne : ce taux-la n'a pas de
+       provenance. */
     Fixture.poser(s => {
       s.quotes = { fxBase: 'EUR' };
       const p = s.positions.find(x => x.id === 'p_etf'); p.currency = 'USD'; p.fx = 1.17;

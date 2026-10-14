@@ -618,6 +618,7 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
    largeur de la carte. */
 .chart > svg { display: block; width: 100%; height: auto; overflow: visible; }
 .chart { contain: paint; }
+.chart.chart-debord { contain: none; }
 
 /* Le graphique n'a pas de garde a lui contre la selection : la regle de
    `body`, en tete de fichier, couvre le dessin, ses etiquettes d'axe et la
@@ -651,6 +652,12 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 .tt-total { border-top: 1px solid var(--grid); margin-top: 5px; padding-top: 5px; font-weight: 600; }
 .tt-note { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--grid); color: var(--muted); font-size: var(--font-sm); white-space: normal; max-width: 260px; }
 .sw { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+/* Le mois par mois d'une categorie, dans sa bulle : la couleur du texte
+   porte les barres (`currentColor`), celle de la ligne le mois le plus haut. */
+.tt-mois { display: block; margin: 8px 0 2px; color: var(--text-secondary); overflow: visible; }
+.tt-mois-lettre { font-size: var(--font-xs); fill: var(--muted); }
+.tt-haut { white-space: nowrap; }
+.vb.actif .vb-colonne { fill: color-mix(in oklab, var(--text-primary) 7%, transparent); }
 
 /* --- La bulle de la sparkline : deux lignes, et rien de plus ----------------
 

@@ -643,7 +643,7 @@ Object.assign(I18N.en, {
     "Aucun compte, ne pas toucher aux espèces": "No account, leave the cash alone",
     "Indices": "Indices",
     "La plus-value est calculée sur ton prix de revient": "The gain is measured against your cost basis",
-    "ex. Total, vendu sur l’ancien PEA": "e.g. Total, sold from the old PEA",
+    "ex. Une action vendue sur l’ancien PEA": "e.g. A share sold from the old PEA",
     "Ajouter au journal": "Add to the log",
     "Vente": "Sale",
     "C’est le cours d’aujourd’hui, pas celui de cette date. Corrige-le, ou choisis « une vente passée » : elle demande le montant encaissé, qui ne vieillit pas.":
@@ -943,7 +943,7 @@ Object.assign(I18N.en, {
     "sur.etape": "of",
     "cela détermine les placements possibles": "this decides which holdings are possible",
     "Prêteur": "Lender",
-    "ex. Rolex Submariner": "e.g. Rolex Submariner",
+    "ex. Montre de collection": "e.g. Collector watch",
     "Ajouter cette part": "Add this share",
     "Son nom, tel qu’il s’affichera partout.": "Its name, as it will show everywhere.",
     "À quel bien le rattacher ?": "Which property to attach it to?",
@@ -1345,7 +1345,7 @@ Object.assign(I18N.en, {
     "Valeur de la participation": "Value of the stake",
     "ce que cela vaut aujourd’hui": "what it is worth today",
     "ex. Prêt immobilier": "e.g. Mortgage",
-    "ex. Loyer studio Lyon": "e.g. Studio rent",
+    "ex. Loyer du studio": "e.g. Studio rent",
     "Loyer de {v}": "Rent from {v}",
     "Plan d’épargne logement (PEL)": "Home savings plan (PEL)",
     "Un retrait clôture le plan : l’argent arrive en quelques jours. Versements plafonnés à 61 200 €. Les droits à prêt dépendent de l’âge du plan.": "A withdrawal closes the plan: the money arrives within a few days. Payments are capped at €61,200. Loan rights depend on the plan's age.",
@@ -1683,6 +1683,9 @@ Object.assign(I18N.en, {
     "Télécharge-la d’abord si tu veux la garder : cette suppression ne s’annule pas.": "Download it first if you want to keep it: this deletion cannot be undone.",
     "Change {c} indisponible": "{c} exchange rate unavailable",
     "Ne plus demander {m} ce mois-ci": "Stop asking about {m} this month",
+    "Le plus haut": "Highest",
+    "vs {a}": "vs {a}",
+    "vs {a}, mêmes mois": "vs {a}, same months",
 });
 
 function t(cle, repli) {

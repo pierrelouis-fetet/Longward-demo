@@ -1,23 +1,23 @@
-/* Harnais de test minimal, sans dépendance ni étape de compilation.
+/* Harnais de test minimal, sans dependance ni etape de compilation.
 
    Le projet n'a ni npm ni Node : il tient dans des balises <script> et se sert
-   par `serve.py`. Un lanceur de tests importé du dehors aurait ajouté à lui
-   seul plus de machinerie que le code qu'il vérifie. Cinquante lignes
-   suffisent à ce dont on a besoin — grouper, comparer, compter.
+   par `serve.py`. Un lanceur de tests importe du dehors aurait ajoute a lui
+   seul plus de machinerie que le code qu'il verifie. Cinquante lignes
+   suffisent a ce dont on a besoin -- grouper, comparer, compter.
 
-   Les assertions lèvent une exception : le premier échec arrête le cas de test
-   et le suivant démarre. Un test qui continue après un échec produit des
-   cascades d'erreurs dérivées qui masquent la vraie. */
+   Les assertions levent une exception : le premier echec arrete le cas de test
+   et le suivant demarre. Un test qui continue apres un echec produit des
+   cascades d'erreurs derivees qui masquent la vraie. */
 const Tests = (() => {
   const suites = [];
   let courante = null;
 
   /* Le corps de la suite est retenu sous forme de texte. C'est ce qui permet de
-     savoir quels fichiers elle lit — `lireSource('assets/app.js')` — sans tenir
+     savoir quels fichiers elle lit -- `lireSource('assets/app.js')` -- sans tenir
      de liste a cote, qui divergerait au premier deplacement de test. La regle
      de la maison vaut ici comme ailleurs : une liste se derive. */
   function suite(nom, fn) {
-    /* La partie qui declare la suite : `--touche tests/NN-…` choisit celles
+    /* La partie qui declare la suite : `--touche tests/NN-...` choisit celles
        qu'on vient d'ecrire, qui ne lisent pas forcement leur propre fichier. */
     const partie = typeof PARTIE_DE_TESTS_COURANTE === 'undefined' ? null : PARTIE_DE_TESTS_COURANTE;
     courante = { nom, cas: [], source: String(fn), partie };
@@ -31,9 +31,9 @@ const Tests = (() => {
     courante.cas.push({ nom, fn });
   }
 
-  /* Les montants ne se comparent jamais au bit près : 0,1 + 0,2 vaut
+  /* Les montants ne se comparent jamais au bit pres : 0,1 + 0,2 vaut
      0,30000000000000004 en virgule flottante, et un patrimoine se somme sur
-     des dizaines de lignes. Un demi-centime de tolérance. */
+     des dizaines de lignes. Un demi-centime de tolerance. */
   const TOLERANCE = 0.005;
 
   function nombre(v) {
@@ -63,10 +63,10 @@ const Tests = (() => {
     if (!a) throw new Error(`${message}\n  aucune exception levée`);
   }
 
-  /* `await` sur chaque cas, et le lanceur devient asynchrone. Sans lui, un test
-     asynchrone etait compte vert avant de s'executer et sa promesse rejetee
-     partait dans le vide : le harnais affirmait le contraire de ce qu'il
-     mesurait. Un `await` sur une valeur qui n'est pas une promesse ne coute
+  /* `await` sur chaque cas, et le lanceur est asynchrone. Sans lui, un test
+     asynchrone serait compte vert avant de s'executer et sa promesse rejetee
+     partirait dans le vide : le harnais affirmerait le contraire de ce qu'il
+     mesure. Un `await` sur une valeur qui n'est pas une promesse ne coute
      rien, donc les cas synchrones ne changent pas de comportement. */
   /* Choisir un sous-ensemble de suites.
 
@@ -81,7 +81,7 @@ const Tests = (() => {
      designe.
 
      Une selection vide est une erreur, pas un vert : un motif qui ne matche
-     rien rendrait « 0 test » avec une coche, ce qui est le pire des verts. */
+     rien rendrait "0 test" avec une coche, ce qui est le pire des verts. */
   function choisir({ nom = '', touche = '' } = {}) {
     let choix = suites;
     if (nom) {
@@ -110,7 +110,7 @@ const Tests = (() => {
     const partiel = !!(selection.nom || selection.touche);
     const choix = choisir(selection);
     /* Cibler la partie manquante elle-meme vide la selection : le verdict doit
-       alors nommer la partie, pas se contenter de « aucune suite ». */
+       alors nommer la partie, pas se contenter de "aucune suite". */
     if (partiel && !choix.length && !manquantes.length) {
       throw new Error(`aucune suite ne correspond a ${JSON.stringify(selection)}`);
     }

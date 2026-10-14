@@ -64,7 +64,7 @@ suite('Arbitrages : types et parcours', () => {
     const pourImmo = ids('immo');
     vrai(pourImmo.includes('e_bien') && !pourImmo.includes('e_banque') && !pourImmo.includes('e_assur'),
       'un bien ne se range que chez un bien');
-    /* Le couple final se controle dans « Modifier » : une plateforme qui porte
+    /* Le couple final se controle dans "Modifier" : une plateforme qui porte
        une part de societe n'accepte pas un contrat. */
     Fixture.poser(s => s.comptes.push({ id: 'c_pe2', etabId: 'e_pe', type: 'pe', statut: 'ouvert', ouvertLe: '',
       numero: '', notes: '', libelle: 'Parts', court: 'Parts', alloc: '', cash: [], lignes: [] }));

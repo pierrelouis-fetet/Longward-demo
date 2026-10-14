@@ -243,7 +243,7 @@ suite('La partie compte : les comptes et leurs textes', () => {
 
   test('ce qui s’affichait en français dans les deux langues se traduit', () => {
     for (const c of ['Placement dans {v}', 'Valeur du bien', 'Valeur de la participation', 'ce que cela vaut aujourd’hui',
-                     'ex. Prêt immobilier', 'ex. Loyer studio Lyon', 'Loyer de {v}',
+                     'ex. Prêt immobilier', 'ex. Loyer du studio', 'Loyer de {v}',
                      'seulement si tu renseignes une mensualité : elle entrera dans ton budget sous ce nom',
                      'facultatif. Mieux : rattache-le à une charge fixe, le montant ne sera alors saisi qu’une fois',
                      'facultatif, environ 0,3 % du capital emprunté : elle sort de la mensualité sans rembourser',

@@ -36,11 +36,20 @@ function mountBudget() {
    mois". */
 function barresCategories(year) {
   const cats = expenseByCategory(year);
-  if (!depCatsParMois) return { items: cats.filter(c => Math.abs(c.value) > 0.005) };
+  /* La bulle d'une barre apprend ce que la barre ne dit pas : le mois par
+     mois de sa categorie et l'ecart avec l'an dernier, dans la lecture
+     choisie. Le calcul vit dans `detailCategorie`, ou il se teste. */
+  const detail = c => {
+    const d = detailCategorie(year, c.label, depCatsParMois);
+    return d ? { serie: d.mois, plusHaut: d.plusHaut, comparaison: d.comparaison } : {};
+  };
+  if (!depCatsParMois) {
+    return { items: cats.filter(c => Math.abs(c.value) > 0.005).map(c => ({ ...c, ...detail(c) })) };
+  }
   return {
     valueLabel: trad('Par mois'),
     items: cats.filter(c => Math.abs(c.average) > 0.005)
-      .map(c => ({ label: c.label, value: c.average, pct: c.partMoyenne }))
+      .map(c => ({ label: c.label, value: c.average, pct: c.partMoyenne, ...detail(c) }))
       .sort((a, b) => b.value - a.value),
   };
 }

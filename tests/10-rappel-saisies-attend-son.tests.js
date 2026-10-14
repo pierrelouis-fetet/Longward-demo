@@ -1,6 +1,6 @@
 partieDeTests('tests/10-rappel-saisies-attend-son.tests.js');
 /* ------------------------------------------------------------------
-   La cloche réclame le jour où l'on fait ses comptes
+   La cloche reclame le jour ou l'on fait ses comptes
    ------------------------------------------------------------------ */
 suite('Le rappel des saisies attend son jour', () => {
 
@@ -37,7 +37,7 @@ suite('Le rappel des saisies attend son jour', () => {
   });
 
   test('le défaut ne change rien au comportement d’avant', () => {
-    /* Le test de non-régression : sans réglage, la cloche réclame du 1er au 31,
+    /* Le test de non-regression : sans reglage, la cloche reclame du 1er au 31,
        comme elle l'a toujours fait. */
     Fixture.poser();
     auJour('2026-03-01', () => {
@@ -58,10 +58,10 @@ suite('Le rappel des saisies attend son jour', () => {
   });
 
   test('« vide » reste vrai avant le jour dit', () => {
-    /* Le fait sur les données et la décision de le dire sont deux choses : la
-       page des relevés marque la ligne du mois en cours quoi qu'il arrive, seul
-       le rappel attend. Les confondre aurait fait disparaître le repère visuel
-       de la ligne à remplir. */
+    /* Le fait sur les donnees et la decision de le dire sont deux choses : la
+       page des releves marque la ligne du mois en cours quoi qu'il arrive, seul
+       le rappel attend. Les confondre aurait fait disparaitre le repere visuel
+       de la ligne a remplir. */
     Fixture.poser();
     auJour('2026-03-05', () => {
       Store.state.meta.jourRappel = 15;
@@ -72,28 +72,28 @@ suite('Le rappel des saisies attend son jour', () => {
 });
 
 /* ------------------------------------------------------------------
-   Un mois sauté ne disparaît pas des radars
+   Un mois saute ne disparait pas des radars
    ------------------------------------------------------------------ */
 suite('Un mois resté vide se signale', () => {
 
-  /* « Si un mois entier n'est pas rempli alors qu'on est au mois suivant, on
-     fait quoi ? » Presque rien, jusqu'ici.
+  /* Un mois entier qui n'est pas rempli alors qu'on est au mois suivant :
+     que se passe-t-il ? Presque rien, jusqu'ici.
 
-     Le rappel du relevé ne regarde que le mois en cours, celui des dépenses que
-     le mois clos : un mois sauté sortait du champ des deux le 1er du mois
-     suivant. Un contrôle de cohérence rattrapait une partie du cas, mais
-     seulement les trous **encadrés** par deux mois remplis — sauter juillet et
-     août en septembre n'en est pas un, rien ne suit.
+     Le rappel du releve ne regarde que le mois en cours, celui des depenses que
+     le mois clos : un mois saute sortait du champ des deux le 1er du mois
+     suivant. Un controle de coherence rattrapait une partie du cas, mais
+     seulement les trous **encadres** par deux mois remplis -- sauter juillet et
+     aout en septembre n'en est pas un, rien ne suit.
 
      Ce n'est pas une saisie en retard, c'est un trou qui ne se voit pas : les
-     moyennes continuent de se calculer, sur moins de points. Le coût de la vie,
-     l'autonomie financière et le rythme d'accumulation sortent de ces tables. */
+     moyennes continuent de se calculer, sur moins de points. Le cout de la vie,
+     l'autonomie financiere et le rythme d'accumulation sortent de ces tables. */
 
   test('un mois vide derrière soi est signalé, dans les deux tables', () => {
     auJour('2026-06-10', () => {
-      /* Des dates au 1er : `isCalendarMonth` ne reconnaît qu'elles. Une ligne
-         au 31 est une clôture ponctuelle, pas un mois du calendrier, et elle est
-         écartée à dessein — on ne réclame pas un mois que personne n'a ouvert. */
+      /* Des dates au 1er : `isCalendarMonth` ne reconnait qu'elles. Une ligne
+         au 31 est une cloture ponctuelle, pas un mois du calendrier, et elle est
+         ecartee a dessein -- on ne reclame pas un mois que personne n'a ouvert. */
       Fixture.poser(s => {
         s.monthly = [
           { date: '2026-01-01', comment: '', v: { c_courant: 3000 } },
@@ -114,7 +114,7 @@ suite('Un mois resté vide se signale', () => {
   });
 
   test('un trou en fin d’historique compte aussi', () => {
-    /* Le cas exact de la question, et celui que l'ancien contrôle laissait
+    /* Le cas exact de la question, et celui que l'ancien controle laissait
        passer : les mois vides ne sont suivis de rien. */
     auJour('2026-06-10', () => {
       Fixture.poser(s => {
@@ -130,8 +130,8 @@ suite('Un mois resté vide se signale', () => {
 
   test('les mois d’avant le premier rempli ne comptent pas', () => {
     /* Le calendrier ouvre douze mois d'avance. Sans cette garde, une
-       installation neuve annoncerait « onze mois vides » le jour de son premier
-       relevé — le contrôle serait faux dès la première utilisation. */
+       installation neuve annoncerait "onze mois vides" le jour de son premier
+       releve -- le controle serait faux des la premiere utilisation. */
     auJour('2026-06-10', () => {
       Fixture.poser(s => {
         s.monthly = [
@@ -146,8 +146,8 @@ suite('Un mois resté vide se signale', () => {
   });
 
   test('le mois en cours n’est pas un trou', () => {
-    /* Il a déjà son rappel, et il n'est pas en retard tant qu'il n'est pas
-       fini. Le compter ici ferait dire deux choses du même mois. */
+    /* Il a deja son rappel, et il n'est pas en retard tant qu'il n'est pas
+       fini. Le compter ici ferait dire deux choses du meme mois. */
     auJour('2026-06-10', () => {
       Fixture.poser(s => {
         s.monthly = [
@@ -160,9 +160,9 @@ suite('Un mois resté vide se signale', () => {
   });
 
   test('les deux tables partagent le même parcours', () => {
-    /* Deux copies de ce calcul auraient fini par ne plus dire la même chose :
-       les relevés et les dépenses vivent dans des tables de formes différentes,
-       et c'est exactement le genre d'écart qui ne se voit pas. */
+    /* Deux copies de ce calcul auraient fini par ne plus dire la meme chose :
+       les releves et les depenses vivent dans des tables de formes differentes,
+       et c'est exactement le genre d'ecart qui ne se voit pas. */
     const src = lireSource('assets/store.js');
     vrai(src, 'assets/store.js doit être lisible pour ce contrôle');
     vrai(/const trousReleves = \(\) => moisVides\(/.test(src)
@@ -172,7 +172,7 @@ suite('Un mois resté vide se signale', () => {
 });
 
 /* ------------------------------------------------------------------
-   Un onglet du bas ramène toujours à sa page d'accueil
+   Un onglet du bas ramene toujours a sa page d'accueil
    ------------------------------------------------------------------ */
 suite('Un onglet du bas ramène à son premier sous-onglet', () => {
 
@@ -199,9 +199,9 @@ suite('Un onglet du bas ramène à son premier sous-onglet', () => {
   });
 
   test('et l’adresse de base remet le premier sous-onglet', () => {
-    /* L'autre moitié : laisser le lien naviguer ne suffirait pas si la vue
-       gardait le dernier sous-onglet choisi. Cette règle existait déjà pour le
-       menu latéral, elle sert aux deux. */
+    /* L'autre moitie : laisser le lien naviguer ne suffirait pas si la vue
+       gardait le dernier sous-onglet choisi. Cette regle existait deja pour le
+       menu lateral, elle sert aux deux. */
     const src = lireSource('assets/app.js');
     vrai(/if \(SOUS_ONGLETS\[v\]\) sousOngletActif\[v\] = SOUS_ONGLETS\[v\]\[0\]\[0\];/.test(src),
       'arriver sur l’adresse de base doit rouvrir le premier sous-onglet');
@@ -209,7 +209,7 @@ suite('Un onglet du bas ramène à son premier sous-onglet', () => {
 });
 
 /* ------------------------------------------------------------------
-   Une fiche de ligne dit toujours la même chose au même endroit
+   Une fiche de ligne dit toujours la meme chose au meme endroit
    ------------------------------------------------------------------ */
 suite('Une fiche de ligne garde son ordre', () => {
 
@@ -226,7 +226,7 @@ suite('Une fiche de ligne garde son ordre', () => {
      Une valeur absente se dit donc, elle ne fait pas disparaitre sa ligne.
      C'est deja ce que fait le plafond d'un livret, pour la meme raison. */
 
-  /* Les six intitulés, dans l'ordre, tels que la fiche doit les rendre. */
+  /* Les six intitules, dans l'ordre, tels que la fiche doit les rendre. */
   const ATTENDUS = ['Nature', 'ISIN', 'Pays d’émission', 'Place',
                     'Nom officiel', 'Émetteur'];
 
@@ -249,8 +249,8 @@ suite('Une fiche de ligne garde son ordre', () => {
   });
 
   test('aucune ligne n’est conditionnée à sa valeur', () => {
-    /* Le défaut exact : `${p.isin ? ligne(…) : ''}`. Un seul survivant suffirait
-       à décaler tout le bloc des chiffres sur les fiches qui en manquent. */
+    /* Le defaut exact : `${p.isin ? ligne(...) : ''}`. Un seul survivant suffirait
+       a decaler tout le bloc des chiffres sur les fiches qui en manquent. */
     const bloc = blocIdentite();
     vrai(!/\?\s*ligne\(/.test(bloc),
       'une ligne rendue seulement si elle a une valeur décale tout ce qui la '
@@ -261,15 +261,15 @@ suite('Une fiche de ligne garde son ordre', () => {
   });
 
   test('une valeur absente dit pourquoi, elle ne dit pas « vide »', () => {
-    /* La différence entre un trou et une réponse : « identique au nom de la
-       ligne » règle la question, « se déduit de l'ISIN » dit où la remplir.
+    /* La difference entre un trou et une reponse : "identique au nom de la
+       ligne" regle la question, "se deduit de l'ISIN" dit ou la remplir.
        Un tiret n'aurait rien appris, et le tiret cadratin est proscrit du texte
-       affiché. */
+       affiche. */
     const bloc = blocIdentite();
-    /* « Non renseigné » a disparu de l'ISIN le 6 août : il désignait un défaut
-       là où il n'y en a pas — une cryptomonnaie n'a pas d'ISIN, une ligne saisie
-       à la main non plus. Ces cas disent « sans objet », et le vrai manque dit
-       où le trouver. */
+    /* "Non renseigne" a disparu de l'ISIN : il designait un defaut
+       la ou il n'y en a pas -- une cryptomonnaie n'a pas d'ISIN, une ligne saisie
+       a la main non plus. Ces cas disent "sans objet", et le vrai manque dit
+       ou le trouver. */
     for (const mot of ['sans objet', 'à copier depuis ton courtier', 'se déduit de l’ISIN',
                        'identique au nom de la ligne', 'se déduit du nom d’un fonds']) {
       vrai(bloc.includes(mot), `l’état vide « ${mot} » doit exister`);
@@ -279,7 +279,7 @@ suite('Une fiche de ligne garde son ordre', () => {
 });
 
 /* ------------------------------------------------------------------
-   La barre du haut ne découpe pas ce qui en sort
+   La barre du haut ne decoupe pas ce qui en sort
    ------------------------------------------------------------------ */
 suite('Le panneau des notifications n’est pas rogné par sa barre', () => {
 
@@ -304,8 +304,8 @@ suite('Le panneau des notifications n’est pas rogné par sa barre', () => {
   }
 
   test('le panneau vit bien à l’intérieur de la barre', () => {
-    /* Sans ça, ce contrôle ne protège rien : c'est la raison pour laquelle le
-       découpage compte. */
+    /* Sans ca, ce controle ne protege rien : c'est la raison pour laquelle le
+       decoupage compte. */
     const html = lireSource('index.html');
     vrai(html, 'index.html doit être lisible pour ce contrôle');
     const barre = html.slice(html.indexOf('<aside class="sidebar">'), html.indexOf('</aside>'));
@@ -317,7 +317,7 @@ suite('Le panneau des notifications n’est pas rogné par sa barre', () => {
 
   test('la barre du téléphone ne découpe rien', () => {
     const nu = reglesSidebar();
-    /* La règle du téléphone : celle qui cloue la barre en haut de l'écran. */
+    /* La regle du telephone : celle qui cloue la barre en haut de l'ecran. */
     const mobile = nu.split('}').find(b =>
       b.split('{')[0].trim().endsWith('.sidebar') && /position:\s*fixed/.test(b));
     vrai(mobile, 'la règle qui fixe la barre en haut de l’écran doit être trouvable');
@@ -327,8 +327,8 @@ suite('Le panneau des notifications n’est pas rogné par sa barre', () => {
   });
 
   test('le rail de l’ordinateur, lui, se laisse parcourir', () => {
-    /* L'autre moitié, qu'il ne faut pas perdre en corrigeant celle-ci : dans une
-       fenêtre de 560 px de haut, le contenu de la barre en fait 675, et son pied
+    /* L'autre moitie, qu'il ne faut pas perdre en corrigeant celle-ci : dans une
+       fenetre de 560 px de haut, le contenu de la barre en fait 675, et son pied
        porte le patrimoine net. */
     const nu = reglesSidebar();
     const base = nu.split('}').find(b =>
@@ -362,9 +362,9 @@ suite('Le journal des ventes se borne par année', () => {
   });
 
   test('les totaux portent sur ce que la carte montre', () => {
-    /* La règle du projet : un total égale la somme de ses parts. Calculer les
-       tuiles sur la plage glissante pendant que le tableau liste une année
-       aurait donné trois totaux qui ne sont la somme d'aucune ligne visible. */
+    /* La regle du projet : un total egale la somme de ses parts. Calculer les
+       tuiles sur la plage glissante pendant que le tableau liste une annee
+       aurait donne trois totaux qui ne sont la somme d'aucune ligne visible. */
     Fixture.poser();
     const deux = [vente('2025-03-10', 1), vente('2025-07-04', 2), vente('2026-02-11', 3)];
     const de2025 = deux.filter(v => v.date.startsWith('2025'));
@@ -378,7 +378,7 @@ suite('Le journal des ventes se borne par année', () => {
 
   test('le calcul des totaux ne vit qu’à un endroit', () => {
     /* `salesStats` filtrait puis sommait. Le journal filtre autrement : refaire
-       les cinq sommes à côté aurait donné deux façons de compter la même chose,
+       les cinq sommes a cote aurait donne deux facons de compter la meme chose,
        et celle qu'on oublie de corriger finit par contredire l'autre. */
     const src = lireSource('assets/store.js');
     vrai(src, 'assets/store.js doit être lisible pour ce contrôle');
@@ -392,7 +392,7 @@ suite('Le journal des ventes se borne par année', () => {
   test('une seule borne de temps sur la page, et le dépliant reste', () => {
     /* Il y en avait deux : la plage glissante reglait les courbes, un menu
        d'annee reglait le journal, et rien n'empechait l'un de dire 2025 et
-       l'autre 2026. Le menu a rejoint les crans, dans un contrôle unique. */
+       l'autre 2026. Le menu a rejoint les crans, dans un controle unique. */
     const src = lireSource('assets/app.js');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
     const bloc = src.match(/function salesCard\(\) \{[\s\S]*?\n\}/);
@@ -461,7 +461,7 @@ suite('La carte Objectif met en avant l’écart, pas le patrimoine', () => {
   });
 
   test('le patrimoine reste, en note', () => {
-    /* Il donne son sens au reste : « il te manque 3 800 € » ne se lit pas sans
+    /* Il donne son sens au reste : "il te manque 3 800 EUR" ne se lit pas sans
        savoir sur quoi. Il ne se lit simplement plus en premier. */
     const src = lireSource('assets/app.js');
     const bloc = src.match(/const carteObjectif = \(\) => \{[\s\S]*?\n  \};/);
@@ -482,7 +482,7 @@ suite('La carte Objectif met en avant l’écart, pas le patrimoine', () => {
   });
 
   test('un objectif dépassé se dit autrement', () => {
-    /* Un écart négatif n'est pas « il te manque −500 € ». */
+    /* Un ecart negatif n'est pas "il te manque -500 EUR". */
     const src = lireSource('assets/app.js');
     const bloc = src.match(/const carteObjectif = \(\) => \{[\s\S]*?\n  \};/);
     vrai(/de dépassement/.test(bloc[0]), 'le cas du dépassement doit être nommé');
@@ -526,7 +526,7 @@ suite('L’objectif ne se peint pas d’une couleur qui ne dit rien', () => {
   });
 
   test('le montant et sa légende ne partent pas aux deux bouts', () => {
-    /* `space-between` marchait à 343 px et jetait le chiffre et la phrase aux
+    /* `space-between` marchait a 343 px et jetait le chiffre et la phrase aux
        deux bords d'une carte de 1 280 px, avec neuf cents pixels de vide. */
     for (const nom of ['.goal-top', '.goal-foot']) {
       const r = regle(nom);
@@ -539,10 +539,10 @@ suite('L’objectif ne se peint pas d’une couleur qui ne dit rien', () => {
   });
 
   test('sans objectif déclaré, la carte ne se félicite pas', () => {
-    /* « Si quelqu'un n'aime pas cette barre, il fait comment ? » Il mettait la
-       cible à zéro, et zéro donne `remaining = total` — donc un montant positif.
-       La carte annonçait « de dépassement · Objectif atteint » sur un cap que
-       personne n'avait fixé. */
+    /* Pour se passer de cette barre, on mettait la
+       cible a zero, et zero donne `remaining = total` -- donc un montant positif.
+       La carte annoncait "de depassement . Objectif atteint" sur un cap que
+       personne n'avait fixe. */
     Fixture.poser(s => { s.meta.objective = 0; });
     const g = objectiveStatus();
     eq(g.obj, 0, 'aucune cible');
@@ -559,9 +559,9 @@ suite('L’objectif ne se peint pas d’une couleur qui ne dit rien', () => {
   });
 
   test('et elle ne s’enferme pas dehors', () => {
-    /* La carte est la seule porte vers ce réglage : la faire disparaître
-       entièrement enfermerait dehors quiconque change d'avis. Il reste une
-       ligne, qui ouvre la même fenêtre. */
+    /* La carte est la seule porte vers ce reglage : la faire disparaitre
+       entierement enfermerait dehors quiconque change d'avis. Il reste une
+       ligne, qui ouvre la meme fenetre. */
     const src = lireSource('assets/app.js');
     const bloc = src.match(/const carteObjectif = \(\) => \{[\s\S]*?\n  \};/);
     const vide = bloc[0].match(/goal-vide[\s\S]*?<\/button>/);
@@ -573,7 +573,7 @@ suite('L’objectif ne se peint pas d’une couleur qui ne dit rien', () => {
 });
 
 /* ------------------------------------------------------------------
-   Une colonne réservée à rien laisse un couloir vide
+   Une colonne reservee a rien laisse un couloir vide
    ------------------------------------------------------------------ */
 suite('Une grille ne réserve pas de place à ce qu’elle ne montre pas', () => {
 
@@ -615,8 +615,8 @@ suite('Une grille ne réserve pas de place à ce qu’elle ne montre pas', () =>
   });
 
   test('les deux largeurs d’écran sont traitées', () => {
-    /* Le défaut vivait dans la règle du téléphone, pas dans celle du bureau :
-       corriger la première seule aurait laissé le couloir là où il gênait. */
+    /* Le defaut vivait dans la regle du telephone, pas dans celle du bureau :
+       corriger la premiere seule aurait laisse le couloir la ou il genait. */
     const avecHas = reglesFlow().filter(b => /:has\(\.flow-pct\)/.test(b.split('{')[0]));
     vrai(avecHas.length >= 2,
       `la variante à pourcentage doit exister aux deux largeurs (${avecHas.length} trouvée·s) : `
@@ -632,14 +632,14 @@ suite('Un bien de valeur se tient tout seul, et se nomme une fois', () => {
        produise. Ce test verifie les quatre, pour que le prochain qui ajoute une
        classe ne decouvre pas au navigateur ce qui lui manque. */
     vrai(CLASSES_ACTIFS.bienValeur, 'la classe est nommée');
-    /* Le meme mot que le type de compte, au singulier : « Biens de valeur » en
-       en-tete au-dessus de « Bien de valeur » en ligne se lisait comme deux
+    /* Le meme mot que le type de compte, au singulier : "Biens de valeur" en
+       en-tete au-dessus de "Bien de valeur" en ligne se lisait comme deux
        choses differentes. */
     /* On compare les CLEFS, pas les formes affichees. La classe porte son
        libelle deja traduit au chargement, un type de compte le fait traduire au
        rendu : comparer les deux rendus depend de la langue courante, et la suite
        en change pour d'autres controles. La regle, elle, ne depend d'aucune
-       langue — les deux nomment le meme mot francais. */
+       langue -- les deux nomment le meme mot francais. */
     const cleClasse = (lireSource('assets/store.js')
       .match(/bienValeur:\s*trad\('([^']+)'\)/) || [])[1];
     vrai(cleClasse, 'la classe doit nommer son libellé par une clef');
@@ -683,7 +683,7 @@ suite('Un bien de valeur se tient tout seul, et se nomme une fois', () => {
     const debut = src.indexOf("async 'ajouter-compte'");
     vrai(debut > 0, 'le parcours de création doit exister');
     /* La borne haute est l'action SUIVANTE, pas une longueur : une fenetre en
-       caracteres se defait au premier champ ajoute, et c'est arrive — le nom de
+       caracteres se defait au premier champ ajoute, et c'est arrive -- le nom de
        la ligne est sorti des dix-sept mille caracteres le jour ou l'acquisition
        s'est decomposee en trois champs. */
     const parcours = src.slice(debut, src.indexOf("'fiche-compte'(btn)", debut));
@@ -704,7 +704,7 @@ suite('Un bien de valeur se tient tout seul, et se nomme une fois', () => {
     /* Le contenant se nomme avant le dernier ecran mais ne se cree qu'apres :
        un parcours qu'on abandonne ne doit rien laisser derriere lui. Il etait
        pousse dans l'etat des la saisie du nom, et fermer l'ecran des montants
-       laissait un etablissement vide que plus aucune page ne montre — sauf la
+       laissait un etablissement vide que plus aucune page ne montre -- sauf la
        liste de ce meme parcours, ou il ressemble a une memoire residuelle. */
     vrai(/nomNouveauContenant = nom;\s*\n\s*etabId = null;/.test(parcours),
       'la saisie du nom ne crée rien');
@@ -743,9 +743,9 @@ suite('Un bien de valeur se tient tout seul, et se nomme une fois', () => {
   });
 
   test('un sous-titre ne répète pas le titre au-dessus de lui', () => {
-    /* Trois fois le meme mot sur trois lignes : le groupe « Biens de valeur », la
-       ligne « Bien de valeur », le sous-titre « Biens de valeur · Bien de
-       valeur ». Le nom du compte et celui de la ligne sont un seul fait, et la
+    /* Trois fois le meme mot sur trois lignes : le groupe "Biens de valeur", la
+       ligne "Bien de valeur", le sous-titre "Biens de valeur . Bien de
+       valeur". Le nom du compte et celui de la ligne sont un seul fait, et la
        classe est deja dite par l'en-tete du groupe. */
     const src = lireSource('assets/app.js');
     const debut = src.indexOf('function lignePlacement');
@@ -753,8 +753,8 @@ suite('Un bien de valeur se tient tout seul, et se nomme une fois', () => {
     const fn = src.slice(debut, debut + 5000);
     vrai(/nomLignePlacement\(l, compte\)/.test(fn),
       'la ligne tire son nom de la fonction qui en décide, une seule fois');
-    /* Le quatrieme parametre ne dit plus « tais la classe » mais « tais le
-       nom » : sur la fiche d'un actif terminal, le nom de la ligne EST celui de
+    /* Le quatrieme parametre ne dit plus "tais la classe" mais "tais le
+       nom" : sur la fiche d'un actif terminal, le nom de la ligne EST celui de
        la fiche, et la classe devient au contraire ce qu'elle apporte. Un
        parametre d'affichage se juge donc sur ce qu'il tait, jamais sur le
        nombre d'arguments. */
@@ -765,11 +765,11 @@ suite('Un bien de valeur se tient tout seul, et se nomme une fois', () => {
 
     /* Le repli vit cote store, et les vues le partagent : la liste, la fenetre
        d'apercu d'une classe, et tout ce qui viendra. Une seule des deux le
-       portait, et la fenetre affichait encore « Bien de valeur ». */
+       portait, et la fenetre affichait encore "Bien de valeur". */
     const cpt = { id: 'c1', type: 'bienValeur', libelle: 'Moto', lignes: [] };
     eq(nomLignePlacement({ libelle: 'Bien de valeur' }, cpt), 'Moto',
       'un libellé égal au type se replie sur le nom du compte');
-    eq(nomLignePlacement({ libelle: 'Rolex' }, cpt), 'Rolex',
+    eq(nomLignePlacement({ libelle: 'Montre' }, cpt), 'Montre',
       'un nom vraiment saisi n’est jamais écrasé');
     vrai(/const nomL = nomLignePlacement\(l, c\);/.test(src),
       'la fenêtre d’aperçu s’en sert aussi');
@@ -778,7 +778,7 @@ suite('Un bien de valeur se tient tout seul, et se nomme une fois', () => {
       + 'suivi de rien : « Moto / Moto » se lisait deux fois');
 
     /* Le repli joue aussi dans l'autre sens : un compte sans nom prend celui de
-       sa ligne unique, pour que la fiche ne titre pas « Bien de valeur ». */
+       sa ligne unique, pour que la fiche ne titre pas "Bien de valeur". */
     eq(nomCompteV2({ type: 'bienValeur', lignes: [{ libelle: 'moto' }] }), 'moto',
       'un compte anonyme d’une seule ligne prend le nom de celle-ci');
     eq(nomCompteV2({ type: 'bienValeur', libelle: 'Moto', lignes: [{ libelle: 'x' }] }), 'Moto',
@@ -790,12 +790,12 @@ suite('Un bien de valeur se tient tout seul, et se nomme une fois', () => {
 
   test('la fiche porte un bouton qui enregistre et reste', () => {
     /* Tout y est deja ecrit a la frappe : ce bouton apporte la confirmation, pas
-       l'ecriture. Il ne doit donc surtout pas remplacer l'ecriture continue —
+       l'ecriture. Il ne doit donc surtout pas remplacer l'ecriture continue --
        un champ saisi puis quitte sans clic serait perdu, et c'est precisement
        ce que la regle du projet interdit.
        Il reste sur place, comme dans une fenetre de saisie en serie : on vient
-       relire les comptes que la saisie vient de changer, et « Enregistrer et
-       fermer » emportait l'ecran avant qu'on ait pu les lire. */
+       relire les comptes que la saisie vient de changer, et "Enregistrer et
+       fermer" emportait l'ecran avant qu'on ait pu les lire. */
     const src = lireSource('assets/app.js');
     vrai(/function barreValiderFiche/.test(src), 'la barre a une seule source');
     const fn = src.slice(src.indexOf('function barreValiderFiche'),
@@ -815,7 +815,7 @@ suite('Un bien de valeur se tient tout seul, et se nomme une fois', () => {
     vrai(/window\.scrollY[\s\S]{0,120}window\.scrollTo\(0, y\)/.test(action),
       'et la position dans la page est gardée : la fiche est longue');
     /* Quatre appels : la carte du solde et celle des informations d'un compte
-       (l'une ou l'autre, jamais les deux), la carte « Mettre a jour » d'un
+       (l'une ou l'autre, jamais les deux), la carte "Mettre a jour" d'un
        bien, et la carte des notes d'un etablissement. */
     eq((src.match(/barreValiderFiche\(/g) || []).length, 5,
       'une déclaration et quatre appels : solde, bien, informations d’un compte, notes d’un établissement');
@@ -864,8 +864,8 @@ suite('Une fiche se valide ou s’annule, et rien ne se saisit sans borne', () =
   });
 
   test('toutes les colonnes des positions se trient, et le « ? » ne vole plus le clic', () => {
-    /* Quatre colonnes ne se triaient pas — quantite, prix de revient, cours,
-       poids — et deux portaient leur explication sur la cellule entiere, donc
+    /* Quatre colonnes ne se triaient pas -- quantite, prix de revient, cours,
+       poids -- et deux portaient leur explication sur la cellule entiere, donc
        sur la zone qui trie. Expliquer et trier etaient le meme geste. */
     const src = lireSource('assets/app.js');
     /* `tests.html` ne charge que `store.js` : la table se lit dans la source. */
@@ -880,8 +880,8 @@ suite('Une fiche se valide ou s’annule, et rien ne se saisit sans borne', () =
     /* Le tri vit dans un bouton a l'interieur de la cellule, et l'aide a cote. */
     vrai(/<button type="button" class="th-tri" data-action="sort-positions"/.test(src),
       'le tri est porté par un bouton, pas par la cellule entière');
-    /* `trad()` autour de l'explication : elle arrive d'un appelant qui l'écrit en
-       français, et une bulle d'aide se traduit comme le reste. */
+    /* `trad()` autour de l'explication : elle arrive d'un appelant qui l'ecrit en
+       francais, et une bulle d'aide se traduit comme le reste. */
     vrai(/\+ \(explication \? aide\(trad\(explication\)\) : ''\)/.test(src),
       'et l’explication se pose à côté de ce bouton, traduite');
     vrai(!/<th title="Prix de revient unitaire/.test(src),
@@ -963,14 +963,14 @@ suite('Le balisage et le dictionnaire disent le même mot', () => {
        `t()` lui-meme, dans la langue ou l'application s'ouvre : c'est
        exactement ce que `translateStatic()` ecrira dans l'element. Comparer au
        resolveur plutot qu'a une copie de sa table supprime vingt lignes
-       d'analyse fragile — et rend le controle juste dans les deux depots, dont
+       d'analyse fragile -- et rend le controle juste dans les deux depots, dont
        l'un ouvre en anglais.
 
        Le contrat de repli est inchange : une clef pointee (`nav.*`) se resout
        par la table, une clef-phrase EST son propre texte francais. */
 
     /* Chaque libelle statique du balisage, avec sa clef. Le texte peut porter
-       des elements freres — le badge « ✎ » de Budget vit hors du span — donc on
+       des elements freres -- le badge "U+270E" de Budget vit hors du span -- donc on
        ne lit que le contenu direct de l'element marque. */
     /* Deux familles de clefs coexistent : les clefs pointees (nav.*), dont le
        francais vit dans le dictionnaire FR, et les clefs-phrases, dont le
@@ -1055,9 +1055,9 @@ suite('La page Actifs range ce qu’on tient chez un tiers et ce qu’on tient s
        emploie pour partager ses sections. Les assertions ci-dessus decrivent le
        modele et restaient vertes pendant que la page se trompait. */
     const src = lireSource('assets/app.js');
-    /* La règle vit dans le MODÈLE et non dans la vue : trois écrans en dépendent
-       — la liste des comptes et les deux fiches — et la copie locale se fermait
-       de surcroît sur les comptes filtrés par la recherche, si bien que taper
+    /* La regle vit dans le MODELE et non dans la vue : trois ecrans en dependent
+       -- la liste des comptes et les deux fiches -- et la copie locale se fermait
+       de surcroit sur les comptes filtres par la recherche, si bien que taper
        trois lettres pouvait faire changer un groupe de section. */
     vrai(/siens\.every\(c => estDetenuEnDirect\(typeCompte\(c\.type\)\)\)/
       .test(lireSource('assets/store.js')),
@@ -1103,7 +1103,7 @@ suite('La page Actifs range ce qu’on tient chez un tiers et ce qu’on tient s
       'et les trois disparaissent ensemble, sous le même drapeau');
 
     /* Le groupe des comptes archives se rend hors du if/else, tout en bas :
-       sans son propre titre il tombait sous « Biens et especes », qui ne le
+       sans son propre titre il tombait sous "Biens et especes", qui ne le
        contient pas. Un titre pose une etagere pour tout ce qui suit. */
     vrai(/sectionsAffichees \? titreSection\('Archivés'/.test(src),
       'les archivés portent leur propre étiquette, sous le même drapeau');
@@ -1111,13 +1111,13 @@ suite('La page Actifs range ce qu’on tient chez un tiers et ce qu’on tient s
     for (const mot of ['Comptes', 'Biens et espèces', 'Archivés']) {
       vrai(new RegExp(`titreSection\\('${mot}'`).test(src), `l’intertitre « ${mot} »`);
     }
-    /* Le groupe sans contenant a change de nom en meme temps : « Hors
-       etablissement » decrivait une absence, sous un titre qui dit deja
+    /* Le groupe sans contenant a change de nom en meme temps : "Hors
+       etablissement" decrivait une absence, sous un titre qui dit deja
        laquelle. */
     vrai(!/'Hors établissement'/.test(src),
       'plus de groupe nommé par ce qui lui manque');
-    /* Le titre porte le seul fait commun a ces lignes — personne ne les tient
-       pour toi — et le sous-titre ce qu'on y trouve. « Chez toi » affirmait un
+    /* Le titre porte le seul fait commun a ces lignes -- personne ne les tient
+       pour toi -- et le sous-titre ce qu'on y trouve. "Chez toi" affirmait un
        lieu que l'application ne connait pas : une voiture n'est pas chez toi,
        une montre peut dormir dans un coffre en banque. */
     vrai(/trad\('Sans intermédiaire'\), trad\('espèces et objets de valeur'\)/.test(src),
@@ -1129,7 +1129,7 @@ suite('La page Actifs range ce qu’on tient chez un tiers et ce qu’on tient s
   test('la page reste la somme de ses parts, quelle que soit la section', () => {
     /* La regle cardinale, appliquee au decoupage : deplacer un groupe d'une
        section a l'autre ne doit rien retirer ni rien compter deux fois. Le
-       controle porte sur le partage lui-meme — chaque etablissement tombe dans
+       controle porte sur le partage lui-meme -- chaque etablissement tombe dans
        une section et une seule, et aucun compte ouvert n'echappe aux deux. */
     Fixture.poser();
     Store.state.etabs.push({ id: 'e_immo', nom: 'Appartement', notes: '', dettes: [] });
@@ -1137,8 +1137,8 @@ suite('La page Actifs range ce qu’on tient chez un tiers et ce qu’on tient s
       statut: 'ouvert', cash: [], lignes: [{ id: 'l', classe: 'immobilier',
       libelle: 'Appartement', valeur: 180000, prixDeRevient: 150000 }] });
     Store.state.comptes.push({ id: 'c_bv', etabId: null, type: 'bienValeur',
-      statut: 'ouvert', libelle: 'Rolex', cash: [], lignes: [{ id: 'l2',
-      classe: 'bienValeur', libelle: 'Rolex', valeur: 9000, prixDeRevient: 7000 }] });
+      statut: 'ouvert', libelle: 'Montre', cash: [], lignes: [{ id: 'l2',
+      classe: 'bienValeur', libelle: 'Montre', valeur: 9000, prixDeRevient: 7000 }] });
 
     const ouverts = comptesOuverts();
     const enDirect = e => {
@@ -1165,15 +1165,15 @@ suite('La page Actifs range ce qu’on tient chez un tiers et ce qu’on tient s
 
 suite('Un contenant dit ce qu’il contient avec le mot juste', () => {
   test('on n’a pas de compte dans un studio', () => {
-    /* La page annoncait « studio lyon, 2 comptes ». Le mot venait de la banque,
+    /* La page annoncait "studio, 2 comptes". Le mot venait de la banque,
        ou il est juste, et suivait sans le savoir jusqu'aux biens. Il vit
        desormais dans `CONTENANTS`, avec les autres mots du contenant, de sorte
        que la vue les lise tous au meme endroit. */
     Fixture.poser();
-    Store.state.etabs.push({ id: 'e_studio', nom: 'Studio Lyon', notes: '', dettes: [] });
+    Store.state.etabs.push({ id: 'e_studio', nom: 'Studio Centre', notes: '', dettes: [] });
     Store.state.comptes.push({ id: 'c_s1', etabId: 'e_studio', type: 'immo',
       statut: 'ouvert', cash: [], lignes: [{ id: 'l1', classe: 'immobilier',
-      libelle: 'Studio Lyon', valeur: 150000 }] });
+      libelle: 'Studio Centre', valeur: 150000 }] });
     eq(motContenu('e_studio', 1), 'bien', 'un bien immobilier est un bien');
     Store.state.comptes.push({ id: 'c_s2', etabId: 'e_studio', type: 'immo',
       statut: 'ouvert', cash: [], lignes: [{ id: 'l2', classe: 'immobilier',
@@ -1182,7 +1182,7 @@ suite('Un contenant dit ce qu’il contient avec le mot juste', () => {
 
     /* Une banque garde le sien, une plateforme aussi : Plateforme A ouvre bien un
        compte. Le mot ne change que la ou il etait faux. */
-    Store.state.etabs.push({ id: 'e_bq', nom: 'Fortuneo', notes: '', dettes: [] });
+    Store.state.etabs.push({ id: 'e_bq', nom: 'Banque en ligne', notes: '', dettes: [] });
     Store.state.comptes.push({ id: 'c_b1', etabId: 'e_bq', type: 'courant',
       statut: 'ouvert', cash: [{ montant: 100, affectation: 'courant' }], lignes: [] });
     eq(motContenu('e_bq', 1), 'compte', 'une banque tient des comptes');
@@ -1197,8 +1197,8 @@ suite('Un contenant dit ce qu’il contient avec le mot juste', () => {
   test('le mot du contenu vit là où vivent les autres mots du contenant', () => {
     /* La regle du projet : un fait se regle a un seul endroit. Le mot du
        contenant et celui du contenu se lisent dans la meme table, donc ils ne
-       peuvent pas se contredire — « Bien immobilier » en titre au-dessus de
-       « 2 comptes » etait exactement cette contradiction. */
+       peuvent pas se contredire -- "Bien immobilier" en titre au-dessus de
+       "2 comptes" etait exactement cette contradiction. */
     for (const [cle, c] of Object.entries(CONTENANTS)) {
       vrai(typeof c.contenu === 'string' && c.contenu,
         `le contenant « ${cle} » dit ce qu’il contient`);
@@ -1236,13 +1236,13 @@ suite('Un contenant dit ce qu’il contient avec le mot juste', () => {
 
 suite('Un bien se crée seul, s’estime, et se modifie par un bouton', () => {
   test('on ne rattache pas un appartement à un autre appartement', () => {
-    /* Le parcours proposait « à quel bien le rattacher ? » avec les biens déjà
-       enregistrés. Or le contenant EST le bien : rattacher un studio à un autre
+    /* Le parcours proposait "a quel bien le rattacher ?" avec les biens deja
+       enregistres. Or le contenant EST le bien : rattacher un studio a un autre
        studio ne veut rien dire, et la ligne prenait ensuite le nom du contenant
-       — deux « studio lyon » dans la même fiche, à 10 000 et 15 000 EUR.
+       -- deux "studio" dans la meme fiche.
 
-       Le contenant ne disparaît pas pour autant, contrairement au bien de
-       valeur : c'est lui qui porte le crédit. Il se crée sans qu'on ait à le
+       Le contenant ne disparait pas pour autant, contrairement au bien de
+       valeur : c'est lui qui porte le credit. Il se cree sans qu'on ait a le
        choisir. */
     const src = lireSource('assets/app.js');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
@@ -1250,7 +1250,7 @@ suite('Un bien se crée seul, s’estime, et se modifie par un bouton', () => {
       'un bien détenu en direct crée toujours son propre contenant');
 
     /* L'ordre des branches est l'invariant : `etabImpose` doit passer avant.
-       Le bouton « + Bien » de la fiche le pose, et c'est le chemin délibéré pour
+       Le bouton "+ Bien" de la fiche le pose, et c'est le chemin delibere pour
        ajouter un parking sous l'appartement qu'il accompagne. Si la garde
        `!etabId` sautait, ce chemin serait mort. */
     const bloc = src.slice(src.indexOf('let etabId = etabImpose;'),
@@ -1263,7 +1263,7 @@ suite('Un bien se crée seul, s’estime, et se modifie par un bouton', () => {
   });
 
   test('ce qu’on détient soi-même, personne ne le cote', () => {
-    /* « Il faut marquer prix estime » vaut pour l'immobilier autant que pour un
+    /* Marquer le prix comme estime vaut pour l'immobilier autant que pour un
        bien de valeur. La classe seule ne pouvait pas le dire : `immobilier`
        couvre un appartement, dont la valeur est une appreciation, et une SCPI,
        dont le prix de part est publie. C'est le meme drapeau `direct` qui tranche,
@@ -1272,9 +1272,9 @@ suite('Un bien se crée seul, s’estime, et se modifie par un bouton', () => {
     vrai(/function champsPlacement\(classe, l = null, prete = false, type = null\)/.test(src),
       'la fenêtre d’un placement reçoit le type, pas seulement la classe');
     /* Le drapeau a grandi sans changer de question : `estValeurEstimee` se
-       dérive de `direct` et ajoute ce qui se valorise soi-même sans être
-       détenu en direct — une part de société est tenue par un tiers et n'en
-       est pas moins une appréciation. */
+       derive de `direct` et ajoute ce qui se valorise soi-meme sans etre
+       detenu en direct -- une part de societe est tenue par un tiers et n'en
+       est pas moins une appreciation. */
     vrai(/const estime = estValeurEstimee\(type\);/.test(src),
       'et c’est le drapeau qui décide de l’intitulé');
     for (const t of TYPES_COMPTE.filter(x => x.direct)) {
@@ -1304,10 +1304,10 @@ suite('Un bien se crée seul, s’estime, et se modifie par un bouton', () => {
   });
 
   test('un compte n’a qu’un nom, et c’est celui qu’on a tapé', () => {
-    /* « Crypto · Satellite · Crypto » : le troisieme mot d'un sous-titre de
+    /* "Crypto . Satellite . Crypto" : le troisieme mot d'un sous-titre de
        ligne de titres est le nom du COMPTE, et il affichait un nom court herite
-       des anciennes donnees. Un portefeuille nomme « Crypto wallet TR » se
-       lisait « Crypto » sous chacune de ses lignes — ce qui ne dit meme pas
+       des anciennes donnees. Un portefeuille nomme "Crypto wallet A" se
+       lisait "Crypto" sous chacune de ses lignes -- ce qui ne dit meme pas
        duquel il s'agit quand il y en a deux. Vu a l'ecran.
 
        `c.court` n'est modifiable par AUCUN ecran depuis le passage au modele
@@ -1334,7 +1334,7 @@ suite('Un bien se crée seul, s’estime, et se modifie par un bouton', () => {
   });
 
   test('la fiche appelle un bien un bien', () => {
-    /* « Nom du compte », « Type de compte », « Compte » en etiquette de tete : on
+    /* "Nom du compte", "Type de compte", "Compte" en etiquette de tete : on
        n'a pas de compte dans une montre. Le mot se derive du meme drapeau que
        tout le reste. */
     eq(motCompte(typeCompte('bienValeur')), 'bien');
@@ -1357,9 +1357,9 @@ suite('Un bien se crée seul, s’estime, et se modifie par un bouton', () => {
 
   test('un mot par nature, et la fiche ne se contredit plus', () => {
     /* TROIS ECRANS SE CONTREDISAIENT EUX-MEMES, et c'est ce que ce controle
-       interdit : un pret participatif titrait « Le placement » et demandait le
-       « Nom du compte » ; un bien de valeur titrait « Le placement » et demandait
-       le « Nom du bien ». Le titre et les champs se derivent maintenant du meme
+       interdit : un pret participatif titrait "Le placement" et demandait le
+       "Nom du compte" ; un bien de valeur titrait "Le placement" et demandait
+       le "Nom du bien". Le titre et les champs se derivent maintenant du meme
        drapeau, donc ils ne peuvent plus diverger. */
     for (const [id, mot] of [['pe', 'placement'], ['fondsNonCote', 'placement'],
                              ['crowdfunding', 'placement'],
@@ -1388,8 +1388,8 @@ suite('Un bien se crée seul, s’estime, et se modifie par un bouton', () => {
   });
 
   test('les deux langues portent les trois mots', () => {
-    /* « compte » et « bien » vivaient deja dans le dictionnaire ; « placement »
-       aussi, ecrit avec des guillemets doubles plus bas dans le fichier — c'est
+    /* "compte" et "bien" vivaient deja dans le dictionnaire ; "placement"
+       aussi, ecrit avec des guillemets doubles plus bas dans le fichier -- c'est
        le piege de la maison, une clef presente qui se donne pour absente. */
     for (const mot of ['compte', 'bien', 'placement']) {
       vrai(!!I18N.en[mot], `« ${mot} » a sa traduction`);
@@ -1402,15 +1402,14 @@ suite('Un bien se crée seul, s’estime, et se modifie par un bouton', () => {
   });
 
   test('l’édition d’un placement se prend par un bouton, pas par son nom', () => {
-    /* Le nom etait un lien pointille et personne ne le voyait : « on ne comprend
-       pas qu'on doit cliquer sur le nom ». Un intitule qui ouvre une fenetre est
-       un savoir qui se transmet, pas une affordance.
+    /* Le nom etait un lien pointille et personne ne le voyait. Un intitule
+       qui ouvre une fenetre est un savoir qui se transmet, pas une affordance.
 
        Toute la ligne ne peut pas devenir le bouton : elle porte deja un `select`
        pour la disponibilite, et un bouton dans un bouton n'existe pas. */
     const src = lireSource('assets/app.js');
-    /* Bornée par la fonction suivante et non par un nombre de caractères : une
-       tranche fixe rate ce qui vient après le prochain commentaire ajouté. */
+    /* Bornee par la fonction suivante et non par un nombre de caracteres : une
+       tranche fixe rate ce qui vient apres le prochain commentaire ajoute. */
     const debut = src.indexOf('function lignePlacement');
     const fn = src.slice(debut, src.indexOf('function viewAccounts', debut));
     vrai(fn.length > 1000, 'la fonction doit être trouvable');
@@ -1447,29 +1446,29 @@ suite('Un bien change de contenant, et garde un seul nom', () => {
        credits, et figer un total ici ferait echouer ce test au prochain
        enrichissement du jeu synthetique pour une raison sans rapport. */
     const avant = nowTotals().dettes;
-    Store.state.etabs.push({ id: 'e_lyon', nom: 'Studio Lyon', notes: '',
-      dettes: [{ id: 'd1', libelle: 'prêt', montant: 12000, preteur: '' }] });
-    for (const [id, v] of [['c_a', 10000], ['c_b', 15000], ['c_c', 12]]) {
-      Store.state.comptes.push({ id, etabId: 'e_lyon', type: 'immo', statut: 'ouvert',
+    Store.state.etabs.push({ id: 'e_centre', nom: 'Studio Centre', notes: '',
+      dettes: [{ id: 'd1', libelle: 'prêt', montant: 20000, preteur: '' }] });
+    for (const [id, v] of [['c_a', 40000], ['c_b', 50000], ['c_c', 60000]]) {
+      Store.state.comptes.push({ id, etabId: 'e_centre', type: 'immo', statut: 'ouvert',
         cash: [], lignes: [{ id: 'l' + id, classe: 'immobilier',
-        libelle: 'Studio Lyon', valeur: v }] });
+        libelle: 'Studio Centre', valeur: v }] });
     }
     const t = nowTotals();
-    eq(round2(t.dettes - avant), 12000,
+    eq(round2(t.dettes - avant), 20000,
       'la dette compte une fois, pas une fois par bien qu’elle accompagne');
     eq(round2(t.brut - t.dettes), round2(t.net),
       'et le net reste le brut moins les dettes');
 
     /* Le contenant porte bien les trois, ce qui est le fait que l'ecran montre :
        l'affichage ne se trompe pas, c'est le rangement qui ne convient pas. */
-    eq(comptesOuverts().filter(c => c.etabId === 'e_lyon').length, 3,
+    eq(comptesOuverts().filter(c => c.etabId === 'e_centre').length, 3,
       'les trois biens partagent un contenant');
   });
 
   test('un bien peut rejoindre son propre contenant', () => {
     /* Un compte naissait dans son contenant et y restait pour toujours : aucun
        ecran ne proposait de le deplacer. Le manque ne se voyait pas sur une
-       banque — on ne demenage pas un PEA — et devenait bloquant sur les biens,
+       banque -- on ne demenage pas un PEA -- et devenait bloquant sur les biens,
        ou le contenant decide qui partage un credit. */
     const src = lireSource('assets/app.js');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
@@ -1481,7 +1480,7 @@ suite('Un bien change de contenant, et garde un seul nom', () => {
     vrai(/cle: 'etab', label: trad\(mot\.titre\)/.test(handler),
       'la fenêtre propose le rattachement');
     /* Le mot du contenant se traduit a l'affichage : la clef reste la phrase
-       francaise que porte CONTENANTS, l'option compose le « + … » autour. */
+       francaise que porte CONTENANTS, l'option compose le "+ ..." autour. */
     vrai(/'__nouveau', `\+ \$\{trad\(mot\.nouveau\)\}…`/.test(handler),
       'et « nouveau », qui est justement le geste qui sépare');
     /* Les especes et les comptes internes n'ont pas de contenant a choisir. */
@@ -1544,11 +1543,12 @@ suite('Un bien change de contenant, et garde un seul nom', () => {
 
   test('aucun montant masqué ne se pose dans un attribut', () => {
     /* Le masque est une balise SVG qui porte son propre `aria-label="montant
-       masqué"`. Injectee dans un attribut, son guillemet ferme l'attribut hote
+       masque"`. Injectee dans un attribut, son guillemet ferme l'attribut hote
        et la fin de la balise se deverse en texte : la carte des depenses
-       affichait un `€">` nu a cote de l'objectif mensuel.
+       affichait un `EUR` nu, suivi de la fin de la balise, a cote de
+       l'objectif mensuel.
 
-       `fmtEUR0Texte` existe pour ca — il rend « ••• € », sans balise. La regle
+       `fmtEUR0Texte` existe pour ca -- il rend "*** EUR", sans balise. La regle
        vaut pour tout attribut, pas seulement celui qui a casse. */
     const src = lireSource('assets/app.js');
     const fautifs = [];
@@ -1569,15 +1569,15 @@ suite('Un bien change de contenant, et garde un seul nom', () => {
   test('les usages de liquidités se plient comme les groupes de comptes', () => {
     /* Un `<details>` ne s'anime pas et n'offre aucune prise pour un geste
        collectif. Le panneau reprend donc le pli en grille de la page Actifs et
-       son bouton « Tout replier », qui bascule dans les deux sens. */
+       son bouton "Tout replier", qui bascule dans les deux sens. */
     const src = lireSource('assets/app.js');
     const debut = src.indexOf("if (classe === 'liquidites')");
     const bloc = src.slice(debut, src.indexOf("if (classe === 'immobilier')", debut));
     vrai(bloc.length > 500, 'le panneau des liquidités doit être trouvable');
     vrai(!/<details class="liq-groupe"/.test(bloc),
       'plus de <details> : il ne s’anime pas');
-    /* « ouvert » ne s'ecrit plus en dur : le pli se relit dans l'etat, sinon le
-       premier rendu suivant — celui d'« Enregistrer » — redepliait tout. */
+    /* "ouvert" ne s'ecrit plus en dur : le pli se relit dans l'etat, sinon le
+       premier rendu suivant -- celui d'"Enregistrer" -- redepliait tout. */
     vrai(/<div class="cpt-pli \$\{compteReplies\.has\(cleLiqPli\(g\.aff\)\) \? '' : 'ouvert'\}"><div class="liq-corps">/.test(bloc),
       'le pli animé est celui des groupes de comptes, et son état se relit');
     vrai(/data-cle="\$\{esc\(cleLiqPli\(g\.aff\)\)\}"/.test(bloc),
@@ -1600,9 +1600,9 @@ suite('Un bien change de contenant, et garde un seul nom', () => {
   });
 
   test('renommer le contenant d’un bien renomme le bien', () => {
-    /* Cas miroir : « Modifier l'etablissement » ne touchait que `e.nom`, meme
-       quand le contenant est un bien — la carte disait « Credit immobilier »
-       au-dessus d'une ligne « Appartement ». */
+    /* Cas miroir : "Modifier l'etablissement" ne touchait que `e.nom`, meme
+       quand le contenant est un bien -- la carte disait "Credit immobilier"
+       au-dessus d'une ligne "Appartement". */
     const src = lireSource('assets/app.js');
     const debut = src.indexOf("async 'modifier-etab'");
     const handler = src.slice(debut, src.indexOf("async 'modifier-compte'"));
@@ -1667,8 +1667,8 @@ suite('La pastille des cours ne certifie que ce qu’elle sait', () => {
     vrai(/if \(partiel\) \{ btn\.classList\.remove\('frais'\); btn\.classList\.add\('tiede'\); \}/
       .test(bloc), 'et le point reste tiède, jamais frais');
 
-    /* L'ordre des trois branches est l'invariant : « hors seance » doit passer
-       avant « partiel », sinon un portefeuille entierement ferme afficherait le
+    /* L'ordre des trois branches est l'invariant : "hors seance" doit passer
+       avant "partiel", sinon un portefeuille entierement ferme afficherait le
        compte de ses lignes au lieu de sa raison. */
     const posFerme = bloc.indexOf("ferme ? trad('hors séance')");
     const posPartiel = bloc.indexOf('partiel ? `${j.horsSeance}');
@@ -1697,7 +1697,7 @@ suite('La pastille des cours ne certifie que ce qu’elle sait', () => {
     const j = dayPerformance();
     vrai('toutHorsSeance' in j, 'le total');
     vrai(typeof j.horsSeance === 'number', 'et le compte');
-    /* Les deux quantites se recoupent : « tout hors seance » ne peut etre vrai
+    /* Les deux quantites se recoupent : "tout hors seance" ne peut etre vrai
        que si le compte egale le nombre de lignes suivies. */
     eq(j.toutHorsSeance, j.lignes.length > 0 && j.horsSeance === j.lignes.length,
       '« tout hors séance » est exactement « chaque ligne hors séance »');
@@ -1713,13 +1713,13 @@ suite('Le contenu de la page tient sur un très grand écran', () => {
     /* Sur 2 000 px, la colonne en faisait 1 750, et une courbe a douze points s'y
        etirait sur toute la largeur : des pixels depenses a eloigner les reperes,
        pas a montrer davantage. La borne ne joue qu'au-dela des tailles courantes
-       — 1 440, 1 512 — pour ne rien changer a ceux qui les utilisent. */
+       -- 1 440, 1 512 -- pour ne rien changer a ceux qui les utilisent. */
     const css = lireSource('assets/styles.css');
     vrai(css, 'assets/styles.css doit être lisible pour ce contrôle');
     /* Le corps d'une regle se borne a son accolade de fermeture, jamais a un
        nombre de caracteres. Une fenetre de 400 caracteres apres `body {`
        s'arretait au milieu du fichier reel, mais atteignait la regle SUIVANTE
-       une fois les commentaires retires — et cette voisine porte un `max-width`.
+       une fois les commentaires retires -- et cette voisine porte un `max-width`.
        Le controle passait donc au vert ou au rouge selon la longueur des
        commentaires alentour, ce qui n'est pas son sujet. */
     const regle = (source, selecteur) => {
@@ -1731,8 +1731,8 @@ suite('Le contenu de la page tient sur un très grand écran', () => {
     const bloc = regle(css, '.view {');
     vrai(bloc, 'la règle .view doit être trouvable');
     /* 1 100 px, et le chiffre vient d'une mesure : le tableau le plus large de
-       l'application demande 891 px, il en reçoit 1 002. À 1 480, un intitulé
-       et son montant étaient séparés de 1 328 px sur un écran de 1 680, pour
+       l'application demande 891 px, il en recoit 1 002. A 1 480, un intitule
+       et son montant etaient separes de 1 328 px sur un ecran de 1 680, pour
        un tableau de trois colonnes. */
     vrai(/max-width: 1100px/.test(bloc), 'la colonne de contenu est bornée');
     vrai(/margin: 0 auto/.test(bloc), 'et centrée au-delà');
@@ -1766,7 +1766,7 @@ suite('Un loyer se rattache depuis le bien, pas depuis une liste', () => {
       'le bouton qui renvoyait vers la liste générique a disparu de cette carte');
 
     /* Le rattachement n'est pas un champ de ces formulaires : il est leur raison
-       d'etre. Un menu ou l'on pourrait choisir « aucun » redonnerait le geste
+       d'etre. Un menu ou l'on pourrait choisir "aucun" redonnerait le geste
        qu'on vient d'eviter. */
     const loyer = src.slice(src.indexOf("async 'ajouter-loyer'"),
                             src.indexOf("async 'ajouter-charge-bien'"));
@@ -1810,7 +1810,7 @@ suite('Un loyer se rattache depuis le bien, pas depuis une liste', () => {
   test('la période d’une charge de bien part sur l’année', () => {
     /* Une taxe fonciere se paie une fois l'an, une copropriete par trimestre :
        c'est ce qu'on lit sur l'avis, et le budget ramene au mois tout seul.
-       Proposer « mois » par defaut ferait saisir 1 200 la ou il faut 100. */
+       Proposer "mois" par defaut ferait saisir 1 200 la ou il faut 100. */
     Fixture.poser();
     const src = lireSource('assets/app.js');
     const charge = src.slice(src.indexOf("async 'ajouter-charge-bien'"),
@@ -1900,7 +1900,7 @@ suite('Un bien de valeur compte partout', () => {
 
   test('le graphique d’évolution connaît chaque poche d’écran', () => {
     /* Derive : chaque cle de nowByGroup() doit figurer dans POCHES_EVOLUTION,
-       sinon la pile cesse de faire le total — sans erreur, sans ecran pour le
+       sinon la pile cesse de faire le total -- sans erreur, sans ecran pour le
        dire. Le controle couvre la poche de demain.
 
        Il lisait la source d'app.js a la regex, faute de pouvoir charger le
@@ -1909,13 +1909,13 @@ suite('Un bien de valeur compte partout', () => {
     const src = lireSource('assets/app.js');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
     Fixture.poser();
-    /* Chaque poche a sa bande, sans exception. Le capital garanti en a été
-       privé un temps, replié dans la bourse au motif que le passé ne se découpe
-       pas par classe : le motif était bon, la conclusion fausse. Les obligations
-       SONT des actifs de marché, donc les fondre dans cette bande dit vrai ; un
-       fonds euros n'en est pas un, et un patrimoine entièrement en fonds euros
-       s'affichait à 100 % d'actifs de marché. Une étiquette juste sur un début
-       tardif vaut mieux qu'une étiquette fausse sur toute la courbe. */
+    /* Chaque poche a sa bande, sans exception. Le capital garanti en a ete
+       prive un temps, replie dans la bourse au motif que le passe ne se decoupe
+       pas par classe : le motif etait bon, la conclusion fausse. Les obligations
+       SONT des actifs de marche, donc les fondre dans cette bande dit vrai ; un
+       fonds euros n'en est pas un, et un patrimoine entierement en fonds euros
+       s'affichait a 100 % d'actifs de marche. Une etiquette juste sur un debut
+       tardif vaut mieux qu'une etiquette fausse sur toute la courbe. */
     for (const cle of Object.keys(nowByGroup())) {
       vrai(POCHES_EVOLUTION.includes(cle),
         `la poche « ${cle} » n’est pas dans POCHES_EVOLUTION`);
@@ -1925,15 +1925,15 @@ suite('Un bien de valeur compte partout', () => {
     eq(POCHES_EVOLUTION.length, Object.keys(nowByGroup()).length,
       'et aucune bande de plus : une poche que le patrimoine ne connaît pas '
       + 'tracerait une bande vide sous une entrée de légende');
-    /* La cascade des dettes du tracé net visite CHAQUE bande, du moins liquide
-       au plus liquide : une poche oubliée là, et la dette cesse d'être
-       entièrement retranchée dès qu'elle dépasse les poches visitées. Dérivée
-       plutôt qu'écrite en dur, sinon la poche suivante manquera aussi — c'est
-       exactement ce qui est arrivé au capital garanti.
+    /* La cascade des dettes du trace net visite CHAQUE bande, du moins liquide
+       au plus liquide : une poche oubliee la, et la dette cesse d'etre
+       entierement retranchee des qu'elle depasse les poches visitees. Derivee
+       plutot qu'ecrite en dur, sinon la poche suivante manquera aussi -- c'est
+       exactement ce qui est arrive au capital garanti.
 
-       Les deux listes ne sont pas dans le même ordre, et ce n'est pas une
-       négligence : on empile en partant du disponible, on rembourse en partant
-       de ce qui se vend le plus mal. Ce sont les mêmes poches, jamais le même
+       Les deux listes ne sont pas dans le meme ordre, et ce n'est pas une
+       negligence : on empile en partant du disponible, on rembourse en partant
+       de ce qui se vend le plus mal. Ce sont les memes poches, jamais le meme
        rang. */
     eq([...CASCADE_DETTES].sort().join(','), [...POCHES_EVOLUTION].sort().join(','),
       'la cascade des dettes et la pile doivent porter exactement les mêmes poches');
@@ -1942,9 +1942,9 @@ suite('Un bien de valeur compte partout', () => {
   });
 
   test('la fenêtre du non coté ne liste que du non coté', () => {
-    /* Elle listait tous les comptes du groupe d'ecran `pe` — immobilier et
-       biens compris — sur un total qui ne compte que la classe nonCote : un
-       studio a 120 000 EUR sous un titre « Placements non cotés », et un
+    /* Elle listait tous les comptes du groupe d'ecran `pe` -- immobilier et
+       biens compris -- sur un total qui ne compte que la classe nonCote : un
+       studio a 120 000 EUR sous un titre "Placements non cotes", et un
        total plus petit que la somme de ses lignes. */
     const src = lireSource('assets/app.js');
     const bloc = src.slice(src.indexOf('  pe: () => {'), src.indexOf('  investi: () =>'));

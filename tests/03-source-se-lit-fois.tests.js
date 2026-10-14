@@ -1,9 +1,9 @@
 partieDeTests('tests/03-source-se-lit-fois.tests.js');
 /* ------------------------------------------------------------------
-   7 bis. Le source lui-même
+   7 bis. Le source lui-meme
    ------------------------------------------------------------------ */
 /* ------------------------------------------------------------------
-   Le harnais : lire une source une fois, et savoir dire « partiel »
+   Le harnais : lire une source une fois, et savoir dire "partiel"
    ------------------------------------------------------------------ */
 suite('Une source se lit une fois, et un vert partiel se dit', () => {
 
@@ -11,8 +11,8 @@ suite('Une source se lit une fois, et un vert partiel se dit', () => {
     /* Cinq cent douze lectures partaient d'ici, dont trois cent quarante-six
        sur `app.js`, qui pese pres d'un mega-octet : trois cent quarante
        mega-octets relus en XHR synchrone a chaque execution. La suite mettait
-       cent douze secondes, et une lecture tombait de temps en temps — « Failed
-       to execute 'send' » — sur un test qui changeait a chaque fois.
+       cent douze secondes, et une lecture tombait de temps en temps -- "Failed
+       to execute 'send'" -- sur un test qui changeait a chaque fois.
 
        Le defaut n'etait pas dans un controle, il etait dans le NOMBRE de
        lectures. Retenues, la suite tient en trois secondes et demie et le rouge
@@ -55,7 +55,7 @@ suite('Une source se lit une fois, et un vert partiel se dit', () => {
   });
 
   test('« touche » se dérive du corps des suites, il ne se recopie pas', () => {
-    /* Une liste ecrite a la main de « quelles suites lisent app.js » aurait
+    /* Une liste ecrite a la main de "quelles suites lisent app.js" aurait
        menti au premier test deplace. Le corps de chaque suite est retenu sous
        forme de texte, et la question se pose au texte. */
     const tout = Tests.choisir();
@@ -153,7 +153,7 @@ suite('Une source se lit une fois, et un vert partiel se dit', () => {
 });
 
 /* ------------------------------------------------------------------
-   Changer de périmètre transforme les anneaux, il ne les remplace pas
+   Changer de perimetre transforme les anneaux, il ne les remplace pas
    ------------------------------------------------------------------ */
 suite('Les anneaux d’Allocation se transforment quand le périmètre change', () => {
 
@@ -217,7 +217,7 @@ suite('Les anneaux d’Allocation se transforment quand le périmètre change', 
       'et chaque part est coupée dessus');
 
     /* Le drapeau du grand arc se lit sur la portion REELLEMENT tracee. Sur la
-       part entiere — l'ancienne ecriture, `frac > 0.5` — une grosse part coupee
+       part entiere -- l'ancienne ecriture, `frac > 0.5` -- une grosse part coupee
        a moins d'un demi-tour aurait peint son complementaire : l'anneau se
        serait rempli a l'envers pendant quelques images. */
     vrai(/const large = \(d1 - d0\) > Math\.PI \? 1 : 0;/.test(t),
@@ -273,7 +273,7 @@ suite('Les anneaux d’Allocation se transforment quand le périmètre change', 
        liste de DEPART et s'arretait a sa fin. Au retour vers le perimetre
        large, les poches financieres gardent leurs montants au centime pres et
        une poche s'AJOUTE : les anciennes s'accordaient donc toutes, la garde
-       concluait « identique », et la part qui apparaissait se posait d'un coup.
+       concluait "identique", et la part qui apparaissait se posait d'un coup.
 
        Mesure a l'appui : une seule forme distincte sur quatre-vingt-onze
        images, la ou l'aller en montrait cinquante-trois. Deux anneaux sur trois
@@ -345,9 +345,9 @@ suite('Les anneaux d’Allocation se transforment quand le périmètre change', 
                          t.indexOf('allocTransition = false;',
                                    t.indexOf('const animAlloc = allocTransition;')));
     vrai(bloc.length > 200, 'le montage des anneaux doit être trouvable');
-    /* Ils sont QUATRE depuis que le portefeuille de marché a le sien. Il ne
-       se monte que chez qui détient des titres, mais son appel est écrit au
-       même endroit que les autres et reçoit donc le même drapeau : les
+    /* Ils sont QUATRE depuis que le portefeuille de marche a le sien. Il ne
+       se monte que chez qui detient des titres, mais son appel est ecrit au
+       meme endroit que les autres et recoit donc le meme drapeau : les
        animer ensemble ou pas du tout. */
     eq((bloc.match(/anime: animAlloc/g) || []).length, 4,
       'les quatre anneaux reçoivent le même drapeau');
@@ -357,7 +357,7 @@ suite('Les anneaux d’Allocation se transforment quand le périmètre change', 
   });
 
   test('Allocation s’ouvre sur « Financier »', () => {
-    /* Elle ouvrait sur « Tout », et le premier ecran etait celui qu'elle ne sait
+    /* Elle ouvrait sur "Tout", et le premier ecran etait celui qu'elle ne sait
        pas rendre utile : un appartement y pese l'essentiel du net, les autres
        poches se serrent sous deux pour cent et leurs traits deviennent
        invisibles. On ne reequilibre pas un logement, et cette page existe pour
@@ -365,7 +365,7 @@ suite('Les anneaux d’Allocation se transforment quand le périmètre change', 
     const app = lireSource('assets/app.js');
     vrai(/let allocFinancier = true;/.test(app), 'le périmètre financier est le défaut');
     vrai(!/let allocFinancier = false;/.test(app), 'et l’ancien défaut est parti');
-    /* « Tout » reste a un geste : rien n'est retire, seule la porte d'entree
+    /* "Tout" reste a un geste : rien n'est retire, seule la porte d'entree
        change. */
     vrai(/\['financier', 'Financier'\], \['tout', 'Tout'\]/.test(app),
       '« Financier » ouvre la barre, « Tout » reste à côté');
@@ -391,7 +391,7 @@ suite('Les anneaux d’Allocation se transforment quand le périmètre change', 
 });
 
 /* ------------------------------------------------------------------
-   La base d'un pourcentage se lit sous le titre, pas à côté
+   La base d'un pourcentage se lit sous le titre, pas a cote
    ------------------------------------------------------------------ */
 suite('La mention de base est une légende, pas une commande', () => {
 
@@ -399,8 +399,8 @@ suite('La mention de base est une légende, pas une commande', () => {
     /* L'en-tete de carte est une ligne a deux bords : le titre a gauche, une
        COMMANDE a droite. La mention y etait donc traitee comme un bouton, et
        `space-between` poussait deux textes de longueurs tres differentes vers
-       les deux bords. En francais, « en % de ton patrimoine financier · 66 182
-       EUR » rejoignait « Repartition globale » au milieu et se chevauchait sur
+       les deux bords. En francais, "en % de ton patrimoine financier . 18 250
+       EUR" rejoignait "Repartition globale" au milieu et se chevauchait sur
        un telephone.
 
        Le controle est DERIVE : il refuse le motif partout, plutot que de tenir
@@ -428,17 +428,17 @@ suite('La mention de base est une légende, pas une commande', () => {
   });
 
   test('« Répartition » porte deux sens, et une clef pointée les sépare', () => {
-    /* « Repartition » vaut deja « Breakdown » : c'est l'etiquette vocale de tous
+    /* "Repartition" vaut deja "Breakdown" : c'est l'etiquette vocale de tous
        les anneaux. Une clef-phrase ne porte qu'un seul sens, donc le titre de
-       la carte passe par une clef pointee avec son francais en repli — la
-       convention deja posee pour « sur.objectif ». */
+       la carte passe par une clef pointee avec son francais en repli -- la
+       convention deja posee pour "sur.objectif". */
     const src = lireSource('assets/app.js');
     vrai(/<h2>\$\{trad\('Répartition\.carte', 'Répartition'\)\}<\/h2>/.test(src),
       'le titre s’affiche « Répartition » et se traduit par sa clef');
     eq(I18N.en['Répartition.carte'], 'Allocation', 'la carte se dit « Allocation »');
     eq(I18N.en['Répartition'], 'Breakdown', 'et l’étiquette vocale garde son mot');
-    /* « globale » contredisait la bascule des qu'on passait en Financier : un
-       titre qui annonce « global » au-dessus d'une base restreinte ment. */
+    /* "globale" contredisait la bascule des qu'on passait en Financier : un
+       titre qui annonce "global" au-dessus d'une base restreinte ment. */
     vrai(!src.includes("trad('Répartition globale')"),
       'plus rien n’annonce « globale » au-dessus d’une base qui peut être restreinte');
     vrai(!I18N.en['Répartition globale'], 'et la clef morte est partie avec');
@@ -446,7 +446,7 @@ suite('La mention de base est une légende, pas une commande', () => {
 });
 
 /* ------------------------------------------------------------------
-   Les barres poussent de zéro, et pas n'importe quand
+   Les barres poussent de zero, et pas n'importe quand
    ------------------------------------------------------------------ */
 suite('Les barres des graphiques poussent, à l’arrivée et au changement de périmètre', () => {
 
@@ -525,7 +525,7 @@ suite('Les barres des graphiques poussent, à l’arrivée et au changement de p
     /* TROIS gestes le levent, et ils se nomment ici. Chacun remplace les
        chiffres que les barres dessinent : le perimetre d'Allocation, la lecture
        net / brut, et l'annee des releves. Un quatrieme devra passer par la meme
-       porte — c'est ce qui empeche « on anime aussi ce cas-la » de se glisser
+       porte -- c'est ce qui empeche "on anime aussi ce cas-la" de se glisser
        sans qu'on ait pese la fatigue que ca ajoute. */
     for (const geste of ["'alloc-base'(btn) {", "'hero-base'(btn) {",
                          "'history-year'(btn) {"]) {
@@ -568,7 +568,7 @@ suite('Les barres des graphiques poussent, à l’arrivée et au changement de p
        et la pousse des jauges l'ignoraient, alors que le balayage de la courbe
        le respectait : trois animations d'arrivee, deux regimes. */
     /* Le bloc se trouve par son CONTENU : le fichier en compte une dizaine, un
-       par fonctionnalité, et « le dernier » n'est pas une adresse stable. */
+       par fonctionnalite, et "le dernier" n'est pas une adresse stable. */
     const blocs = c.split('@media (prefers-reduced-motion: reduce)').slice(1);
     const bloc = blocs.find(x => x.slice(0, 500).includes('.rb-barre'));
     vrai(bloc, 'le garde-fou des animations d’arrivée doit exister');
@@ -591,7 +591,7 @@ suite('Une bascule qui ne change rien ne se montre pas', () => {
     for (const m of s.monthly) delete m.v.c_immo;
   };
   /* Une dette qui ne finance aucun bien physique : c'est le cas qu'un drapeau
-     « a-t-il un appartement » traiterait a l'envers. */
+     "a-t-il un appartement" traiterait a l'envers. */
   const detteDeCourtier = (s) => {
     sansDette(s);
     s.etabs.find(e => e.id === 'e_courtier').dettes =
@@ -739,7 +739,7 @@ suite('Une bascule qui ne change rien ne se montre pas', () => {
 
 
 /* ------------------------------------------------------------------
-   Les barres des relevés, et la teinte d'un contenant
+   Les barres des releves, et la teinte d'un contenant
    ------------------------------------------------------------------ */
 suite('La piste d’un relevé pousse depuis son zéro', () => {
 
@@ -784,7 +784,7 @@ suite('La piste d’un relevé pousse depuis son zéro', () => {
 
   test('un mois plat ne pousse pas', () => {
     /* Ce n'est pas une barre mais un point de six pixels, pose sur le zero pour
-       dire « rien ne s'est passe » plutot que « pas de donnee » : il n'a aucune
+       dire "rien ne s'est passe" plutot que "pas de donnee" : il n'a aucune
        longueur a parcourir, et l'etirer depuis un bord le ferait glisser. */
     vrai(/\.graphes-poussent \.ml-jauge > i\.plat \{ animation: none; \}/.test(css()),
       'le point d’un mois plat reste immobile');
@@ -795,15 +795,15 @@ suite('La piste d’un relevé pousse depuis son zéro', () => {
 });
 
 /* ------------------------------------------------------------------
-   La couleur d'un établissement vient de sa famille
+   La couleur d'un etablissement vient de sa famille
    ------------------------------------------------------------------ */
 suite('Un établissement porte la couleur de sa famille, pas de son contenu', () => {
 
   test('la teinte se lit sur l’établissement, jamais sur la valeur de ses lignes', () => {
     /* Le defaut : la couleur venait de la classe d'actif dominante EN VALEUR.
-       Une minorite pouvait donc peindre le tout — un courtier dont la plus
-       grosse ligne est du non cote se lisait « societe » alors que sa propre
-       fiche annoncait « Banque ou courtier » deux centimetres plus haut. Les
+       Une minorite pouvait donc peindre le tout -- un courtier dont la plus
+       grosse ligne est du non cote se lisait "societe" alors que sa propre
+       fiche annoncait "Banque ou courtier" deux centimetres plus haut. Les
        mots et la couleur se contredisaient dans la meme carte.
 
        Pire : la couleur bougeait avec le marche. La ligne qui passe devant
@@ -872,7 +872,7 @@ suite('Un établissement porte la couleur de sa famille, pas de son contenu', ()
 });
 
 /* ------------------------------------------------------------------
-   Le ruban des indices se rafraîchit vraiment
+   Le ruban des indices se rafraichit vraiment
    ------------------------------------------------------------------ */
 suite('Les cours du marché se remettent à jour, pas seulement ceux qu’on détient', () => {
 
@@ -895,7 +895,7 @@ suite('Les cours du marché se remettent à jour, pas seulement ceux qu’on dé
   });
 
   test('un appui sur la pastille rafraîchit aussi ce qu’on voit', () => {
-    /* Elle annoncait « 6 cours mis a jour » au-dessus d'un S&P 500 vieux de
+    /* Elle annoncait "6 cours mis a jour" au-dessus d'un S&P 500 vieux de
        quatre minutes : deux signaux qui se contredisent dans la meme seconde.
        Le geste couvre ce qu'on voit, pas seulement ce qu'on detient. */
     const t = app();
@@ -940,7 +940,7 @@ suite('Les cours du marché se remettent à jour, pas seulement ceux qu’on dé
 });
 
 /* ------------------------------------------------------------------
-   Un texte long a la place qu'il lui faut, un champ court celle qu'il mérite
+   Un texte long a la place qu'il lui faut, un champ court celle qu'il merite
    ------------------------------------------------------------------ */
 suite('Les champs prennent la place de ce qu’ils portent', () => {
 
@@ -951,7 +951,7 @@ suite('Les champs prennent la place de ce qu’ils portent', () => {
     /* La colonne des valeurs est en `auto` : elle se dimensionne sur ce que la
        phrase demande, meme repliee. Mesure a 375 px sur le bloc d'un credit :
        80 px pour les libelles contre 221 pour les valeurs, et les CINQ intitules
-       replies sur deux lignes — dont trois qui n'ont qu'un montant en face.
+       replies sur deux lignes -- dont trois qui n'ont qu'un montant en face.
        Sortie de la colonne, la phrase cesse de la dimensionner : 252 px pour les
        libelles, aucun replie, et le bloc raccourcit de 193 a 169 px. */
     const c = css();
@@ -996,7 +996,7 @@ suite('Les champs prennent la place de ce qu’ils portent', () => {
                          t.indexOf('<div class="field"><label>${trad(\'Adresse\')}</label>'));
     vrai(bloc.length > 500, 'le bloc du bien doit être trouvable');
     /* Deux ici, depuis que la valeur estimee et sa date vivent dans la carte
-       « Mettre a jour », en tete de fiche : ses deux grilles la portent aussi. */
+       "Mettre a jour", en tete de fiche : ses deux grilles la portent aussi. */
     eq((bloc.match(/<div class="grid g-2 g-paire">/g) || []).length, 2,
       'les deux grilles restantes du bien la portent');
     vrai(!/<div class="grid g-2">/.test(bloc),
@@ -1019,7 +1019,7 @@ suite('Les champs prennent la place de ce qu’ils portent', () => {
       vrai(motif.test(t), `« ${quoi} » doit être un textarea de trois lignes`);
     }
     /* Le piege du `textarea` : sa valeur vit dans son CORPS, pas dans un
-       attribut `value`. Ecrite en attribut, elle serait silencieusement perdue —
+       attribut `value`. Ecrite en attribut, elle serait silencieusement perdue --
        le champ s'afficherait vide et la sauvegarde ecraserait le texte. */
     for (const bout of ['style="text-align:left">${esc(l.adresse || \'\')}</textarea>',
                         '\')}">${esc(r.note || \'\')}</textarea>']) {
@@ -1036,7 +1036,7 @@ suite('Les champs prennent la place de ce qu’ils portent', () => {
   });
 
   test('l’écouteur d’écriture voit les textarea comme les input', () => {
-    /* Il cherche `closest('[data-path]')`, donc la balise ne compte pas — mais
+    /* Il cherche `closest('[data-path]')`, donc la balise ne compte pas -- mais
        c'est la condition pour que l'adresse s'enregistre a la frappe comme le
        reste de la fiche. Un champ qui ne s'ecrit pas est pire qu'un champ
        absent : on croit avoir saisi. */
@@ -1151,7 +1151,7 @@ suite('Apport, capital restant et valeur nette ne se mélangent jamais', () => {
 
     /* Un apport declare a ZERO, lui, est une reponse : le financement a couvrir
        est le cout entier. `num(apport) || null` confondait les deux, et taisait
-       le cas le plus net — un achat finance a cent pour cent. */
+       le cas le plus net -- un achat finance a cent pour cent. */
     Fixture.poser(s => {
       s.etabs.find(x => x.id === 'e_bien').dettes = [];
       const c = s.comptes.find(x => x.id === 'c_immo');
@@ -1165,7 +1165,7 @@ suite('Apport, capital restant et valeur nette ne se mélangent jamais', () => {
   test('le financement se détaille au lieu de rendre un verdict', () => {
     /* La version d'avant rendait un booleen `coherent`, vrai tant que l'ecart
        tenait sous QUINZE POUR CENT DU PRIX. Sur un bien a 255 000 EUR, cela
-       laissait passer 38 000 EUR d'ecart sans un mot — c'est-a-dire tout ce
+       laissait passer 38 000 EUR d'ecart sans un mot -- c'est-a-dire tout ce
        qu'on voudrait justement voir. Et quand il criait, il ne disait pas sur
        quoi. Le detail remplace le verdict. */
     const poser = (prix, apport, initial) => Fixture.poser(s => {
@@ -1191,7 +1191,7 @@ suite('Apport, capital restant et valeur nette ne se mélangent jamais', () => {
     pres(num(etabById('e_bien').dettes[0].initial), 210000, 'ni le capital initial');
 
     /* Ce que l'ancien seuil laissait passer se dit desormais : 20 000 EUR
-       d'ecart sur 255 000, c'est un pret travaux ou des frais finances — une
+       d'ecart sur 255 000, c'est un pret travaux ou des frais finances -- une
        information, pas un silence. */
     poser(255000, 30000, 245000);
     pres(planFinancement(bien()).ecart, 20000, 'vingt mille euros d’écart');
@@ -1275,14 +1275,14 @@ suite('Apport, capital restant et valeur nette ne se mélangent jamais', () => {
 });
 
 /* ------------------------------------------------------------------
-   Une phrase ne redit pas ce que la carte montre déjà
+   Une phrase ne redit pas ce que la carte montre deja
    ------------------------------------------------------------------ */
 suite('Le diagnostic des rôles ne dit que ce qui n’est pas déjà à l’écran', () => {
 
   test('la part du socle n’est plus récitée : la barre la porte', () => {
-    /* Elle l'annoncait en toutes lettres — « le core represente 55,0 % de la
-       base de tes cibles » — trente pixels au-dessus d'une barre qui affiche
-       « Core · 55,0 % » avec son montant, sous un en-tete qui nomme deja la
+    /* Elle l'annoncait en toutes lettres -- "le core represente 55,0 % de la
+       base de tes cibles" -- trente pixels au-dessus d'une barre qui affiche
+       "Core . 55,0 %" avec son montant, sous un en-tete qui nomme deja la
        base. Trois exemplaires du meme fait sur un ecran de telephone. */
     const app = lireSource('assets/app.js');
     const fn = app.slice(app.indexOf('function diagnosticRoles(rr)'),
@@ -1315,8 +1315,8 @@ suite('Le diagnostic des rôles ne dit que ce qui n’est pas déjà à l’écr
 
   test('la classe nommée pèse bien la classe entière', () => {
     /* Regle deja acquise, et qu'il ne faut pas perdre en simplifiant : la
-       composition est indexee par classe ET par nature, si bien qu'« actions en
-       direct » et « actions en fonds » y sont deux entrees. Prendre la premiere
+       composition est indexee par classe ET par nature, si bien qu'"actions en
+       direct" et "actions en fonds" y sont deux entrees. Prendre la premiere
        annoncerait un pourcentage juste sous un intitule qui ment. */
     const app = lireSource('assets/app.js');
     const fn = app.slice(app.indexOf('function diagnosticRoles(rr)'),
@@ -1329,12 +1329,12 @@ suite('Le diagnostic des rôles ne dit que ce qui n’est pas déjà à l’écr
 });
 
 /* ------------------------------------------------------------------
-   Allocation compte ce qu'on possède, pas ce qu'on posséderait sans dette
+   Allocation compte ce qu'on possede, pas ce qu'on possederait sans dette
    ------------------------------------------------------------------ */
 suite('Une seule base par mode, et la somme des parts la redonne', () => {
 
   /* Le fixture : 138 250 de brut, 40 000 de dette sur le studio de 120 000.
-     Le net vaut donc 98 250, et le studio ne pèse plus que 80 000. */
+     Le net vaut donc 98 250, et le studio ne pese plus que 80 000. */
   const NET = Fixture.BRUT - Fixture.DETTE;
 
   test('un bien financé pèse sa valeur moins son crédit, une seule fois', () => {
@@ -1351,7 +1351,7 @@ suite('Une seule base par mode, et la somme des parts la redonne', () => {
   });
 
   test('la somme des poches fait exactement la base nette', () => {
-    /* La règle qui gouverne tout ici : un total égale la somme de ses parts. */
+    /* La regle qui gouverne tout ici : un total egale la somme de ses parts. */
     Fixture.poser();
     const parts = poidsPoches({ net: true });
     pres(parts.reduce((s, x) => s + x.value, 0), NET,
@@ -1360,9 +1360,9 @@ suite('Une seule base par mode, et la somme des parts la redonne', () => {
   });
 
   test('les quatre catégories de la carte font aussi la base nette', () => {
-    /* « Investi moins les dettes » plus les trois poches de cash. C'est
-       l'égalité que le changement de base devait préserver, et la seule qui
-       empêche la carte de mentir. */
+    /* "Investi moins les dettes" plus les trois poches de cash. C'est
+       l'egalite que le changement de base devait preserver, et la seule qui
+       empeche la carte de mentir. */
     Fixture.poser();
     const t = nowTotals();
     const investi = t.invested - num(t.dettes);
@@ -1378,14 +1378,14 @@ suite('Une seule base par mode, et la somme des parts la redonne', () => {
     pres(t.net, t.brut, 'le net vaut le brut');
     const parts = poidsPoches({ net: true });
     pres(parts.reduce((s, x) => s + x.value, 0), t.brut, 'et les poches le redonnent');
-    /* Et la poche immobilière retrouve sa valeur pleine. */
+    /* Et la poche immobiliere retrouve sa valeur pleine. */
     pres(parts.find(x => x.key === 'immo').value, 120000, 'le studio pèse ce qu’il vaut');
   });
 
   test('Financier écarte les murs et ne retranche aucun crédit', () => {
-    /* La règle déjà posée, et qu'il ne fallait surtout pas défaire en passant
-       « Tout » au net : le prêt finance le bien, qui est écarté de cette vue.
-       Retrancher un crédit immobilier d'un périmètre qui exclut l'immobilier
+    /* La regle deja posee, et qu'il ne fallait surtout pas defaire en passant
+       "Tout" au net : le pret finance le bien, qui est ecarte de cette vue.
+       Retrancher un credit immobilier d'un perimetre qui exclut l'immobilier
        serait une double faute. */
     Fixture.poser();
     const parts = poidsPoches({ financier: true, net: true });
@@ -1402,8 +1402,8 @@ suite('Une seule base par mode, et la somme des parts la redonne', () => {
   });
 
   test('une base qui ne se divise pas ne fabrique aucun pourcentage', () => {
-    /* Un patrimoine net négatif est possible — un achat récent financé à
-       crédit — et diviser par lui retournerait tous les signes. */
+    /* Un patrimoine net negatif est possible -- un achat recent finance a
+       credit -- et diviser par lui retournerait tous les signes. */
     Fixture.poser(s => {
       s.etabs.find(e => (e.dettes || []).length).dettes[0].montant = Fixture.BRUT * 2;
     });
@@ -1411,13 +1411,13 @@ suite('Une seule base par mode, et la somme des parts la redonne', () => {
     for (const x of poidsPoches({ net: true })) {
       eq(x.pct, null, `« ${x.key} » : aucun pourcentage sur une base négative`);
     }
-    /* Les montants, eux, restent vrais : on ne force rien à zéro. */
+    /* Les montants, eux, restent vrais : on ne force rien a zero. */
     pres(poidsPoches({ net: true }).reduce((s, x) => s + x.value, 0), nowTotals().net,
       'et les montants disent la vérité, aussi désagréable soit-elle');
   });
 
   test('la carte, le camembert et le pied lisent la même base', () => {
-    /* Le défaut d'origine : la carte comptait en brut et son pied annonçait un
+    /* Le defaut d'origine : la carte comptait en brut et son pied annoncait un
        net, sans que rien ne dise lequel portait les pourcentages. Une base par
        mode, lue par une seule fonction. */
     const app = lireSource('assets/app.js');
@@ -1426,18 +1426,18 @@ suite('Une seule base par mode, et la somme des parts la redonne', () => {
     vrai(/const baseAlloc = \(\) => \(allocFinancier \? BASES\.avoirsFinanciers : BASES\.net\);/.test(app),
       'et elle se nomme comme telle');
     /* Et la base des cartes qui decrivent des AVOIRS. Elle n'existait pas :
-       trois cartes annonçaient le net, deux le totalisaient. */
+       trois cartes annoncaient le net, deux le totalisaient. */
     vrai(/const valeurAvoirsAlloc = \(\) => \(allocFinancier \? totalFinancier\(\) : patrimoine\(\)\.brut\);/.test(app),
       'la base des avoirs vaut le brut en vue globale');
     vrai(/const baseAvoirsAlloc = \(\) => \(allocFinancier \? BASES\.avoirsFinanciers : BASES\.avoirs\);/.test(app),
       'et elle se nomme « Tes avoirs »');
-    /* Les deux lectures des poches passent le même mode, et le net avec. */
+    /* Les deux lectures des poches passent le meme mode, et le net avec. */
     eq((app.match(/pochesPatrimoine\(\{ financier: allocFinancier, net: true \}\)/g) || []).length, 2,
       'le tableau et le camembert lisent la même chose');
     /* Le pied ne dit plus qu'une ligne : trois montants sous une carte dont les
        pourcentages portaient sur le premier, personne ne pouvait dire lequel
-       était la base. */
-    /* Quatre cartes portent un « repart-pied » : celui d'Allocation se cherche
+       etait la base. */
+    /* Quatre cartes portent un "repart-pied" : celui d'Allocation se cherche
        depuis la carte, pas depuis le debut du fichier. Une ancre prise trop tot
        lit une autre carte et rend un vert qui ne parle pas du bon endroit. */
     const dep = app.indexOf('<dl class="kv repart-pied">', app.indexOf('${disponibilite.map('));
@@ -1451,7 +1451,7 @@ suite('Une seule base par mode, et la somme des parts la redonne', () => {
   test('le classement ligne par ligne compte sur la base de sa carte', () => {
     /* Le defaut que ce controle attrape : passer la carte du haut en net sans
        son classement, qui continuait a compter en brut. Le meme appartement
-       pesait alors 130 638 € dans la tranche « Immobilier » et 288 000 € dans
+       pesait alors 80 000 EUR dans la tranche "Immobilier" et 120 000 EUR dans
        la barre juste en dessous, dans la meme carte, sous une seule base
        annoncee. Et la carte promet explicitement que la barre la plus longue du
        bas est une part de la plus grosse tranche du haut. */
@@ -1508,8 +1508,8 @@ suite('Une seule base par mode, et la somme des parts la redonne', () => {
   });
 
   test('la phrase de concentration nomme la base qu’elle divise', () => {
-    /* Elle a menti deux fois pour l'avoir oublie : « de tes avoirs » sous un
-       pourcentage financier, puis « de ton patrimoine net » sous un pourcentage
+    /* Elle a menti deux fois pour l'avoir oublie : "de tes avoirs" sous un
+       pourcentage financier, puis "de ton patrimoine net" sous un pourcentage
        brut. Le libelle et le diviseur viennent donc du meme endroit.
 
        Une concentration mesure une exposition : elle divise par les avoirs, en
@@ -1535,7 +1535,7 @@ suite('Une seule base par mode, et la somme des parts la redonne', () => {
   });
 
   test('la carte Répartition ne retranche pas la dette une seconde fois', () => {
-    /* Un pied « Crédits en cours / Patrimoine net » sous deux tableaux qui
+    /* Un pied "Credits en cours / Patrimoine net" sous deux tableaux qui
        comptent deja en net soustrairait la dette deux fois, et le total annonce
        ne serait plus celui que composent les parts juste au-dessus. */
     const app = lireSource('assets/app.js');
@@ -1550,9 +1550,9 @@ suite('Une seule base par mode, et la somme des parts la redonne', () => {
   });
 
   test('« Investi » est devenu « Placements », partout à la fois', () => {
-    /* Trois montants voisins sous trois noms voisins : « Tes titres », « Investi »,
-       « Ton portefeuille ». Celui-ci est tout ce qui n'est pas des liquidites, et
-       « investi » disait aussi le prix de revient d'une ligne. */
+    /* Trois montants voisins sous trois noms voisins : "Tes titres", "Investi",
+       "Ton portefeuille". Celui-ci est tout ce qui n'est pas des liquidites, et
+       "investi" disait aussi le prix de revient d'une ligne. */
     const st = lireSource('assets/store.js');
     vrai(/place:\s+\{ nom: trad\('Placements'\),\s+de: trad\('de tes placements'\) \}/.test(st),
       'le mot se change à un seul endroit');
@@ -1667,7 +1667,7 @@ suite('Parts de société : un nombre saisi, deux prix déduits', () => {
 
   test('c’est l’écart entre les deux prix qui sert', () => {
     /* Un prix de revient isole ne se compare a rien. Rapporte au prix
-       d'aujourd'hui — celui d'une levee, d'un pacte — il dit enfin quelque
+       d'aujourd'hui -- celui d'une levee, d'un pacte -- il dit enfin quelque
        chose : la part payee quatre euros en vaut six, soit une fois et demie. */
     const u = prixParPart({ parts: 500, prixDeRevient: 2000, valeur: 3000 });
     pres(u.revient, 4, 'quatre euros payés');
@@ -1676,7 +1676,7 @@ suite('Parts de société : un nombre saisi, deux prix déduits', () => {
   });
 
   test('sans nombre de parts, aucun prix unitaire n’est inventé', () => {
-    /* `null` et non zero : « 0,00 € la part » se lirait comme une mesure alors
+    /* `null` et non zero : "0,00 EUR la part" se lirait comme une mesure alors
        que c'est une absence de mesure. */
     eq(prixParPart({ prixDeRevient: 2000, valeur: 2000 }), null, 'aucune part déclarée');
     eq(prixParPart({ parts: 0, prixDeRevient: 2000 }), null, 'zéro part');
@@ -1692,7 +1692,7 @@ suite('Parts de société : un nombre saisi, deux prix déduits', () => {
   });
 
   test('une part à moins d’un centime garde ses décimales', () => {
-    /* Une part peut valoir 0,0012 €, et « 0,00 € » se lirait comme zero. Les
+    /* Une part peut valoir 0,0012 EUR, et "0,00 EUR" se lirait comme zero. Les
        decimales suivent l'ordre de grandeur, et seulement quand il le faut. */
     const u = prixParPart({ parts: 2000000, prixDeRevient: 2400, valeur: 2400 });
     pres(u.revient, 0.0012, 'un peu plus d’un millieme d’euro');
@@ -1734,9 +1734,9 @@ suite('Le premier relevé : une seule porte, et une question avant', () => {
 
   test('une page vide n’offre qu’un chemin vers le relevé', () => {
     /* TROIS PORTES VERS LE MEME GESTE, C'EST DEUX DE TROP. Sur une page encore
-       vide, le rappel du mois en cours, le bouton de l'en-tête et celui de
-       l'état vide ouvraient tous la même fenêtre. L'état vide garde le sien :
-       il est le seul des trois à expliquer ce qu'est un relevé. Vu à l'écran. */
+       vide, le rappel du mois en cours, le bouton de l'en-tete et celui de
+       l'etat vide ouvraient tous la meme fenetre. L'etat vide garde le sien :
+       il est le seul des trois a expliquer ce qu'est un releve. Vu a l'ecran. */
     const src = app();
     const vue = src.slice(src.indexOf('const vide = pasAFaire(\'comptes\')'),
                           src.indexOf('Entrées et sorties exceptionnelles'));
@@ -1751,14 +1751,14 @@ suite('Le premier relevé : une seule porte, et une question avant', () => {
   });
 
   test('le bouton dit que c’est le premier', () => {
-    /* Il disait « Enregistrer un relevé » sous un texte qui parle du premier :
-       le libellé doit dire le geste qu'on vient faire, et ce pas ne s'affiche
-       que tant qu'aucun relevé n'existe. */
+    /* Il disait "Enregistrer un releve" sous un texte qui parle du premier :
+       le libelle doit dire le geste qu'on vient faire, et ce pas ne s'affiche
+       que tant qu'aucun releve n'existe. */
     const pas = PREMIERS_PAS.find(p => p.cle === 'releves');
-    /* IL EST REVENU A « un relevé », et la raison est une mesure : la rangée
-       d'un pas donne à son bouton une demi-carte, soit 150 px à 375 px, et
-       « Enregistrer ton premier relevé » en demande 194. Il s'y plierait en
-       deux lignes à côté d'un bouton d'une seule. « Premier » n'est pas perdu
+    /* IL EST REVENU A "un releve", et la raison est une mesure : la rangee
+       d'un pas donne a son bouton une demi-carte, soit 150 px a 375 px, et
+       "Enregistrer ton premier releve" en demande 194. Il s'y plierait en
+       deux lignes a cote d'un bouton d'une seule. "Premier" n'est pas perdu
        pour autant : le titre du pas le dit, et la consigne juste au-dessus
        aussi. */
     eq(pas.bouton, 'Enregistrer ton premier relevé', 'le pas le dit');
@@ -1775,8 +1775,8 @@ suite('Le premier relevé : une seule porte, et une question avant', () => {
     vrai(!inventaireDeclareComplet(), 'au départ, rien n’est déclaré');
     masquerNotif(CLE_INVENTAIRE);
     vrai(inventaireDeclareComplet(), 'la déclaration prend');
-    /* `pasDeclare` dit que la déclaration du pas est faite : le guide cesse
-       alors de poser la question, puisqu'elle vient d'être répondue ailleurs. */
+    /* `pasDeclare` dit que la declaration du pas est faite : le guide cesse
+       alors de poser la question, puisqu'elle vient d'etre repondue ailleurs. */
     vrai(pasDeclare(PAS_PAR_CLE['comptes']),
       'et le pas du guide tient sa réponse, sans la reposer');
   });
@@ -1785,8 +1785,8 @@ suite('Le premier relevé : une seule porte, et une question avant', () => {
 suite('On ne répond pas « tout y est » sans pouvoir regarder', () => {
 
   test('chaque pas qui pose la question offre d’aller voir la liste', () => {
-    /* LE GESTE QUI MANQUAIT. Le pas demande une déclaration que l'application
-       ne peut pas déduire, et il n'offrait que deux réponses : oui, ou ajouter.
+    /* LE GESTE QUI MANQUAIT. Le pas demande une declaration que l'application
+       ne peut pas deduire, et il n'offrait que deux reponses : oui, ou ajouter.
        Quelqu'un qui ne se souvient plus de ce qu'il a saisi n'avait donc le
        choix qu'entre affirmer au hasard et rajouter un doublon. */
     for (const p of PREMIERS_PAS.filter(x => x.declare)) {
@@ -1800,8 +1800,8 @@ suite('On ne répond pas « tout y est » sans pouvoir regarder', () => {
   });
 
   test('le relevé n’en a pas, et c’est voulu', () => {
-    /* UN SEUL RELEVE SUFFIT : rien n'est à vérifier, donc aucune question n'est
-       posée, donc aucun renvoi. Une liste vide n'apprendrait rien à qui n'en a
+    /* UN SEUL RELEVE SUFFIT : rien n'est a verifier, donc aucune question n'est
+       posee, donc aucun renvoi. Une liste vide n'apprendrait rien a qui n'en a
        pas encore pris. Le renvoi suit la question, pas le pas. */
     const r = PREMIERS_PAS.find(p => p.cle === 'releves');
     vrai(!r.declare, 'le relevé ne demande pas si tout y est');
@@ -1811,10 +1811,10 @@ suite('On ne répond pas « tout y est » sans pouvoir regarder', () => {
   });
 
   test('les destinations existent, et portent déjà de quoi ajouter', () => {
-    /* Un renvoi qui mènerait sur une page inconnue ferait pire que rien. Les
+    /* Un renvoi qui menerait sur une page inconnue ferait pire que rien. Les
        vues se lisent dans la table des routes, jamais dans une seconde liste
-       écrite à côté. Et la destination doit porter son propre bouton d'ajout,
-       sinon quelqu'un qui découvre un oubli en la lisant s'y retrouve coincé. */
+       ecrite a cote. Et la destination doit porter son propre bouton d'ajout,
+       sinon quelqu'un qui decouvre un oubli en la lisant s'y retrouve coince. */
     const app = lireSource('assets/app.js');
     const routes = app.slice(app.indexOf('const ROUTES'), app.indexOf('const ROUTES') + 1500);
     for (const p of PREMIERS_PAS.filter(x => x.declare && x.declare.voir.vue)) {
@@ -1828,16 +1828,16 @@ suite('On ne répond pas « tout y est » sans pouvoir regarder', () => {
   });
 
   test('le patrimoine passe avant le guide dès la première donnée', () => {
-    /* LA CARTE ENTIÈRE OCCUPAIT TOUT LE PREMIER ÉCRAN D'UN TÉLÉPHONE, y compris
-       chez quelqu'un qui avait quatre établissements et quarante relevés : son
-       patrimoine passait sous la ligne de flottaison, derrière un tutoriel. Sur
-       une application de patrimoine, c'est l'inverse de la hiérarchie. Mesuré à
-       375 px : le hero finissait à 1 150 px.
+    /* LA CARTE ENTIERE OCCUPAIT TOUT LE PREMIER ECRAN D'UN TELEPHONE, y compris
+       chez quelqu'un qui avait quatre etablissements et quarante releves : son
+       patrimoine passait sous la ligne de flottaison, derriere un tutoriel. Sur
+       une application de patrimoine, c'est l'inverse de la hierarchie. Mesure a
+       375 px : le hero finissait a 1 150 px.
 
-       Dès qu'un premier compte existe, le guide se replie en une barre d'une
-       ligne, cliquable, posée SOUS le patrimoine. Sur un état vierge il garde
-       sa pleine taille et sa place devant : il est alors la seule chose à lire.
-       Le guide n'est pas supprimé — c'est sa taille après le début qui l'était. */
+       Des qu'un premier compte existe, le guide se replie en une barre d'une
+       ligne, cliquable, posee SOUS le patrimoine. Sur un etat vierge il garde
+       sa pleine taille et sa place devant : il est alors la seule chose a lire.
+       Le guide n'est pas supprime -- c'est sa taille apres le debut qui l'etait. */
     const app = lireSource('assets/app.js');
     const carte = app.slice(app.indexOf('function carteDemarrage()'),
                             app.indexOf('function ', app.indexOf('function carteDemarrage()') + 10));
@@ -1870,14 +1870,14 @@ suite('On ne répond pas « tout y est » sans pouvoir regarder', () => {
   });
 
   test('rouvrir un pas, c’est redémander sa question', () => {
-    /* IL RÉPONDAIT PAR LE MODE D'EMPLOI. Un pas franchi qu'on rouvrait montrait
+    /* IL REPONDAIT PAR LE MODE D'EMPLOI. Un pas franchi qu'on rouvrait montrait
        sa consigne et son bouton d'ajout, en gardant sa coche : on y revenait
-       pour vérifier, et l'application ne reposait jamais la seule chose qu'elle
-       ne sait pas déduire. Vu à l'écran, sur le pas des comptes.
+       pour verifier, et l'application ne reposait jamais la seule chose qu'elle
+       ne sait pas deduire. Vu a l'ecran, sur le pas des comptes.
 
-       UN SEUL MOT LE DIT, ET TOUT EN DÉCOULE : le marqueur repasse au numéro, le
+       UN SEUL MOT LE DIT, ET TOUT EN DECOULE : le marqueur repasse au numero, le
        compteur recule, le pas redevient courant, et sa question s'affiche. Une
-       seconde condition posée à côté de chacun aurait fini par en contredire
+       seconde condition posee a cote de chacun aurait fini par en contredire
        une autre. */
     const app = lireSource('assets/app.js');
     const carte = app.slice(app.indexOf('function carteDemarrage()'),
@@ -1895,17 +1895,17 @@ suite('On ne répond pas « tout y est » sans pouvoir regarder', () => {
   });
 
   test('tous les boutons d’un pas ont la même taille', () => {
-    /* DEUX MESURES, DEUX DÉFAUTS. Un pas qui n'offre que son geste laissait sa
-       largeur suivre la longueur de son libellé : « Entrer tes comptes » faisait
-       130 px là où « Oui, tout y est », juste dessous, en faisait 134. Et deux
-       colonnes à 375 px n'en laissent que 134, où « Ajouter une rentrée » et
-       « Entrer ton salaire net » se plient en deux lignes : 46 px de haut à
-       côté d'un voisin de 30, ce qui est le défaut qu'on venait corriger.
+    /* DEUX MESURES, DEUX DEFAUTS. Un pas qui n'offre que son geste laissait sa
+       largeur suivre la longueur de son libelle : "Entrer tes comptes" faisait
+       130 px la ou "Oui, tout y est", juste dessous, en faisait 134. Et deux
+       colonnes a 375 px n'en laissent que 134, ou "Ajouter une rentree" et
+       "Entrer ton salaire net" se plient en deux lignes : 46 px de haut a
+       cote d'un voisin de 30, ce qui est le defaut qu'on venait corriger.
 
-       La grille décide de la largeur, le bouton l'occupe ; et sous 768 px elle
-       s'empile, comme les rangées des fiches et pour la même mesure. Tous les
-       boutons du guide font alors exactement la même largeur, un ou deux, et
-       aucun libellé ne se replie. */
+       La grille decide de la largeur, le bouton l'occupe ; et sous 768 px elle
+       s'empile, comme les rangees des fiches et pour la meme mesure. Tous les
+       boutons du guide font alors exactement la meme largeur, un ou deux, et
+       aucun libelle ne se replie. */
     const app = lireSource('assets/app.js');
     const carte = app.slice(app.indexOf('function carteDemarrage()'),
                             app.indexOf('function ', app.indexOf('function carteDemarrage()') + 10));
@@ -1937,31 +1937,31 @@ suite('On ne répond pas « tout y est » sans pouvoir regarder', () => {
     const css = lireSource('assets/styles.css');
     vrai(/\.pas-voir \{/.test(css), 'il a sa règle');
     /* IL PASSE A LA LIGNE DE LUI-MEME. Les deux branches du pas n'ont pas la
-       même forme : celle de la question pose une rangée de deux boutons, qui
+       meme forme : celle de la question pose une rangee de deux boutons, qui
        occupe sa ligne, et le renvoi tombait dessous ; celle d'un pas rouvert
-       n'a qu'un bouton, reste en ligne, et le renvoi venait se coller à sa
-       droite. Deux places pour un même élément selon l'écran, sans que rien ne
-       le décide. Vu à l'écran, sur les pas 1 et 2 l'un au-dessus de l'autre. */
+       n'a qu'un bouton, reste en ligne, et le renvoi venait se coller a sa
+       droite. Deux places pour un meme element selon l'ecran, sans que rien ne
+       le decide. Vu a l'ecran, sur les pas 1 et 2 l'un au-dessus de l'autre. */
     const regle = css.slice(css.indexOf('.pas-voir {'),
                             css.indexOf('}', css.indexOf('.pas-voir {')));
     vrai(/display: block/.test(regle), 'il occupe sa propre ligne, dans les deux branches');
-    /* `width: fit-content` garde le souligné sous le seul texte : un bouton en
-       bloc s'étendrait sur toute la largeur et centrerait son libellé, ce qui en
-       ferait un troisième bouton à l'œil. */
+    /* `width: fit-content` garde le souligne sous le seul texte : un bouton en
+       bloc s'etendrait sur toute la largeur et centrerait son libelle, ce qui en
+       ferait un troisieme bouton a l'oeil. */
     vrai(/width: fit-content/.test(regle), 'sans s’étendre sur toute la largeur');
     vrai(!/display: inline/.test(regle), 'et plus rien ne le remet en ligne');
   });
 
   test('un pas qu’on rouvre garde son chemin vers la liste', () => {
-    /* DEUX BRANCHES, UN SEUL BESOIN. Le renvoi n'a d'abord existé que sous la
-       question « as-tu tout mis ? ». Or un pas franchi qu'on rouvre pour
-       vérifier montre sa consigne et son bouton d'ajout, dans l'AUTRE branche du
-       rendu : il perdait donc le seul chemin vers la liste au moment précis où
-       l'on venait la relire. Vu à l'écran, sur le pas des comptes rouvert.
+    /* DEUX BRANCHES, UN SEUL BESOIN. Le renvoi n'a d'abord existe que sous la
+       question "as-tu tout mis ?". Or un pas franchi qu'on rouvre pour
+       verifier montre sa consigne et son bouton d'ajout, dans l'AUTRE branche du
+       rendu : il perdait donc le seul chemin vers la liste au moment precis ou
+       l'on venait la relire. Vu a l'ecran, sur le pas des comptes rouvert.
 
-       La condition est la même des deux côtés, et c'est `pasAFaire` qui la
-       porte — dès qu'un premier élément existe, il y a quelque chose à
-       regarder. On ne lui écrit pas une seconde règle à côté. */
+       La condition est la meme des deux cotes, et c'est `pasAFaire` qui la
+       porte -- des qu'un premier element existe, il y a quelque chose a
+       regarder. On ne lui ecrit pas une seconde regle a cote. */
     const app = lireSource('assets/app.js');
     const carte = app.slice(app.indexOf('function carteDemarrage()'),
                             app.indexOf('function ', app.indexOf('function carteDemarrage()') + 10));
@@ -1983,26 +1983,26 @@ suite('Une valeur qu’on apprécie porte la date où on l’a établie', () => 
   };
 
   test('les parts de société y ont droit, comme une montre', () => {
-    /* La question « depuis quand ce chiffre tient-il ? » ne se posait pas là où
-       elle se pose le plus : une valeur de part vieillit entre deux levées, et
-       rien à l'écran ne disait depuis quand. Vu à l'écran. */
+    /* La question "depuis quand ce chiffre tient-il ?" ne se posait pas la ou
+       elle se pose le plus : une valeur de part vieillit entre deux levees, et
+       rien a l'ecran ne disait depuis quand. Vu a l'ecran. */
     vrai(/const estime = estValeurEstimee\(type\);/.test(champs()),
       'le champ suit le même prédicat que le mot « estimation »');
     vrai(estValeurEstimee(TYPES_COMPTE.find(t => t.id === 'pe')),
       'et une part de société en est une');
-    /* UN SEUL PREDICAT POUR UN SEUL FAIT : celui qui décide du mot décide aussi
-       de la date qui l'accompagne. Deux règles auraient fini par se contredire,
-       et l'écran aurait dit « estimation actuelle » sans jamais la dater. */
+    /* UN SEUL PREDICAT POUR UN SEUL FAIT : celui qui decide du mot decide aussi
+       de la date qui l'accompagne. Deux regles auraient fini par se contredire,
+       et l'ecran aurait dit "estimation actuelle" sans jamais la dater. */
     vrai(!/const estime = estDetenuEnDirect\(type\)/.test(champs()),
       'et l’ancienne règle ne subsiste pas à côté');
   });
 
   test('la bulle ne promet plus un rappel qui n’existe pas', () => {
-    /* `valeurPerimee()` existe, `aRevoir` se calcule, et AUCUN écran ne les lit
-       — ni la cloche, ni une carte. Le texte annonçait pourtant que la cloche
-       réclamerait cette valeur au bout d'un an. Une bulle qui promet ce que
-       l'application ne fait pas est un mensonge de la même famille qu'un
-       commentaire périmé, et celui-là se serait propagé à chaque type ajouté. */
+    /* `valeurPerimee()` existe, `aRevoir` se calcule, et AUCUN ecran ne les lit
+       -- ni la cloche, ni une carte. Le texte annoncait pourtant que la cloche
+       reclamerait cette valeur au bout d'un an. Une bulle qui promet ce que
+       l'application ne fait pas est un mensonge de la meme famille qu'un
+       commentaire perime, et celui-la se serait propage a chaque type ajoute. */
     const app = lireSource('assets/app.js');
     vrai(!/la cloche te rappellera de la revoir/.test(app),
       'la promesse est retirée');
@@ -2017,11 +2017,11 @@ suite('Une valeur qu’on apprécie porte la date où on l’a établie', () => 
   });
 
   test('« Nom, dates et notes » porte enfin une note', () => {
-    /* LE LIEN PROMETTAIT UNE NOTE, ET LA FENÊTRE N'EN AVAIT PAS. Sur la fiche
+    /* LE LIEN PROMETTAIT UNE NOTE, ET LA FENETRE N'EN AVAIT PAS. Sur la fiche
        d'un placement en parts, la note se LIT et ce lien est le seul chemin vers
-       son écriture : sans ce champ, elle n'était modifiable nulle part. Le
-       commentaire de la carte l'annonçait déjà — « le nom, les dates et la note
-       vivent dans l'autre formulaire » — il ne restait qu'à le rendre vrai. */
+       son ecriture : sans ce champ, elle n'etait modifiable nulle part. Le
+       commentaire de la carte l'annoncait deja -- "le nom, les dates et la note
+       vivent dans l'autre formulaire" -- il ne restait qu'a le rendre vrai. */
     const app = lireSource('assets/app.js');
     const f = membreAction(app, 'modifier-compte');
     vrai(/cle: 'notes', label: 'Notes', type: 'texte'/.test(f),
@@ -2031,13 +2031,13 @@ suite('Une valeur qu’on apprécie porte la date où on l’a établie', () => 
     vrai(/if \('notes' in v\) pose\('notes', String\(v\.notes \|\| ''\)\.trim\(\)\);/.test(f),
       'et la réécrit, un champ vide effaçant plutôt qu’écrivant du vide');
     /* DEUX PORTES SUR LE MEME CHAMP, ce qui est sain ; deux champs pour une
-       même valeur ne le serait pas. Les autres fiches gardent leur saisie à
-       découvert, et c'est bien le même `comptes.N.notes`. */
+       meme valeur ne le serait pas. Les autres fiches gardent leur saisie a
+       decouvert, et c'est bien le meme `comptes.N.notes`. */
     vrai(/data-path="comptes\.\$\{idx\}\.notes"/.test(app),
       'la saisie à découvert reste, sur le même chemin');
-    /* ET C'EST DESORMAIS LE SEUL REGIME : le lien « Nom, dates et notes » a
+    /* ET C'EST DESORMAIS LE SEUL REGIME : le lien "Nom, dates et notes" a
        disparu avec la carte fusionnee qui le portait. Un actif en parts a la
-       meme carte « Informations » que les autres, donc la meme note ouverte. */
+       meme carte "Informations" que les autres, donc la meme note ouverte. */
     vrai(!/trad\('Nom, dates et notes'\)/.test(app),
       'et le lien de contournement n’a plus lieu d’être');
   });

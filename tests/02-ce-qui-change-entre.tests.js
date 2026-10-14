@@ -382,7 +382,7 @@ suite('Une seule grammaire d’en-tête de carte', () => {
     eq((t.match(/<button/g) || []).length, 1, 'une seule action dans l’en-tête');
     vrai(!/rangeControl|class="hint"/.test(t), 'ni les périodes ni le compte sur la ligne du titre');
     /* Les periodes ont quitte la carte : elles bornent aussi les deux graphiques,
-       et vivent dans la barre « Periode des ventes », au-dessus de la premiere
+       et vivent dans la barre "Periode des ventes", au-dessus de la premiere
        carte de ventes visible. */
     vrai(/<div class="carte-filtres">\$\{selecteurAnneeTransactions\(\)\}<\/div>/.test(app()), 'les périodes au deuxième niveau, dans leur barre');
   });
@@ -683,8 +683,8 @@ suite('La fenêtre de l’objectif se lit du suivi vers les réglages', () => {
       'Modifier l’objectif', 'Fixer un objectif', 'Montant visé ({dev})', 'Année', 'Changer',
       'Point de départ à définir pour suivre l’avancement.', '{v} le {d}'])
       vrai(!!I18N.en[k], `traduit : ${k}`);
-    /* La date du depart se traduit en entier : « le » seul se traduisait
-       « day » et donnait « 1 000 € day 25 Sep 2026 ». */
+    /* La date du depart se traduit en entier : "le" seul se traduisait
+       "day" et donnait "1 000 EUR day 25 Sep 2026". */
     vrai(!/trad\('le'\)/.test(f), 'aucun « le » traduit seul dans la fenêtre');
   });
 });
@@ -934,7 +934,7 @@ suite('Une valeur dit de quand elle date', () => {
   });
 
   test('une fenêtre garde la date qu’on pose, et date du jour ce qu’on y enregistre', () => {
-    /* La fenetre est le formulaire du montant : y appuyer sur « Enregistrer »
+    /* La fenetre est le formulaire du montant : y appuyer sur "Enregistrer"
        vaut relecture, montant change ou non. C'est la regle depuis le 26
        septembre 2026 ; avant, un montant inchange gardait sa date. */
     const jour = '2026-09-25';
@@ -1050,7 +1050,7 @@ suite('Annuler une fiche rend aussi le crédit et les lignes', () => {
   test('après Enregistrer, Annuler ne défait plus rien', () => {
     Fixture.poser();
     dette().montant = 36000;
-    /* « Enregistrer » oublie l'instantane et en reprend un au rendu suivant. */
+    /* "Enregistrer" oublie l'instantane et en reprend un au rendu suivant. */
     const inst = instantaneFiche('compte:c_immo');
     vrai(!ficheDiffere(inst), 'le point de retour est le dernier enregistrement');
     retablirInstantane(inst);
@@ -1136,7 +1136,7 @@ suite('La démonstration propose sa nouvelle version', () => {
        qui a tout efface pour saisir ses chiffres, ou de vraies donnees. */
     Fixture.poser();
     eq(demoPerimee(), false, 'un état sans numéro de graine ne se remplace jamais');
-    if (typeof SEED_VERSION === 'undefined') return;   // bêta et instance privée : aucune graine versionnée
+    if (typeof SEED_VERSION === 'undefined') return;   // beta et instance privee : aucune graine versionnee
     Fixture.poser(s => { s.seedVersion = SEED_VERSION - 1; });
     eq(demoPerimee(), true, 'une copie plus ancienne se propose');
     Fixture.poser(s => { s.seedVersion = SEED_VERSION; });
@@ -1230,12 +1230,12 @@ suite('Une instance sans graine fictive n’a pas de démonstration', () => {
 
 
 /* ------------------------------------------------------------------
-   4 bis. Les espèces, qui n'ont pas d'établissement
+   4 bis. Les especes, qui n'ont pas d'etablissement
    ------------------------------------------------------------------ */
 suite('Les espèces sont toujours là', () => {
 
   /* Le compte d'especes bricole a la main : de l'argent liquide dont le
-     contenant ne s'appelle que « Espèces », faute de mieux. C'est ce que la
+     contenant ne s'appelle que "Especes", faute de mieux. C'est ce que la
      migration doit adopter, pas doubler. */
   const avecBricolage = (nomEtab = 'Espèces', nomCompte = 'Real Cash') =>
     Fixture.poser(s => {
@@ -1274,7 +1274,7 @@ suite('Les espèces sont toujours là', () => {
   });
 
   test('« Real Cash » cesse de s’appeler ainsi', () => {
-    /* Un nom de contournement, en anglais dans une application française. Vide,
+    /* Un nom de contournement, en anglais dans une application francaise. Vide,
        le libelle laisse parler celui du type. */
     avecBricolage();
     poserEspeces(Store.state);
@@ -1349,14 +1349,14 @@ suite('Les espèces sont toujours là', () => {
   test('la barre du bas et le menu se répondent', () => {
     /* Trois accords tiennent la navigation, et aucun n'est visible a l'oeil :
 
-       — la pastille glissante ne connait que cinq positions, ecrites en CSS.
+       -- la pastille glissante ne connait que cinq positions, ecrites en CSS.
          Un sixieme onglet la laisserait sur le premier, sans erreur ;
-       — chaque onglet de la barre doit exister dans le menu, parce que c'est
+       -- chaque onglet de la barre doit exister dans le menu, parce que c'est
          de la barre qu'on derive ce que le tiroir masque au telephone. Un
          onglet absent du menu ne serait jamais reconnu comme doublon ;
-       — le tiroir doit garder au moins une page que la barre ne porte pas.
+       -- le tiroir doit garder au moins une page que la barre ne porte pas.
          Sinon il s'ouvre vide, et cette page devient inatteignable au doigt.
-         C'est le risque qu'a cree le depart de l'onglet « Plus ». */
+         C'est le risque qu'a cree le depart de l'onglet "Plus". */
     const html = lireSource('index.html');
     const css = lireSource('assets/styles.css');
     vrai(html && css, 'index.html et styles.css doivent être lisibles');
@@ -1376,7 +1376,7 @@ suite('Les espèces sont toujours là', () => {
     vrai(menu.some(v => !barre.includes(v)),
       'le tiroir doit garder une page que la barre ne porte pas, sinon elle devient inatteignable');
 
-    /* Deux entrees peuvent viser la meme vue sur deux onglets — Donnees et
+    /* Deux entrees peuvent viser la meme vue sur deux onglets -- Donnees et
        Preferences. Elles doivent alors porter un `data-onglet` distinct : la
        surbrillance se decide sur la vue courante, qui est la meme pour les
        deux, et sans lui les deux s'allumeraient ensemble. */
@@ -1399,7 +1399,7 @@ suite('Les espèces sont toujours là', () => {
   test('un compte sans établissement reste visible dans la liste', () => {
     /* Le regroupement par etablissement parcourt les etablissements. Un compte
        qui n'en a pas n'apparaitrait donc dans aucun groupe, et le total de la
-       page cesserait d'egaler la somme de ses parts — sans que rien ne le dise.
+       page cesserait d'egaler la somme de ses parts -- sans que rien ne le dise.
        Le rendu vit dans app.js, que le harnais ne charge pas : on lit la
        branche concernee, bornee a elle seule. */
     const src = lireSource('assets/app.js');
@@ -1419,12 +1419,12 @@ suite('Les espèces sont toujours là', () => {
 });
 
 /* ------------------------------------------------------------------
-   5. Une somme saisie à la main
+   5. Une somme saisie a la main
    ------------------------------------------------------------------ */
 suite('Somme saisie à la main', () => {
 
   /* `parseSomme` rend `{ total, termes }` : le total pour le calcul, les termes
-     pour reconstruire le découpage `d` de la catégorie. */
+     pour reconstruire le decoupage `d` de la categorie. */
 
   test('additionne et soustrait', () => {
     pres(parseSomme('100+50+70').total, 220, 'trois termes');
@@ -1446,11 +1446,11 @@ suite('Somme saisie à la main', () => {
   });
 
   test('rejette ce qui n’est pas une somme, au lieu de l’arrondir à zéro', () => {
-    /* Le contrat : `null` pour une saisie invalide, et surtout pas 0. Un zéro
-       silencieux écraserait le montant déjà enregistré sur une faute de
+    /* Le contrat : `null` pour une saisie invalide, et surtout pas 0. Un zero
+       silencieux ecraserait le montant deja enregistre sur une faute de
        frappe. L'appelant voit `null` et refuse la saisie.
-       L'analyseur est strict et n'utilise pas `eval` — d'où le rejet de
-       « 1e3 », qui est pourtant un nombre pour JavaScript. */
+       L'analyseur est strict et n'utilise pas `eval` -- d'ou le rejet de
+       "1e3", qui est pourtant un nombre pour JavaScript. */
     for (const s of ['alert(1)', 'abc', '1;2', '((', '1+', '1e3']) {
       const r = parseSomme(s);
       eq(r, null, `parseSomme(${JSON.stringify(s)}) doit être rejeté`);
@@ -1458,7 +1458,7 @@ suite('Somme saisie à la main', () => {
   });
 
   test('un champ vide vaut zéro, pas un rejet', () => {
-    /* Effacer un montant est une intention légitime, distincte d'une faute. */
+    /* Effacer un montant est une intention legitime, distincte d'une faute. */
     pres(parseSomme('').total, 0);
     pres(parseSomme('   ').total, 0);
     eq(parseSomme('').termes.length, 0, 'rien à découper');
@@ -1472,7 +1472,7 @@ suite('Somme saisie à la main', () => {
   });
 
 /* ------------------------------------------------------------------
-   6. L'état d'une place
+   6. L'etat d'une place
    ------------------------------------------------------------------ */
 suite('État d’une place de marché', () => {
 
@@ -1495,8 +1495,8 @@ suite('État d’une place de marché', () => {
 
   test('une fenêtre de 24 h ne dit rien : c’est le cours qui tranche', () => {
     /* Le bug : pour un future, une devise ou une crypto, Yahoo publie une
-       journée calendaire et non une séance. L'or annonçait « 06:00 → 05:59 »,
-       vingt-quatre heures qui contiennent forcément l'instant présent — il
+       journee calendaire et non une seance. L'or annoncait "06:00 -> 05:59",
+       vingt-quatre heures qui contiennent forcement l'instant present -- il
        s'affichait donc ouvert un dimanche soir, avec un dernier cours vieux
        de quarante-six heures. */
     const t = MAINTENANT();
@@ -1551,13 +1551,18 @@ suite('Une infobulle de graphique tient sous le doigt', () => {
       + 'l’abscisse, la hauteur ne faisait qu’interrompre');
 
     /* Et ce qui ferme est le doigt leve, sans delai. Le repit de 1 400 ms partait
-       d'une bonne intention — laisser le temps de lire — sur un raisonnement faux :
+       d'une bonne intention -- laisser le temps de lire -- sur un raisonnement faux :
        on lit pendant qu'on appuie. Il coutait cher, car ce `setTimeout` n'etait
        jamais annule : deux appuis rapproches, et le minuteur du premier fermait
        l'infobulle du second. C'est la signature d'un minuteur en retard, pas d'une
-       regle, et c'est ce que « la plupart du temps » decrivait. */
-    vrai(/addEventListener\('pointerup', cacher\)/.test(src),
+       regle, et c'est ce qui rendait la fermeture intermittente. */
+    /* Seul un tap court, sur un graphique qui le demande (`options.tap`),
+       laisse sa bulle un instant ; une lecture tenue se ferme a la levee, et
+       tout minuteur de fermeture s'annule au geste suivant. */
+    vrai(/addEventListener\('pointerup', ev => \{[\s\S]*?\n      cacher\(\);\n    \}\);/.test(src),
       'lever le doigt ferme, et immédiatement');
+    vrai(/addEventListener\('pointerdown', ev => \{[\s\S]{0,200}clearTimeout\(fermeture\)/.test(src),
+      'le minuteur d’un tap s’annule au geste suivant');
     vrai(!/setTimeout\(cacher/.test(src),
       'aucun minuteur ne doit fermer l’infobulle : non annulé, celui d’un appui '
       + 'précédent fermait celle de l’appui suivant');
@@ -1679,10 +1684,10 @@ suite('Une bande trop mince ne porte pas de trait', () => {
     vrai(i > 0, 'le seuil de dessin doit exister, et porter un nom');
     /* Borne sur la fin du bloc, pas sur 900 caracteres. La tranche fixe a tenu
        jusqu'au jour ou un commentaire de six lignes s'est glisse au-dessus de la
-       boucle : le controle a annonce « le trait n'est pas conditionne » sur du
+       boucle : le controle a annonce "le trait n'est pas conditionne" sur du
        code qui l'etait, simplement pousse au-dela du couperet. Le fichier lui
-       meme previent contre ce genre d'ancrage — « un test ne doit dependre ni
-       d'un commentaire ni d'une longueur ». */
+       meme previent contre ce genre d'ancrage -- "un test ne doit dependre ni
+       d'un commentaire ni d'une longueur". */
     const fin = src.indexOf('const totalLine', i);
     vrai(fin > i, 'la boucle des bandes doit se terminer');
     const bloc = src.slice(i, fin);
@@ -1692,7 +1697,7 @@ suite('Une bande trop mince ne porte pas de trait', () => {
     /* Le maximum sur la periode, pas chaque point : un trait qui apparaitrait en
        juillet pour disparaitre en aout se lirait comme une donnee manquante.
 
-       La regle a demenage dans `empiler()`, la fonction qui empile les bandes —
+       La regle a demenage dans `empiler()`, la fonction qui empile les bandes --
        le rendu et chaque image de la transition d'un perimetre a l'autre en
        demandent une geometrie, et deux ecritures du meme empilement auraient
        fini par ne plus empiler pareil. Le controle la suit : ce qui compte est
@@ -1714,23 +1719,22 @@ suite('Une bande trop mince ne porte pas de trait', () => {
 
 suite('Le tirer-pour-rafraîchir résiste au lieu de se laisser étirer', () => {
 
-  /* « Un écran peut se tirer beaucoup trop, il faudrait une résistance qu'on
-     ressent, comme Courtier A », et « le rafraîchissement se déclenche très
-     facilement vu qu'il n'y a aucune résistance ».
+  /* La demande : une page qui resiste quand on la tire, au lieu de s'etirer
+     sans fin, et un rafraichissement qui ne part pas trop facilement.
 
-     L'amortissement existait pourtant — mais **linéaire** : 60 % de la course du
+     L'amortissement existait pourtant -- mais **lineaire** : 60 % de la course du
      doigt, sans borne. Tirer deux fois plus loin descendait deux fois plus bas,
-     indéfiniment. Un ratio n'est pas une résistance : il ralentit, il ne s'oppose
-     jamais, et rien n'empêchait de creuser un demi-écran de vide.
+     indefiniment. Un ratio n'est pas une resistance : il ralentit, il ne s'oppose
+     jamais, et rien n'empechait de creuser un demi-ecran de vide.
 
-     Le contrôle reconstruit la loi depuis la source et l'exécute — c'est la
-     méthode de la maison quand la fonction visée ne dépend de rien. Il vérifie
-     trois propriétés, et chacune répond à un mot de la demande :
+     Le controle reconstruit la loi depuis la source et l'execute -- c'est la
+     methode de la maison quand la fonction visee ne depend de rien. Il verifie
+     trois proprietes, et chacune repond a un mot de la demande :
 
-     « qu'on ressent » → la réponse s'aplatit, donc doubler la course ne double
-     pas la descente ; « se tirer beaucoup trop » → elle est bornée, quel que
-     soit le tirage ; et le premier centimètre colle au doigt, sans quoi le geste
-     paraîtrait mou au lieu de résistant. */
+     resister -> la reponse s'aplatit, donc doubler la course ne double
+     pas la descente ; ne pas s'etirer sans fin -> elle est bornee, quel que
+     soit le tirage ; et le premier centimetre colle au doigt, sans quoi le geste
+     paraitrait mou au lieu de resistant. */
 
   const source = lireSource('assets/app.js') || '';
 
@@ -1751,9 +1755,9 @@ suite('Le tirer-pour-rafraîchir résiste au lieu de se laisser étirer', () => 
       `660 px de doigt donnent ${Math.round(l.f(660))} px, et ne doivent jamais dépasser ${l.M}`);
     vrai(l.f(1e6) <= l.M, 'aucune course, même absurde, ne franchit la borne');
 
-    /* Aplatie : c'est ça, sentir une resistance. Un amortissement lineaire
+    /* Aplatie : c'est ca, sentir une resistance. Un amortissement lineaire
        passerait les deux assertions du dessus s'il etait plafonne, et echouerait
-       ici — un plafond n'est pas une resistance, c'est un mur. */
+       ici -- un plafond n'est pas une resistance, c'est un mur. */
     for (const d of [40, 80, 160, 320]) {
       vrai(l.f(2 * d) < 1.8 * l.f(d),
         `doubler la course de ${d} px doit donner nettement moins du double : `
@@ -1773,7 +1777,7 @@ suite('Le tirer-pour-rafraîchir résiste au lieu de se laisser étirer', () => 
        bornee et ne pourrait plus l'atteindre. */
     /* La constante porte son nom, et c'est lui qu'on vise. Le controle s'ancrait
        auparavant sur le commentaire qui la suit, parce que `app.js` compte
-       plusieurs `SEUIL` — le glissement d'une ligne en porte un autre — et lire
+       plusieurs `SEUIL` -- le glissement d'une ligne en porte un autre -- et lire
        le premier venu, c'etait lire autre chose que ce qu'on croyait.
 
        Un nom unique fait le meme travail et resiste a davantage : les fichiers
@@ -1822,7 +1826,7 @@ suite('Une couleur de donnée ne se confond pas avec une couleur de sens', () =>
                   [0.2119034982, 0.6806995451, 0.1073969566],
                   [0.0883024619, 0.2817188376, 0.6299787005]];
 
-  /* Teinte OKLCH d'un `#rrggbb`, en degrés. */
+  /* Teinte OKLCH d'un `#rrggbb`, en degres. */
   function teinte(hex) {
     const h = hex.replace('#', '');
     const canal = i => {
@@ -1838,8 +1842,8 @@ suite('Une couleur de donnée ne se confond pas avec une couleur de sens', () =>
   }
   const ecart = (a, b) => { const d = Math.abs(a - b) % 360; return Math.min(d, 360 - d); };
 
-  /* Les deux thèmes se lisent dans la source : le harnais ne rend pas de DOM, et
-     surtout il faut vérifier celui qui n'est pas affiché. */
+  /* Les deux themes se lisent dans la source : le harnais ne rend pas de DOM, et
+     surtout il faut verifier celui qui n'est pas affiche. */
   function palette(css, bloc) {
     const i = css.indexOf(bloc);
     if (i < 0) return null;
@@ -1905,10 +1909,10 @@ suite('Une couleur de donnée ne se confond pas avec une couleur de sens', () =>
 suite('Les couleurs de classes ne se marchent pas dessus', () => {
 
   test('deux classes distinctes ont deux teintes distinctes', () => {
-    /* Le bug : deux tables de couleurs écrites à la main avaient divergé. Les
-       métaux précieux partageaient `series-4` avec l'immobilier — dans
-       « Allocation par actif », un studio et un ETC or se peignaient de la
-       même couleur. */
+    /* Le bug : deux tables de couleurs ecrites a la main avaient diverge. Les
+       metaux precieux partageaient `series-4` avec l'immobilier -- dans
+       "Allocation par actif", un studio et un ETC or se peignaient de la
+       meme couleur. */
     const classes = ['liquidites', 'actions', 'obligations', 'crypto', 'nonCote',
                      'immobilier', 'metaux'];
     const vues = new Map();

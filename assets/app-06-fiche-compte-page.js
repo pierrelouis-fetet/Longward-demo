@@ -428,7 +428,7 @@ function espaceBien(c, idx, t) {
       <div class="modal-champs">
         <div class="field"><label>${trad(pierre ? 'Nom du placement' : 'Nom du bien')}</label>
           <input data-action-change="renommer-bien" data-compte="${esc(c.id)}" data-i="${i}"
-                 value="${esc(l.libelle || '')}" placeholder="${trad(pierre ? 'ex. Ma SCPI' : 'ex. Studio Lyon 3e')}"></div>
+                 value="${esc(l.libelle || '')}" placeholder="${trad(pierre ? 'ex. Ma SCPI' : 'ex. Studio en centre-ville')}"></div>
         <div class="grid g-2 g-paire">
           <div class="field"><label>${trad('Date d\'acquisition')}</label>
             <input type="date" data-path="comptes.${idx}.lignes.${i}.dateAcquisition"

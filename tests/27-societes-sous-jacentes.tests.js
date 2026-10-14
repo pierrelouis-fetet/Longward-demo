@@ -246,7 +246,7 @@ suite('Plusieurs participations, une seule société', () => {
     vrai(!Store.state.comptes.find(c => c.id === 'c_n1').lignes[0].societeId, 'le lien orphelin part');
     eq(societesDeclarees().length, 0, 'la société sans participation aussi');
     /* Une societe d'une levee, et un refus qui compte : l'autre levee lui est
-       proposee, et on repond « deux societes ». */
+       proposee, et on repond "deux societes". */
     const soc = creerSociete('Atelier Nova');
     rattacherASociete([cleDe('c_n1', 'l_n1')], soc);
     const autre = participations().find(p => p.compte.id === 'c_n2');

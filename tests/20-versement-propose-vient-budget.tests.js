@@ -17,7 +17,7 @@ suite('Le versement proposé vient du budget, ou de rien', () => {
 
   test('la suggestion est l’épargne investissable, et rien d’autre', () => {
     Fixture.poser(s => {
-      s.budget.income = [{ label: 'Salaire', amount: 3600, period: 'mois' }];
+      s.budget.income = [{ label: 'Salaire', amount: 3500, period: 'mois' }];
       s.budget.fixedCharges = [{ label: 'Loyer', amount: 1200, period: 'mois' }];
       s.budget.expenses = [{ month: '2026-01', v: { Courses: 900 }, note: '' }];
     });
@@ -85,8 +85,8 @@ suite('Le versement proposé vient du budget, ou de rien', () => {
 });
 
 /* P0.5 : ZERO EST UNE REPONSE, ET IL NE DIT JAMAIS L'ABSENCE DE REPONSE.
-   « 0 % de tes revenus » sous 900 EUR de charges fixes se lit comme une mesure :
-   il dit que ces charges ne pesent rien. C'est l'inverse — elles pesent tout,
+   "0 % de tes revenus" sous 900 EUR de charges fixes se lit comme une mesure :
+   il dit que ces charges ne pesent rien. C'est l'inverse -- elles pesent tout,
    puisque rien n'entre. */
 suite('Un pourcentage sans dénominateur n’existe pas', () => {
 
@@ -134,10 +134,10 @@ suite('Un pourcentage sans dénominateur n’existe pas', () => {
   });
 
   test('aucune vue n’imprime « 0 % » à la place d’une absence', () => {
-    /* `fmtPct(null)` rendrait « 0,00 % », parce que `num(null)` vaut zero :
+    /* `fmtPct(null)` rendrait "0,00 %", parce que `num(null)` vaut zero :
        le mensonge qu'on vient de retirer du modele reviendrait par l'affichage
        si une vue oubliait sa condition. Le controle porte sur les six lectures
-       de ces cinq champs, nommees une a une — `targetPct` existe aussi sur les
+       de ces cinq champs, nommees une a une -- `targetPct` existe aussi sur les
        cibles d'Allocation, ou il a toujours un denominateur. */
     const src = lireSource('assets/app.js');
     const echappe = s => s.replace(/[.()]/g, '\\$&');
@@ -163,8 +163,8 @@ suite('Un pourcentage sans dénominateur n’existe pas', () => {
     vrai(/budgetFrame\(\)\.fixedPct == null \? trad\('aucun revenu déclaré'\)/.test(src),
       'et le panneau des charges fixes aussi');
     vrai(I18N.en['aucun revenu déclaré'], 'la phrase a sa traduction');
-    /* Les deux mentions en ligne, elles, retirent la clause : « 900 € par mois »
-       se suffit, la ou « 900 € par mois, 0 % de tes revenus » ment. */
+    /* Les deux mentions en ligne, elles, retirent la clause : "900 EUR par mois"
+       se suffit, la ou "900 EUR par mois, 0 % de tes revenus" ment. */
     vrai(/f\.fixedPct == null \? '' :/.test(src),
       'et les mentions en ligne se taisent plutôt que de chiffrer zéro');
   });
@@ -181,13 +181,13 @@ suite('Modifier les parts ne change jamais le total des charges', () => {
   /* Le scenario du double comptage : la contribution comptee en entree ET
      retranchee des charges surevaluerait le reste pour vivre de toute la part. */
   const scenario = (parts = { loyer: 800, elec: 100, net: 50 }) => Fixture.poser(s => {
-    s.budget.contributors = [{ id: 'pk', name: 'PK' }];
+    s.budget.contributors = [{ id: 'xy', name: 'XY' }];
     s.budget.income = [{ label: 'Salaire', amount: 3000 },
                        { label: 'Complément', amount: 750 }];
     s.budget.fixedCharges = [
-      { label: 'Loyer', amount: 1600, period: 'mois', shares: { pk: parts.loyer } },
-      { label: 'Électricité', amount: 200, period: 'mois', shares: { pk: parts.elec } },
-      { label: 'Internet', amount: 100, period: 'mois', shares: { pk: parts.net } },
+      { label: 'Loyer', amount: 1600, period: 'mois', shares: { xy: parts.loyer } },
+      { label: 'Électricité', amount: 200, period: 'mois', shares: { xy: parts.elec } },
+      { label: 'Internet', amount: 100, period: 'mois', shares: { xy: parts.net } },
     ];
   });
 
@@ -197,7 +197,7 @@ suite('Modifier les parts ne change jamais le total des charges', () => {
     pres(fixedTotal(), 1900, '1 600 + 200 + 100, les montants facturés');
     pres(budgetFrame().fixed, 1900, 'et le cadre du budget lit le même total');
     pres(budgetFrame().available, 1850, '3 750 − 1 900');
-    pres(partTheoriqueMensuelle('pk'), 950, 'la part théorique vaut 950 €');
+    pres(partTheoriqueMensuelle('xy'), 950, 'la part théorique vaut 950 €');
     vrai(Math.abs(fixedTotal() - 950) > 1,
       'le total des charges n’est PAS la part théorique');
     vrai(Math.abs(budgetFrame().available - 2800) > 1,
@@ -209,10 +209,10 @@ suite('Modifier les parts ne change jamais le total des charges', () => {
     const totaux = new Set();
     for (const part of [0, 800, 1600]) {
       Fixture.poser(s => {
-        s.budget.contributors = [{ id: 'pk', name: 'PK' }];
+        s.budget.contributors = [{ id: 'xy', name: 'XY' }];
         s.budget.income = [{ label: 'Salaire', amount: 3000 }];
         s.budget.fixedCharges = [{ label: 'Loyer', amount: 1600, period: 'mois',
-                                   shares: { pk: part } }];
+                                   shares: { xy: part } }];
       });
       pres(fixedTotal(), 1600, `part de ${part} € : la charge vaut son montant facturé`);
       totaux.add(round2(budgetFrame().available));
@@ -256,21 +256,21 @@ suite('Modifier les parts ne change jamais le total des charges', () => {
 
   test('plusieurs personnes se partagent une charge sans la réduire', () => {
     Fixture.poser(s => {
-      s.budget.contributors = [{ id: 'pk', name: 'PK' }, { id: 'alex', name: 'Alex' }];
+      s.budget.contributors = [{ id: 'xy', name: 'XY' }, { id: 'alex', name: 'Alex' }];
       s.budget.income = [{ label: 'Salaire', amount: 3000 }];
       s.budget.fixedCharges = [{ label: 'Loyer', amount: 2000, period: 'mois',
-                                 shares: { pk: 600, alex: 400 } }];
+                                 shares: { xy: 600, alex: 400 } }];
     });
     pres(fixedTotal(), 2000, 'le budget compte les 2 000 € facturés');
-    pres(partTheoriqueMensuelle('pk'), 600, 'la part de la première');
+    pres(partTheoriqueMensuelle('xy'), 600, 'la part de la première');
     pres(partTheoriqueMensuelle('alex'), 400, 'celle de la seconde');
     const st = sharedTotals();
     pres(st.total, 2000, 'le facturé');
     pres(st.partage, 1000, 'la part théorique totale');
     pres(st.resteTheorique, 1000, 'et ce qui resterait après partage');
     eq(st.parPersonne.length, 2, 'les deux personnes sont nommées');
-    eq(st.parPersonne.map(x => x.nom).join(' | '), 'PK | Alex', 'dans l’ordre déclaré');
-    /* Et ce « reste theorique » n'alimente aucun calcul du budget. */
+    eq(st.parPersonne.map(x => x.nom).join(' | '), 'XY | Alex', 'dans l’ordre déclaré');
+    /* Et ce "reste theorique" n'alimente aucun calcul du budget. */
     pres(budgetFrame().fixed, 2000, 'le cadre du budget ignore le partage');
   });
 
@@ -278,61 +278,61 @@ suite('Modifier les parts ne change jamais le total des charges', () => {
     for (const [periode, mensuel, part] of [['an', 100, 50], ['semestre', 200, 100],
                                             ['trimestre', 400, 200], ['mois', 1200, 600]]) {
       Fixture.poser(s => {
-        s.budget.contributors = [{ id: 'pk', name: 'PK' }];
+        s.budget.contributors = [{ id: 'xy', name: 'XY' }];
         s.budget.fixedCharges = [{ label: 'Assurance', amount: 1200, period: periode,
-                                   shares: { pk: 600 } }];
+                                   shares: { xy: 600 } }];
       });
       pres(chargeMensuelle(Store.state.budget.fixedCharges[0]), mensuel,
         `1 200 € ${periode} pèsent ${mensuel} € par mois`);
-      pres(partTheoriqueMensuelle('pk'), part, `et la part théorique ${part} €`);
+      pres(partTheoriqueMensuelle('xy'), part, `et la part théorique ${part} €`);
       pres(fixedTotal(), mensuel, 'le budget compte le facturé ramené au mois');
     }
     /* La semaine vaut 52/12 mois, comme le montant qu'elle partage. */
     Fixture.poser(s => {
-      s.budget.contributors = [{ id: 'pk', name: 'PK' }];
+      s.budget.contributors = [{ id: 'xy', name: 'XY' }];
       s.budget.fixedCharges = [{ label: 'Courses', amount: 52, period: 'semaine',
-                                 shares: { pk: 26 } }];
+                                 shares: { xy: 26 } }];
     });
     pres(fixedTotal(), 52 * 52 / 12, 'cinquante-deux semaines dans l’année');
-    pres(partTheoriqueMensuelle('pk'), 26 * 52 / 12, 'et la part suit le même facteur');
+    pres(partTheoriqueMensuelle('xy'), 26 * 52 / 12, 'et la part suit le même facteur');
   });
 
   test('une part vide, nulle ou absente vaut zéro, jamais NaN', () => {
     Fixture.poser(s => {
-      s.budget.contributors = [{ id: 'pk', name: 'PK' }];
+      s.budget.contributors = [{ id: 'xy', name: 'XY' }];
       s.budget.fixedCharges = [
-        { label: 'A', amount: 100, period: 'mois', shares: { pk: '' } },
-        { label: 'B', amount: 100, period: 'mois', shares: { pk: 0 } },
+        { label: 'A', amount: 100, period: 'mois', shares: { xy: '' } },
+        { label: 'B', amount: 100, period: 'mois', shares: { xy: 0 } },
         { label: 'C', amount: 100, period: 'mois', shares: {} },
         { label: 'D', amount: 100, period: 'mois' },
       ];
     });
     for (const c of Store.state.budget.fixedCharges) {
-      eq(shareOf(c, 'pk'), 0, `« ${c.label} » : aucune part déclarée vaut zéro`);
-      vrai(Number.isFinite(shareMensuelle(c, 'pk')), 'et le mensuel reste un nombre');
+      eq(shareOf(c, 'xy'), 0, `« ${c.label} » : aucune part déclarée vaut zéro`);
+      vrai(Number.isFinite(shareMensuelle(c, 'xy')), 'et le mensuel reste un nombre');
     }
-    eq(partTheoriqueMensuelle('pk'), 0, 'le total des parts est zéro, pas NaN');
+    eq(partTheoriqueMensuelle('xy'), 0, 'le total des parts est zéro, pas NaN');
     pres(fixedTotal(), 400, 'et les quatre charges comptent entières');
     eq(partTheoriqueMensuelle('inconnu'), 0, 'une personne inconnue ne casse rien');
   });
 
   test('les parts se valident à la saisie, sans toucher au calcul', () => {
-    const ids = ['pk'];
-    eq(validerPartsSaisies({ part_pk: 800 }, 1600, ids), null, '800 sur 1 600 : valide');
-    eq(validerPartsSaisies({ part_pk: 1600 }, 1600, ids), null, 'la totalité aussi');
-    eq(validerPartsSaisies({ part_pk: 0 }, 1600, ids), null, 'zéro est une réponse');
-    eq(validerPartsSaisies({ part_pk: '' }, 1600, ids), null, 'et le vide n’est pas une faute');
+    const ids = ['xy'];
+    eq(validerPartsSaisies({ part_xy: 800 }, 1600, ids), null, '800 sur 1 600 : valide');
+    eq(validerPartsSaisies({ part_xy: 1600 }, 1600, ids), null, 'la totalité aussi');
+    eq(validerPartsSaisies({ part_xy: 0 }, 1600, ids), null, 'zéro est une réponse');
+    eq(validerPartsSaisies({ part_xy: '' }, 1600, ids), null, 'et le vide n’est pas une faute');
     eq(validerPartsSaisies({}, 1600, ids), null, 'ni l’absence de champ');
-    const trop = validerPartsSaisies({ part_pk: 2000 }, 1600, ids);
+    const trop = validerPartsSaisies({ part_xy: 2000 }, 1600, ids);
     vrai(trop, '2 000 sur 1 600 : refusé');
-    eq(trop.cle, 'part_pk', 'et la fenêtre désigne le champ');
+    eq(trop.cle, 'part_xy', 'et la fenêtre désigne le champ');
     vrai(/dépasser le montant facturé/.test(trop.message), `« ${trop.message} »`);
-    const moins = validerPartsSaisies({ part_pk: -1 }, 1600, ids);
-    vrai(moins && moins.cle === 'part_pk', 'un négatif est refusé aussi');
+    const moins = validerPartsSaisies({ part_xy: -1 }, 1600, ids);
+    vrai(moins && moins.cle === 'part_xy', 'un négatif est refusé aussi');
     /* A deux, c'est la SOMME qui est bornee. */
-    const deux = validerPartsSaisies({ part_pk: 1200, part_alex: 900 }, 2000, ['pk', 'alex']);
+    const deux = validerPartsSaisies({ part_xy: 1200, part_alex: 900 }, 2000, ['xy', 'alex']);
     vrai(deux, '1 200 + 900 dépassent 2 000');
-    eq(validerPartsSaisies({ part_pk: 1200, part_alex: 800 }, 2000, ['pk', 'alex']), null,
+    eq(validerPartsSaisies({ part_xy: 1200, part_alex: 800 }, 2000, ['xy', 'alex']), null,
       'et 1 200 + 800 tiennent exactement');
     for (const cle of ['Une part théorique ne peut pas être négative.',
                        'Les parts théoriques ne peuvent pas dépasser le montant facturé.',
@@ -345,15 +345,15 @@ suite('Modifier les parts ne change jamais le total des charges', () => {
 
   test('écrire une part ne touche qu’aux personnes déclarées', () => {
     const c = { label: 'Loyer', amount: 1600, period: 'mois', shares: { parti: 300 } };
-    ecrirePartsSaisies(c, { part_pk: 800 }, ['pk']);
-    eq(c.shares.pk, 800, 'la part saisie s’écrit');
+    ecrirePartsSaisies(c, { part_xy: 800 }, ['xy']);
+    eq(c.shares.xy, 800, 'la part saisie s’écrit');
     eq(c.shares.parti, 300,
       'et celle d’une personne qui n’est plus déclarée reste dans le fichier');
-    ecrirePartsSaisies(c, { part_pk: '' }, ['pk']);
-    eq(c.shares.pk, undefined, 'un champ vidé retire la part');
+    ecrirePartsSaisies(c, { part_xy: '' }, ['xy']);
+    eq(c.shares.xy, undefined, 'un champ vidé retire la part');
     eq(c.shares.parti, 300, 'sans toucher au reste');
-    ecrirePartsSaisies(c, { part_pk: 0 }, ['pk']);
-    eq(c.shares.pk, 0, 'un zéro tapé est une déclaration, et il s’écrit');
+    ecrirePartsSaisies(c, { part_xy: 0 }, ['xy']);
+    eq(c.shares.xy, 0, 'un zéro tapé est une déclaration, et il s’écrit');
   });
 
   test('la fiche d’une charge porte le champ, et il lit `shares`', () => {
@@ -378,7 +378,7 @@ suite('Modifier les parts ne change jamais le total des charges', () => {
       vrai(/ecrirePartsSaisies\(/.test(bloc), `« ${nom} » n’écrit pas les parts`);
     }
     /* Et aucun champ parallele n'est ne. */
-    for (const invente of ['partPK', 'partTheorique:', 'shareInfo', 'contributionDue']) {
+    for (const invente of ['partXY', 'partTheorique:', 'shareInfo', 'contributionDue']) {
       vrai(!code.includes(invente) && !lireSource('assets/store.js').includes(invente),
         `« ${invente} » : la répartition a déjà sa source, c’est shares`);
     }
@@ -413,7 +413,7 @@ suite('Modifier les parts ne change jamais le total des charges', () => {
 
   test('l’export donne au facturé et à la part deux colonnes distinctes', () => {
     /* Le harnais ne charge pas `app.js` : la feuille se lit donc dans sa source,
-       et les nombres qu'elle produira se vérifient par le modèle qu'elle appelle. */
+       et les nombres qu'elle produira se verifient par le modele qu'elle appelle. */
     const feuille = corpsDe(lireSource('assets/app.js').replace(/\/\*[\s\S]*?\*\//g, ' '),
                             'sheetFixedCharges');
     vrai(feuille.length > 200, 'la feuille doit se relire depuis sa source');
@@ -437,32 +437,32 @@ suite('Modifier les parts ne change jamais le total des charges', () => {
 
     /* Et les nombres qu'elle rendra sur ce jeu d'essai. */
     Fixture.poser(s => {
-      s.budget.contributors = [{ id: 'pk', name: 'PK' }];
+      s.budget.contributors = [{ id: 'xy', name: 'XY' }];
       s.budget.fixedCharges = [{ label: 'Loyer', amount: 1600, period: 'mois',
-                                 shares: { pk: 800 } }];
+                                 shares: { xy: 800 } }];
     });
     const c = Store.state.budget.fixedCharges[0];
     pres(num(c.amount), 1600, 'Montant : le facturé');
     pres(chargeMensuelle(c), 1600, '{dev} / mois : le facturé ramené au mois');
-    pres(shareMensuelle(c, 'pk'), 800, 'et la part théorique à côté');
+    pres(shareMensuelle(c, 'xy'), 800, 'et la part théorique à côté');
     pres(fixedTotal(), 1600, 'le total des charges est 1 600 €, pas 800 €');
-    pres(partTheoriqueMensuelle('pk'), 800, 'la part totale vit dans sa colonne');
+    pres(partTheoriqueMensuelle('xy'), 800, 'la part totale vit dans sa colonne');
   });
 
   test('le crédit et le bien ne connaissent pas les parts', () => {
     /* Une mensualite facturee 1 600 EUR sort pour 1 600 EUR, part ou pas, et le
        capital restant du ne se divise jamais. E2 a E5 ne sont pas rouverts. */
     Fixture.poser(s => {
-      s.budget.contributors = [{ id: 'pk', name: 'PK' }];
+      s.budget.contributors = [{ id: 'xy', name: 'XY' }];
       const c = s.comptes.find(x => x.id === 'c_immo');
       for (const l of c.lignes) l.usage = 'locative';
       const d = s.etabs.find(x => x.id === 'e_bien').dettes[0];
       d.montant = 120000; d.taux = 2; d.mensualite = null;
       s.budget.income = [{ label: 'Loyer', amount: 900, bienId: 'c_immo' }];
       s.budget.fixedCharges = [
-        { label: 'Prêt', amount: 1600, period: 'mois', shares: { pk: 600 },
+        { label: 'Prêt', amount: 1600, period: 'mois', shares: { xy: 600 },
           creditId: 'd_pret', bienId: 'c_immo' },
-        { label: 'Copropriété', amount: 300, period: 'mois', shares: { pk: 150 },
+        { label: 'Copropriété', amount: 300, period: 'mois', shares: { xy: 150 },
           bienId: 'c_immo' }];
     });
     const d = etabById('e_bien').dettes[0];
@@ -489,10 +489,10 @@ suite('Modifier les parts ne change jamais le total des charges', () => {
     Store.state.budget.contributors.push(
       { id: identifiantPersonne('Camille'), name: 'Camille' });
     eq(lire(), avant, 'déclarer quelqu’un ne change rien');
-    eq(retirerPersonne('pk', { effacerParts: true }), 3, 'ses trois parts partent avec elle');
+    eq(retirerPersonne('xy', { effacerParts: true }), 3, 'ses trois parts partent avec elle');
     eq(contributors().map(g => g.name).join(' | '), 'Camille', 'et elle n’est plus déclarée');
     eq(lire(), avant, 'le budget ne bouge toujours pas');
-    eq(partTheoriqueMensuelle('pk'), 0, 'seule la part théorique tombe à zéro');
+    eq(partTheoriqueMensuelle('xy'), 0, 'seule la part théorique tombe à zéro');
     pres(fixedTotal(), 1900, 'les charges valent toujours ce qui est facturé');
   });
 
@@ -502,13 +502,13 @@ suite('Modifier les parts ne change jamais le total des charges', () => {
        anciennes parts ressusciteraient sans un mot. Un montant qui revient tout
        seul est exactement ce que ce fichier traque. */
     scenario();
-    eq(retirerPersonne('pk', { effacerParts: false }), 0, 'aucune charge touchée');
-    eq(Store.state.budget.fixedCharges[0].shares.pk, 800, 'la part reste dans le fichier');
+    eq(retirerPersonne('xy', { effacerParts: false }), 0, 'aucune charge touchée');
+    eq(Store.state.budget.fixedCharges[0].shares.xy, 800, 'la part reste dans le fichier');
     eq(contributors().length, 0, 'la personne, elle, est partie');
-    const id = identifiantPersonne('PK');
-    vrai(id !== 'pk',
+    const id = identifiantPersonne('XY');
+    vrai(id !== 'xy',
       `« ${id} » : un identifiant qui traîne encore dans les parts ne se redonne pas`);
-    Store.state.budget.contributors.push({ id, name: 'PK' });
+    Store.state.budget.contributors.push({ id, name: 'XY' });
     eq(partTheoriqueMensuelle(id), 0, 'la personne redéclarée part de zéro');
     pres(fixedTotal(), 1900, 'et le budget n’a pas bougé d’un centime');
   });
@@ -525,15 +525,15 @@ suite('Modifier les parts ne change jamais le total des charges', () => {
 
   test('ce qu’une personne porte se dit avant de la retirer', () => {
     scenario();
-    const p = partsDePersonne('pk');
+    const p = partsDePersonne('xy');
     eq(p.lignes, 3, 'trois charges portent une part');
     pres(p.mensuel, 950, 'pour 950 € par mois');
     eq(partsDePersonne('inconnu').lignes, 0, 'et personne d’autre n’en porte');
     /* Une part a zero est declaree : elle compte comme une ligne portee, et
-       c'est juste — la fenetre en parle avant de l'effacer. */
+       c'est juste -- la fenetre en parle avant de l'effacer. */
     scenario({ loyer: 0, elec: 0, net: 0 });
-    eq(partsDePersonne('pk').lignes, 3, 'un zéro déclaré est une part, et il se dit');
-    pres(partsDePersonne('pk').mensuel, 0, 'pour zéro euro');
+    eq(partsDePersonne('xy').lignes, 3, 'un zéro déclaré est une part, et il se dit');
+    pres(partsDePersonne('xy').mensuel, 0, 'pour zéro euro');
   });
 
   test('les deux portes existent, et aucune ne touche au budget', () => {
@@ -563,9 +563,9 @@ suite('Modifier les parts ne change jamais le total des charges', () => {
   });
 });
 
-/* DES DEPENSES NE SONT PAS UN RELEVE. Le premier pas « enregistre ton premier
-   releve » se declarait franchi des qu'un mois de depenses etait saisi : il
-   interrogeait `aDejaServi`, qui repond a une question plus large — l'application
+/* DES DEPENSES NE SONT PAS UN RELEVE. Le premier pas "enregistre ton premier
+   releve" se declarait franchi des qu'un mois de depenses etait saisi : il
+   interrogeait `aDejaServi`, qui repond a une question plus large -- l'application
    a-t-elle deja servi. Quelqu'un pouvait creer ses comptes, declarer son salaire,
    remplir son budget, ne jamais photographier ses comptes, et Longward considerait
    le releve comme fait. La courbe, le rythme d'accumulation et l'autonomie
@@ -686,15 +686,15 @@ suite('Le premier relevé se demande jusqu’à ce qu’un relevé existe', () =
     vrai(/photo de tes comptes/.test(pas.quoi), 'et dit ce que c’est');
     vrai(/deux/.test(pas.quoi), 'en expliquant qu’il en faudra deux pour une pente');
     /* Le libelle tient dans la demi-carte que la rangee lui donne : 150 px a
-       375 px, et « Enregistrer ton premier releve » en demandait 194. Le mot
-       « premier » vit dans le titre du pas et dans sa consigne. */
+       375 px, et "Enregistrer ton premier releve" en demandait 194. Le mot
+       "premier" vit dans le titre du pas et dans sa consigne. */
     eq(pas.bouton, 'Enregistrer ton premier relevé', 'le bouton dit le premier');
     eq(pas.action, 'ajouter-releve', 'ni la porte qu’il ouvre');
   });
 });
 
 /* Le wording des credits suivait encore la convention d'avant : il annoncait que
-   « c'est ta part qui sert au budget ». Une charge fixe vaut ce qui est DEBITE
+   "c'est ta part qui sert au budget". Une charge fixe vaut ce qui est DEBITE
    depuis, et le capital restant du n'a jamais eu de part. */
 suite('Le wording des crédits dit la convention du montant facturé', () => {
 
@@ -737,16 +737,16 @@ suite('Le wording des crédits dit la convention du montant facturé', () => {
        theorique de 800 EUR n'en retranche rien, et les 750 EUR reellement recus
        entrent par les revenus. */
     Fixture.poser(s => {
-      s.budget.contributors = [{ id: 'pk', name: 'PK' }];
+      s.budget.contributors = [{ id: 'xy', name: 'XY' }];
       s.budget.income = [{ label: 'Salaire', amount: 3000 },
                          { label: 'Complément', amount: 750 }];
       s.budget.fixedCharges = [{ label: 'Loyer', amount: 1600, period: 'mois',
-                                 shares: { pk: 800 } }];
+                                 shares: { xy: 800 } }];
     });
     pres(incomeTotal(), 3750, 'les entrées');
     pres(fixedTotal(), 1600, 'la charge vaut ce qui est débité');
     pres(budgetFrame().available, 2150, '3 750 − 1 600');
-    pres(partTheoriqueMensuelle('pk'), 800, 'et la part reste informative');
+    pres(partTheoriqueMensuelle('xy'), 800, 'et la part reste informative');
     vrai(Math.abs(fixedTotal() - 800) > 1, 'jamais 800 de charges');
     vrai(Math.abs(budgetFrame().available - 2950) > 1, 'jamais 2 950 de reste');
   });
@@ -782,7 +782,7 @@ suite('Le wording des crédits dit la convention du montant facturé', () => {
    Il ecarte les murs et les objets de valeur. Il ecartait AUSSI toutes les
    dettes, sous un raisonnement juste sur un seul cas : le pret finance le bien,
    le bien est deja dehors. Vrai d'un credit immobilier, faux d'une marge de
-   courtier ou d'un pret personnel — ceux-la disparaissaient entierement de la
+   courtier ou d'un pret personnel -- ceux-la disparaissaient entierement de la
    lecture financiere, et une dette qui ne se voit nulle part est le pire des
    chiffres faux. */
 suite('Le périmètre financier porte les dettes qui ne sont pas parties avec un mur', () => {
@@ -880,7 +880,7 @@ suite('Le périmètre financier porte les dettes qui ne sont pas parties avec un
     pres(netFinancier(), 80000, 'et le net, une fois la marge retranchée');
     /* AUCUNE REPARTITION NE CONNAIT LA DETTE. La ventiler au prorata inventerait
        un endroit ou elle n'est pas, et ferait bouger la quantite d'actions qu'on
-       « devrait » posseder. */
+       "devrait" posseder. */
     const somme = l => round2(l.reduce((s, x) => s + num(x.value), 0));
     pres(somme(repartitionClasses({ financier: true })), 100000, 'par classe d’actif');
     pres(somme(allocationByAccount({ financier: true })), 100000, 'par compte');
@@ -996,7 +996,7 @@ suite('Le périmètre financier porte les dettes qui ne sont pas parties avec un
 /* DEUX CARTES, DEUX ROLES. Six barres nommaient les six plus gros postes, et la
    carte juste en dessous nommait les treize, montant compris : deux
    representations detaillees des memes depenses sur un seul ecran : on lirait
-   « Loyer 1 600 » deux fois en faisant defiler, et rien ne dirait laquelle des
+   "Loyer 1 600" deux fois en faisant defiler, et rien ne dirait laquelle des
    deux repond a la question qu'on se pose. */
 suite('Charges fixes : une carte pèse, l’autre gère', () => {
 
@@ -1060,7 +1060,7 @@ suite('Charges fixes : une carte pèse, l’autre gère', () => {
 });
 
 /* PREMIER USAGE. Un compte, un montant, et rien d'autre : l'accueil affichait
-   huit zeros repartis sur trois cartes, dont « 0,0 mois d'autonomie » en rouge
+   huit zeros repartis sur trois cartes, dont "0,0 mois d'autonomie" en rouge
    au-dessus de 3 000 EUR de liquidites. Une carte qui ne peut rien mesurer dit ce
    qui la remplirait, elle n'imprime pas un zero a la place. */
 suite('Un premier compte ne remplit pas l’accueil de zéros', () => {
@@ -1082,7 +1082,7 @@ suite('Un premier compte ne remplit pas l’accueil de zéros', () => {
 
   test('sans coût de la vie, l’autonomie ne vaut pas zéro mois', () => {
     /* LE DEFAUT. `cover = r.burn ? ep / r.burn : 0` rendait zero faute de
-       denominateur, et la carte peignait « 0,0 mois » en rouge sur un coussin de
+       denominateur, et la carte peignait "0,0 mois" en rouge sur un coussin de
        3 000 EUR : l'inverse exact de la situation, le premier jour. */
     premierCompte();
     const p = poches();
@@ -1122,7 +1122,7 @@ suite('Un premier compte ne remplit pas l’accueil de zéros', () => {
     vrai(/<h2>\$\{trad\('Accumulation ce mois-ci'\)\}<\/h2><\/div>\s*\$\{invitePremierPas\('revenus'\)\}/
       .test(src), 'la carte vide porte l’invite de la table, et rien d’autre');
     /* LA PHRASE NE SE RECOPIE PAS ICI, SA PROPRIETE SE VERIFIE. Une copie mot
-       pour mot faisait tomber ce controle a la premiere retouche du texte — un
+       pour mot faisait tomber ce controle a la premiere retouche du texte -- un
        seul mot ajoute, et il criait sans qu'aucun defaut existe. Ce qu'il veut
        dire tient en deux regles : le pas annonce ce qu'il APPORTE, et jamais ce
        qui manque a l'ecran qui l'affiche. */
@@ -1221,8 +1221,8 @@ suite('Un premier compte ne remplit pas l’accueil de zéros', () => {
 
    Le moteur est mensuel. Un taux annonce est un taux ANNUEL EFFECTIF, converti
    par (1+r)^(1/12)-1 : douze mois de rendement redonnent donc exactement le taux
-   affiche. Les versements arrivent en FIN de mois — annuite ordinaire, la plus
-   prudente des deux conventions — et il y en a exactement douze par an.
+   affiche. Les versements arrivent en FIN de mois -- annuite ordinaire, la plus
+   prudente des deux conventions -- et il y en a exactement douze par an.
 
    La reference de ces controles n'est pas le moteur : c'est la formule fermee de
    l'annuite, ecrite ici, differente par construction. Un test qui appelle deux
@@ -1401,12 +1401,12 @@ suite('Projection : le moteur se réconcilie', () => {
 
   test('une SCPI est un placement, et reste constante faute d’hypothèse', () => {
     /* Elle etait rangee dans la poche PLATE, avec les murs, parce qu'elle
-       partage leur classe. Le resultat chiffre etait le meme — cent mille euros
-       constants — et le sens etait faux : la part plate est « ton immobilier
-       net », une fiche qui la deballe ligne a ligne, et la projection annoncait
-       donc une SCPI comme un bien gele. Elle est desormais dans « autres
-       actifs », la poche de ce dont Longward ne sait rien : crypto, metaux, non
-       cote. Zero par defaut, donc constante — mais du bon cote de la frontiere,
+       partage leur classe. Le resultat chiffre etait le meme -- cent mille euros
+       constants -- et le sens etait faux : la part plate est "ton immobilier
+       net", une fiche qui la deballe ligne a ligne, et la projection annoncait
+       donc une SCPI comme un bien gele. Elle est desormais dans "autres
+       actifs", la poche de ce dont Longward ne sait rien : crypto, metaux, non
+       cote. Zero par defaut, donc constante -- mais du bon cote de la frontiere,
        et prete a recevoir une hypothese le jour ou il en existe une. */
     etat({ comptes: [SCPI(100000)], meta: { projScenario: 'dynamique' } });
     eq(estBienEnDirect(compteById('c_scpi')), false, 'une SCPI n’est pas détenue en direct');
@@ -1480,8 +1480,8 @@ suite('Projection : le moteur se réconcilie', () => {
   });
 
   test('la mensualité libérée ne devient pas un versement', () => {
-    /* Sinon la projection inventerait : « a la fin du pret, tu investiras
-       automatiquement toute ta mensualite ». Ce n'est pas une donnee declaree. */
+    /* Sinon la projection inventerait : "a la fin du pret, tu investiras
+       automatiquement toute ta mensualite". Ce n'est pas une donnee declaree. */
     etat({ comptes: [CTO([], [{ montant: 0, affectation: 'courant' }])],
            dettes: [{ id: 'd0', libelle: 'Prêt', montant: 12000, taux: 0, mensualite: 1000 }] });
     const p = capitalisation({ years: 10 });
@@ -1736,7 +1736,7 @@ suite('Projection : le moteur se réconcilie', () => {
   test('« ce que tu verses » ne compte que ce qu’on verse', () => {
     /* LE DEFAUT. Le montant valait `contributed - patrimoine net`, et
        `contributed` porte la part plate, qui MONTE quand le credit s'amortit.
-       Sur un appartement finance, avec « 0 {dev} / mois » ecrit deux lignes plus
+       Sur un appartement finance, avec "0 {dev} / mois" ecrit deux lignes plus
        bas, la carte annoncerait donc pres de 200 000 EUR verses. */
     etat({ comptes: [BIEN(300000), CTO([], [{ montant: 20000, affectation: 'courant' }])],
            dettes: [{ id: 'd', libelle: 'Prêt', montant: 200000, taux: 2, mensualite: 1000 }],
@@ -1782,7 +1782,7 @@ suite('Projection : le moteur se réconcilie', () => {
 
   test('l’aire empilée sait descendre sous zéro', () => {
     /* Le cadre partait toujours de zero : une courbe negative se dessinait sous
-       lui, invisible, et l'axe annoncait « 0 € » au-dessus d'elle. */
+       lui, invisible, et l'axe annoncait "0 EUR" au-dessus d'elle. */
     const src = lireSource('assets/charts.js');
     vrai(/function niceTicksSignes\(min, max, count = 4\)/.test(src),
       'les graduations savent encadrer un intervalle signé');
@@ -1853,12 +1853,12 @@ suite('Projection : le moteur se réconcilie', () => {
 
 suite('Le Budget avant la première dépense', () => {
   test('la brique du mois dit ce qu’elle permet, au lieu de quatre zéros', () => {
-    /* Sur un profil vierge, l'onglet Dépenses ouvrait sur « 0 € », puis
-       « Objectif mensuel 0 € », « Reste sur l'objectif 0 € », « Moyenne 2026
-       0 € ». Quatre nombres qui disent tous la même chose — rien n'est saisi —
-       et qui font croire à un tableau cassé plutôt qu'à un produit qui
-       accompagne. Les tuiles et le graphique avaient déjà leur garde ; la
-       brique du haut la reçoit, avec la phrase des autres états vides : ce que
+    /* Sur un profil vierge, l'onglet Depenses ouvrait sur "0 EUR", puis
+       "Objectif mensuel 0 EUR", "Reste sur l'objectif 0 EUR", "Moyenne 2026
+       0 EUR". Quatre nombres qui disent tous la meme chose -- rien n'est saisi --
+       et qui font croire a un tableau casse plutot qu'a un produit qui
+       accompagne. Les tuiles et le graphique avaient deja leur garde ; la
+       brique du haut la recoit, avec la phrase des autres etats vides : ce que
        la section permet, et le geste qui la remplit. */
     const app = lireSource('assets/app.js');
     const dv = app.indexOf('function viewBudget(');
@@ -1885,10 +1885,10 @@ suite('Le Budget avant la première dépense', () => {
 
 suite('Le bruit informatif', () => {
   test('une variation nulle ne prend pas de place', () => {
-    /* « +0 € depuis août 26 » sous un livret qui n'a pas bougé : un changement
+    /* "+0 EUR depuis aout 26" sous un livret qui n'a pas bouge : un changement
        nul n'apprend rien, et il occupait la place d'une information sur chaque
-       ligne stable. Positive ou négative, la variation s'écrit ; nulle, la
-       place reste vide pour que les rangées gardent leur hauteur. */
+       ligne stable. Positive ou negative, la variation s'ecrit ; nulle, la
+       place reste vide pour que les rangees gardent leur hauteur. */
     const app = lireSource('assets/app.js');
     const dl = app.indexOf('function ligneCompte(');
     const ligne = app.slice(dl, app.indexOf('\nfunction ', dl + 10));
@@ -1906,11 +1906,11 @@ suite('Le bruit informatif', () => {
   });
 
   test('la moyenne des dépenses se lit dans sa tuile, pas trois fois', () => {
-    /* La brique du mois disait « Moyenne 2026 1 166 € » pendant que la tuile
-       donnait « 1 166,25 € » et le pied du graphique « 1 166 {dev} / mois ».
-       Même métrique, deux précisions : on se demandait si c'était la même
+    /* La brique du mois disait "Moyenne 2026 1 234 EUR" pendant que la tuile
+       donnait "1 234,25 EUR" et le pied du graphique "1 234 {dev} / mois".
+       Meme metrique, deux precisions : on se demandait si c'etait la meme
        chose. La tuile la porte avec sa base et sa fiche ; le pied du graphique
-       la garde parce qu'il la met face à l'objectif. La brique parle du mois. */
+       la garde parce qu'il la met face a l'objectif. La brique parle du mois. */
     const app = lireSource('assets/app.js');
     const dv = app.indexOf('function viewBudget(');
     const vue = app.slice(dv, app.indexOf('\nfunction ', dv + 10)).replace(/<!--[\s\S]*?-->/g, '');
@@ -1924,8 +1924,8 @@ suite('Le bruit informatif', () => {
 
   test('un rappel, une couleur', () => {
     /* Les pastilles des onglets et des sous-onglets sont orange ; celle de la
-       cloche, qui annonce les mêmes rappels, était rouge. Deux couleurs pour un
-       même signal se lisent comme deux signaux. Le rouge reste au critique. */
+       cloche, qui annonce les memes rappels, etait rouge. Deux couleurs pour un
+       meme signal se lisent comme deux signaux. Le rouge reste au critique. */
     const css = (lireSource('assets/styles.css') || '').replace(/\/\*[\s\S]*?\*\//g, '');
     const regle = sel => (css.match(new RegExp(sel + '\\s*\\{([^}]*)\\}')) || [])[1] || '';
     for (const sel of ['\\.badge', '\\.sous-onglets \\.pastille-onglet', '\\.pastille-ronde']) {
@@ -1936,11 +1936,11 @@ suite('Le bruit informatif', () => {
 
 
 suite('Le relevé mensuel se comprend en dix secondes', () => {
-  /* Le formulaire s'ouvrait a nu — douze poches, douze champs — et rien ne
+  /* Le formulaire s'ouvrait a nu -- douze poches, douze champs -- et rien ne
      disait pourquoi on les remplit, pourquoi les comptes viennent avant, ce
      que l'application en fait, ni pourquoi revenir le mois prochain. Le modele
-     tient en une ligne : creer ses poches → en renseigner la valeur chaque
-     mois → Longward les additionne → la courbe se dessine. Ces controles
+     tient en une ligne : creer ses poches -> en renseigner la valeur chaque
+     mois -> Longward les additionne -> la courbe se dessine. Ces controles
      gardent les endroits ou cette ligne se lit. Aucun calcul ne bouge. */
   const app = () => lireSource('assets/app.js');
 
@@ -1951,7 +1951,7 @@ suite('Le relevé mensuel se comprend en dix secondes', () => {
     vrai(/if \(!aUnRelevePatrimonial\(\)\) \{/.test(a), 'l’étape ne paraît qu’avant le premier relevé');
     vrai(/trad\('Avant ton premier relevé'\)/.test(a), 'et elle s’annonce comme telle');
     /* Le bouton plein fait ce qu'on a touche ; verifier ses poches reste
-       propose, en second. L'inverse repondait « non » au geste demande. */
+       propose, en second. L'inverse repondait "non" au geste demande. */
     vrai(/ok: trad\('Enregistrer mon relevé'\)/.test(a), 'le geste principal enregistre le relevé');
     vrai(/refus: trad\('Vérifier mes comptes et actifs'\)/.test(a), 'le second mène aux poches');
     vrai(/if \(enregistrer === false\) \{ location\.hash = '#\/accounts'; return; \}/.test(a),

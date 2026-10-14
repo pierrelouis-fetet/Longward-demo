@@ -1318,6 +1318,47 @@ function expenseByCategory(year) {
     .sort((a, b) => b.value - a.value);
 }
 
+/* Ce que la bulle d'une categorie ajoute a sa barre : ses mois, son plus haut
+   mois, et la meme periode un an plus tot.
+
+   Les mois sont exactement ceux des barres mensuelles (`expenseSeriesVisible`) :
+   un mois a venir deja saisi y figure, un mois a venir vide non. Le detail
+   d'une categorie ne montre pas une autre annee que le graphique d'a cote.
+
+   LA COMPARAISON PORTE SUR LES MEMES MOIS, ET SEULEMENT EUX. La base est
+   celle d'`expenseByCategory` : les mois qui portent une depense, et pour la
+   lecture par mois, `moisDeLaMoyenne` de ceux-la. On n'en garde que les mois
+   que l'annee d'avant renseigne aussi : comparer dix mois de cette annee aux
+   quatre que l'on avait saisis l'an dernier dirait une hausse qui n'est
+   qu'un trou dans la saisie. `memesMois` dit que la periode comparee est plus
+   courte que l'annee lue. Sommes en lecture annuelle, moyennes en lecture
+   par mois ; pas de part sur une base nulle ou negative. */
+function detailCategorie(year, cat, parMois) {
+  if (!year || year === 'all' || !cat) return null;
+  const mois = expenseSeriesVisible(year)
+    .map(r => ({ month: r.month, label: r.label, value: num(r.v && r.v[cat]) }));
+  const plusHaut = mois.reduce((h, x) => (x.value > 0.005 && (!h || x.value > h.value) ? x : h), null);
+
+  const remplis = expenseSeries(year).filter(r => r.total > 0);
+  const base = parMois ? moisDeLaMoyenne(remplis) : remplis;
+  const avant = new Map(expenseSeries(String(+year - 1)).filter(r => r.total > 0)
+    .map(r => [r.month.slice(5, 7), r]));
+  const communs = base.filter(r => avant.has(r.month.slice(5, 7)));
+  let comparaison = null;
+  if (communs.length) {
+    const somme = lignes => lignes.reduce((s, r) => s + num(r.v && r.v[cat]), 0);
+    const div = parMois ? communs.length : 1;
+    const actuel = somme(communs) / div;
+    const prec = somme(communs.map(r => avant.get(r.month.slice(5, 7)))) / div;
+    comparaison = {
+      annee: +year - 1, actuel, avant: prec, ecart: actuel - prec,
+      pct: prec > 0.005 ? (actuel - prec) / prec * 100 : null,
+      memesMois: communs.length < base.length,
+    };
+  }
+  return { mois, plusHaut, comparaison };
+}
+
 function currentExpenseMonth() {
   const key = todayISO().slice(0, 7) + '-01';
   const exact = B().expenses.find(r => r.month === key);

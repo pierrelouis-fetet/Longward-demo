@@ -187,9 +187,9 @@ suite('Les cases se voient, se touchent et se lisent', () => {
   });
 
   test('le survol n’efface pas l’anneau du clavier', () => {
-    /* Un pointeur pose sur le "?" au moment ou Tab l'atteint : la regle de
-       survol venait apres celle du focus, a specificite egale, et retirait
-       l'anneau. */
+    /* Un pointeur pose sur le "?" au moment ou Tab l'atteint : une regle de
+       survol ecrite apres celle du focus, a specificite egale, retirerait
+       l'anneau si elle posait outline: none. */
     for (const sel of ['.aide:hover', '.col-aide:hover']) {
       const r = (css().match(new RegExp(sel.replace(/[.]/g, '\\.') + ' \\{([^}]*)\\}')) || [])[1];
       vrai(r != null && !/outline: none/.test(r), `${sel} ne pose plus outline: none`);

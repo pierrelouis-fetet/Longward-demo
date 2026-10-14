@@ -50,7 +50,7 @@ const Fixture = (() => {
         contributors: [], fixedCharges: [], toReview: [], supplements: [], apports: [],
         expenses: [
           { month: '2026-01', v: { Courses: 400, Voyages: 100 }, note: '' },
-          /* Un mois avec découpage : `v` reste la vérité, `d` le détaille. */
+          /* Un mois avec decoupage : `v` reste la verite, `d` le detaille. */
           { month: '2026-02', v: { Courses: 500 }, note: '',
             d: { Courses: [{ montant: 200, libelle: 'Marché' }, { montant: 300, libelle: '' }] } },
         ],
@@ -80,7 +80,7 @@ const Fixture = (() => {
         position('p_etf', 'MSCI World', 'IWDA', 'EUR', 100, 80, 90, 'c_pea', 'actions', 'core'),
         position('p_or', 'Amundi Physical Gold', 'GOLD', 'EUR', 10, 70, 75, 'c_cto', 'metaux', 'satellite'),
       ],
-      /* Un seul relevé, dont la somme fait exactement le brut du jour : les
+      /* Un seul releve, dont la somme fait exactement le brut du jour : les
          comptes portant des titres valent cash + titres. */
       monthly: [
         { date: '2026-01-31', comment: '',
@@ -104,10 +104,10 @@ const Fixture = (() => {
              fx: 1, fxBuy: 1, account, manual: false, assetClass, role };
   }
 
-  /* Installe l'état et reconstruit la projection des comptes. `refreshAccounts`
-     n'est pas optionnel : `rowGroups()` range chaque relevé par la poche du
+  /* Installe l'etat et reconstruit la projection des comptes. `refreshAccounts`
+     n'est pas optionnel : `rowGroups()` range chaque releve par la poche du
      compte, qu'elle lit dans cette projection. Sans l'appel, les tests
-     d'historique lisent les comptes du fixture précédent. */
+     d'historique lisent les comptes du fixture precedent. */
   function poser(modifier) {
     const s = etat();
     if (modifier) modifier(s);

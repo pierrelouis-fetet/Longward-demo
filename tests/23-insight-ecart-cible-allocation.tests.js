@@ -55,7 +55,7 @@ suite('Insight : l’écart à la cible d’allocation', () => {
   });
 
   test('plusieurs classes dérivent : une seule sort, la plus grande, toujours la même', () => {
-    /* Actions a +12, obligations a −6 : la plus grande deviation gagne, sans
+    /* Actions a +12, obligations a -6 : la plus grande deviation gagne, sans
        ambiguite, et deux lectures rendent la meme. */
     Fixture.poser(s => {
       s.targets = { cashToInvest: 0,
@@ -218,12 +218,12 @@ suite('Insight : le capital remboursé', () => {
   });
 
   test('un crédit qui amortit produit un montant mensuel, jamais confondu avec l’épargne', () => {
-    /* CE CONTRÔLE INTERROGE LE MODÈLE, PLUS UNE RÈGLE D'INSIGHT. Il passait par
-       `debt_principal_share`, dont la lecture redisait la carte « Accumulation
-       ce mois-ci » du même écran et qui a quitté le catalogue. La distinction
-       qu'il protège appartient à `savingsReconciliation()` : le capital
-       remboursé augmente le patrimoine mais n'est pas de l'épargne disponible,
-       et les confondre est l'erreur que cette séparation existe pour éviter. */
+    /* CE CONTROLE INTERROGE LE MODELE, PLUS UNE REGLE D'INSIGHT. Il passait par
+       `debt_principal_share`, dont la lecture redisait la carte "Accumulation
+       ce mois-ci" du meme ecran et qui a quitte le catalogue. La distinction
+       qu'il protege appartient a `savingsReconciliation()` : le capital
+       rembourse augmente le patrimoine mais n'est pas de l'epargne disponible,
+       et les confondre est l'erreur que cette separation existe pour eviter. */
     Fixture.poser(s => {
       const e = s.etabs.find(x => x.id === 'e_bien');
       e.dettes = [{ id: 'd_pret', libelle: 'Prêt', montant: 100000, taux: 2, mensualite: 600,
@@ -233,7 +233,7 @@ suite('Insight : le capital remboursé', () => {
     vrai(num(rec.capitalRembourse) >= 0, 'le capital remboursé est un montant mensuel');
     vrai(num(rec.investable) >= 0 || num(rec.investable) < 0,
       'et l’épargne disponible en est un autre');
-    /* Deux champs distincts, jamais le même nombre lu deux fois. */
+    /* Deux champs distincts, jamais le meme nombre lu deux fois. */
     vrai('capitalRembourse' in rec && 'investable' in rec,
       'le modèle les porte séparément, et c’est ce qui empêche de les confondre');
   });
@@ -313,7 +313,7 @@ suite('Le rythme ne se dit que s’il a vraiment changé', () => {
 
   test('une période précédente nulle ou négative ne produit aucun pourcentage', () => {
     /* La regle de la maison : un pourcentage n'existe que sur une base
-       positive. Un rythme precedent a zero donnerait un « +900 % » qui ne
+       positive. Un rythme precedent a zero donnerait un "+900 %" qui ne
        mesure rien, et un rythme negatif retournerait le signe. */
     poserRythme(0, 1500);
     eq(trouve(), null, 'une base nulle : silence plutôt qu’un pourcentage absurde');
@@ -324,7 +324,7 @@ suite('Le rythme ne se dit que s’il a vraiment changé', () => {
   });
 
   test('deux montants qui s’affichent pareil ne font pas une phrase', () => {
-    /* Un ecart relatif enorme sur des montants minuscules : « 0 contre 0 ». */
+    /* Un ecart relatif enorme sur des montants minuscules : "0 contre 0". */
     Fixture.poser(s => {
       const v = [0];
       for (let i = 0; i < 6; i++) v.push(v[v.length - 1] + 0.1);
@@ -343,7 +343,7 @@ suite('Le rythme ne se dit que s’il a vraiment changé', () => {
   });
 });
 
-/* --- La granularité de l'allocation --------------------------------------- */
+/* --- La granularite de l'allocation --------------------------------------- */
 suite('L’allocation parle de la classe, jamais d’une moitié de classe', () => {
   const trouve = () => evaluerInsights().find(i => i.id === 'allocation_target_gap') || null;
   const pos = (id, classe, role, valeur, compte) => ({
@@ -353,8 +353,8 @@ suite('L’allocation parle de la classe, jamais d’une moitié de classe', () 
   });
 
   test('une cible découpée en cœur et satellite se lit comme une seule classe', () => {
-    /* La cible est posee par role — c'est ce que `rebalanceRows()` decoupe.
-       L'insight doit quand meme nommer « Actions », pas « Actions cœur ». */
+    /* La cible est posee par role -- c'est ce que `rebalanceRows()` decoupe.
+       L'insight doit quand meme nommer "Actions", pas "Actions coeur". */
     Fixture.poser(s => {
       s.targets = { cashToInvest: 0,
                     classes: { actions: { core: 40, satellite: 20 }, obligations: 40 },
@@ -415,7 +415,7 @@ suite('L’allocation parle de la classe, jamais d’une moitié de classe', () 
   });
 });
 
-/* --- La section À retenir -------------------------------------------------
+/* --- La section A retenir -------------------------------------------------
 
    `app.js` n'est pas charge par le harnais : ces controles lisent donc la
    source, comme tous les controles de vue de ce projet. Ce qui s'execute ici,
@@ -427,11 +427,11 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
     return a.slice(a.indexOf('const PRESENTATION_INSIGHT'), a.indexOf('function carteARetenir()'));
   };
   /* LA BORNE BASSE EST LA FONCTION SUIVANTE, QUELLE QU'ELLE SOIT. Elle nommait
-     `viewOverview()`, qui se trouvait être la voisine : la carte commune des
-     insights et le rendu d'une entrée se sont posés entre les deux, et la
-     tranche a gonflé de deux fonctions que ces contrôles ne visent pas — d'où
-     « deux listes » là où la carte de l'Aperçu n'en porte qu'une. Une borne se
-     dérive de la structure, jamais d'un voisinage que rien ne garantit. */
+     `viewOverview()`, qui se trouvait etre la voisine : la carte commune des
+     insights et le rendu d'une entree se sont poses entre les deux, et la
+     tranche a gonfle de deux fonctions que ces controles ne visent pas -- d'ou
+     "deux listes" la ou la carte de l'Apercu n'en porte qu'une. Une borne se
+     derive de la structure, jamais d'un voisinage que rien ne garantit. */
   const rendu = () => {
     const a = app();
     const d = a.indexOf('function carteARetenir()');
@@ -443,17 +443,17 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
     Store.state = blankState(); Store.migrate(); refreshAccounts();
     eq(construireInsights().length, 0, 'le moteur ne dit rien sur un état vierge');
     const r = rendu();
-    /* LA CARTE REPOND, ELLE NE COMBLE PAS. « Rien d'inhabituel à signaler » dit
-       ce qui a été regardé et ce qui en est ressorti ; c'est une réponse, et
+    /* LA CARTE REPOND, ELLE NE COMBLE PAS. "Rien d'inhabituel a signaler" dit
+       ce qui a ete regarde et ce qui en est ressorti ; c'est une reponse, et
        elle vaut celles qui portent un chiffre. Ce que la carte ne fait toujours
        pas, c'est inventer une lecture pour occuper la place. */
     vrai(/const vide = !lus\.length;/.test(r), 'l’état calme est un état, pas une absence');
     vrai(r.includes('Rien d’inhabituel à signaler'), 'et il porte sa phrase');
     vrai(!!I18N.en['Rien d’inhabituel à signaler'], 'qui existe dans les deux langues');
-    /* Aucun jugement, aucune promesse, aucun compte de zéro. « Tout va bien »
-       serait une assurance que rien ne fonde ; « Aucun insight » parlerait du
-       moteur plutôt que du patrimoine ; « Rien à signaler » appartient à la
-       cloche, qui répond à une question qu'on lui a posée. */
+    /* Aucun jugement, aucune promesse, aucun compte de zero. "Tout va bien"
+       serait une assurance que rien ne fonde ; "Aucun insight" parlerait du
+       moteur plutot que du patrimoine ; "Rien a signaler" appartient a la
+       cloche, qui repond a une question qu'on lui a posee. */
     for (const mot of ['Tout va bien', 'Aucun insight', 'Rien à signaler']) {
       vrai(!r.includes(mot), `« ${mot} » n’apparaît pas dans la carte`);
     }
@@ -463,29 +463,29 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
   test('la page ne montre jamais plus de trois insights', () => {
     const a = app();
     /* LE PLAFOND NE S'ECRIT QU'UNE FOIS. Il vit avec la selection qui
-       l'applique, dans le moteur ; la vue le relaie. Deux « 3 » ecrits chacun
+       l'applique, dans le moteur ; la vue le relaie. Deux "3" ecrits chacun
        de son cote auraient fini par differer, et la vue aurait coupe ce que le
        moteur croyait avoir choisi. */
     /* LE PLAFOND VIT AVEC LA SELECTION QUI L'APPLIQUE, et celle-ci a demenage :
        c'est la carte qui a trois places, et c'est elle qui choisit lesquelles
        remplir. Un plafond pose dans le moteur coupait avant ce choix. */
-    /* DEUX, ET LA MESURE TRANCHE : trois lectures occupaient 505 px sur un écran
-       de 844, soit soixante pour cent de la hauteur. La carte devenait l'écran
-       au lieu de le commenter, et il fallait la faire défiler pour atteindre la
-       donnée qu'elle analyse. La troisième est par construction la plus faible
-       des trois, puisque le classement l'a mise derrière. */
+    /* DEUX, ET LA MESURE TRANCHE : trois lectures occupaient 505 px sur un ecran
+       de 844, soit soixante pour cent de la hauteur. La carte devenait l'ecran
+       au lieu de le commenter, et il fallait la faire defiler pour atteindre la
+       donnee qu'elle analyse. La troisieme est par construction la plus faible
+       des trois, puisque le classement l'a mise derriere. */
     vrai(/const MAX_A_RETENIR = 2;/.test(a), 'le plafond est déclaré dans la vue, et il vaut deux');
     vrai(!/MAX_INSIGHTS/.test(lireSource('assets/insights.js')),
       'et le moteur n’en porte plus');
-    /* La carte prend désormais ce que le moteur range sur SON onglet, puis la
-       même sélection coupe. Le plafond n'a pas bougé de place : il vit toujours
-       avec la sélection, dans la vue. */
+    /* La carte prend desormais ce que le moteur range sur SON onglet, puis la
+       meme selection coupe. Le plafond n'a pas bouge de place : il vit toujours
+       avec la selection, dans la vue. */
     vrai(/selectionARetenir\(insightsDeLOnglet\('overview'/.test(rendu()),
       'la coupe passe par la sélection de la Home');
-    /* Et l'adressage par onglet n'a pas rapporté de plafond dans le moteur :
-       `insightsDeLOnglet()` filtre, il ne coupe pas. Le contrôle porte sur cette
-       fonction-là, et non sur le fichier entier — le catalogue se sert de
-       `slice` pour découper des fenêtres de mois, ce qui n'a rien à voir. */
+    /* Et l'adressage par onglet n'a pas rapporte de plafond dans le moteur :
+       `insightsDeLOnglet()` filtre, il ne coupe pas. Le controle porte sur cette
+       fonction-la, et non sur le fichier entier -- le catalogue se sert de
+       `slice` pour decouper des fenetres de mois, ce qui n'a rien a voir. */
     const src = lireSource('assets/insights.js');
     const dt = src.indexOf('function insightsDeLOnglet(');
     vrai(dt > 0, 'la sélection par onglet doit être trouvable');
@@ -506,7 +506,7 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
   test('l’ordre affiché est celui du moteur, sans second tri', () => {
     const r = rendu();
     vrai(!/\.sort\(/.test(r), 'la vue ne reclasse rien : deux classements finiraient par diverger');
-    /* `insightsDeLOnglet()` est la liste du moteur, filtrée sur l'onglet et dans
+    /* `insightsDeLOnglet()` est la liste du moteur, filtree sur l'onglet et dans
        son ordre : la vue ne fait qu'y prendre sa part. */
     vrai(/insightsDeLOnglet\('overview'/.test(r), 'elle lit la liste que le moteur a déjà ordonnée');
     /* Et le moteur, lui, est stable : deux appels, deux fois le meme ordre. */
@@ -637,7 +637,7 @@ suite('À retenir : trois au maximum, et rien quand il n’y a rien', () => {
   });
 });
 
-/* --- Réduire, masquer, et s'en souvenir ----------------------------------- */
+/* --- Reduire, masquer, et s'en souvenir ----------------------------------- */
 suite('À retenir se replie, se retire, et s’en souvient', () => {
   const app = () => lireSource('assets/app.js');
   const rendu = () => {
@@ -673,7 +673,7 @@ suite('À retenir se replie, se retire, et s’en souvient', () => {
     Store.state = blankState(); Store.migrate();
     eq(!!Store.state.meta.retenirReplie, false, 'déplié par défaut');
     eq(!!Store.state.meta.retenirMasquee, false, 'et visible');
-    /* Aucune migration ne pose ces clefs : leur absence vaut « non ». La
+    /* Aucune migration ne pose ces clefs : leur absence vaut "non". La
        disposition de l'accueil lit et ecrit la seconde, parce que la visibilite
        de la section en est une partie : ce sont ses deux seules mentions. */
     const s = lireSource('assets/store.js').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -726,7 +726,7 @@ suite('À retenir se replie, se retire, et s’en souvient', () => {
       vrai(!r.includes(signe), `la carte ne porte pas « ${signe} »`);
     }
     vrai(/trad\('Réduire'\)/.test(r), 'le geste ordinaire est « Réduire »');
-    /* Le retrait vit derriere les trois points, pas a cote de « Réduire ». */
+    /* Le retrait vit derriere les trois points, pas a cote de "Reduire". */
     const a = app();
     const menu = a.slice(a.indexOf("async 'retenir-options'()"), a.indexOf("async 'regl-place'()"));
     vrai(/trad\('Masquer cette section'\)/.test(menu), 'le retrait est une entrée de menu');
@@ -801,7 +801,7 @@ suite('À retenir se replie, se retire, et s’en souvient', () => {
   });
 });
 
-/* --- La réserve mène à l'autonomie, pas au budget -------------------------- */
+/* --- La reserve mene a l'autonomie, pas au budget -------------------------- */
 suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
   const app = () => lireSource('assets/app.js');
   const presentation = () => {
@@ -824,8 +824,8 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
        renommer casserait les renvois sans rien apprendre a personne. */
     vrai(/data-anchor="autonomie">[\s\S]{0,400}?<h2>\$\{trad\('Réserve de sécurité'\)\}/.test(a),
       'la carte « Réserve de sécurité » porte l’ancre');
-    /* Et elle n'est pas le déclencheur : `focusAnchor` écarte les `goto`, mais
-       une carte ne doit de toute façon porter aucune action. */
+    /* Et elle n'est pas le declencheur : `focusAnchor` ecarte les `goto`, mais
+       une carte ne doit de toute facon porter aucune action. */
     const carte = a.slice(a.indexOf('<div class="card" data-anchor="autonomie">'), a.indexOf('<div class="card" data-anchor="autonomie">') + 200);
     vrai(!/data-action="goto"/.test(carte), 'la destination n’est pas un déclencheur');
   });
@@ -845,7 +845,7 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
   });
 
   test('les deux langues nomment la carte par son nom de produit', () => {
-    /* « Autonomie financiere » evoquait aussi l'independance financiere, qui
+    /* "Autonomie financiere" evoquait aussi l'independance financiere, qui
        n'est pas le sujet : la carte compte de quoi tenir si les revenus
        s'arretaient, pas de quoi arreter de travailler. */
     eq(I18N.en['Réserve de sécurité'], 'Safety reserve', 'la carte a son nom anglais');
@@ -867,7 +867,7 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
        des cartes qui existaient deja, aucune n'a ete creee pour l'occasion. */
     /* LA LISTE SE DERIVE DU BALISAGE, elle ne se tient plus a la main : elle
        nommait quatre ancres, et tout renvoi vers une cinquieme carte existante
-       tombait alors que c'est precisement ce qu'on veut — un renvoi qui mene a
+       tombait alors que c'est precisement ce qu'on veut -- un renvoi qui mene a
        la preuve plutot qu'au haut de la page. Ce qui compte est qu'aucune ancre
        citee ne soit inventee. */
     const posees = new Set([...lireSource('assets/app.js')
@@ -881,11 +881,11 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
   test('aucun calcul n’a changé', () => {
     /* Le moteur ignore les renvois : ils vivent dans la vue.
 
-       SANS LES COMMENTAIRES, et la nuance compte : le contrôle porte sur le
-       CODE. Un commentaire qui explique pourquoi le moteur ne connaît pas les
-       destinations nomme forcément une destination pour le dire, et se faisait
-       prendre par sa propre justification. C'est le même piège que le contrôle
-       de l'horodatage envoyé, quelques suites plus haut. */
+       SANS LES COMMENTAIRES, et la nuance compte : le controle porte sur le
+       CODE. Un commentaire qui explique pourquoi le moteur ne connait pas les
+       destinations nomme forcement une destination pour le dire, et se faisait
+       prendre par sa propre justification. C'est le meme piege que le controle
+       de l'horodatage envoye, quelques suites plus haut. */
     const m = lireSource('assets/insights.js').replace(/\/\*[\s\S]*?\*\//g, '');
     vrai(!/autonomie|Voir mon|goto/.test(m), 'le moteur ne connaît pas les destinations');
     Fixture.poser();
@@ -895,7 +895,7 @@ suite('Réserve disponible : le renvoi vise la carte, pas la page', () => {
       eq(i.params.months, num(r.reserveMois), 'les mois viennent toujours de runway()');
       eq(i.evidence.source, 'runway');
     }
-    /* Et la carte visée lit le même moteur que l'insight : un seul chiffre. */
+    /* Et la carte visee lit le meme moteur que l'insight : un seul chiffre. */
     const a = app();
     const carte = a.slice(a.indexOf('function carteReserveResume()'),
                           a.indexOf('\n}\n', a.indexOf('function carteReserveResume()')));
@@ -938,8 +938,8 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
   };
 
   test('l’objectif nomme sa cible par son montant', () => {
-    /* « Ta cible serait atteinte vers décembre 2029 » laissait la question
-       « quelle cible ? » sans reponse. Le modele ne porte qu'une cible de
+    /* "Ta cible serait atteinte vers decembre 2029" laissait la question
+       "quelle cible ?" sans reponse. Le modele ne porte qu'une cible de
        projection, un nombre sans intitule : le montant est la seule facon de la
        nommer, et on n'en invente pas d'autre. */
     const p = presentation();
@@ -989,7 +989,7 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
        sous lui, et on sait lequel est le chiffre d'aujourd'hui. */
     vrai(/secondaire: p => trad\('contre \{b\} auparavant'\)/.test(bloc),
       'la comparaison passe derrière, sur sa propre ligne');
-    /* « EN MOYENNE » SERAIT FAUX. Ce chiffre est une mediane : c'est ce qui
+    /* "EN MOYENNE" SERAIT FAUX. Ce chiffre est une mediane : c'est ce qui
        l'empeche d'etre gonfle par une prime ou une vente, et le mot ne manque
        pas a la phrase. */
     vrai(!/en moyenne|moyenne/i.test(bloc.replace(/\/\*[\s\S]*?\*\//g, '')),
@@ -1006,7 +1006,7 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
   });
 
   test('le signe se lit, dans les deux sens, et ne coupe pas la ligne', () => {
-    /* `montantSigne` rend « +1 250 € », « −420 € », et « 0 € » sans signe : un
+    /* `montantSigne` rend "+1 250 EUR", "-420 EUR", et "0 EUR" sans signe : un
        plus devant un zero se lit comme une addition qui n'a pas eu lieu. */
     Store.state = blankState(); Store.migrate();
     vrai(/^\+/.test(montantSigne(1250, fmtEUR0)), 'une hausse porte son plus');
@@ -1028,11 +1028,11 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
     };
     const dedans = ['valeur', 'texte', 'second', 'lien'].map(ecart);
     vrai(dedans.every(v => v !== null), 'chaque ligne déclare son écart');
-    /* LA SÉPARATION NE VIENT PLUS D'UN ÉCART SEUL, mais d'un filet encadré de
-       deux respirations : l'écart seul demandait à l'œil de mesurer pour savoir
-       où une lecture finit. Le rapport, lui, ne change pas de sens — ce qui
-       sépare deux entrées reste au moins le double du plus grand écart interne,
-       sinon les quatre lignes d'une entrée se liraient comme quatre fragments. */
+    /* LA SEPARATION NE VIENT PLUS D'UN ECART SEUL, mais d'un filet encadre de
+       deux respirations : l'ecart seul demandait a l'oeil de mesurer pour savoir
+       ou une lecture finit. Le rapport, lui, ne change pas de sens -- ce qui
+       separe deux entrees reste au moins le double du plus grand ecart interne,
+       sinon les quatre lignes d'une entree se liraient comme quatre fragments. */
     const sep = css.slice(css.indexOf('.retenir-item + .retenir-item {'),
                           css.indexOf('}', css.indexOf('.retenir-item + .retenir-item {')));
     vrai(/border-top: 1px solid var\(--grid\)/.test(sep),
@@ -1071,10 +1071,10 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
         `« ${l} » ne dit pas ce qu’il ouvre`);
       vrai(!!I18N.en[l], `« ${l} » a sa traduction`);
     }
-    /* DEUX REGLES PEUVENT VISER LA MEME CARTE, et c'est normal : « ta réserve
-       couvre huit mois » et « ta réserve a gagné deux mois » mènent toutes deux
-       à l'autonomie financière. Ce qui compte n'est pas qu'ils soient distincts
-       mais que chacun NOMME l'endroit où il mène. */
+    /* DEUX REGLES PEUVENT VISER LA MEME CARTE, et c'est normal : "ta reserve
+       couvre huit mois" et "ta reserve a gagne deux mois" menent toutes deux
+       a l'autonomie financiere. Ce qui compte n'est pas qu'ils soient distincts
+       mais que chacun NOMME l'endroit ou il mene. */
     /* L'ARTICLE DEFINI EST ADMIS quand il nomme une carte : Voir le detail
        mensuel designe un endroit aussi precisement qu'un renvoi vers la cible.
        Ce que le controle refuse reste le renvoi vague, et la liste noire du
@@ -1098,7 +1098,7 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
 
   test('aucun calcul financier n’a changé', () => {
     /* Le moteur ne connait ni les phrases, ni les destinations. */
-    /* Le mot « trajectoire » vit dans les commentaires du moteur, qui expliquent
+    /* Le mot "trajectoire" vit dans les commentaires du moteur, qui expliquent
        precisement qu'il ne la refait pas : on lit le code, pas ses commentaires. */
     const m = lireSource('assets/insights.js').replace(/\/\*[\s\S]*?\*\//g, '');
     vrai(!/ancre|autonomie|trajectoire|Voir m/.test(m), 'le moteur ignore la présentation');
@@ -1110,7 +1110,7 @@ suite('Les cinq insights disent de quoi ils parlent', () => {
   });
 });
 
-/* --- Un rythme, pas une moyenne gonflée par un seul mois ------------------- */
+/* --- Un rythme, pas une moyenne gonflee par un seul mois ------------------- */
 suite('Le rythme résiste à un mois exceptionnel', () => {
   const trouve = () => evaluerInsights().find(i => i.id === 'wealth_pace_shift') || null;
   /* Une fenetre = six variations mensuelles. On pose douze variations : les six
@@ -1243,11 +1243,11 @@ suite('Chaque entrée porte son chiffre devant', () => {
 
   test('le gabarit ne rend la valeur que si la règle en déclare une', () => {
     const a = app();
-    /* Le gabarit d'une entrée vit dans `ligneInsight()`, et le chiffre partage
-       désormais sa ligne avec ce qu'il mesure : une règle sans chiffre rend donc
-       la phrase seule, au lieu d'ouvrir une rangée vide. Le contrôle porte sur
-       l'alternative — deux formes, jamais une valeur absente rendue quand même —
-       et non sur le balisage exact, qui a changé de forme pour gagner une ligne. */
+    /* Le gabarit d'une entree vit dans `ligneInsight()`, et le chiffre partage
+       desormais sa ligne avec ce qu'il mesure : une regle sans chiffre rend donc
+       la phrase seule, au lieu d'ouvrir une rangee vide. Le controle porte sur
+       l'alternative -- deux formes, jamais une valeur absente rendue quand meme --
+       et non sur le balisage exact, qui a change de forme pour gagner une ligne. */
     const d = a.indexOf('function ligneInsight(');
     const rendu = a.slice(d, a.indexOf('\nfunction ', d + 1));
     vrai(/\$\{p\.valeur \? `/.test(rendu), 'la valeur est optionnelle');
@@ -1260,13 +1260,13 @@ suite('Chaque entrée porte son chiffre devant', () => {
     vrai(/escMontant\(p\.valeur/.test(rendu), 'et elle traverse l’échappement des montants');
     const p = a.slice(a.indexOf('const PRESENTATION_INSIGHT'), a.indexOf('function carteARetenir()'));
     /* TOUTES EN PORTENT UN, ET C'EST LE BUT : cette carte se balaye, et on
-       balaye des chiffres, pas des phrases. Une date d'objectif se lit « Janvier
-       2030 », un ecart d'allocation se lit « 42,0 % » — il a suffi de sortir le
+       balaye des chiffres, pas des phrases. Une date d'objectif se lit "Janvier
+       2030", un ecart d'allocation se lit "42,0 %" -- il a suffi de sortir le
        nombre de la phrase au lieu de le laisser au milieu.
 
        Le gabarit reste conditionnel pour autant, et ce n'est pas une precaution
        morte : l'etat calme n'a pas de chiffre, et une regle ecrite demain sans
-       en avoir doit rendre un paragraphe de moins, jamais « undefined » en gros
+       en avoir doit rendre un paragraphe de moins, jamais "undefined" en gros
        et en gras. */
     const combien = (p.match(/\n    valeur: /g) || []).length;
     eq(combien, REGLES_INSIGHT.length,
@@ -1502,7 +1502,7 @@ suite('Une dette se range sous ce qu’elle finance, ou sur sa propre ligne', ()
 
   test('la note « après tant de crédit » ne plie pas les montants du tableau', () => {
     /* Mesure a 375 px : la note elargissait la colonne des noms, et le total
-       « 87 000,00 EUR » du pied passait sur deux lignes. */
+       "87 000,00 EUR" du pied passait sur deux lignes. */
     const src = lireSource('assets/app.js');
     const css = lireSource('assets/styles.css');
     vrai(src.includes('<td class="montant">${fmtEUR0(arrondis[k])}</td>'), 'le montant d’une ligne se nomme');
@@ -1688,7 +1688,7 @@ suite('L’accueil résume, et chaque résumé mène à son détail', () => {
     vrai(/sortiesRappel\('releve', moisEnAttente\.label\)/.test(vue) && /data-action="ajouter-releve"/.test(vue),
       'son geste, « Plus tard » et la croix restent');
     /* Mesure a 375 px : la phrase d'explication se pliait sur trois lignes a
-       cote de « Plus tard », et « sept. » se separait de « 26 ». */
+       cote de "Plus tard", et "sept." se separait de "26". */
     vrai(/@media \(max-width: 479px\) \{\s*\n\s*\.rappel-texte br, \.rappel-texte \.muted \{ display: none; \}/.test(css),
       'sur téléphone, le titre suffit');
     vrai(css.includes('.rappel-mois { white-space: nowrap; }') && /<span class="rappel-mois">\$\{esc\(moisEnAttente\.label\)\} ›<\/span>/.test(vue),
@@ -1911,7 +1911,7 @@ suite('L’Aperçu se personnalise, et le patrimoine reste en tête', () => {
   });
 
   test('le réglage est un écran à part : son titre, « Terminé », et pas les trois onglets', () => {
-    /* Sur telephone, « Aujourd'hui / Historique / Projection » restaient poses
+    /* Sur telephone, "Aujourd'hui / Historique / Projection" restaient poses
        au-dessus de la liste et laissaient croire qu'on reglait les trois. */
     const a = app();
     vrai(/overview: +\{ cle: 'overview', render: \(\) => \(enEditionApercu\(\) \? '' : barreSousOnglets\('overview'\)\) \+ \(/.test(a),
@@ -1979,7 +1979,7 @@ suite('L’Aperçu se personnalise, et le patrimoine reste en tête', () => {
     const a = app();
     vrai(/const ANCRES_CARTES_APERCU = \{ evolution: 'evolution', variation: 'changements',/.test(a), 'les ancres de l’accueil ont leur carte');
     vrai(/&& !renvoiVersCarteMasquee\(p\) \? p\.cta : null;/.test(a), 'le point à retenir tait le renvoi');
-    /* Toutes les ancres que « À retenir » vise sur l'accueil sont connues. */
+    /* Toutes les ancres que "A retenir" vise sur l'accueil sont connues. */
     const ancres = [...a.matchAll(/cta: \{ vue: 'overview', ancre: '([a-z-]+)'/g)].map(m => m[1]);
     vrai(ancres.length > 0, `${ancres.length} renvois vers l’accueil`);
     const table = (a.match(/const ANCRES_CARTES_APERCU = \{[^}]*\}/) || [''])[0];

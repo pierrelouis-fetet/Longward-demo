@@ -720,7 +720,7 @@ const CONTENANTS = {
   bien:   { titre: 'Bien immobilier',    teinte: 'var(--series-4)',
             question: 'À quel bien le rattacher ?',
             aide: 'Un bien déjà enregistré, ou un nouveau.',
-            exemple: 'ex. Studio Lyon 3e', nouveau: 'Nouveau bien',
+            exemple: 'ex. Studio en centre-ville', nouveau: 'Nouveau bien',
             contenu: 'bien' },
   societe:{ titre: 'Société ou plateforme', teinte: 'var(--series-3)',
             question: 'À quelle société le rattacher ?',
@@ -741,7 +741,7 @@ const CONTENANTS = {
   assureur:{ titre: 'Assureur ou courtier', teinte: 'var(--series-8)',
             question: 'Chez qui le contrat est-il tenu ?',
             aide: 'Un organisme déjà enregistré, ou un nouveau.',
-            exemple: 'ex. Linxea', nouveau: 'Nouvel assureur ou courtier',
+            exemple: 'ex. Mon assureur', nouveau: 'Nouvel assureur ou courtier',
             contenu: 'contrat' },
 };
 

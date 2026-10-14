@@ -241,9 +241,9 @@ suite('Import d’un tableau : les dépenses d’une banque', () => {
   });
 
   test('la clé d’un marchand, et une charge fixe proposée, jamais imposée', () => {
-    eq(cleMarchand('CB CARREFOUR MARKET 03/10 PARIS 15'), 'carrefour market paris');
+    eq(cleMarchand('CB EPICERIE CENTRALE 03/10 PARIS 15'), 'epicerie centrale paris');
     eq(cleMarchand('PRLV SEPA FOURNISSEUR ENERGIE'), 'fournisseur energie');
-    eq(cleMarchand('CB CARREFOUR MARKET 04/10 PARIS 15'), cleMarchand('CB CARREFOUR MARKET 03/10 PARIS 15'), 'deux jours, un marchand');
+    eq(cleMarchand('CB EPICERIE CENTRALE 04/10 PARIS 15'), cleMarchand('CB EPICERIE CENTRALE 03/10 PARIS 15'), 'deux jours, un marchand');
     const charges = [{ label: 'Loyer', amount: 700, period: 'mois', provider: 'Agence du quartier' }];
     vrai(!!chargeFixeProbable({ libelle: 'VIR LOYER OCTOBRE', montant: 700 }, charges), 'même montant');
     vrai(!!chargeFixeProbable({ libelle: 'PRLV AGENCE DU QUARTIER', montant: 12 }, charges), 'même fournisseur');

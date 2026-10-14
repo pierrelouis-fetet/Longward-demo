@@ -4,10 +4,10 @@ partieDeTests('tests/16-performance-jour-se-compte.tests.js');
    ------------------------------------------------------------------ */
 suite('La performance du jour se compte sur le portefeuille entier', () => {
 
-  /* Poids, part et effet avaient adopte une convention -- titres plus cash a
-     investir -- et le pourcentage du jour avait garde la sienne : la valeur
-     d'hier des seules lignes ayant cote. Trois colonnes et un total se
-     divisaient par deux denominateurs differents sur la meme carte. */
+  /* Poids, part, effet et pourcentage du jour se divisent tous par la meme
+     base : titres plus cash a investir. Une base a part pour le pourcentage, la
+     valeur d'hier des seules lignes ayant cote, diviserait trois colonnes et un
+     total par deux denominateurs differents sur la meme carte. */
 
   /* Un portefeuille rond : 16 000 de titres apres une baisse de 100, et 4 000 de
      cash a investir. Le cours de veille se pose a la main pour que la variation
@@ -34,14 +34,14 @@ suite('La performance du jour se compte sur le portefeuille entier', () => {
     pres(j.base, 20100, 'la base est le portefeuille tel qu’il était ce matin');
     pres(j.pct, -100 / 20100 * 100, 'donc environ un demi-point de baisse');
     vrai(Math.abs(j.pct + 0.5) < 0.01, 'soit −0,50 % à l’arrondi de l’affichage');
-    /* Et non les -0,625 % de la seule poche investie, qu'aucune ligne de
+    /* Et non les -0,62 % de la seule poche investie, qu'aucune ligne de
        l'ecran ne nomme. */
     vrai(Math.abs(j.pct - (-100 / 16100 * 100)) > 0.1,
       'et non le pourcentage de la seule poche investie');
   });
 
   test('la somme des effets s’accorde avec le pourcentage affiché', () => {
-    /* La coherence demandee : chaque ligne porte son effet en euros, leur somme
+    /* La coherence gardee : chaque ligne porte son effet en euros, leur somme
        est le numerateur, et le denominateur est celui des poids. Poids x
        variation redonne donc l'effet, a l'arrondi pres. */
     Fixture.poser(portefeuille(16000, 4000, -100));
@@ -122,11 +122,9 @@ suite('La performance du jour se compte sur le portefeuille entier', () => {
 
 suite('Projection tient sur quatre hypothèses', () => {
 
-  /* La direction prise etait mauvaise, et vite : une hypothese par classe
-     d'actif. Actions, obligations, crypto, metaux, immobilier cote,
-     multi-actifs, non cote. Dix rendements theoriques presentes comme de la
-     finesse alors qu'aucun n'est connu, et un ecran qui demande a son lecteur
-     de devenir analyste avant de lire une courbe.
+  /* Pas d'hypothese par classe d'actif : des rendements theoriques par classe
+     se presenteraient comme de la finesse alors qu'aucun n'est connu, et l'ecran
+     demanderait a son lecteur de devenir analyste avant de lire une courbe.
 
      Quatre poches :
 
@@ -137,18 +135,18 @@ suite('Projection tient sur quatre hypothèses', () => {
 
      Le taux du marche est une hypothese GLOBALE sur un portefeuille cote, et
      l'assumer est plus honnete que de trancher sept fois au hasard. Zero sur
-     « autres actifs » ne dit pas qu'ils ne rapporteront rien : il dit que
+     "autres actifs" ne dit pas qu'ils ne rapporteront rien : il dit que
      l'application n'en suppose aucune revalorisation. */
 
   /* Un patrimoine ou chaque poche est nette et ronde. Le compte de titres porte
      un ETF et de l'or, le portefeuille porte du bitcoin, l'assurance-vie du non
-     cote : les trois familles que « autres actifs » regroupe, moins une, plus
+     cote : les trois familles que "autres actifs" regroupe, moins une, plus
      celle qui reste au marche. */
   const quatrePoches = e => {
     /* `manual: false` : posValue() lit alors quantite x cours, et c'est ce que
        le fixture fait. En manuel il lirait `value`, absent ici, donc zero. */
     e.positions = [
-      { id: 'p_etf', name: 'ETF Monde', isin: '', symbol: 'EWLD', currency: 'EUR',
+      { id: 'p_etf', name: 'ETF Monde', isin: '', symbol: 'ETFM', currency: 'EUR',
         qty: 100, buyPrice: 150, price: 200, fx: 1, fxBuy: 1, account: 'c_cto',
         manual: false, assetClass: 'actions', role: 'core' },
       { id: 'p_or', name: 'Or physique', isin: '', symbol: 'GOLD', currency: 'EUR',
@@ -179,9 +177,9 @@ suite('Projection tient sur quatre hypothèses', () => {
   };
 
   test('crypto, métaux et non coté font une seule poche', () => {
-    /* Le regroupement demande, au chiffre : 3 000 de crypto, 2 000 d'or,
-       5 000 de non cote font 10 000 d'autres actifs, et le portefeuille cote
-       garde ses 20 000. */
+    /* Le regroupement, au chiffre : 3 000 de crypto, 2 000 d'or, 5 000 de non
+       cote font 10 000 d'autres actifs, et le portefeuille cote garde ses
+       20 000. */
     Fixture.poser(quatrePoches);
     const q = pochesProjection();
     pres(q.marche, 20000, 'l’ETF reste seul dans les actifs de marché');
@@ -222,7 +220,7 @@ suite('Projection tient sur quatre hypothèses', () => {
   });
 
   test('scénario central : 6 %, 0 %, 2,5 %, 0 %', () => {
-    /* Les quatre valeurs demandees, lues sur la table et non recopiees ici. */
+    /* Les taux du scenario central, lus par la configuration sur la table. */
     Fixture.poser(quatrePoches);
     const c = configProjection({ years: 10 });
     pres(c.rate, 6, 'six pour cent sur les actifs de marché');
@@ -239,9 +237,9 @@ suite('Projection tient sur quatre hypothèses', () => {
   });
 
   test('dix mille euros d’autres actifs restent dix mille euros', () => {
-    /* La propriete demandee mot pour mot, sur l'etat reel et non sur une
-       configuration forgee : sans versement, plusieurs annees plus tard, la
-       poche vaut nominalement ce qu'elle valait. Pas de derive d'arrondi. */
+    /* La propriete, sur l'etat reel et non sur une configuration forgee : sans
+       versement, plusieurs annees plus tard, la poche vaut nominalement ce qu'elle
+       valait. Pas de derive d'arrondi. */
     Fixture.poser(quatrePoches);
     for (const ans of [1, 10, 30]) {
       pres(capitalisation({ years: ans }).points[ans].poches.autres, 10000,
@@ -250,8 +248,8 @@ suite('Projection tient sur quatre hypothèses', () => {
   });
 
   test('un taux personnalisé s’applique à toute la poche, et à elle seule', () => {
-    /* Autres actifs a 5 % : les 10 000 entiers suivent ce taux — crypto, or et
-       non cote ensemble — et le marche ne bouge pas d'un centime. */
+    /* Autres actifs a 5 % : les 10 000 entiers suivent ce taux -- crypto, or et
+       non cote ensemble -- et le marche ne bouge pas d'un centime. */
     Fixture.poser(e => {
       quatrePoches(e);
       e.meta.projScenario = 'perso';
@@ -267,12 +265,12 @@ suite('Projection tient sur quatre hypothèses', () => {
   });
 
   test('les anciens réglages par classe rejoignent la poche unique', () => {
-    /* La migration. Un etat ecrit quand la crypto avait son propre taux porte
-       `projRateCrypto`. Il n'y a plus qu'une poche : ce taux la rejoint, et la
-       clef s'en va.
+    /* La migration. Un etat enregistre peut encore porter `projRateCrypto`, un
+       taux propre a la crypto. La crypto vit dans la poche unique des autres
+       actifs : ce taux la rejoint, et la clef s'en va.
 
        La regle : `projRateAutres` gagne quand il porte une valeur. Prendre le
-       plus eleve aurait releve la courbe de quelqu'un sans qu'il l'ait demande.
+       plus eleve releverait la courbe de quelqu'un sans qu'il l'ait demande.
 
        Et rien d'autre ne bouge : le marche, le garanti et le versement gardent
        ce qu'ils avaient. */
@@ -290,7 +288,7 @@ suite('Projection tient sur quatre hypothèses', () => {
     pres(projectionSettings().rate, 7, 'le marché garde ses sept');
     pres(projectionSettings().rateGaranti, 2, 'le garanti ses deux');
 
-    /* Deux taux pour une poche unique : celui qui etait deja general gagne. */
+    /* Deux taux pour une poche unique : le taux general des autres gagne. */
     Fixture.poser(e => {
       quatrePoches(e);
       e.meta.projScenario = 'perso';
@@ -317,9 +315,10 @@ suite('Projection tient sur quatre hypothèses', () => {
   });
 
   test('une destination de versement disparue rejoint la poche qui la remplace', () => {
-    /* `projVersementVers` a pu valoir « crypto » ou « nonCote ». Ces poches
-       n'existent plus : sans migration, `repartitionVersement` retombe sur le
-       marche et l'argent de quelqu'un change de destination en silence. */
+    /* Un etat enregistre peut porter `projVersementVers` a "crypto" ou
+       "nonCote", deux poches que le moteur ne connait pas : sans migration,
+       `repartitionVersement` retombe sur le marche et l'argent de quelqu'un change
+       de destination en silence. */
     for (const ancienne of ['crypto', 'nonCote']) {
       Fixture.poser(e => { quatrePoches(e); e.meta.projVersementVers = ancienne; });
       Store.migrate();
@@ -350,8 +349,8 @@ suite('Projection tient sur quatre hypothèses', () => {
   });
 
   test('l’inflation ne change pas de comportement', () => {
-    /* Elle se retire une fois, sur le total, comme avant : la refonte des poches
-       ne la touche pas. */
+    /* Elle se retire une fois, sur le total : le decoupage en poches ne la
+       touche pas. */
     Fixture.poser(e => { quatrePoches(e); e.meta.projInflation = 2; });
     const m = moteurProjection(configProjection({ years: 20 }));
     pres(m.final.poches.autres, 10000, 'nominalement, la poche n’a pas bougé');
@@ -381,8 +380,8 @@ suite('Projection tient sur quatre hypothèses', () => {
       vrai(!src.includes(interdit),
         `« ${interdit} » : Projection ne pose pas d’hypothèse par classe d’actif`);
     }
-    /* Et la seule survivance de l'essai par classe est sa migration, qui existe
-       pour effacer la clef. */
+    /* La clef du taux de la crypto ne vit que dans la migration, qui existe pour
+       l'effacer des etats enregistres. */
     /* Le code seul : un commentaire peut nommer la clef sans la faire vivre.
        Aucune chaine du store ne porte d'ouvrant de bloc. */
     const store = lireSource('assets/store.js').replace(/\/\*[\s\S]*?\*\//g, ' ');
@@ -398,14 +397,13 @@ suite('Projection tient sur quatre hypothèses', () => {
 
   test('la configuration du moteur porte exactement les clefs attendues', () => {
     /* Une poche renommee laisse derriere elle des lecteurs qui interrogent
-       l'ancien nom. `targetRequirements` sommait `base.nonCote` : la clef
-       disparue rendait `undefined`, la somme devenait NaN, la comparaison
-       echouait, et l'ecran annonçait « cible non atteignable » a quelqu'un qui
-       l'avait deja depassee. Un NaN ne leve rien et ne se voit pas.
+       l'ancien nom : la clef disparue rend `undefined`, une somme devient NaN, la
+       comparaison echoue, et l'ecran annoncerait "cible non atteignable" a qui l'a
+       deja depassee. Un NaN ne leve rien et ne se voit pas.
 
        La liste est donc epinglee. Renommer une poche fera tomber ce controle, et
-       celui qui le repare ira relire les lecteurs un par un — c'est exactement
-       ce qu'on veut de lui. */
+       celui qui le repare ira relire les lecteurs un par un -- c'est exactement ce
+       qu'on veut de lui. */
     Fixture.poser();
     const c = configProjection({ years: 10 });
     eq(Object.keys(c).sort().join(' '),
@@ -437,8 +435,8 @@ suite('Projection tient sur quatre hypothèses', () => {
     const src = lireSource('assets/app.js');
     const vue = src.slice(src.indexOf('function viewObjective'),
                           src.indexOf('function mountObjective'));
-    /* Le depliant, borne des deux cotes : « Cible » vit APRES lui, au premier
-       niveau, donc un simple `index > pli` la comptait dedans. */
+    /* Le depliant, borne des deux cotes : "Cible" vit APRES lui, au premier
+       niveau, donc un simple `index > pli` la compterait dedans. */
     const pli = vue.indexOf('pli-avance');
     const finDuPli = vue.indexOf('</details>', pli);
     vrai(pli > 0 && finDuPli > pli, 'le dépliant doit être trouvable, et fermé');
@@ -463,17 +461,16 @@ suite('Projection tient sur quatre hypothèses', () => {
   });
 
   test('l’infobulle du marché ne classe plus les actifs', () => {
-    /* Elle enumerait « actions, obligations, immobilier cote, multi-actifs,
-       metaux precieux et crypto : tout ce qui se vend sur un marche ». Elle
-       melangeait la classification du patrimoine et le decoupage de la
-       projection, et se trompait des que l'une des deux bougeait. */
+    /* L'infobulle du marche dit ce qu'est la poche, sans enumerer les classes :
+       une enumeration melangerait la classification du patrimoine et le decoupage
+       de la projection, et se tromperait des que l'une des deux bouge. */
     const src = lireSource('assets/app.js');
     vrai(!/tout ce qui se vend sur un marché/.test(src),
       'la définition par la négociabilité s’en va');
     vrai(/de portefeuille financier coté, auquel Longward applique le rendement du scénario/
       .test(src), 'la poche se dit par ce qu’elle est');
-    /* La pierre papier a rejoint cette poche : l'enumeration doit la nommer,
-       sinon elle decrit une poche qui n'est plus celle du calcul. */
+    /* La pierre papier fait partie de cette poche : l'enumeration doit la
+       nommer, sinon elle decrit une poche qui n'est pas celle du calcul. */
     vrai(/de crypto, de métaux précieux, de non coté et de pierre papier/.test(src),
       'et l’autre poche dit ce qu’elle regroupe');
     vrai(/aucun rendement de SCPI ne s’invente ici/.test(src),
@@ -489,10 +486,10 @@ suite('Projection tient sur quatre hypothèses', () => {
 suite('Un identifiant ne se porte qu’une fois', () => {
 
   test('aucun conteneur de graphique n’est en double', () => {
-    /* Une greffe a laisse deux `<div class="chart" id="aAsset">` cote a cote.
-       `Charts.mount()` cible par identifiant : il n'en trouve qu'un, et le
-       second reste un vide de la hauteur d'un graphique -- sans erreur, sans
-       trace dans la console, et le seul symptome est un trou dans une carte.
+    /* Deux conteneurs au meme identifiant, cote a cote : `Charts.mount()` cible
+       par identifiant, il n'en trouve qu'un, et le second reste un vide de la
+       hauteur d'un graphique -- sans erreur, sans trace dans la console, et le seul
+       symptome est un trou dans une carte.
 
        Douze conteneurs, douze identifiants distincts : la convention tient dans
        toute l'application, et ce controle la garde. */
@@ -527,19 +524,14 @@ suite('Un identifiant ne se porte qu’une fois', () => {
 
 suite('Le « ? » d’une aide ne tombe jamais seul sur une ligne', () => {
 
-  /* Mesure a l'ecran : sur une colonne de 208 px, « Moyenne mensuelle du
-     patrimoine » tient sur une ligne et son badge passe a la suivante, seul.
-     Quinze largeurs de colonne produisaient le cas sur les deux seuls intitules
-     de cette carte. Une ligne entiere pour un signe de quinze pixels, et ca se
-     lit comme un defaut d'affichage.
+  /* Sur une colonne etroite, un intitule peut tenir sur une ligne et laisser
+     son badge passer seul a la suivante : une ligne entiere pour un signe de
+     quinze pixels, et ca se lit comme un defaut d'affichage.
 
      Ni une espace insecable ni un liant (U+2060) n'y changent rien : le badge est
      une boite atomique, et le navigateur coupe devant elle parce qu'elle ne tient
      pas, non parce qu'une espace le lui permet. Ce qui marche est de rendre le
-     dernier mot et le badge indissociables.
-
-     Apres correction : 36 badges sur onze vues, tous colles, aucun orphelin,
-     aucun debordement horizontal a 375 px. */
+     dernier mot et le badge indissociables. */
 
   test('le collage s’applique à la sortie du rendu, pas à chaque appel', () => {
     const src = lireSource('assets/app.js');
@@ -548,17 +540,16 @@ suite('Le « ? » d’une aide ne tombe jamais seul sur une ligne', () => {
       'les vues passent par le collage : un intitulé ajouté demain en hérite');
     vrai(/\$\('#modalBody'\)\.innerHTML = collerAides\(/.test(src),
       'et les panneaux d’aperçu aussi, qui portent des intitulés eux aussi');
-    /* 81 appels a aide() : les envelopper un a un aurait laisse passer le 82e. */
+    /* Des dizaines d'appels a aide() : les envelopper un a un en oublierait un. */
     vrai((src.match(/\$\{aide\(/g) || []).length > 40,
       'le nombre d’appels justifie de traiter la sortie plutôt que les appels');
   });
 
   test('les deux motifs sont des littérales, jamais construites depuis une chaîne', () => {
     /* `new RegExp('([^\\s<>]+)')` demande trois niveaux d'echappement : le
-       fichier, la chaine JavaScript, la regex. Un niveau perdu donne `[^s<>]`,
-       une classe qui exclut la lettre « s » -- elle ne matche rien d'utile et ne
-       leve aucune erreur. C'est arrive, et rien ne l'a signale sauf la mesure a
-       l'ecran : zero badge colle sur trente-six. */
+       fichier, la chaine JavaScript, la regex. Un niveau perdu donne `[^s<>]`, une
+       classe qui exclut la lettre "s" -- elle ne matche rien d'utile, ne leve aucune
+       erreur, et seule une mesure a l'ecran le verrait. */
     const src = lireSource('assets/app.js');
     vrai(/const MOTIF_AIDE_COLLEE = \/\(\[\^\\s<>\]\+\)/.test(src),
       'le motif du texte nu est une littérale');
@@ -583,10 +574,9 @@ suite('Le « ? » d’une aide ne tombe jamais seul sur une ligne', () => {
 
 suite('Un réglage montre ce qu’il commande', () => {
 
-  /* Scenario « Dynamique », 8 % ecrits sur son pave, et « Rendement des actifs
-     de marche : 0 % par an » dans le champ juste en dessous. Les deux etaient
-     vrais chacun de son cote : le pave disait le scenario, le champ lisait
-     `meta.projRate`, reste a zero. Le moteur, lui, prenait bien 8 %.
+  /* Chaque champ de taux montre la valeur en vigueur, celle du scenario, et
+     non `meta.projRate` brut : sous un scenario "Dynamique" a 8 %, un champ qui
+     lirait l'etat afficherait 0 % pendant que le moteur prend 8 %.
 
      Un reglage qui montre autre chose que ce qu'il commande n'est pas un
      reglage, c'est un piege : on croit lire une valeur inactive, on la corrige,
@@ -610,7 +600,7 @@ suite('Un réglage montre ce qu’il commande', () => {
 
   test('chaque scénario propose un palier qui existe dans la liste', () => {
     /* `listeChoix` ajoute la valeur courante si elle ne tombe pas sur un palier,
-       donc rien ne casse — mais un scenario qui produirait « 2,7 % » ferait
+       donc rien ne casse -- mais un scenario qui produirait "2,7 %" ferait
        apparaitre une option isolee au milieu des rondes. Les trois scenarios
        tombent juste, et ce test le garde. */
     for (const [cle, , taux] of SCENARIOS_PROJECTION) {
@@ -622,10 +612,9 @@ suite('Un réglage montre ce qu’il commande', () => {
   });
 
   test('passer en personnalisé fige les trois taux, pas seulement celui qu’on touche', () => {
-    /* Le piege du correctif precedent : si les champs affichent les taux du
-       scenario mais que l'etat porte encore des zeros, regler le garanti ferait
-       tomber le marche de 8 % a 0 % au rendu suivant. Personne ne l'a demande,
-       et la courbe change. */
+    /* Le piege : si les champs affichent les taux du scenario mais que l'etat
+       porte encore des zeros, regler le garanti ferait tomber le marche de 8 % a
+       0 % au rendu suivant, et la courbe changerait sans qu'on l'ait demande. */
     const src = lireSource('assets/app.js');
     const bloc = src.slice(src.indexOf('const tauxAvant = TAUX_PROJECTION.includes'),
                            src.indexOf("m.projScenario = 'perso';") + 30);
@@ -643,8 +632,8 @@ suite('Un réglage montre ce qu’il commande', () => {
   });
 
   test('le moteur ne change pas de réponse pour autant', () => {
-    /* La correction est d'affichage. Le calcul prenait deja le taux du scenario,
-       et il doit continuer a le prendre, quoi que porte l'etat. */
+    /* Le moteur prend le taux du scenario, quoi que porte l'etat : l'affichage
+       des champs n'y change rien. */
     Fixture.poser(s => {
       s.meta.projScenario = 'dynamique';
       s.meta.projRate = 0; s.meta.projRateGaranti = 0; s.meta.projRateAutres = 0;
@@ -675,9 +664,9 @@ suite('Projection se lit sans explication', () => {
   });
 
   test('« simulation, pas prévision » se lit sans survol', () => {
-    /* La reserve vivait dans la bulle du scenario, invisible tant qu'on ne la
-       survolait pas. Elle est maintenant dans le sous-titre de la carte, donc
-       avant le premier pourcentage. */
+    /* La reserve vit dans le sous-titre de la carte, donc avant le premier
+       pourcentage : dans une bulle, elle resterait invisible tant qu'on ne la
+       survole pas. */
     const src = lireSource('assets/app.js');
     vrai(/trad\('Tes hypothèses'\)\}<\/h2>\s*<span class="hint">\$\{trad\('hypothèses de simulation, pas prévisions de marché'\)/
       .test(src),
@@ -695,22 +684,18 @@ suite('Projection se lit sans explication', () => {
   });
 
   test('« actifs de marché » se dit sans énumérer sept classes', () => {
-    /* L'infobulle enumerait les classes : « actions, obligations, immobilier
-       cote, multi-actifs, metaux precieux et crypto ». Elle melangeait la
-       classification du patrimoine, qui est le sujet d'Allocation, et le
-       decoupage de la projection — et se trompait des que l'une des deux
-       bougeait : les metaux n'y ont jamais figure avant d'y etre ajoutes, et ils
-       en sont sortis le lendemain.
+    /* Une infobulle qui enumere les classes melange la classification du
+       patrimoine, qui est le sujet d'Allocation, et le decoupage de la projection
+       -- et se trompe des que l'une des deux bouge.
 
-       Une liste tenue a la main a cote de sa source finit toujours par ne plus
-       la decrire. La poche se dit donc par ce qu'elle EST, et le renvoi vers
-       l'autre hypothese repond a la seule question qui se pose vraiment. */
+       Une liste tenue a la main a cote de sa source finit toujours par ne plus la
+       decrire. La poche se dit donc par ce qu'elle EST, et le renvoi vers l'autre
+       hypothese repond a la seule question qui se pose vraiment. */
     const src = lireSource('assets/app.js');
     const aide = (src.match(/trad\('(de portefeuille financier coté[^']*)'\)/) || [])[1] || '';
     vrai(aide, 'l’aide du rendement de marché doit décrire la poche');
-    /* « ont leur propre hypothese » se lisait « chacun la sienne », ce qui
-       decrivait le moteur de la veille. Une seule hypothese pour les trois, et
-       la phrase la nomme. */
+    /* Une seule hypothese pour les trois, et la phrase la nomme : "ont leur
+       propre hypothese" se lirait "chacun la sienne". */
     vrai(/sont regroupés dans l’hypothèse « Autres actifs »/.test(aide),
       'et nommer l’hypothèse unique qui couvre ce qu’elle ne contient pas');
     vrai(!/ont leur propre hypothèse/.test(aide),
@@ -737,10 +722,10 @@ suite('Projection se lit sans explication', () => {
 
 suite('Deux montants, deux noms, et le lecteur voit lequel', () => {
 
-  /* Le probleme est de vocabulaire : « Epargne que ton budget laisse :
-     2 300 € » d'un cote, « Versement mensuel : 1 650 € » de l'autre, et rien
-     pour expliquer l'ecart, ferait une contradiction apparente entre deux
-     chiffres justes. Un seul des deux est du cash. */
+  /* Le probleme est de vocabulaire : une "epargne que ton budget laisse" d'un
+     cote, un "versement mensuel" plus petit de l'autre, et rien pour expliquer
+     l'ecart, feraient une contradiction apparente entre deux chiffres justes. Un
+     seul des deux est du cash. */
 
   test('« Épargne que ton budget laisse » ne nomme plus l’accumulation', () => {
     const src = lireSource('assets/app.js');
@@ -752,24 +737,20 @@ suite('Deux montants, deux noms, et le lecteur voit lequel', () => {
   });
 
   test('l’accumulation dit sa composition, et une seule carte la porte', () => {
-    /* La ligne « Accumulation patrimoniale theorique » vivait dans « Rythme
-       d'accumulation », avec sa composition en sous-titre et un lien vers la
-       carte de Budget qui la calculait. Elle a sa carte a elle desormais,
-       « Accumulation ce mois-ci », sur la meme page : la garder aux deux
-       endroits aurait mis le meme montant deux fois sur un ecran, et son lien
-       menait vers une carte qui n'existe plus.
+    /* L'accumulation a sa propre carte, "Accumulation ce mois-ci", et
+       "Rythme d'accumulation" ne la redit pas : le meme montant deux fois sur un
+       ecran est un de trop.
 
-       Le partage est celui que la page annonce : « Rythme » montre la variation
-       CONSTATEE et son etalement dans le temps, « Accumulation ce mois-ci » la
+       Le partage est celui que la page annonce : "Rythme" montre la variation
+       CONSTATEE et son etalement dans le temps, "Accumulation ce mois-ci" la
        prevision tiree du budget. Deux natures, deux cartes, aucun chiffre en
        commun. */
     const src = lireSource('assets/app.js');
-    /* Deux bornes fausses vivaient ici, et elles se couvraient l'une l'autre.
-       Le marqueur portait une apostrophe TYPOGRAPHIQUE que la source n'a pas :
-       `indexOf` rendait -1, `-1 + 1` vaut 0, donc le repli s'appliquait — une
-       coupure a 4 000 caracteres, que la carte a fini par depasser. Le controle
-       a alors annonce « absent » ce qui etait simplement au-dela du couperet.
-       La borne est la fin reelle de la fonction. */
+    /* La borne est la fin reelle de la fonction, et le debut un marqueur que la
+       source porte a l'identique. Un marqueur absent rendrait -1 a `indexOf`,
+       `-1 + 1` vaut 0, et une coupure en caracteres finirait par tomber avant la
+       fin de la carte : le controle dirait "absent" ce qui est simplement au-dela
+       du couperet. */
     const debutCarte = src.indexOf('function carteAccumulation()');
     const finCarte = src.indexOf('\n}\n', debutCarte);
     vrai(debutCarte > 0 && finCarte > debutCarte, 'la carte doit être trouvable');
@@ -779,21 +760,21 @@ suite('Deux montants, deux noms, et le lecteur voit lequel', () => {
     vrai(/rec\.investable/.test(carte) && /rec\.capitalRembourse/.test(carte),
       'et ses deux composantes, capacité d’épargne et capital remboursé');
     vrai(/rec\.theoretical/.test(carte), 'le total vient du modèle, pas d’une addition refaite ici');
-    /* Et « Rythme d'accumulation » ne la redit plus. */
+    /* Et "Rythme d'accumulation" ne la redit pas. */
     vrai(!/Accumulation patrimoniale théorique/.test(src),
       'la ligne dupliquée a quitté « Rythme d’accumulation »');
     vrai(!/const budgetee =/.test(src),
       'son intermédiaire est parti avec elle : un appel sans lecteur est du code mort');
-    /* Et l'autre appel sans lecteur, celui de la vue Budget : la carte en etait
-       la seule cliente de cet ecran. */
+    /* Et viewBudget ne lit pas de rapprochement : aucune carte de cet ecran ne
+       l'affiche. */
     /* `viewBudgetCadre` est DECLARE AVANT `viewBudget` : borner la tranche
-       dessus la rendait vide, et le controle criait « introuvable » au lieu de
+       dessus la rendrait vide, et le controle crierait "introuvable" au lieu de
        mesurer quoi que ce soit. La borne est la fonction qui SUIT vraiment. */
     const vueBudget = src.slice(src.indexOf('function viewBudget(section'),
                                 src.indexOf('function paliersCible('));
     vrai(vueBudget.length > 1000, 'la vue Budget doit être trouvable');
-    /* Commentaires retires : celui qui explique le retrait cite la fonction, et
-       un controle qui crie sur sa propre explication finit par etre desactive. */
+    /* Commentaires retires : un commentaire peut citer la fonction, et un
+       controle qui crie sur sa propre explication finit par etre desactive. */
     const codeBudget = vueBudget.replace(/\/\*[\s\S]*?\*\//g, '');
     vrai(!/savingsReconciliation\(\)/.test(codeBudget),
       'et viewBudget ne lit plus un rapprochement que plus rien n’y affiche');
@@ -804,7 +785,7 @@ suite('Deux montants, deux noms, et le lecteur voit lequel', () => {
        cites sous le total doivent le composer, sinon la ligne qui explique
        devient la ligne qui embrouille. */
     Fixture.poser(s => {
-      s.budget.income = [{ label: 'Salaire', amount: 3600 }];
+      s.budget.income = [{ label: 'Salaire', amount: 3500 }];
       s.budget.fixedCharges = [{ id: 'c1', label: 'Loyer', amount: 1150, periode: 'mois' }];
       s.budget.expenses = [{ month: '2026-01', v: { Courses: 950 }, note: '' }];
       s.etabs.find(e => e.id === 'e_bien').dettes = [
@@ -856,9 +837,9 @@ suite('Deux montants, deux noms, et le lecteur voit lequel', () => {
 
   test('aucun libellé n’appelle « épargne » un montant qui rembourse une dette', () => {
     /* Le motif est serre : on cherche les libelles qui affichent
-       `rec.theoretical` ou `budgetee.theoretical` et le mot « épargne » dans le
-       meme fragment. Un controle plus large crierait sur « épargne de
-       précaution », qui est une autre notion et un nom juste. */
+       `rec.theoretical` ou `budgetee.theoretical` et le mot "epargne" dans le
+       meme fragment. Un controle plus large crierait sur "epargne de
+       precaution", qui est une autre notion et un nom juste. */
     const src = lireSource('assets/app.js');
     const fautes = [];
     for (const m of src.matchAll(/<dt>([\s\S]{0,400}?)<\/dt><dd>([\s\S]{0,120}?)<\/dd>/g)) {
@@ -876,9 +857,9 @@ suite('Épargne investissable et versement suggéré', () => {
 
   /* Un credit dont l'amortissement est calculable : capital, taux, mensualite.
      Sans les trois, l'application ne separe pas capital et interets et ne
-     devine pas — c'est la regle de `capitalRembourseParMois()`. */
+     devine pas -- c'est la regle de `capitalRembourseParMois()`. */
   const avecCredit = (montant = 100000, taux = 2, mens = 1000) => Fixture.poser(s => {
-    s.budget.income = [{ label: 'Salaire', amount: 3600 }];
+    s.budget.income = [{ label: 'Salaire', amount: 3500 }];
     s.budget.fixedCharges = [{ id: 'c1', label: 'Loyer', amount: 1150, periode: 'mois' }];
     s.budget.expenses = [{ month: '2026-01', v: { Courses: 1000 }, note: '' }];
     s.etabs.find(e => e.id === 'e_bien').dettes = [
@@ -886,10 +867,9 @@ suite('Épargne investissable et versement suggéré', () => {
   });
 
   test('le capital remboursé n’est jamais proposé comme versement à investir', () => {
-    /* Le defaut central, mesure sur la demonstration : 645 EUR par mois de
-       capital rembourse venaient gonfler le versement suggere, donc
-       capitalisaient a 6 % l'an sur les marches. Cet argent est deja parti avec
-       la mensualite ; il n'arrive sur aucun compte. */
+    /* Le capital rembourse ne gonfle pas le versement suggere : il
+       capitaliserait alors au taux du marche, alors que cet argent part avec la
+       mensualite et n'arrive sur aucun compte. */
     avecCredit();
     const rec = savingsReconciliation();
     vrai(rec.capitalRembourse > 800,
@@ -927,7 +907,7 @@ suite('Épargne investissable et versement suggéré', () => {
       s.meta.projVersementVers = 'marche';
       s.etabs.find(e => e.id === 'e_bien').dettes = [
         { id: 'd_pret', libelle: 'Prêt', montant: 100000, taux: 2, mensualite: 1000, note: '' }];
-      s.budget.income = [{ label: 'Salaire', amount: 3600 }];
+      s.budget.income = [{ label: 'Salaire', amount: 3500 }];
       s.budget.fixedCharges = [{ id: 'c1', label: 'Loyer', amount: 1150, periode: 'mois' }];
       s.budget.expenses = [{ month: '2026-01', v: { Courses: 1000 }, note: '' }];
     });
@@ -946,7 +926,7 @@ suite('Épargne investissable et versement suggéré', () => {
     /* Un seul `Fixture.poser` : il repart du fixture vierge a chaque appel, donc
        un second effacerait la dette pose par le premier. */
     Fixture.poser(s => {
-      s.budget.income = [{ label: 'Salaire', amount: 3600 }];
+      s.budget.income = [{ label: 'Salaire', amount: 3500 }];
       s.etabs.find(e => e.id === 'e_bien').dettes = [
         { id: 'd_pret', libelle: 'Prêt', montant: 100000, taux: 2, mensualite: 1000, note: '' }];
       s.meta.projScenario = 'central';
@@ -966,10 +946,9 @@ suite('Épargne investissable et versement suggéré', () => {
 suite('Zéro euro par mois est une réponse', () => {
 
   test('choisir 0 €/mois donne vraiment une courbe plate', () => {
-    /* `num(m.projMonthly) || suggestedMonthly()` traitait zero comme une
-       absence : le menu offrait « 0 {dev} / mois », et le choisir affichait la
-       suggestion du budget a la place. Un reglage qui refuse la valeur qu'il
-       propose. */
+    /* Zero est un choix, pas une absence : `num(m.projMonthly) ||
+       suggestedMonthly()` remplacerait le "0 {dev} / mois" que le menu offre par la
+       suggestion du budget, un reglage qui refuse la valeur qu'il propose. */
     Fixture.poser(s => {
       s.meta.projScenario = 'central';
       s.meta.projMonthly = 0;
@@ -996,10 +975,10 @@ suite('Zéro euro par mois est une réponse', () => {
   });
 
   test('la migration retire l’ancien zéro, une fois et une seule', () => {
-    /* Le zero de la graine voulait dire « automatique ». Le garder aurait aplati
-       la courbe de tous les etats existants sans que personne l'ait demande.
-       La migration l'efface — mais une seule fois, sinon un zero choisi
-       volontairement serait effacé au chargement suivant. */
+    /* Un zero enregistre avant la migration veut dire "automatique" : le garder
+       aplatirait la courbe des etats existants sans que personne l'ait demande. La
+       migration l'efface -- mais une seule fois, sinon un zero choisi
+       volontairement serait efface au chargement suivant. */
     Fixture.poser(s => { s.meta.projMonthly = 0; delete s.meta.projMonthlyZeroLu; });
     Store.migrate();
     eq(Store.state.meta.projMonthly, undefined,
@@ -1057,8 +1036,8 @@ suite('Le moteur de projection, chiffre par chiffre', () => {
   test('le versement arrive en FIN de mois, il ne produit rien ce mois-là', () => {
     /* La convention se lit dans un seul mois : un versement de fin de mois ne
        touche pas d'interet le mois ou il tombe. Debut de mois donnerait
-       (P + M)(1 + rm), soit 5,89 EUR de plus ici. La difference est petite sur
-       un mois et vaut des milliers d'euros sur vingt ans. */
+       (P + M)(1 + rm), soit M x rm de plus, 4,87 EUR ici. La difference est petite
+       sur un mois et vaut des milliers d'euros sur vingt ans. */
     const rm = Math.pow(1.06, 1 / 12) - 1;
     const r = final({ marche: 10000, rate: 6, monthly: 1000, mois: 1 });
     pres(r.total, 10000 * (1 + rm) + 1000,
@@ -1076,7 +1055,7 @@ suite('Le moteur de projection, chiffre par chiffre', () => {
   test('la valeur future d’une annuité ordinaire, terme à terme', () => {
     /* Le moteur boucle ; la formule fermee sert de temoin. Elles doivent se
        rejoindre au centime, sinon l'une des deux se trompe :
-       P(1+r)^n + M·((1+r)^n − 1)/r, avec r mensuel et n en mois. */
+       P(1+r)^n + M.((1+r)^n - 1)/r, avec r mensuel et n en mois. */
     const rm = Math.pow(1.06, 1 / 12) - 1, n = 240;
     const attendu = 20000 * Math.pow(1 + rm, n)
                   + 1000 * ((Math.pow(1 + rm, n) - 1) / rm);
@@ -1137,7 +1116,7 @@ suite('Le moteur de projection, chiffre par chiffre', () => {
     /* Un credit de 100 000 EUR a 2 % sur une mensualite de 1 000 EUR. Chaque
        mois, la part de capital augmente le patrimoine net : le bien ne bouge
        pas, la dette baisse. Cet argent n'arrive sur aucun compte, donc il ne
-       capitalise a aucun taux — et il compte comme verse, jamais comme un gain. */
+       capitalise a aucun taux -- et il compte comme verse, jamais comme un gain. */
     const dette = { reste: 100000, taux: 0.02 / 12, mens: 1000 };
     const r = moteurProjection(cfg({ plat: 50000, rate: 6, mois: 12,
                                      dettes: [dette] })).final;
@@ -1157,7 +1136,7 @@ suite('Le moteur de projection, chiffre par chiffre', () => {
   });
 
   test('à rendement nul, plus de versement ne peut pas faire moins', () => {
-    /* Un invariant simple et qui a deja ete faux ailleurs : la monotonie. */
+    /* Un invariant simple, la monotonie : verser plus ne donne jamais moins. */
     let precedent = -Infinity;
     for (const m of [0, 100, 500, 1000, 5000]) {
       const total = final({ marche: 30000, rate: 6, monthly: m, mois: 240 }).total;
@@ -1203,10 +1182,9 @@ suite('La cible se compare au patrimoine, et se date au mois', () => {
   }, o);
 
   test('une cible déjà atteinte aujourd’hui se dit atteinte, pas absente', () => {
-    /* Elle rendait `null`, que l'ecran lisait « non atteinte » : quelqu'un a
-       600 000 EUR avec une cible a 500 000 lisait que sa cible n'etait pas
-       atteinte. C'est le pire genre de faux — un chiffre juste, une phrase qui
-       le contredit. */
+    /* Une cible deja franchie rend une atteinte, pas `null` : l'ecran lirait
+       "non atteinte" sous un patrimoine qui depasse la cible. C'est le pire genre
+       de faux -- un chiffre juste, une phrase qui le contredit. */
     const r = moteurProjection(cfg({ marche: 600000, target: 500000 }));
     vrai(r.atteinte, 'la cible atteinte ne rend plus un vide');
     vrai(r.atteinte.dejaAtteinte, 'et elle se declare comme déjà franchie');
@@ -1220,16 +1198,15 @@ suite('La cible se compare au patrimoine, et se date au mois', () => {
   });
 
   test('une cible franchie dans quelques mois tombe sur le bon mois du calendrier', () => {
-    /* L'ancien calcul interpolait entre deux points ANNUELS et ajoutait les mois
-       a l'annee du point precedent : en aout 2026, une cible franchie six mois
-       plus tard s'annoncait « 2026 (+6 mois) » au lieu de fevrier 2027. Le mois
-       de depart est desormais le vrai mois courant. */
+    /* Le mois de depart est le vrai mois courant, et le moteur compte au mois :
+       interpoler entre deux points ANNUELS en ajoutant les mois a l'annee du point
+       precedent annoncerait, en aout, une cible franchie six mois plus tard dans
+       l'annee en cours au lieu de fevrier de l'annee suivante. */
     /* Le mois attendu se calcule sur le JOUR 1, jamais par `setMonth` sur la
-       date du jour. Ce raccourci deborde des que le mois vise est plus court :
-       le 30 aout, `setMonth(+6)` vise le 30 fevrier, que JavaScript reporte au
-       2 mars — le test reclamait alors mars quand le modele disait fevrier, a
-       juste titre. Il tombait donc les 29, 30 et 31, et passait le reste du
-       mois : un rouge qui depend du calendrier n'apprend rien. */
+       date du jour. Ce raccourci deborde des que le mois vise est plus court : le
+       30 aout, `setMonth(+6)` vise le 30 fevrier, que JavaScript reporte au 2 mars
+       -- le test reclamerait mars quand le modele dit fevrier, et tomberait les 29,
+       30 et 31 seulement. Un rouge qui depend du calendrier n'apprend rien. */
     const maintenant = new Date();
     const attendu = new Date(maintenant.getFullYear(), maintenant.getMonth() + 6, 1);
     const r = moteurProjection(cfg({ marche: 0, monthly: 1000, rate: 0, target: 6000 }));
@@ -1261,7 +1238,7 @@ suite('La cible se compare au patrimoine, et se date au mois', () => {
 
   test('la cible se mesure sur le nominal, patrimoine plat compris', () => {
     /* La convention de l'application : une cible de 500 000 EUR est une cible en
-       euros COURANTS, comparee au total nominal — et sur le patrimoine entier,
+       euros COURANTS, comparee au total nominal -- et sur le patrimoine entier,
        immobilier compris, puisque c'est ce que la courbe affiche. Un test la
        fixe, faute de quoi elle deriverait en silence. */
     const r = moteurProjection(cfg({ marche: 100000, plat: 400000, target: 500000,
@@ -1277,12 +1254,11 @@ suite('La cible se compare au patrimoine, et se date au mois', () => {
 suite('Les leviers d’une cible passent par le moteur, pas par une formule à côté', () => {
 
   test('le versement recommandé atteint vraiment la cible', () => {
-    /* La propriete qui compte, et la seule qui garantissait quelque chose :
-       reinjecter la recommandation dans le moteur doit franchir la cible. La
-       formule fermee d'avant faisait progresser TOUT le patrimoine financier au
-       taux des actifs de marche — non cote et liquidites compris — donc elle
-       annoncait un versement trop faible, et la phrase contredisait la courbe
-       affichee juste au-dessus. */
+    /* La propriete qui compte : reinjecter la recommandation dans le moteur doit
+       franchir la cible. Une formule fermee a cote du moteur ferait progresser TOUT
+       le patrimoine financier au taux des actifs de marche -- non cote et
+       liquidites compris -- donc annoncerait un versement trop faible, et la phrase
+       contredirait la courbe affichee juste au-dessus. */
     Fixture.poser(s => {
       s.meta.projScenario = 'central';
       s.meta.projMonthly = 200;
@@ -1338,10 +1314,9 @@ suite('Les leviers d’une cible passent par le moteur, pas par une formule à c
   });
 
   test('les poches à 0 % ne se font pas passer pour des actifs de marché', () => {
-    /* Le defaut d'origine, mesure : 10 000 EUR de marche et 55 000 EUR a zero
-       pour cent. L'ancienne formule capitalisait les 65 000 a 6 %, donc elle
-       reclamait un versement nettement plus faible que celui qu'il faut. Le
-       moteur, lui, ne prete le taux du marche qu'a la poche du marche. */
+    /* Le cas : 10 000 EUR de marche et 55 000 EUR a zero pour cent. Capitaliser
+       les 65 000 a 6 % reclamerait un versement nettement plus faible que celui
+       qu'il faut. Le moteur ne prete le taux du marche qu'a la poche du marche. */
     const cfg = {
       marche: 10000, autres: 25000, garanti: 0, liquidites: 30000, plat: 0,
       rate: 6, rateAutres: 0, rateGaranti: 0, monthly: 0, inflation: 0,
@@ -1358,14 +1333,14 @@ suite('Les leviers d’une cible passent par le moteur, pas par une formule à c
 
 suite('Un scénario nommé plutôt qu’un rendement à deviner', () => {
 
-  /* Cinq champs demandaient un rendement par poche : actifs de marche, non
-     cote, capital garanti, liquidites, inflation. Personne ne connait le
-     rendement futur de la bourse — pas meme un investisseur experimente — donc
-     la question demande a l'utilisateur de deviner a notre place, et il lit
-     ensuite sa propre reponse comme une prevision.
+  /* Demander un rendement par poche -- actifs de marche, non cote, capital
+     garanti, liquidites, inflation -- revient a demander a l'utilisateur de
+     deviner a notre place : personne ne connait le rendement futur de la
+     bourse, pas meme un investisseur experimente, et il lirait ensuite sa
+     propre reponse comme une prevision.
 
-     Un scenario nomme deplace la question de « combien ? » a « plutot prudent
-     ou plutot optimiste ? ». Les taux restent poseables a la main, replies. */
+     Un scenario nomme deplace la question de "combien ?" a "plutot prudent
+     ou plutot optimiste ?". Les taux restent poseables a la main, replies. */
 
   test('les trois scénarios montent, et les autres actifs restent à zéro', () => {
     const marche = SCENARIOS_PROJECTION.map(([, , r]) => r.marche);
@@ -1383,7 +1358,7 @@ suite('Un scénario nommé plutôt qu’un rendement à deviner', () => {
   });
 
   test('un état neuf part sur central, un état déjà réglé ne bouge pas', () => {
-    /* La regle qui compte : appliquer « central » a quelqu'un qui avait pose 8 %
+    /* La regle qui compte : appliquer "central" a quelqu'un qui avait pose 8 %
        changerait sa courbe sans qu'il ait rien demande. Une projection ne fait
        jamais ca. */
     Fixture.poser(s => { delete s.meta.projScenario; delete s.meta.projRate; });
@@ -1421,9 +1396,9 @@ suite('Un scénario nommé plutôt qu’un rendement à deviner', () => {
        des fractions fasse exactement un : en dessous, un euro verse se perd ;
        au-dessus, la projection en invente.
 
-       La somme se fait sur les clefs RENDUES, non sur une liste ecrite ici : la
-       crypto est devenue une destination, et un compte fige aurait laisse passer
-       une poche qui recoit sans entrer dans le total. */
+       La somme se fait sur les clefs RENDUES, non sur une liste ecrite ici : une
+       destination ajoutee a la table, avec un compte fige, recevrait sans entrer
+       dans le total. */
     for (const [poche] of VERSEMENT_VERS) {
       Fixture.poser(s => { s.meta.projVersementVers = poche; });
       const f = repartitionVersement();
@@ -1436,9 +1411,9 @@ suite('Un scénario nommé plutôt qu’un rendement à deviner', () => {
   });
 
   test('une destination inconnue retombe sur le marché', () => {
-    /* Un etat ecrit par une version anterieure peut porter n'importe quoi ici —
-       « cible » l'a ete un temps. Le repli est muet et sans perte : mieux vaut
-       une hypothese lisible qu'un versement qui s'evapore. */
+    /* Un etat enregistre peut porter ici une valeur qui ne nomme aucune poche,
+       "cible" par exemple. Le repli est muet et sans perte : mieux vaut une
+       hypothese lisible qu'un versement qui s'evapore. */
     Fixture.poser(s => { s.meta.projVersementVers = 'cible'; });
     pres(repartitionVersement().marche, 1,
       'une valeur qui ne nomme aucune poche verse sur les actifs de marché');
@@ -1446,9 +1421,9 @@ suite('Un scénario nommé plutôt qu’un rendement à deviner', () => {
   });
 
   test('le total égale toujours ce qui a été versé plus les gains', () => {
-    /* La regle cardinale du projet, appliquee au moteur : elle etait tenue quand
-       le versement tombait dans une seule poche, et le partage pouvait la casser
-       — la part envoyee au garanti aurait compte comme un gain. */
+    /* La regle cardinale du projet, appliquee au moteur, pour chaque
+       destination : une part envoyee ailleurs qu'au marche ne doit pas compter
+       comme un gain. */
     for (const vers of ['marche', 'garanti', 'nonCote', 'liquidites']) {
       Fixture.poser(s => {
         s.meta.projMonthly = 500; s.meta.projScenario = 'central';
@@ -1463,9 +1438,8 @@ suite('Un scénario nommé plutôt qu’un rendement à deviner', () => {
   });
 
   test('le capital garanti reçoit sa part, et elle n’est pas un gain', () => {
-    /* Il ne recevait rien : les trois destinations offertes l'ignoraient, et un
-       versement dirige vers lui disparaissait du capital tout en restant compte
-       comme verse. */
+    /* Un versement dirige vers le garanti doit entrer dans son capital : sinon
+       il disparaitrait du capital tout en restant compte comme verse. */
     Fixture.poser(s => {
       s.meta.projMonthly = 1000; s.meta.projScenario = 'central';
       s.meta.projVersementVers = 'garanti';
@@ -1480,7 +1454,7 @@ suite('Un scénario nommé plutôt qu’un rendement à deviner', () => {
   test('les montants sont nominaux, et le réel en découle', () => {
     /* Le moteur capitalise en euros courants ; `real` retire l'inflation une
        fois, sur le total. Les deux coexistent, et la page dit lequel elle
-       montre — c'est ce qui permet d'ecrire « en euros d'aujourd'hui » sans
+       montre -- c'est ce qui permet d'ecrire "en euros d'aujourd'hui" sans
        mentir. */
     Fixture.poser(s => {
       s.meta.projMonthly = 0; s.meta.projScenario = 'central'; s.meta.projInflation = 2;
@@ -1503,16 +1477,16 @@ suite('Un scénario nommé plutôt qu’un rendement à deviner', () => {
   });
 
   test('le choix d’hypothèses ne se déguise pas en barre d’onglets', () => {
-    /* Deux raisons, et la seconde a ete vue a l'ecran.
+    /* Deux raisons.
 
-       Le dessin : trois pilules `.segmented` reprenaient exactement l'allure des
-       sous-onglets qui coiffent la meme page. Deux controles identiques a
-       l'oeil, l'un qui change d'ecran et l'autre un calcul.
+       Le dessin : des pilules `.segmented` reprendraient exactement l'allure des
+       sous-onglets qui coiffent la meme page. Deux controles identiques a l'oeil,
+       l'un qui change d'ecran et l'autre un calcul.
 
        La geometrie : `.sous-onglets` est collante et vit a z-index 6, ce qu'il
        faut pour une navigation en tete de page et ce qui est ruineux dans une
-       carte. Mesure a 375 px : la barre recouvrait le menu « Affectation des
-       versements » et l'intitule suivant. */
+       carte : a 375 px, la barre recouvrirait le menu "Affectation des
+       versements" et l'intitule suivant. */
     const src = lireSource('assets/app.js');
     vrai(/\$\{choixHypothese\(s\.scenario\)\}/.test(src),
       'le scénario a son propre contrôle');
@@ -1520,17 +1494,17 @@ suite('Un scénario nommé plutôt qu’un rendement à deviner', () => {
       'et il n’emprunte plus le balisage des sous-onglets');
     /* Les paves descendent de la table : trois libelles ecrits a la main a cote
        d'elle finiraient par ne plus la decrire. Et le taux imprime est celui de
-       la table, non un reglage relu — sinon un scenario non retenu afficherait
+       la table, non un reglage relu -- sinon un scenario non retenu afficherait
        le taux du scenario en cours. */
     vrai(/SCENARIOS_PROJECTION\.map\(\(\[cle, nom, taux\]\)/.test(src),
       'les trois pavés descendent de la table des scénarios');
     vrai(/fmtPct\(taux\.marche, 0\)/.test(src),
       'chaque pavé imprime le taux de son propre scénario');
     const css = lireSource('assets/styles.css');
-    /* Quatre colonnes egales depuis que « Personnalise » a sa case, et deux par
-       deux sous 768 px : quatre dans les 311 px d'une carte a 375 px feraient
-       70 px, moins que le mot qu'elles portent. La cible du doigt ne depend
-       jamais de la longueur du libelle. */
+    /* Quatre colonnes egales, "Personnalise" compris, et deux par deux sous
+       768 px : quatre dans les 311 px d'une carte a 375 px feraient 70 px, moins
+       que le mot qu'elles portent. La cible du doigt ne depend jamais de la
+       longueur du libelle. */
     vrai(/\.choix-hypothese \{[\s\S]{0,200}grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/
       .test(css), 'quatre colonnes égales sur grand écran');
     const petit = css.slice(css.indexOf('@media (max-width: 767px)'));
@@ -1541,7 +1515,7 @@ suite('Un scénario nommé plutôt qu’un rendement à deviner', () => {
   });
 
   test('la cible répond là où on la lit, pas deux cartes plus bas', () => {
-    /* Poser une cible pose une question : « quand ? ». La reponse se lit la ou
+    /* Poser une cible pose une question : "quand ?". La reponse se lit la ou
        l'on lit le total, sous lui et ses parts, dans la carte de tete ; la
        carte des hypotheses ne garde que les leviers. */
     /* La fenetre va de la tete de la carte de tete a la fin de la phrase du
@@ -1556,7 +1530,7 @@ suite('Un scénario nommé plutôt qu’un rendement à deviner', () => {
     const src = brut.slice(debut, brut.indexOf('</p>', iCible) + 4);
     vrai(debut > 0, 'la tête de la carte doit exister');
     /* Sous le total et ses parts, hors de toute grille : dans une cellule de
-       valeur, « franchie en 2050 (dans 25 ans) » repousserait l'intitule voisin
+       valeur, "franchie en 2050 (dans 25 ans)" repousserait l'intitule voisin
        sur deux lignes. */
     vrai(iCible > brut.indexOf('${parts.map((x, i) =>', debut),
       'le verdict vit sous le total et ses parts, pas dans une grille');
@@ -1581,8 +1555,8 @@ suite('Un scénario nommé plutôt qu’un rendement à deviner', () => {
   });
 
   test('plus aucun jargon dans les valeurs affichées', () => {
-    /* « aucun, porté à plat » demandait de savoir ce que « porter a plat »
-       veut dire. « 0 % par an » se lit sans glossaire, et l'aide explique. */
+    /* "0 % par an" se lit sans glossaire, et l'aide explique ; "porte a plat"
+       demanderait de savoir ce que porter a plat veut dire. */
     const src = lireSource('assets/app.js');
     eq((src.match(/porté à plat|portées à plat/g) || []).length, 0,
       '« porté à plat » est du jargon : afficher « 0 % par an » et expliquer dans l’aide');
@@ -1593,29 +1567,26 @@ suite('Un scénario nommé plutôt qu’un rendement à deviner', () => {
 
 suite('Un réglage vit avec les réglages', () => {
 
-  /* Notifications avait son entree de menu, donc sa vue, et un commentaire du
-     code le justifiait ainsi : « une entree, une adresse, un titre ». C'etait
-     prendre le menu pour la cause alors qu'il en etait la consequence. Ce qu'on
-     regle la est un reglage, et le menu portait deja Donnees et Preferences cote
-     a cote — une troisieme ligne pour un interrupteur.
+  /* Les notifications sont un reglage : elles vivent dans Preferences, sans
+     vue ni entree de menu a elles. Une troisieme ligne de menu a cote de Donnees
+     et Preferences, pour un interrupteur, serait de trop.
 
      Preferences dit donc quatre choses, dans cet ordre : apparence, langue,
      marches, puis ce que la cloche a le droit de dire. L'apparence passe devant
-     la langue parce qu'on la change plus souvent, et que son effet se voit sur
-     la page ou on la pose.
+     la langue parce qu'on la change plus souvent, et que son effet se voit sur la
+     page ou on la pose.
 
-     « Marchés » remplace « Comportement » : ce dernier nommait un mecanisme, pas
-     un sujet. La carte regle le rafraichissement des cours et la place de
-     cotation par defaut — ce sont les marches. Le mot sert aussi de nom a la
-     page Positions ; ici il se lit sous « Préférences », donc « les preferences
-     de marche », et aucune ambiguite ne subsiste. */
+     "Marches" nomme un sujet, et non un mecanisme : la carte regle le
+     rafraichissement des cours et la place de cotation par defaut. Le mot sert
+     aussi de nom a la page Positions ; ici il se lit sous "Preferences", donc
+     "les preferences de marche", et aucune ambiguite ne subsiste. */
 
   test('les quatre sections se suivent dans l’ordre annoncé', () => {
     const src = lireSource('assets/app.js');
     const vue = src.slice(src.indexOf('function viewSettings'),
                           src.indexOf('\n}', src.indexOf('function viewSettings')));
     vrai(vue, 'viewSettings doit être trouvable');
-    /* Des groupes en surtitre, plus des cartes a en-tete : Général, Marchés,
+    /* Des groupes en surtitre, plus des cartes a en-tete : General, Marches,
        puis les notifications qui portent leurs propres groupes. */
     const titres = [...vue.matchAll(/<h3 class="surtitre">\$\{(?:t|trad)\('([^']+)'\)\}<\/h3>/g)].map(m => m[1]);
     eq(titres.join(' · '), "settings.general · settings.behaviour", 'l’ordre des deux premiers groupes');
@@ -1633,8 +1604,8 @@ suite('Un réglage vit avec les réglages', () => {
   });
 
   test('l’ancienne adresse mène aux préférences', () => {
-    /* Elle est dans des signets, et la cloche n'y mene plus : sans redirection,
-       `#/notifications` retombe sur la vue d'ensemble sans rien dire. */
+    /* L'adresse `#/notifications` peut etre dans des signets : sans
+       redirection, elle retomberait sur la vue d'ensemble sans rien dire. */
     const src = lireSource('assets/app.js');
     const m = src.match(/notifications:\s*\['(\w+)',\s*'(\w+)',\s*(\w+)\]/);
     vrai(m, 'la redirection notifications doit exister');
@@ -1642,9 +1613,9 @@ suite('Un réglage vit avec les réglages', () => {
   });
 
   test('la cloche garde son bouton et son action', () => {
-    /* Fusionner la page ne doit pas emporter le signal : la cloche de l'en-tete
-       est le chemin court vers ce que l'application a a dire, et elle n'a rien a
-       voir avec l'ecran de reglage. */
+    /* Le reglage vit dans Preferences, le signal reste a la cloche : elle est le
+       chemin court vers ce que l'application a a dire, et elle n'a rien a voir
+       avec l'ecran de reglage. */
     const html = lireSource('index.html');
     vrai(/id="btnCloche"/.test(html), 'le bouton de la cloche reste dans l’en-tête');
     const src = lireSource('assets/app.js');
@@ -1655,21 +1626,16 @@ suite('Un réglage vit avec les réglages', () => {
 
 suite('La ligne du temps se lit sur une seule ligne', () => {
 
-  /* « Relevés » etait un sous-onglet de Budget, entre deux saisies de depenses.
-     Le mot disait le GESTE — enregistrer un releve — et non ce qu'on vient y
-     chercher, qui est l'histoire du patrimoine. Renomme « Historique » et place
-     entre « Aujourd'hui » et « Projection », il donne une ligne du temps qui se
-     lit sans explication : ce qui est, ce qui a ete, ce qui pourrait etre.
+  /* "Historique" se place entre "Aujourd'hui" et "Projection" : une ligne du
+     temps qui se lit sans explication, ce qui est, ce qui a ete, ce qui pourrait
+     etre. L'onglet nomme ce qu'on vient y chercher, l'histoire du patrimoine, et
+     non le geste d'enregistrer un releve.
 
-     Ce qui devait etre mesure avant de le faire : la barre passe a trois
-     onglets, et celui du milieu porte la pastille ambre quand un releve manque.
-     C'est exactement le cas dont le code se mefiait pour « Charges fixes ».
-
-     Mesure a 375 px : onglet utile 112 px, « Aujourd'hui » 69 px de texte,
-     « Historique » 61, « Projection » 60. La pastille vaut 6 px plus 6 px de
-     marge, donc « Historique » en demande 73 sur les 88 disponibles. Aucun
-     debord, barre inchangee a 53 px. « Charges fixes », a 78 px, n'aurait pas
-     tenu — c'est bien le nom qui decide, pas la position. */
+     L'onglet du milieu porte la pastille ambre quand un releve manque. A 375 px,
+     un onglet utile fait 112 px ; la pastille vaut 6 px plus 6 px de marge, donc
+     "Historique", 61 px de texte, en demande 73 sur les 88 disponibles. Un nom
+     comme "Charges fixes", 78 px, ne tiendrait pas : c'est le nom qui decide, pas
+     la position. */
 
   /* Le harnais ne charge pas `app.js` : les tables des vues se lisent donc dans
      la source, comme partout ailleurs dans ce fichier. Un seul lecteur, pose
@@ -1705,8 +1671,8 @@ suite('La ligne du temps se lit sur une seule ligne', () => {
 
   test('un onglet qui peut porter une pastille garde un nom court', () => {
     /* Le controle ne refait pas la mesure, il garde l'invariant qu'elle etablit.
-       Onze caracteres : « Historique » en fait dix, « Charges fixes » treize et
-       ne tiendrait pas. Un proxy, et il est dit comme tel — sans rendu, la suite
+       Onze caracteres : "Historique" en fait dix, "Charges fixes" treize et
+       ne tiendrait pas. Un proxy, et il est dit comme tel -- sans rendu, la suite
        ne peut pas mesurer des pixels. */
     const LIMITE = 11;
     const pastilles = clesAPastille();
@@ -1725,9 +1691,9 @@ suite('La ligne du temps se lit sur une seule ligne', () => {
   });
 
   test('l’ancienne adresse des relevés mène au nouvel onglet', () => {
-    /* Elle est dans les favoris de quelqu'un, et elle a deja change de place une
-       fois. Une redirection cassee renvoie sur la vue d'ensemble sans dire
-       pourquoi l'onglet attendu n'est pas la. */
+    /* L'adresse des releves peut etre dans des favoris. Une redirection cassee
+       renvoie sur la vue d'ensemble sans dire pourquoi l'onglet attendu n'est pas
+       la. */
     const src = lireSource('assets/app.js');
     const m = src.match(/history:\s*\['(\w+)',\s*'(\w+)',\s*'(\w+)'\]/);
     vrai(m, 'la redirection history doit rester repérable');
@@ -1740,9 +1706,9 @@ suite('La ligne du temps se lit sur une seule ligne', () => {
   });
 
   test('chaque saisie en attente s’annonce là où elle se fait', () => {
-    /* Les deux pastilles de menu ont ete confondues le temps ou les releves
-       vivaient dans Budget. Les garder ensemble enverrait maintenant chercher au
-       mauvais onglet une fois sur deux. */
+    /* Le releve s'annonce sur la vue d'ensemble, ou il se fait, et la depense
+       sur Budget : une pastille commune enverrait chercher au mauvais onglet une
+       fois sur deux. */
     const src = lireSource('assets/app.js');
     vrai(/pastille\('#badgeOverview'/.test(src),
       'la vue d’ensemble doit porter la pastille du relevé');
@@ -1816,17 +1782,14 @@ suite('Une valeur n’affame pas les libellés de sa grille', () => {
 
 suite('Une infobulle de graphique reste dans sa carte', () => {
 
-  /* Le defaut, signale sur une capture de telephone : en bas des listes
-     d'Allocation, l'infobulle debordait de sa carte et ses deux dernieres
-     lignes — le montant et la part, c'est-a-dire tout ce qu'elle a a dire —
-     tombaient hors du cadre.
+  /* En bas des listes d'Allocation, une infobulle non bornee deborderait de sa
+     carte, et ses deux dernieres lignes -- le montant et la part, c'est-a-dire
+     tout ce qu'elle a a dire -- tomberaient hors du cadre.
 
-     La cause : `rankedBars` est la seule infobulle des graphiques dont le haut
-     suit la ligne survolee. Les autres s'epinglent en tete, a 8, 6, 4 ou 2
-     pixels, donc rien ne peut les faire sortir. Celle-la valait
-     `index * rowH - 6`, sans borne basse. Elle est posee en absolu dans le
-     conteneur du graphique : c'est la hauteur de ce conteneur qui doit la
-     retenir.
+     `rankedBars` est la seule infobulle des graphiques dont le haut suit la
+     ligne survolee. Les autres s'epinglent en tete, a 8, 6, 4 ou 2 pixels, donc
+     rien ne peut les faire sortir. Elle est posee en absolu dans le conteneur du
+     graphique : c'est la hauteur de ce conteneur qui doit la retenir.
 
      Le controle porte sur la regle et non sur cette ligne : tout haut CALCULE
      doit etre borne. Un haut constant n'en a pas besoin, et l'exiger ferait un
@@ -1839,7 +1802,7 @@ suite('Une infobulle de graphique reste dans sa carte', () => {
 
     const fautifs = poses.filter(expr => {
       /* Un haut constant : une chaine de pixels, rien de calcule. Le signe moins
-         compte comme constante — une courbe epingle son infobulle six pixels
+         compte comme constante -- une courbe epingle son infobulle six pixels
          au-dessus de son cadre, volontairement, et exiger une borne la aurait
          fait corriger le test au lieu du code. */
       if (/^'-?\d+px'$/.test(expr)) return false;
@@ -1851,7 +1814,7 @@ suite('Une infobulle de graphique reste dans sa carte', () => {
   });
 
   test('la borne se mesure sur le conteneur, pas sur un nombre écrit', () => {
-    /* Une borne posee en dur — « pas plus bas que 300 px » — redeviendrait
+    /* Une borne posee en dur -- "pas plus bas que 300 px" -- redeviendrait
        fausse a la premiere liste plus longue. Elle doit lire la hauteur que le
        graphique s'est donnee. */
     const src = lireSource('assets/charts.js');
@@ -1867,16 +1830,11 @@ suite('Une infobulle de graphique reste dans sa carte', () => {
 
 suite('Une classe d’actif porte un seul nom', () => {
 
-  /* Le defaut, vu sur une capture de telephone et pas par un test : le meme
-     argent s'appelait « Private assets » dans le tableau des classes et
-     « Private investments » dans l'infobulle et sur l'accueil. Deux mots justes
-     qui designent la meme chose, et aucun controle ne pouvait le voir — parce
-     que rien ne relie deux libelles ecrits a la main.
-
-     La cause etait la recopie : sept poches declaraient leur nom a cote de
-     `CLASSES_ACTIFS` qui les nomme deja, et deux avaient derive. Les poches le
-     derivent maintenant ; ce qui suit garde le rattachement, faute duquel une
-     poche nouvelle porterait `undefined`. */
+  /* Une classe d'actif porte un seul nom, partout : deux libelles ecrits a la
+     main pour le meme argent finissent par diverger, et rien ne les relie. Les
+     poches du graphique derivent donc leur nom de `CLASSES_ACTIFS`, qui les nomme
+     deja ; ce qui suit garde le rattachement, faute duquel une poche nouvelle
+     porterait `undefined`. */
 
   test('chaque poche du graphique se rattache à une classe', () => {
     const src = lireSource('assets/app.js');
@@ -1899,7 +1857,7 @@ suite('Une classe d’actif porte un seul nom', () => {
   test('aucune poche ne réécrit le nom de sa classe', () => {
     /* Le controle porte sur la cause. Un libelle ecrit dans la liste des poches
        est une seconde source pour un nom qui en a deja une, et c'est la
-       neuvieme recopie — pas les huit premieres — qui divergera. */
+       neuvieme recopie -- pas les huit premieres -- qui divergera. */
     const src = lireSource('assets/app.js');
     const bloc = src.slice(src.indexOf('const SERIES_PATRIMOINE'),
                            src.indexOf('function seriesUtiles'));
@@ -1910,9 +1868,9 @@ suite('Une classe d’actif porte un seul nom', () => {
   });
 
   test('chaque nom de classe passe par la traduction', () => {
-    /* `bienValeur` portait une chaine nue : la classe s'affichait en francais
-       dans une application anglaise. Latent tant que personne ne declare
-       d'objet de valeur, ce qui est la pire forme du defaut — il attend. */
+    /* Une chaine nue dans `CLASSES_ACTIFS` s'afficherait en francais dans une
+       application anglaise, et le defaut resterait latent tant que personne ne
+       declare un objet de cette classe : la pire forme du defaut, il attend. */
     const src = lireSource('assets/store.js');
     const bloc = src.slice(src.indexOf('const CLASSES_ACTIFS'),
                            src.indexOf('};', src.indexOf('const CLASSES_ACTIFS')));
@@ -1922,11 +1880,12 @@ suite('Une classe d’actif porte un seul nom', () => {
   });
 
   test('l’export tableur écrit dans la langue de l’application', () => {
-    /* Une cellule de tableur est du texte affiche. `POCKET` etait un objet de
-       chaines francaises nues, donc l'export anglais sortait « Quotidien ». */
+    /* Une cellule de tableur est du texte affiche : les noms de poche de
+       `POCKET` passent par trad(), sinon l'export anglais sortirait des noms
+       francais. */
     const src = lireSource('assets/app.js');
     /* Borne par le contenu, jamais par un compte de caracteres : une fenetre
-       de 400 signes atteignait le code suivant et y trouvait une chaine sans
+       de 400 signes atteindrait le code suivant et y trouverait une chaine sans
        rapport. */
     const d = src.indexOf('const POCKET');
     const bloc = src.slice(d, src.indexOf('});', d) + 3);
@@ -1939,14 +1898,9 @@ suite('Une classe d’actif porte un seul nom', () => {
 suite('Le manifeste parle la langue de l’application', () => {
 
   /* Le manifeste porte du texte AFFICHE : le telephone le montre dans sa
-     fenetre d'installation et dans le tiroir d'applications. Il echappait
-     pourtant a tous les controles de langue, qui ne lisent que les trois
-     fichiers JavaScript — et il en portait deux fautes a la fois.
-
-     Il vouvoyait, « Votre patrimoine, au complet », alors qu'un test refuse
-     depuis longtemps le moindre « votre » dans le texte affiche. Et il
-     declarait `lang: "fr"` avec des raccourcis francais sur une demonstration
-     qui s'ouvre en anglais, dont le README et les captures sont anglais.
+     fenetre d'installation et dans le tiroir d'applications. Les controles de
+     langue qui ne lisent que les fichiers JavaScript ne le voient pas : il a donc
+     les siens, la langue d'ouverture et le tutoiement.
 
      Un fichier qui n'est pas du code n'est pas pour autant hors des regles. */
 
@@ -1960,14 +1914,14 @@ suite('Le manifeste parle la langue de l’application', () => {
   test('le HTML livré déclare la même langue que le manifeste', () => {
     /* C'est le seul de ces reglages qu'un robot lit sans executer une ligne de
        JavaScript. `translateStatic()` corrige bien l'attribut, mais apres le
-       chargement : avant ca, la demonstration se presentait en francais a tout
-       ce qui ne rend pas le script — les moteurs qui n'executent rien, et un
-       lecteur d'ecran pendant le premier instant.
+       chargement : avant ca, la demonstration se presenterait dans la mauvaise
+       langue a tout ce qui ne rend pas le script -- les moteurs qui n'executent
+       rien, et un lecteur d'ecran pendant le premier instant.
 
        Le manifeste et la balise html sont donc tenus par le meme controle et la
        meme source, la langue par defaut lue dans i18n.js. Deux declarations de
-       langue qui se contredisent, c'est exactement le defaut que ce projet
-       traque partout ailleurs. */
+       langue qui se contredisent, c'est exactement le defaut que ce projet traque
+       partout ailleurs. */
     const html = lireSource('index.html');
     const m = html.match(/<html lang="([\w-]+)"/);
     vrai(m, 'la balise html doit déclarer une langue');
@@ -1979,17 +1933,15 @@ suite('Le manifeste parle la langue de l’application', () => {
   test('la page de connexion du Worker porte la même devise', () => {
     /* TROISIEME COPIE DE LA DEVISE, et celle qu'on voit en premier : c'est
        l'ecran d'accueil d'un visiteur non connecte. Le Worker construit cette
-       page lui-meme, donc il ne peut appeler ni `trad()` ni le dictionnaire —
+       page lui-meme, donc il ne peut appeler ni `trad()` ni le dictionnaire --
        la devise y est recopiee, exactement comme dans le manifeste.
 
-       Elle a deja derive : l'application affichait la nouvelle devise pendant
-       que la page de connexion gardait l'ancienne. Rien ne le disait, parce que
-       rien ne regardait. */
-    /* LA LANGUE SE DERIVE, ELLE NE SE RECOPIE PAS. Ce contrôle fixait « fr »
-       en dur, donc il exigeait du français d'une page servie à un public que
-       l'application accueille en anglais. Il tenait la devise et laissait
-       filer la langue. `langueParDefaut()` est la même source que celle qui
-       gouverne la balise `html` du document. */
+       Une copie que rien ne regarde derive : l'application afficherait une devise
+       et la page de connexion une autre, sans que rien ne le dise. */
+    /* LA LANGUE SE DERIVE, ELLE NE SE RECOPIE PAS. Une langue fixee en dur
+       exigerait une langue precise d'une page servie a un public que
+       l'application accueille peut-etre dans une autre. `langueParDefaut()` est la
+       meme source que celle qui gouverne la balise `html` du document. */
     let attendu;
     enLangue(langueParDefaut(), () => {
       attendu = trad('Vois juste.') + ' <b>' + trad('Avance.') + '</b>';
@@ -2000,7 +1952,7 @@ suite('Le manifeste parle la langue de l’application', () => {
     /* La page de connexion ne se traduit pas : le Worker ne sait pas quelle
        langue le visiteur a choisie, cette preference vivant dans un stockage
        auquel il n'a pas acces. Elle porte donc UNE langue, et ce ne peut etre
-       que celle dans laquelle l'application ouvre — sinon le parcours bascule
+       que celle dans laquelle l'application ouvre -- sinon le parcours bascule
        au milieu, entre l'ecran de connexion et le tableau de bord. */
     vrai(!/Suivre\. Arbitrer\.|Projeter\./.test(w),
       'et plus aucune trace de l’ancienne');
@@ -2009,7 +1961,7 @@ suite('Le manifeste parle la langue de l’application', () => {
   test('sa description commence par la devise de l’application', () => {
     /* La devise vit dans i18n.js, en deux morceaux que l'en-tete assemble. La
        recopier dans le manifeste en fait une deuxieme source ; ce controle rend
-       la copie verifiable, faute de pouvoir l'eviter — un manifeste ne peut pas
+       la copie verifiable, faute de pouvoir l'eviter -- un manifeste ne peut pas
        appeler trad(). */
     /* `enLangue` ne rend pas la valeur de son bloc : elle restaure la langue
        dans un `finally` et retourne undefined. La devise se recueille donc
@@ -2039,28 +1991,27 @@ suite('Les réponses du worker sont aussi protégées que les fichiers', () => {
 
   /* `_headers` protege ce que Cloudflare Pages sert : anti-cadrage, `nosniff`,
      politique de referent, permissions. Une reponse que `_worker.js` construit
-     lui-meme n'herite de rien de tout ca — et la page de connexion, seule page
-     du site ou l'on tape un mot de passe, etait donc la moins protegee des
-     trois.
+     lui-meme n'herite de rien de tout ca -- et sans elles, la page de connexion,
+     seule page du site ou l'on tape un mot de passe, serait la moins protegee de
+     toutes.
 
      Le controle ne recopie pas la liste : il la LIT dans `_headers`, le fichier
      qui la possede. Ajouter une protection la-bas la rend exigible ici sans
      toucher a ce test. */
   test('un import ne remplace rien avant d’avoir validé', () => {
-    /* LE DEFAUT, ET C'ETAIT UNE PERTE DE DONNEES. L'ordre etait :
-       `Store.state = data` PUIS `Store.migrate()`. Un fichier qui passait la
-       garde sommaire — elle ne testait que la presence de `positions` et
-       `monthly` — faisait echouer la migration APRES le remplacement. L'ecran
-       annonçait « Import impossible » et le patrimoine etait deja parti : zero
-       compte, zero relevé, zero euro. Le geste le plus destructeur de
-       l'application etait le seul sans filet. */
+    /* UNE PERTE DE DONNEES SI L'ORDRE S'INVERSE. Avec `Store.state = data` PUIS
+       `Store.migrate()`, un fichier qui passe une garde sommaire -- la seule
+       presence de `positions` et `monthly` -- ferait echouer la migration APRES le
+       remplacement. L'ecran annoncerait "Import impossible" et le patrimoine
+       serait deja parti : zero compte, zero releve, zero euro. Le geste le plus
+       destructeur de l'application ne peut pas etre le seul sans filet. */
     const src = lireSource('assets/app.js');
     const bloc = src.slice(src.indexOf('function mountData()'),
                            src.indexOf('function download('));
     /* La validation vient avant toute affectation. */
-    /* La forme EXECUTABLE, avec son point-virgule : le commentaire au-dessus
-       cite le code fautif entre accents graves, et une recherche naive le
-       trouvait en premier. Un controle qui mesure la prose ne mesure rien. */
+    /* La forme EXECUTABLE, avec son point-virgule : un commentaire qui cite le
+       code entre accents graves serait trouve en premier par une recherche
+       naive. Un controle qui mesure la prose ne mesure rien. */
     const iValide = bloc.indexOf('n’a pas la forme d’une sauvegarde Longward.');
     const iRemplace = bloc.indexOf('Store.state = data;');
     vrai(iValide > 0 && iRemplace > 0, 'les deux étapes doivent exister');
@@ -2069,20 +2020,19 @@ suite('Les réponses du worker sont aussi protégées que les fichiers', () => {
     for (const garde of ['Array.isArray(data.positions)', 'Array.isArray(data.monthly)',
                          'typeof data.budget'])
       vrai(bloc.includes(garde), `la validation vérifie ${garde}`);
-    /* Une sauvegarde est posée avant de toucher à quoi que ce soit. */
+    /* Une sauvegarde est posee avant de toucher a quoi que ce soit. */
     const iBackup = bloc.indexOf("Store.addBackup('avant import')");
     vrai(iBackup > 0 && iBackup < iRemplace, 'une copie de secours précède le remplacement');
-    /* Et la migration se rejoue en arrière si elle refuse. */
+    /* Et la migration se rejoue en arriere si elle refuse. */
     vrai(/Store\.state = avant;/.test(bloc), 'l’état revient si la migration échoue');
     vrai(!/alert\(/.test(bloc), 'les erreurs passent par la fenêtre de l’app, pas par alert()');
   });
 
   test('une écriture impossible ne se tait pas', () => {
-    /* `flashSaved()` vivait deja dans le `try`, donc « Sauvegardé ✓ » ne
-       s'affichait pas a tort. Mais rien ne s'affichait non plus : quota plein ou
-       stockage refuse, la modification vivait en memoire et disparaissait au
-       rechargement, sans un mot. Le pire des silences est celui qui ressemble a
-       un succes. */
+    /* `flashSaved()` vit dans le `try`, donc "Sauvegarde U+2713" ne s'affiche
+       jamais apres un echec. Mais un echec doit aussi se dire : quota plein ou
+       stockage refuse, la modification vit en memoire et disparait au
+       rechargement. Le pire des silences est celui qui ressemble a un succes. */
     const store = lireSource('assets/store.js');
     const bloc = store.slice(store.indexOf('  save(opts = {})'),
                              store.indexOf('  canUndo()'));
@@ -2104,28 +2054,28 @@ suite('Les réponses du worker sont aussi protégées que les fichiers', () => {
   });
 
   test('un état sans identité prouvée n’a pas de clef par défaut', () => {
-    /* `state:default` est le cas voulu d'un propriétaire unique derrière un mot
+    /* `state:default` est le cas voulu d'un proprietaire unique derriere un mot
        de passe. Ce n'est pas celui d'un site ouvert : chaque visiteur anonyme y
-       tomberait sur la MEME clef. La démonstration n'a aujourd'hui aucun espace
-       KV lié — `/api/state` y répond « stockage non configuré » — mais une case
-       cochée dans un tableau de bord ne doit pas suffire à transformer une
-       démonstration en boîte aux lettres commune. */
+       tomberait sur la MEME clef. La demonstration n'a aujourd'hui aucun espace
+       KV lie -- `/api/state` y repond "stockage non configure" -- mais une case
+       cochee dans un tableau de bord ne doit pas suffire a transformer une
+       demonstration en boite aux lettres commune. */
     const w = lireSource('_worker.js');
     const fn = w.slice(w.indexOf('async function handleState('),
                        w.indexOf('const key = keyFor(email);'));
     vrai(/if \(!identifie\) return json\(\{ error: 'identité requise' \}, 403\);/.test(fn),
       'sans identité prouvée, /api/state refuse');
-    /* L'identité vient du serveur, jamais d'un en-tête que la requête se donne. */
+    /* L'identite vient du serveur, jamais d'un en-tete que la requete se donne. */
     vrai(/const identifie = !!appIdentity \|\| !!email/.test(w),
       'elle descend de l’adresse validée ou de la session du compte');
     vrai(/tokenIsValid\(cookieValue\(request, 'wd_session'\), pwd\)/.test(w),
       'ou du cookie de session signé');
-    /* Le garde-fou d'entrée et celui de l'état sont deux questions distinctes :
-       `authorised` dit qui peut ENTRER, `identifie` dit qui possède un état. Ce
-       dépôt-ci peut être ouvert (démonstration) ou fermé par défaut (dépôt
-       principal) — la constante n'existe que dans le premier, et le contrôle ne
-       l'exige donc pas. Ce qui vaut des deux côtés : une ouverture, quelle
-       qu'elle soit, passe l'entrée et jamais l'état. */
+    /* Le garde-fou d'entree et celui de l'etat sont deux questions distinctes :
+       `authorised` dit qui peut ENTRER, `identifie` dit qui possede un etat. Ce
+       depot-ci peut etre ouvert (demonstration) ou ferme par defaut (depot
+       principal) -- la constante n'existe que dans le premier, et le controle ne
+       l'exige donc pas. Ce qui vaut des deux cotes : une ouverture, quelle
+       qu'elle soit, passe l'entree et jamais l'etat. */
     vrai(/\|\| identifie;/.test(w), 'le garde-fou d’entrée réutilise le même calcul');
     for (const ouverture of ['DEMO_PUBLIQUE && !pwd', "env.ALLOW_PUBLIC === '1'"]) {
       const i = w.indexOf(ouverture);
@@ -2143,12 +2093,12 @@ suite('Les réponses du worker sont aussi protégées que les fichiers', () => {
     for (const regle of ["default-src 'self'", "script-src 'self'", "object-src 'none'",
                          "base-uri 'self'", "frame-ancestors 'none'", "connect-src 'self'"])
       vrai(csp.includes(regle), `la CSP porte « ${regle} »`);
-    /* La concession, et elle est nommée : des centaines d'attributs style="" que
-       l'interface calcule à chaque rendu. Le script, lui, ne cède pas. */
+    /* La concession, et elle est nommee : des centaines d'attributs style="" que
+       l'interface calcule a chaque rendu. Le script, lui, ne cede pas. */
     vrai(csp.includes("style-src 'self' 'unsafe-inline'"), 'les styles en ligne sont admis');
     vrai(!/script-src[^;]*unsafe-inline/.test(csp), 'le script, lui, ne l’est pas');
     vrai(!/script-src[^;]*unsafe-eval/.test(csp), 'ni eval');
-    /* L'app n'a aucun script en ligne exécutable : la règle est tenable. */
+    /* L'app n'a aucun script en ligne executable : la regle est tenable. */
     const html = lireSource('index.html');
     const enLigne = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>/g)]
       .filter(m => !/type="application\/ld\+json"/.test(m[0]));
@@ -2181,7 +2131,7 @@ suite('Les réponses du worker sont aussi protégées que les fichiers', () => {
   });
 
   test('la page de connexion reste hors des moteurs', () => {
-    /* Ajouter des en-tetes ne doit pas faire perdre celui qui etait deja la. */
+    /* Les protections s'ajoutent a l'en-tete noindex, sans le remplacer. */
     const worker = lireSource('_worker.js');
     vrai(/X-Robots-Tag['"]?\s*:\s*['"]noindex/.test(worker),
       'les réponses HTML du worker doivent rester en noindex');

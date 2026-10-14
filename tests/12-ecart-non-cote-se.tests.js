@@ -6,14 +6,15 @@ suite('L’écart du non coté se dit, sans se mêler aux cours', () => {
 
   test('la page Performance ignorait le non coté, et le calcul existe enfin', () => {
     /* `latentPnl()` ne lit que `positions` : le non cote, l'immobilier et les
-       biens n'apparaissaient dans aucun ecart, alors qu'un prix de revient y est
-       saisi et qu'ils portent souvent la moitie d'un patrimoine. */
+       biens n'entrent dans aucun de ses ecarts, alors qu'un prix de revient y
+       est saisi et qu'ils portent souvent la moitie d'un patrimoine.
+       `latentNonCote()` leur donne le leur. */
     Fixture.poser();
     const cote = latentPnl();
     const nc = latentNonCote();
     vrai(cote.count > 0 && nc.lignes.length > 0, 'le fixture porte les deux natures');
     /* Aucune ligne de marche dans le non cote, et reciproquement : la frontiere
-       se lit sur `marche`, pas sur une liste de classes — un ETF immobilier est
+       se lit sur `marche`, pas sur une liste de classes -- un ETF immobilier est
        cote. */
     vrai(nc.lignes.every(l => l.classe !== 'actions'),
       'les titres cotés restent chez eux');
@@ -60,14 +61,12 @@ suite('L’écart du non coté se dit, sans se mêler aux cours', () => {
   });
 
   test('rien de tout cela n’entre dans la page des marchés', () => {
-    /* Marchés › Performance ne suit que ce dont le cours arrive tout seul, son
-       ecran vide le dit : y ramener le non cote le remettrait d'ou l'application
-       a mis du temps a le sortir. Et aucun total ne mele les deux natures. */
+    /* La page des marches ne suit que ce dont le cours arrive tout seul : y
+       ramener le non cote melerait des valeurs declarees a des cours. Et aucun
+       total ne mele les deux natures. */
     const src = lireSource('assets/app.js');
-    /* La regle a survecu a la page qui la portait : Performance a ete retiree, et
-       c'est Positions qui est maintenant la page des marches. Le controle suit le
-       sujet plutot que le nom — y ramener le non cote le remettrait d'ou
-       l'application a mis du temps a le sortir. */
+    /* La page des marches est Positions : le controle suit le sujet plutot
+       qu'un nom de page, et lit sa vue de viewPositions a mountPositions. */
     const marches = src.slice(src.indexOf('function viewPositions('),
                               src.indexOf('function mountPositions('));
     vrai(marches.length > 1000, 'la page des marchés doit se relire depuis sa source');
@@ -88,10 +87,10 @@ suite('L’écart du non coté se dit, sans se mêler aux cours', () => {
    ------------------------------------------------------------------ */
 suite('Le versement mensuel dit où il va', () => {
 
-  /* Il partait toujours dans le marche, capitalise a son taux, et rien a l'ecran
-     ne le disait : « on ne voit pas tout de suite que c'est la dessus ».
-     L'hypothese est juste pour le cas courant — on investit son epargne — mais
-     fausse pour qui epargne sans investir. */
+  /* Le versement mensuel a une destination, et l'ecran la dit : par defaut le
+     marche, capitalise a son taux. L'hypothese est juste pour le cas courant
+     -- on investit son epargne -- mais fausse pour qui epargne sans investir,
+     d'ou le reglage de destination. */
 
   const projeter = (vers, ans = 10) => {
     Fixture.poser(s => {
@@ -130,10 +129,10 @@ suite('Le versement mensuel dit où il va', () => {
   });
 
   test('le total égale toujours ce qui est mis plus les gains', () => {
-    /* La regle qui gouverne toute l'application, et le point que ce changement
-       pouvait casser : les gains se calculaient par `capital - verse`, ce qui
-       supposait que le versement va au marche. Sur un livret, le gain du marche
-       devenait negatif et celui des liquidites comptait les versements. */
+    /* La regle qui gouverne toute l'application : le total egale ce qui est mis
+       plus les gains. Les calculer par `capital - verse` supposerait que le
+       versement va au marche : sur un livret, le gain du marche deviendrait
+       negatif et celui des liquidites compterait les versements. */
     for (const vers of ['marche', 'nonCote', 'liquidites']) {
       const c = projeter(vers);
       for (const p of c.points) {
@@ -177,9 +176,9 @@ suite('Le versement mensuel dit où il va', () => {
     const src = lireSource('assets/app.js');
     vrai(/champText\('Affectation des versements', 'meta\.projVersementVers', VERSEMENT_VERS/.test(src),
       'le champ existe, avec la table pour seule source de ses options');
-    /* Le resume replie ne porte plus la destination ni les taux : il porte le
-       versement, le nom du scenario et l'inflation. Quatre pourcentages a lire
-       pour savoir ou l'on en est, c'etait trois de trop. */
+    /* Le resume replie porte le versement, le nom du scenario et l'inflation,
+       ni la destination ni les taux : quatre pourcentages a lire pour savoir ou
+       l'on en est, ce serait trois de trop. */
     vrai(/trad\('scénario'\)\} \$\{trad\(nomScenario\(s\.scenario\)\)/.test(src),
       'le résumé replié nomme le scénario');
     vrai(!/marché'\)\} \$\{fmtPct\(s\.rate/.test(src),
@@ -197,7 +196,7 @@ suite('Le versement mensuel dit où il va', () => {
       vrai(offertes.includes(poche), `« ${poche} » doit être offert comme destination`);
     }
     /* Et rien de plus : une destination qui ne correspond a aucune poche
-       enverrait le versement dans le vide — `repartitionVersement` retombe alors
+       enverrait le versement dans le vide -- `repartitionVersement` retombe alors
        sur le marche, et le choix affiche ne serait pas celui qui s'applique. */
     eq(offertes.length, 4, 'quatre destinations, une par poche du moteur');
   });
@@ -229,9 +228,9 @@ suite('Une modification ne se perd pas quand l’écran se verrouille', () => {
   });
 
   test('le délai d’envoi laisse une fenêtre courte', () => {
-    /* Huit secondes regroupaient bien les modifications, et ouvraient une
-       fenetre de huit secondes ou tout se perdait. Le regroupement tient encore
-       a 2,5 s : une saisie au clavier ne produit qu'un envoi. */
+    /* Le delai regroupe les frappes, et c'est aussi la fenetre ou une saisie se
+       perd si l'ecran se verrouille : entre une et trois secondes, une saisie
+       au clavier ne produit qu'un envoi et la fenetre reste courte. */
     const cs = lireSource('assets/cloudsync.js');
     const m = cs.match(/const WRITE_DELAY = (\d+);/);
     vrai(m, 'le délai doit être trouvable');
@@ -246,9 +245,9 @@ suite('Une modification ne se perd pas quand l’écran se verrouille', () => {
        controle garde la forme. */
     const cs = lireSource('assets/cloudsync.js');
     /* La tranche s'arrete a la fermeture de la fonction, pas apres un
-       nombre de caracteres : une ligne ajoutee dans le corps poussait le
-       repere hors d'une fenetre de 700, et le controle tombait sur un code
-       juste. Un test ne doit dependre ni d'un commentaire ni d'une longueur. */
+       nombre de caracteres : une ligne ajoutee dans le corps pousserait le
+       repere hors d'une fenetre fixe, et le controle tomberait sur un code
+       juste. Un test ne depend ni d'un commentaire ni d'une longueur. */
     const debut = cs.indexOf('function flushOnUnload');
     const fn = cs.slice(debut, cs.indexOf('\n  }\n', debut));
     vrai(/if \(payload === lastPayload\) return;/.test(fn),
@@ -262,10 +261,10 @@ suite('Une modification ne se perd pas quand l’écran se verrouille', () => {
   });
 
   test('un geste explicite part tout de suite, seule la frappe se regroupe', () => {
-    /* Chaque `save()` armait le minuteur : le clic sur « Enregistrer » — le geste
-       par lequel on dit « c'est bon » — attendait donc comme une frappe au
-       clavier, et c'est pendant cette attente que l'ecran se verrouillait.
-       Le defaut est desormais l'envoi immediat ; le regroupement se demande. */
+    /* Un geste explicite -- le clic sur "Enregistrer" -- part tout de suite :
+       s'il attendait comme une frappe au clavier, l'ecran pourrait se
+       verrouiller pendant l'attente. L'envoi immediat est le defaut ; le
+       regroupement se demande. */
     const st = lireSource('assets/store.js');
     vrai(/if \(opts\.differe\) CloudSync\.schedulePush\(\); else CloudSync\.push\(\);/.test(st),
       'save() pousse tout de suite, sauf demande contraire');
@@ -283,9 +282,9 @@ suite('Une modification ne se perd pas quand l’écran se verrouille', () => {
   });
 
   test('deux envois ne se croisent pas', () => {
-    /* Avec un envoi par geste, deux clics rapproches lançaient deux PUT
-       concurrents : le plus lent arrivait en dernier, donc un etat plus ancien
-       ecrit par-dessus le plus recent. */
+    /* Avec un envoi par geste, deux clics rapproches lanceraient deux PUT
+       concurrents : le plus lent arriverait en dernier, et un etat plus ancien
+       s'ecrirait par-dessus le plus recent. Un seul envoi vole a la fois. */
     const cs = lireSource('assets/cloudsync.js');
     vrai(/if \(enVol\) \{ aRejouer = true; return enVol; \}/.test(cs),
       'un envoi déjà parti n’est pas doublé');
@@ -297,14 +296,14 @@ suite('Une modification ne se perd pas quand l’écran se verrouille', () => {
   });
 
   test('une réserve se dit une fois, là où elle porte', () => {
-    /* Trois lignes de prose reservaient l'ecart du jour sous la carte de la
-       plus-value latente, qui ne depend d'aucune date d'achat. La colonne « Var. »
-       porte la meme reserve dans son aide, a l'endroit ou le chiffre se lit. */
+    /* La plus-value latente ne depend d'aucune date d'achat : sa carte ne porte
+       aucune reserve sur l'ecart du jour. */
     const src = lireSource('assets/app.js');
     vrai(!/lignes n’ont pas de date d’achat/.test(src),
       'la mention a quitté la carte de la plus-value latente');
-    /* L'intitule « Var. » n'a plus d'aide : la reserve se dit la ou elle joue,
-       sous le total du jour et sous le nom de la ligne achetee aujourd'hui. */
+    /* La reserve se dit la ou elle joue, sous le total du jour et sous le nom
+       de la ligne achetee aujourd'hui, et non dans l'aide d'un intitule de
+       colonne. */
     vrai(/trad\('ou depuis ton achat du jour'\)/.test(src),
       'la réserve reste dite sous le total du jour');
     vrai(/trad\('acheté aujourd’hui'\)/.test(src),
@@ -318,23 +317,24 @@ suite('Une modification ne se perd pas quand l’écran se verrouille', () => {
 suite('Un seul signe moins', () => {
 
   test('les formateurs rendent le signe moins, jamais le trait d’union', () => {
-    /* `Intl` rend « -13 500,00 € » avec un trait d'union ASCII, alors que
-       l'application ecrit ses negatifs a la main avec U+2212 : le meme ecran
-       portait les deux, le grand chiffre en tete et les dettes en dessous. */
+    /* `Intl` rend un montant negatif avec un trait d'union ASCII, alors que
+       l'application ecrit ses negatifs a la main avec U+2212 : sans conversion,
+       le meme ecran porterait les deux, le grand chiffre en tete et les dettes
+       en dessous. */
     Fixture.poser();
-    for (const [nom, txt] of [['fmtEUR', fmtEUR(-13500)], ['fmtEUR0', fmtEUR0(-13500)],
+    for (const [nom, txt] of [['fmtEUR', fmtEUR(-40000)], ['fmtEUR0', fmtEUR0(-40000)],
                               ['fmtPct', fmtPct(-4.2)], ['fmtNombre', fmtNombre(-7)],
                               ['fmtCur', fmtCur(-99, 'USD')]]) {
       vrai(!txt.includes('-'), `${nom} rend un trait d’union : « ${txt} »`);
       vrai(txt.includes('−'), `${nom} doit porter le signe moins : « ${txt} »`);
     }
     /* Les positifs ne gagnent pas de signe au passage. */
-    vrai(!/[-−]/.test(fmtEUR(13500)), 'et un montant positif reste sans signe');
+    vrai(!/[-−]/.test(fmtEUR(40000)), 'et un montant positif reste sans signe');
   });
 
   test('le signe des formateurs est celui que les écrans écrivent à la main', () => {
     const src = lireSource('assets/app.js');
-    /* Les dettes et les deltas s'ecrivent « −${fmtEUR(...)} » : le meme
+    /* Les dettes et les deltas s'ecrivent "-${fmtEUR(...)}" : le meme
        caractere, sinon la coherence ne tient qu'a la chance. */
     vrai(/−\$\{fmtEUR/.test(src), 'les écrans écrivent bien U+2212 devant leurs montants');
     eq(fmtSigned(-100).charCodeAt(0), 8722, 'et fmtSigned aussi');
@@ -348,9 +348,9 @@ suite('Un montant n’a qu’un porteur', () => {
 
   test('la fiche du bien n’offre plus un second champ de mensualité', () => {
     /* Quand une charge fixe rembourse le credit, c'est elle qui detient la
-       mensualite et `mensualiteCredit()` la lit chez elle : ecrire dans le champ
-       de la fiche n'avait aucun effet, sans que rien ne le dise. La regle
-       existait deja pour la fenetre du credit. */
+       mensualite et `mensualiteCredit()` la lit chez elle : un champ de la
+       fiche ecrit a cote n'aurait aucun effet, sans que rien ne le dise. La
+       fenetre du credit suit la meme regle. */
     const src = lireSource('assets/app.js');
     /* Les champs du credit ont leur propre carte, une par pret. */
     const bloc = src.slice(src.indexOf('function carteCredit'),
@@ -365,8 +365,8 @@ suite('Un montant n’a qu’un porteur', () => {
   });
 
   test('la date de solde se lit au même endroit sur les deux écrans', () => {
-    /* `fin` etait calcule dans creditsEnCours() sans que personne ne le lise :
-       du code mort d'un cote, et la carte des credits muette de l'autre. */
+    /* `creditsEnCours()` calcule `fin`, et la carte des credits l'affiche sans
+       le recalculer : c'est la meme date que celle de la fiche du bien. */
     Fixture.poser(s => {
       s.etabs.find(e => e.id === 'e_bien').dettes[0].taux = 3;
       s.etabs.find(e => e.id === 'e_bien').dettes[0].mensualite = 600;
@@ -406,8 +406,9 @@ suite('Un montant n’a qu’un porteur', () => {
   });
 
   test('l’infobulle du bouton se dérive de cette table', () => {
-    /* Elle listait les postes a la main : ajouter un poste demandait de penser a
-       deux endroits, et celui qu'on oubliait disait le contraire de l'autre. */
+    /* Une liste ecrite a la main demanderait de penser a deux endroits pour
+       chaque poste ajoute, et celui qu'on oublierait dirait le contraire de
+       l'autre. */
     const src = lireSource('assets/app.js');
     vrai(/title="\$\{esc\(chargesProposees\(c\)\.map\(\(\[l\]\) => trad\(l\)\)\.join\(', '\)\)\}"/.test(src),
       'un poste ajouté à la table apparaît dans l’infobulle sans qu’on y pense');
@@ -455,7 +456,7 @@ suite('Un montant n’a qu’un porteur', () => {
 
   test('la somme des lignes affichées fait le solde, vacance comprise', () => {
     /* La regle du projet, appliquee a cette carte : un total egale la somme de
-       ses parts. La vacance etait la seule part a agir sans se montrer. */
+       ses parts. La vacance est une part comme les autres : elle se montre. */
     Fixture.poser(s => {
       s.budget.income.push({ label: 'Loyer', amount: 600, period: 'mois', bienId: 'c_immo' });
       s.budget.fixedCharges.push({ label: 'Copropriété', amount: 100, period: 'mois',
@@ -493,9 +494,9 @@ suite('Un montant n’a qu’un porteur', () => {
   });
 
   test('un loyer se modifie et se supprime depuis le bien qui le porte', () => {
-    /* Il ne s'editait qu'en place dans la page Budget : affiche sur la fiche de
-       son bien, il n'avait aucune porte. La fenetre est la seconde porte sur le
-       meme champ, pas un second champ. */
+    /* Un loyer affiche sur la fiche de son bien s'y modifie et s'y supprime :
+       la fenetre est la seconde porte sur le meme champ que la page Budget,
+       pas un second champ. */
     const src = lireSource('assets/app.js');
     vrai(/async 'edit-income'\(btn\)/.test(src), 'la fenêtre existe');
     const fn = src.slice(src.indexOf("async 'edit-income'"), src.indexOf("async 'del-income'"));
@@ -530,7 +531,7 @@ suite('Un montant n’a qu’un porteur', () => {
     const src = lireSource('assets/app.js');
     /* `ligneSource` reste HORS du balayage : c'est elle qui pose le <dt> porteur
        du bouton, et l'inclure ferait compter la porte elle-meme comme une ligne
-       sans porte. Les trois autres poseurs de lignes y sont, eux — la liste du
+       sans porte. Les trois autres poseurs de lignes y sont, eux -- la liste du
        mois, le total nomme, et le total des mensualites. */
     const bloc = src.slice(src.indexOf('function lignesDuMois'),
                            src.indexOf('function carteUsageInconnu'))
@@ -539,10 +540,10 @@ suite('Un montant n’a qu’un porteur', () => {
                   src.indexOf('function blocCapitalRembourse'));
     vrai(bloc.length > 400, 'les fonctions doivent être trouvables');
     /* `<dt` et non `<dt>` : le sous-total du loyer retenu porte une classe, et
-       le motif d'avant serait passe a cote sans rien dire. */
+       un motif sur `<dt>` passerait a cote sans rien dire. */
     const litteraux = bloc.match(/<dt[ >][^\n]*/g) || [];
-    /* SIX. La fiscalite en ecrit deux, une par etat — celle qui porte un montant
-       et celle qui dit « non estimee » — et la cascade en ajoute une sixieme, le
+    /* SIX. La fiscalite en ecrit deux, une par etat -- celle qui porte un montant
+       et celle qui dit "non estimee" -- et la cascade en ajoute une sixieme, le
        sous-total d'avant fiscalite, qui ne parait que lorsque la fiscalite est
        connue. Six dans le fichier, jamais six a l'ecran. */
     eq(litteraux.length, 6,
@@ -550,7 +551,7 @@ suite('Un montant n’a qu’un porteur', () => {
     /* La regle qui compte n'est pas le nombre de lignes, c'est qu'aucune ne
        laisse chercher : chacune porte une aide qui dit ou le montant se regle.
        La vacance et l'impot renvoient a un champ de la meme carte, le total des
-       mensualites renvoie a « Financement », qui detaille chaque pret.
+       mensualites renvoie a "Financement", qui detaille chaque pret.
 
        Les libelles ne se cherchent pas ici : celui du total des mensualites vient
        d'une variable, parce qu'il se met au pluriel. Ce sont les aides qui
@@ -558,7 +559,7 @@ suite('Un montant n’a qu’un porteur', () => {
 
        La quatrieme vient de `ligneTotal`, qui sert des qu'aucune porte unique
        n'existe : plusieurs charges, plusieurs credits, plusieurs loyers. Son
-       aide dit ou le detail se corrige — le budget, ou « Financement ». A une
+       aide dit ou le detail se corrige -- le budget, ou "Financement". A une
        seule source, la ligne garde son nom et sa porte. */
     vrai(litteraux.every(l => l.includes('${aide(')),
       'chacune porte une aide qui dit où le montant se règle');
@@ -582,10 +583,10 @@ suite('Un montant n’a qu’un porteur', () => {
   });
 
   test('la liste des biens à rattacher porte ses accents', () => {
-    /* « aucun, ce n'est pas lie a un bien » s'affichait tel quel dans deux
-       fenetres. Les commentaires s'ecrivent sans accents, le texte affiche
-       jamais. `optionsBiens` vit dans app.js, que le harnais ne charge pas :
-       le controle se fait sur la source, comme les autres de cette famille. */
+    /* Les commentaires s'ecrivent sans accents, le texte affiche jamais : la
+       premiere option de la liste porte les siens. `optionsBiens` vit dans
+       app.js, que le harnais ne charge pas : le controle se fait sur la source,
+       comme les autres de cette famille. */
     const src = lireSource('assets/app.js');
     const fn = src.slice(src.indexOf('function optionsBiens'), src.indexOf('function optionsBiens') + 260);
     vrai(/lié à un bien/.test(fn), 'la première option porte ses accents');
@@ -596,31 +597,28 @@ suite('Un montant n’a qu’un porteur', () => {
 
   test('une part hors bornes le dit au lieu d’être ignorée en silence', () => {
     const src = lireSource('assets/app.js');
-    /* Le mot dit la REGLE, et non ce que le calcul ferait d'une valeur invalide :
-       « au-dela, le bien compte en entier » laissait croire que la saisie avait
-       ete prise en compte, alors qu'elle ne l'est plus du tout. */
+    /* Le mot dit la REGLE, et non ce que le calcul ferait d'une valeur
+       invalide : annoncer que le bien compte alors en entier laisserait croire
+       que la saisie est prise en compte, alors qu'elle ne s'ecrit pas. */
     vrai(/La quote-part doit être comprise entre 0 et 100 %\./.test(src),
       'le champ garde la saisie, et un mot dit la règle');
     vrai(!/Au-delà, le bien compte en entier/.test(src), 'l’ancien wording est parti');
     vrai(/\$\{partEstValide\(l\.part\) \? '' :/.test(src),
       'et le mot n’apparaît que pour une valeur vraiment hors bornes, jamais sur 0 ni 100');
-    /* Et surtout : elle ne s'ecrit plus. */
+    /* Et surtout : elle ne s'ecrit pas. */
     vrai(/if \(\/\\\.part\$\/\.test\(path\) && f\.value !== '' && !partEstValide\(f\.value\)\)/
       .test(src), 'l’écriture refuse une quote-part hors bornes');
   });
 });
 
 /* ------------------------------------------------------------------
-   Performance ne dit que ce qu'elle peut prouver
-   ------------------------------------------------------------------ */
-/* ------------------------------------------------------------------
    Une identite Access se prouve, elle ne se declare pas
    ------------------------------------------------------------------ */
 suite('Une identité Access se prouve, elle ne se déclare pas', () => {
 
   /* Ce controle EXECUTE la validation au lieu de lire sa source, et c'est la
-     seule façon de prouver qu'une signature est verifiee : un test qui cherche
-     « crypto.subtle.verify » dans le fichier passerait aussi sur un appel dont
+     seule facon de prouver qu'une signature est verifiee : un test qui cherche
+     "crypto.subtle.verify" dans le fichier passerait aussi sur un appel dont
      le resultat est ignore.
 
      Le bloc est extrait de `_worker.js` et evalue avec un `fetch` bouchonne qui
@@ -683,8 +681,8 @@ suite('Une identité Access se prouve, elle ne se déclare pas', () => {
     const { privateKey, appeler } = await monter();
     const jeton = await signer(privateKey, { alg: 'RS256', kid: 'k1' }, chargeSaine());
     /* Un caractere de la charge change : la signature ne couvre plus le corps.
-       C'est le defaut d'origine — la presence de l'en-tete valait identite, donc
-       n'importe quelle charge passait. */
+       Si la presence de l'en-tete valait identite, n'importe quelle charge
+       passerait. */
     const [h, , s] = jeton.split('.');
     const truquee = b64urlTexte(JSON.stringify({ ...chargeSaine(), email: 'voleur@ailleurs.fr' }));
     eq(await appeler(`${h}.${truquee}.${s}`), null,
@@ -726,10 +724,9 @@ suite('Une identité Access se prouve, elle ne se déclare pas', () => {
   });
 
   test('la clé KV ne vient plus d’un en-tête', () => {
-    /* Le lien qui rendait le defaut exploitable : le meme en-tete valait
-       autorisation ET choisissait la cle. Envoyer le nom de quelqu'un d'autre
-       donnait son etat. La cle se derive desormais d'une adresse validee, passee
-       en argument. */
+    /* La cle KV se derive d'une adresse validee, passee en argument, jamais
+       d'un en-tete : si le meme en-tete valait autorisation ET choisissait la
+       cle, envoyer le nom de quelqu'un d'autre donnerait son etat. */
     const src = lireSource('_worker.js');
     vrai(/const keyFor = email =>/.test(src),
       'keyFor prend une adresse, pas une requête');
@@ -744,17 +741,14 @@ suite('Une identité Access se prouve, elle ne se déclare pas', () => {
 suite('Une vente datee dans le passe ne prend pas le cours du jour', () => {
 
   test('la fenetre avertit quand la date recule', () => {
-    /* « Si quelqu'un ajoute une vente dans l'app un mois apres, le cours peut
-       avoir change. » Il a change, et rien ne le disait : le prix et le taux se
-       pre-remplissent au cours du jour, la date se recule librement, et la
-       plus-value realisee se calculait alors sur un cours qui n'a jamais ete
-       celui de la vente. Un chiffre faux que rien ne trahit — la faute que ce
-       projet traque depuis le debut.
+    /* Une vente datee dans le passe ne prend pas le cours du jour : le prix et
+       le taux se pre-remplissent au cours du jour et la date se recule
+       librement, donc la plus-value realisee se calculerait sur un cours qui
+       n'a jamais ete celui de la vente. Un chiffre faux que rien ne trahit.
 
-       Le mode « vente passee » etait deja a l'abri : il ne demande ni cours ni
-       taux, mais le montant encaisse et la plus-value en euros, les deux
-       chiffres du releve. C'est le mode normal, avec sa date libre, qui laissait
-       passer.
+       Le mode "vente passee" est a l'abri : il ne demande ni cours ni taux,
+       mais le montant encaisse et la plus-value en euros, les deux chiffres du
+       releve. C'est le mode normal, avec sa date libre, que l'avis surveille.
 
        L'avis pointe et ne bloque pas : c'est peut-etre le bon prix, saisi a la
        main. Il nomme la porte d'a cote, dont les chiffres ne vieillissent pas. */
@@ -777,8 +771,8 @@ suite('Une vente datee dans le passe ne prend pas le cours du jour', () => {
     vrai(/Math\.abs\(saisi - auJour\)/.test(f),
       'et il change de texte quand le prix a ete corrige a la main');
 
-    /* Il se rejoue sur la date ET sur le prix : corriger l’un doit pouvoir
-       eteindre l’avis, sinon il reste allume sur une saisie devenue juste. */
+    /* Il se rejoue sur la date ET sur le prix : corriger l'un doit pouvoir
+       eteindre l'avis, sinon il reste allume sur une saisie devenue juste. */
     vrai(/\$\('#veDate'\)\.oninput = avisCoursDuJour/.test(src),
       'la date rejoue le controle');
     vrai(/majApercuVente\(\); avisCoursDuJour\(\);/.test(src),
@@ -793,7 +787,7 @@ suite('Une plus-value en devise dit ce que le courtier dit', () => {
        titre et dont le change expliqueraient un ecart qui n'existe pas.
 
        Les deux jambes prenant le meme taux, le total EST le mouvement du titre.
-       Les repeter dessous ne dirait rien, et `posPerfTitre` n'existe pas.
+       Les repeter dessous ne dirait rien, et aucune fonction ne les calcule.
 
        Les chiffres sont fictifs, et ronds pour que le pourcentage se lise. */
     const p = { currency: 'USD', qty: 5, buyPrice: 400, price: 372, fx: 0.9 };
@@ -806,7 +800,7 @@ suite('Une plus-value en devise dit ce que le courtier dit', () => {
     pres(posPerfPct(autreTaux), posPerfPct(p),
       'un changement de taux ne déplace pas le pourcentage');
 
-    /* Le montant en euros, lui, suit le taux du jour — et c'est assume : il dit
+    /* Le montant en euros, lui, suit le taux du jour -- et c'est assume : il dit
        ce que cette ligne a gagne ou perdu en euros d'aujourd'hui. */
     vrai(Math.abs(posPerfEur(autreTaux) - posPerfEur(p)) > 1,
       'le montant en euros, lui, suit le taux du jour');
@@ -814,9 +808,8 @@ suite('Une plus-value en devise dit ce que le courtier dit', () => {
 
   test('aucune décomposition ne subsiste sous le total', () => {
     /* Le controle porte sur l'appel a `trad`, pas sur les mots : un commentaire
-       qui raconte pourquoi ces lignes sont parties contient forcement leur nom, et
-       la premiere redaction de ce test tombait sur son propre commentaire. Ce
-       qu'on interdit, c'est qu'elles s'AFFICHENT. */
+       qui nomme ces lignes ferait tomber un controle sur les mots, celui de ce
+       test compris. Ce qu'on interdit, c'est qu'elles s'AFFICHENT. */
     const src = lireSource('assets/app.js');
     vrai(!/trad\('dont le titre'\)/.test(src) && !/trad\('dont le change'\)/.test(src),
       'les deux lignes ne doivent plus s’afficher : le total les dit toutes les deux');
@@ -829,10 +822,10 @@ suite('Une plus-value en devise dit ce que le courtier dit', () => {
 suite('La répartition suit le commutateur, et ses parts font le total', () => {
 
   test('en net, la somme des classes fait le patrimoine net', () => {
-    /* C'est la regle cardinale du projet, prise en flagrant delit sur l'accueil :
-       le commutateur Net / Brut gouvernait le grand chiffre et la courbe, pas la
-       carte de repartition. On lisait donc un patrimoine net en tete et une
-       repartition qui totalisait le brut juste dessous.
+    /* La regle cardinale du projet, appliquee a l'accueil : le commutateur
+       Net / Brut gouverne le grand chiffre, la courbe ET la carte de
+       repartition. Sans cela, on lirait un patrimoine net en tete et une
+       repartition qui totalise le brut juste dessous.
 
        Le credit du fixture est le seul de l'etablissement du studio : son lien
        designe le studio, et il se retranche de l'immobilier. Aucune autre classe
@@ -871,8 +864,8 @@ suite('La répartition suit le commutateur, et ses parts font le total', () => {
 
   test('une dette sans destination connue a sa ligne, et n’invente aucun immobilier', () => {
     /* Un credit a la consommation chez une banque qui tient deux comptes, sans
-       lien : rien ne dit ce qu'il finance. Il allait a l'immobilier par defaut,
-       et un patrimoine sans aucun bien affichait « Immobilier » en negatif. Il
+       lien : rien ne dit ce qu'il finance. L'envoyer a l'immobilier par defaut
+       afficherait "Immobilier" en negatif sur un patrimoine sans aucun bien. Il
        reste compte, sur sa propre ligne, et aucune classe ne le prend. */
     Fixture.poser(s => {
       s.comptes = s.comptes.filter(c => c.id !== 'c_immo');
@@ -901,9 +894,9 @@ suite('La répartition suit le commutateur, et ses parts font le total', () => {
       'deux lectures, pas trois');
     eq((src.match(/repartitionClasses\(\{ net: evoNet \}\)/g) || []).length, 2,
       'et toutes deux dans le même mode');
-    /* La mention de base suit aussi : elle annoncait « tes avoirs » dans les deux
-       modes, donc en net elle nommait une base que les parts ne totalisaient plus.
-       Une mention qui ne bouge pas quand le calcul bouge rassure a tort. */
+    /* La mention de base suit aussi : annoncer "tes avoirs" dans les deux
+       modes nommerait, en net, une base que les parts ne totalisent pas. Une
+       mention qui ne bouge pas quand le calcul bouge rassure a tort. */
     vrai(/evoNet \? BASES\.net : BASES\.avoirs/.test(src),
       'la mention de base doit suivre le commutateur');
   });
@@ -913,14 +906,14 @@ suite('La répartition suit le commutateur, et ses parts font le total', () => {
 suite('Le deux-points se traduit comme le reste', () => {
 
   /* Le francais met une espace avant le deux-points, l'anglais n'en met pas.
-     La phrase « Ici, tout est compte : 30 250 EUR » est juste en francais ; en
-     anglais, un gabarit qui garderait l'espace produirait « everything is
-     counted : EUR 30,250 ».
+     Une phrase francaise qui finit par ": <montant>" est juste ; en anglais,
+     un gabarit qui garderait l'espace produirait "everything is counted :
+     <montant>".
 
-     Le premier correctif a casse le francais : `trad(phrase, repli)` rend le
-     REPLI en francais et la traduction de la CLEF en anglais, donc passer ':'
-     en repli ecrasait exactement le cas qui etait deja juste. Vu a l'ecran, pas
-     par un test — d'ou celui-ci, qui tient les deux cotes a la fois. */
+     Le piege est dans `trad(phrase, repli)` : elle rend le REPLI en francais
+     et la traduction de la CLEF en anglais, donc passer ':' en repli
+     ecraserait le cas francais, qui est juste. Ce test tient les deux cotes a
+     la fois. */
   test('le français garde son espace, l’anglais n’en met pas', () => {
     enLangue('fr', () => eq(deuxPoints(), ' :',
       'le deux-points français prend une espace insécable avant lui'));
@@ -929,20 +922,15 @@ suite('Le deux-points se traduit comme le reste', () => {
   });
 
   test('la page Allocation ne l’écrit plus dans son gabarit', () => {
-    /* Ce controle a d'abord balaye tout le fichier, et il a rendu huit
-       resultats dont cinq faux : un ternaire JavaScript s'ecrit aussi « } : »,
-       et un deux-points a l'interieur d'une chaine deja traduite est correct
-       puisque sa traduction le gere. Distinguer les trois demanderait de
-       tokeniser le fichier.
+    /* Le controle se limite a la page Allocation, dont le gabarit se lit en
+       entier. Sur tout le fichier, il crierait sur du code juste : un ternaire
+       JavaScript s'ecrit aussi "} :", et un deux-points a l'interieur d'une
+       chaine deja traduite est correct puisque sa traduction le gere.
+       Distinguer les cas demanderait de tokeniser le fichier.
 
-       Il se resserre donc sur la page Allocation, dont je peux lire le gabarit
-       en entier. Un controle qui prouve peu et le dit vaut mieux qu'un controle
-       large qu'il faut entourer d'exceptions — les exceptions finissent par
-       couvrir le defaut qu'on cherchait.
-
-       Les separateurs des autres pages ont ete convertis a la main, et trois
-       endroits gardent de la prose francaise ecrite hors de trad() : c'est un
-       autre defaut, plus ancien, et il ne se corrige pas ici. */
+       Un controle qui prouve peu et le dit vaut mieux qu'un controle large
+       qu'il faut entourer d'exceptions -- les exceptions finissent par
+       couvrir le defaut qu'on cherche. */
     const src = lireSource('assets/app.js');
     const vue = src.slice(src.indexOf('function viewAllocation()'),
                           src.indexOf('function mountAllocation'));
@@ -953,20 +941,17 @@ suite('Le deux-points se traduit comme le reste', () => {
   });
 
   test('la phrase du préambule nomme toutes les classes écartées', () => {
-    /* L'enumeration est ecrite a la main — « immobilier et biens de valeur » —
-       parce que la fabriquer depuis les libelles demanderait de les mettre en
-       minuscules, ce qui ne se fait pas de la meme facon dans toutes les
-       langues, et parce que ces libelles ne sont pas tous traduits.
+    /* L'enumeration est ecrite a la main -- "immobilier en direct et biens de
+       valeur" -- parce que la fabriquer depuis les libelles demanderait de les
+       mettre en minuscules, ce qui ne se fait pas de la meme facon dans toutes
+       les langues, et parce que ces libelles ne sont pas tous traduits.
 
-       Elle est donc epinglee ici : le jour ou la liste des classes ecartees
-       change, ce controle tombe et force a relire la phrase. C'est ce qui
-       manquait — elle disait « l'immobilier est ecarte » alors que les objets
-       de valeur sortaient aussi, et rien ne le signalait. */
-    /* L'ancre etait `CLASSES_HORS_FINANCIER`, une liste de CLASSES. Elle a
-       disparu avec le defaut qu'elle portait : la frontiere se lit sur le
-       CONTENANT. L'enumeration reste ecrite a la main, et c'est desormais le
-       predicat qui l'epingle — le jour ou un type detenu en direct s'ajoute, ce
-       controle tombe et force a relire la phrase. */
+       Elle est donc epinglee ici : une phrase qui omettrait un type ecarte
+       annoncerait un perimetre faux, et rien ne le signalerait. */
+    /* La frontiere se lit sur le CONTENANT, pas sur une liste de classes : le
+       predicat `estHorsPerimetreFinancier` epingle l'enumeration. Le jour ou un
+       type detenu en direct s'ajoute, ce controle tombe et force a relire la
+       phrase. */
     const dedans = TYPES_COMPTE.filter(t => !estHorsPerimetreFinancier({ type: t.id }));
     const dehors = TYPES_COMPTE.filter(t => estHorsPerimetreFinancier({ type: t.id }));
     eq(dehors.map(t => t.id).join(','), 'immo,bienValeur',
@@ -982,37 +967,34 @@ suite('Le deux-points se traduit comme le reste', () => {
 
 /* --- un mur n'est pas de la pierre papier -------------------------------
 
-   LE DEFAUT. Le perimetre financier se lisait sur la CLASSE de la ligne :
-   `['immobilier', 'bienValeur']` sortait, le reste restait. La classe
-   `immobilier` couvre l'appartement qu'on habite ET la part de SCPI, et le
-   support immobilier qu'une assurance-vie propose a cote de son fonds euros.
-   Trois choses sans rapport sous un seul mot, et la vue financiere les jetait
-   toutes les trois : un contrat de cent mille euros en annonçait cinquante
-   parce qu'il portait de la pierre papier.
+   Le perimetre financier se lit sur le CONTENANT, pas sur la CLASSE de la
+   ligne. La classe `immobilier` couvre l'appartement qu'on habite ET la part
+   de SCPI, et le support immobilier qu'une assurance-vie propose a cote de
+   son fonds euros : trois choses sans rapport sous un seul mot. Lire la
+   classe jetterait les trois hors de la vue financiere, et un contrat de
+   cent mille euros en annoncerait cinquante parce qu'il porte de la pierre
+   papier.
 
-   La question n'etait pas « de quelle classe est cette ligne ? » mais « est-ce
-   un mur qu'on detient soi-meme ? ». Le modele savait deja repondre — le
-   drapeau `direct` de `TYPES_COMPTE`, que `estBienEnDirect` lit depuis toujours
-   pour decider si l'on demande son usage a un bien. `estHorsPerimetreFinancier`
+   La question est "est-ce un mur qu'on detient soi-meme ?". Le drapeau
+   `direct` de `TYPES_COMPTE` y repond, et `estBienEnDirect` le lit deja pour
+   decider si l'on demande son usage a un bien. `estHorsPerimetreFinancier`
    pose la meme question pour le perimetre, et rien d'autre ne la pose.
 
    Ces tests additionnent : ils ne lisent presque aucune source. Un perimetre se
    prouve par des totaux qui se recomposent, pas par une expression rationnelle
    sur un filtre. */
-/* --- « Aujourd'hui » n'est plus un second inventaire ---------------------
+/* --- "Aujourd'hui" n'est pas un second inventaire ------------------------
 
-   LE DEFAUT ETAIT VISUEL, et il n'en etait pas moins reel. La carte du jour
-   deroulait chaque ligne du portefeuille — nom, poids, variation, effet — et
-   trois cents pixels plus bas, « Lignes de titres » redonnait les memes neuf
-   titres avec leur valeur et leur performance depuis l'achat. Les deux cartes
-   repondent a deux questions differentes, et sur un telephone elles se lisaient
-   comme un doublon : on relisait neuf noms pour retrouver le seul qui avait
-   bouge.
+   Une carte du jour qui deroulerait chaque ligne du portefeuille -- nom,
+   poids, variation, effet -- redonnerait les titres que "Lignes de titres"
+   montre plus bas avec leur valeur et leur performance depuis l'achat. Les
+   deux cartes repondent a deux questions differentes, et sur un telephone
+   elles se liraient comme un doublon : on relirait neuf noms pour retrouver
+   le seul qui a bouge.
 
-   Le partage est desormais net. « Aujourd'hui » dit ce qui a bouge et ce que
-   cela a change ; « Lignes de titres » dit ce qu'on possede et ce que cela vaut.
-   Aucune metrique de marche n'a bouge : ces controles verifient un CHOIX et un
-   ORDRE, jamais un calcul. */
+   Le partage : "Aujourd'hui" dit ce qui a bouge et ce que cela a change ;
+   "Lignes de titres" dit ce qu'on possede et ce que cela vaut. Ces controles
+   verifient un CHOIX et un ORDRE, jamais un calcul. */
 suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
 
   /* Quantite 100 et change 1 : l'effet en euros vaut cent fois l'ecart de prix,
@@ -1033,7 +1015,7 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
       prevClose: l.veille,
       /* Sans heure, la ligne a cote aujourd'hui ; avec l'heure de la veille,
          elle se tait. C'est la seule difference entre un mouvement et une ligne
-         « sans cours du jour ». */
+         "sans cours du jour". */
       quoteTime: l.hier ? secondes(veille(jour), '22:00:00') : secondes(jour, '11:00:00'),
     }));
   });
@@ -1046,14 +1028,14 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
        chacune une rangee pour repeter l'heure de leur dernier cours. Elles
        restent comptees en tete de carte et rendues au depliage. */
     auJour('2026-08-06', () => {
-      poser('2026-08-06', [{ nom: 'Solana USD', prix: 10.06, veille: 10 }].concat(
+      poser('2026-08-06', [{ nom: 'Ligne cotée', prix: 10.06, veille: 10 }].concat(
         Array.from({ length: 8 }, (_, i) => ({ nom: `Fige ${i}`, prix: 20, veille: 19, hier: true }))));
       const j = dayPerformance();
       eq(j.lignes.length, 9, 'les neuf lignes ont une clôture de référence');
       eq(j.horsSeance, 8, 'huit se taisent');
       const m = mouvementsDuJour(j);
       eq(m.length, 1, 'un seul mouvement exploitable');
-      eq(m[0].name, 'Solana USD', 'et c’est celui qui a coté');
+      eq(m[0].name, 'Ligne cotée', 'et c’est celui qui a coté');
       pres(m[0].eur, 6, 'son effet, six euros');
       vrai(!m.some(l => l.horsSeance),
         'aucune ligne sans cours du jour ne se glisse parmi les mouvements');
@@ -1063,11 +1045,11 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
   test('cinq mouvements : les trois plus gros, et pas les cinq', () => {
     auJour('2026-08-06', () => {
       poser('2026-08-06', [
-        { nom: 'A', prix: 1.10, veille: 1 },        // +10 €
-        { nom: 'B', prix: 25.50, veille: 25 },      // +50 €
-        { nom: 'C', prix: 99, veille: 100 },        // -100 €
-        { nom: 'D', prix: 1.20, veille: 1 },        // +20 €
-        { nom: 'E', prix: 5.05, veille: 5 },        // +5 €
+        { nom: 'A', prix: 1.10, veille: 1 },        // +10 EUR
+        { nom: 'B', prix: 25.50, veille: 25 },      // +50 EUR
+        { nom: 'C', prix: 99, veille: 100 },        // -100 EUR
+        { nom: 'D', prix: 1.20, veille: 1 },        // +20 EUR
+        { nom: 'E', prix: 5.05, veille: 5 },        // +5 EUR
       ].concat(Array.from({ length: 4 }, (_, i) =>
         ({ nom: `Fige ${i}`, prix: 20, veille: 19, hier: true }))));
       const j = dayPerformance();
@@ -1086,18 +1068,18 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
   });
 
   test('aucun cours du jour : aucun faux mouvement à zéro', () => {
-    /* La convention de la maison, appliquée ici aussi : un titre qui n'a pas
-       coté ne fait pas 0 %, il ne dit rien. Le ranger dernier avec
-       « 0,00 % · 0 € » serait exactement le zéro inventé que cette carte refuse
-       déjà dans ses colonnes. */
+    /* La convention de la maison, appliquee ici aussi : un titre qui n'a pas
+       cote ne fait pas 0 %, il ne dit rien. Le ranger dernier avec
+       "0,00 % . 0 EUR" serait exactement le zero invente que cette carte refuse
+       deja dans ses colonnes. */
     auJour('2026-08-06', () => {
       poser('2026-08-06', Array.from({ length: 9 }, (_, i) =>
         ({ nom: `Fige ${i}`, prix: 20, veille: 19, hier: true })));
       const j = dayPerformance();
       eq(j.toutHorsSeance, true, 'rien n’a coté depuis minuit');
       eq(mouvementsDuJour(j).length, 0, 'donc aucun mouvement n’est montré');
-      /* Et la carte a de quoi le dire : le total se déclare au lieu de
-         s’afficher, ce qui existait déjà et ne change pas. */
+      /* Et la carte a de quoi le dire : le total se declare au lieu de
+         s'afficher. */
       eq(j.eur, 0, 'le total est nul, ce qui est juste');
     });
   });
@@ -1111,13 +1093,13 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
        pourcentage donnerait D, A, B -- l'ordre des petites lignes agitees. */
     auJour('2026-08-06', () => {
       poser('2026-08-06', [
-        { nom: 'A', prix: 1.10, veille: 1 },        // +10 %  → +10 €
-        { nom: 'B', prix: 25.50, veille: 25 },      //  +2 %  → +50 €
-        { nom: 'C', prix: 99, veille: 100 },        //  -1 %  → -100 €
-        { nom: 'D', prix: 1.20, veille: 1 },        // +20 %  → +20 €
+        { nom: 'A', prix: 1.10, veille: 1 },        // +10 %  -> +10 EUR
+        { nom: 'B', prix: 25.50, veille: 25 },      //  +2 %  -> +50 EUR
+        { nom: 'C', prix: 99, veille: 100 },        //  -1 %  -> -100 EUR
+        { nom: 'D', prix: 1.20, veille: 1 },        // +20 %  -> +20 EUR
       ]);
       const j = dayPerformance();
-      /* Les effets d'abord, sinon le reste du contrôle ne prouve rien. */
+      /* Les effets d'abord, sinon le reste du controle ne prouve rien. */
       const par = Object.fromEntries(j.lignes.map(l => [l.name, Math.round(l.eur)]));
       eq(`${par.A},${par.B},${par.C},${par.D}`, '10,50,-100,20', 'les quatre effets');
       eq(noms(mouvementsDuJour(j)), 'C,B,D',
@@ -1145,13 +1127,13 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
   test('la carte est repliée par défaut, et sur tous les écrans', () => {
     const src = lireSource('assets/app.js');
     vrai(/\nlet jourDeplie = false;/.test(src), 'l’état part replié');
-    /* Aucune donnée persistée : c'est un état de vue, pas un réglage. */
+    /* Aucune donnee persistee : c'est un etat de vue, pas un reglage. */
     vrai(!/jourDeplie/.test(lireSource('assets/store.js')),
       'et il ne descend pas dans le modèle');
     for (const interdit of ['marketsTodayExpanded', 'todayCollapsed', 'showAllDaily'])
       vrai(!new RegExp(interdit).test(src), `${interdit} n’existe pas`);
-    /* Aucune règle de largeur ne le déplie : le doublon existe aussi sur grand
-       écran, et y dérouler neuf lignes parce qu'il y a la place ne répond à
+    /* Aucune regle de largeur ne le deplie : le doublon existe aussi sur grand
+       ecran, et y derouler neuf lignes parce qu'il y a la place ne repond a
        aucune question. */
     vrai(!/min-width[^;]*jourDeplie|jourDeplie[^;]*innerWidth/.test(src),
       'aucun seuil de largeur ne décide à sa place');
@@ -1271,7 +1253,7 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
     vrai(/trad\('Réduire'\)/.test(vue), 'et il sait se refermer');
     vrai(I18N.en['Voir les {n} lignes'] && I18N.en['Voir la ligne'] && I18N.en['Réduire'],
       'les trois sont traduites');
-    /* Il déplie la carte, il ne navigue pas : renvoyer vers « Lignes de titres »
+    /* Il deplie la carte, il ne navigue pas : renvoyer vers "Lignes de titres"
        aurait ouvert l'inventaire, qui ne dit rien du jour. */
     const action = src.slice(src.indexOf("'jour-detail'()"), src.indexOf('\n  },', src.indexOf("'jour-detail'()")));
     vrai(/jourDeplie = !jourDeplie;/.test(action), 'il bascule');
@@ -1303,8 +1285,8 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
   });
 
   test('« sans cours du jour » ne se dit qu’une fois', () => {
-    /* Le compte vit en tête de carte, à côté du total. Le répéter en pied
-       recréerait la redondance qu'on vient de retirer. */
+    /* Le compte vit en tete de carte, a cote du total. Le repeter en pied
+       creerait une redondance. */
     const src = lireSource('assets/app.js');
     const vue = src.slice(src.indexOf('function sectionJour()'),
                           src.indexOf('\n}\n', src.indexOf('function sectionJour()')));
@@ -1317,9 +1299,9 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
   /* --- 4. l'inventaire reste l'inventaire ------------------------------- */
 
   test('« Lignes de titres » ne reçoit aucune variation du jour', () => {
-    /* Une troisième métrique par ligne — « +5 % depuis achat · +0,4 %
-       aujourd'hui » — recréerait la surcharge qu'on retire. La variation du jour
-       vit dans « Aujourd'hui », et nulle part ailleurs. */
+    /* Une troisieme metrique par ligne -- "+5 % depuis achat . +0,4 %
+       aujourd'hui" -- surchargerait le tableau. La variation du jour vit dans
+       "Aujourd'hui", et nulle part ailleurs. */
     const src = lireSource('assets/app.js');
     const vue = src.slice(src.indexOf('function viewPositions('),
                           src.indexOf('function mountPositions('));
@@ -1327,14 +1309,14 @@ suite('Aujourd’hui montre ce qui a bougé, pas l’inventaire', () => {
     for (const marque of ['posDayChange', 'dayPerformance', 'prevClose', 'horsSeance'])
       vrai(!new RegExp(marque).test(titres),
         `le tableau des lignes ne parle pas de ${marque}`);
-    /* Et il garde ce qu'il portait : filtres, actions, valeur, performance. */
+    /* Et il garde ses filtres, ses actions, sa valeur et sa performance. */
     for (const garde of ['sortableTh', 'open-position', 'Vendre'])
       vrai(new RegExp(garde).test(titres), `${garde} est toujours là`);
   });
 
   test('aucune métrique de marché n’a changé', () => {
-    /* Cette passe est de rendu. Les fonctions qui produisent les chiffres du
-       jour sont lues, jamais réécrites : ce contrôle épingle leur forme. */
+    /* Les fonctions qui produisent les chiffres du jour ne dependent pas de
+       leur rendu : ce controle epingle leur forme. */
     const src = lireSource('assets/store.js');
     const fn = src.slice(src.indexOf('function posDayChange('),
                          src.indexOf('function marketStatus('));
@@ -1393,17 +1375,16 @@ suite('Un mur n’est pas de la pierre papier', () => {
       'un appartement et un bien de valeur sortent, et eux seuls');
     for (const type of ['scpi', 'av', 'per', 'cto', 'pea', 'courant', 'livret'])
       eq(estHorsPerimetreFinancier({ type }), false, `${type} reste dans le périmètre`);
-    /* Un type inconnu — cree par son detenteur, ou herite d'une migration —
+    /* Un type inconnu -- cree par son detenteur, ou herite d'une migration --
        reste financier : on n'invente pas un mur. */
     eq(estHorsPerimetreFinancier({ type: 'levier' }), false,
       'un type inconnu ne devient pas un mur par défaut');
   });
 
   test('les drapeaux de la SCPI ne bougent pas', () => {
-    /* La tentation etait de lui poser `direct: true` pour la faire passer. Elle
-       aurait alors recu le questionnaire d'un appartement : usage, adresse,
-       surface, lots, loyers. La frontiere physique est utile ailleurs, et elle
-       reste ou elle est. */
+    /* Lui poser `direct: true` la ferait passer, mais elle recevrait alors le
+       questionnaire d'un appartement : usage, adresse, surface, lots, loyers.
+       La frontiere physique est utile ailleurs, et elle reste ou elle est. */
     const t = typeCompte('scpi');
     eq(!!t.bienImmo, true, 'une SCPI pèse comme de la pierre');
     eq(!!t.direct, false, 'et ne se détient pas en direct');
@@ -1486,9 +1467,9 @@ suite('Un mur n’est pas de la pierre papier', () => {
   });
 
   test('une assurance-vie qui porte de l’immobilier reste entière', () => {
-    /* LE DEFAUT, dans sa forme la plus chere : le contrat vaut cent mille, la
-       page en annonçait cinquante. La ligne immobiliere disparaissait des
-       avoirs financiers, du camembert et de la base des pourcentages. */
+    /* Le cas le plus cher : le contrat vaut cent mille, et lire la classe en
+       annoncerait cinquante. La ligne immobiliere sortirait des avoirs
+       financiers, du camembert et de la base des pourcentages. */
     poser({ comptes: [AV(20000, 30000, 50000)] });
     pres(totalFinancier(), 100000, 'le contrat entier');
     pres(horsFinancierTotal(), 0, 'rien n’en sort');
@@ -1513,7 +1494,7 @@ suite('Un mur n’est pas de la pierre papier', () => {
 
   test('un bien de valeur reste dehors', () => {
     /* La convention ne change pas : une montre est chez soi, on ne l'arbitre
-       pas. Elle est `direct` comme un appartement, et sort par la même porte. */
+       pas. Elle est `direct` comme un appartement, et sort par la meme porte. */
     poser({ comptes: [MONTRE(10000), ETF(50000)] });
     pres(totalFinancier(), 50000, 'seul l’ETF est financier');
     pres(horsFinancierTotal(), 10000, 'la montre est écartée');
@@ -1608,7 +1589,8 @@ suite('Un mur n’est pas de la pierre papier', () => {
 
   test('la disponibilité d’une SCPI ne change pas', () => {
     /* Entrer dans le perimetre financier ne rend rien liquide : le delai de
-       sortie vient du type et de la classe, et ces deux-la n'ont pas bouge. */
+       sortie vient du type et de la classe, et le perimetre ne touche ni a l'un
+       ni a l'autre. */
     poser({ comptes: [SCPI(100000)] });
     const avant = mobiliteLigne(lignesDe(compteById('c_scpi'))[0], compteById('c_scpi'));
     eq(avant, mobilisabilite('immobilier', 'scpi'),
@@ -1621,9 +1603,8 @@ suite('Un mur n’est pas de la pierre papier', () => {
 
   test('la base des cibles ne dépend pas de ce périmètre', () => {
     /* Elle se calcule sur les POSITIONS de marche, jamais sur les lignes
-       saisies a la main : une SCPI n'y entrait pas hier et n'y entre pas
-       aujourd'hui. Le controle est ici pour que le lien soit dit, et non
-       redecouvert la prochaine fois. */
+       saisies a la main : une SCPI n'y entre pas, quel que soit le perimetre.
+       Le controle est ici pour que le lien soit dit. */
     poser({ comptes: [SCPI(100000), CASH(20000)] });
     const sans = rebalanceRows().base;
     poser({ comptes: [SCPI(100000), CASH(20000), APPART(300000)] });
@@ -1646,12 +1627,12 @@ suite('Un mur n’est pas de la pierre papier', () => {
       'la clef existe dans le dictionnaire');
     vrai(I18N.en['immobilier en direct et biens de valeur écartés, avec leurs crédits'],
       'la mention courte aussi');
-    /* UNE CLEF DECALEE NE SE VOIT PAS. L'arbre prive portait la traduction de
-       cette longue aide accrochee a la clef voisine : en anglais, la carte des
-       delais de sortie rendait le perimetre entier, et le perimetre rendait un
-       paragraphe d'une version disparue. Les deux etaient de l'anglais, donc
-       aucun controle de langue ne les attrapait. Une phrase courte doit le
-       rester : c'est ce qui distingue un couple droit d'un couple decale. */
+    /* UNE CLEF DECALEE NE SE VOIT PAS. Si la traduction de cette longue aide
+       s'accrochait a la clef voisine, la carte des delais de sortie rendrait en
+       anglais le perimetre entier, et le perimetre un autre paragraphe. Les
+       deux seraient de l'anglais, donc aucun controle de langue ne les
+       attraperait. Une phrase courte doit le rester : c'est ce qui distingue un
+       couple droit d'un couple decale. */
     const dispo = I18N.en['Quand cet argent peut redevenir disponible.'];
     vrai(dispo && dispo.length < 80,
       `la clef voisine garde sa propre traduction, courte (${(dispo || '').length} caractères)`);
@@ -1660,9 +1641,10 @@ suite('Un mur n’est pas de la pierre papier', () => {
   });
 
   test('la fiche de la part plate ne liste que ce qu’elle gèle', () => {
-    /* Elle enumerait les lignes de classe `immobilier` : une SCPI y apparaissait
-       sous « Ton immobilier net », dans une fiche dont le total est `partPlate()`
-       — qui ne la porte plus. La somme des parts aurait cesse d'egaler le total. */
+    /* La fiche parcourt les comptes que le perimetre ecarte, pas les lignes de
+       classe `immobilier` : une SCPI apparaitrait sinon sous "Ton immobilier
+       net", dans une fiche dont le total est `partPlate()`, qui ne la porte
+       pas. La somme des parts cesserait d'egaler le total. */
     const src = lireSource('assets/app.js');
     const fn = src.slice(src.indexOf('immobilierNet: (quoi) => {'),
                          src.indexOf('capaciteEpargne: () => {'));
@@ -1678,9 +1660,8 @@ suite('La vue financière retire les murs, et le total reste la somme de ses par
 
   /* Le fixture porte un studio a 120 000 sur un brut de 138 250 : la base
      financiere vaut donc 18 250, verifiable de tete. Ces tests ne lisent aucune
-     source, ils additionnent — c'est le seul controle qui aurait attrape le
-     defaut du centre de l'anneau si le centre avait ete une fonction du modele
-     plutot qu'une chaine de la vue. */
+     source, ils additionnent : un total du modele se prouve par la somme de ses
+     parts. */
   const somme = xs => xs.reduce((s, x) => s + num(x.value), 0);
 
   test('ce qui reste et ce qui part recomposent le brut', () => {
@@ -1698,16 +1679,15 @@ suite('La vue financière retire les murs, et le total reste la somme de ses par
     pres(somme(allocationByAsset({ credits: false, financier: true })), base, 'ligne par ligne');
     pres(somme(allocationByAccount({ financier: true })), base, 'par compte');
     pres(somme(byAccountType({ financier: true })), base, 'par enveloppe');
-    /* Absente de la demonstration : la carte des delais n'y a jamais ete portee. */
     if (typeof allocationParDisponibilite === 'function') {
       pres(somme(allocationParDisponibilite({ financier: true })), base, 'par disponibilité');
     }
   });
 
   test('« Placé » perd les murs, et le cash le complète jusqu’à la base', () => {
-    /* « Place » vaut le brut moins le cash : il ne se filtre pas par classe, il
-       se retranche. Sans ca, cette seule ligne valait 131 750 sur une base de
-       18 250 et sa barre sortait de la carte. */
+    /* "Place" vaut le brut moins le cash : il ne se filtre pas par classe, il
+       se retranche. Sans ca, sur le fixture, cette seule ligne vaudrait 131 750
+       sur une base de 18 250, et sa barre sortirait de la carte. */
     Fixture.poser();
     const t = nowTotals();
     const place = t.invested - horsFinancierTotal();
@@ -1718,7 +1698,7 @@ suite('La vue financière retire les murs, et le total reste la somme de ses par
 
   test('aucune part ne dépasse sa base ni ne passe sous zéro', () => {
     /* Le defaut se voit a l'ecran avant de se lire : une barre qui sort de la
-       carte, un pourcentage a 723 %. */
+       carte, un pourcentage au-dela de 100 %. */
     Fixture.poser();
     const base = totalFinancier();
     for (const liste of [repartitionClasses({ financier: true }),
@@ -1735,15 +1715,15 @@ suite('La vue financière retire les murs, et le total reste la somme de ses par
   });
 
   test('sans le commutateur, rien ne change', () => {
-    /* Le filtre est un ajout, pas un remplacement : la vue par defaut doit
-       rendre exactement ce qu'elle rendait. */
+    /* Le filtre est un ajout, pas un remplacement : sans lui, la vue rend le
+       patrimoine complet, murs compris. */
     Fixture.poser();
     pres(somme(repartitionClasses()), patrimoine().brut, 'les classes en vue complète');
     pres(poches().classes.immobilier, 120000, 'poches() porte encore les murs par défaut');
     pres(poches({ financier: true }).classes.immobilier, 0, 'et les écarte sur demande');
     /* Le studio du fixture n'est pas declare residence principale : son palier
        depend donc du type de compte, et l'ecrire ici creerait une deuxieme
-       source de verite. La somme des paliers, elle, doit valoir le brut — puis
+       source de verite. La somme des paliers, elle, doit valoir le brut -- puis
        la base financiere. C'est le meme controle, sans le pari. */
     const paliers = o => Object.values(o).reduce((s, v) => s + num(v), 0);
     pres(paliers(poches().mobilisable), patrimoine().brut,
@@ -1771,19 +1751,19 @@ suite('La vue financière retire les murs, et le total reste la somme de ses par
    ------------------------------------------------------------------ */
 suite('Deux réglages, deux questions, et ils ne se marchent pas dessus', () => {
 
-  /* La page portait deux notions que rien ne distinguait a l'ecran : COMMENT le
-     patrimoine est valorise -- net ou brut -- et QUEL PERIMETRE la courbe montre.
-     Deux commutateurs Net / Brut coexistaient, celui du grand chiffre et celui du
-     graphique, sur une seule variable : deux boutons identiques a deux endroits,
-     dont on pouvait croire qu'ils reglaient deux choses.
+  /* La page porte deux notions distinctes : COMMENT le patrimoine est valorise
+     -- net ou brut -- et QUEL PERIMETRE la courbe montre. Un seul commutateur
+     Net / Brut, celui du grand chiffre, gouverne la valorisation : un second
+     sur le graphique, branche sur la meme variable, ferait croire a deux
+     reglages.
 
-     Le second est parti. La place libre porte le seul reglage qui appartienne en
-     propre a cette carte, le perimetre, et le fixture le mesure de tete :
+     La carte du graphique porte le seul reglage qui lui appartienne en
+     propre, le perimetre, et le fixture le mesure de tete :
 
-       Liquidités          6 500     |  Financier   18 250
-       Actifs de marché    9 750     |  Studio     120 000
-       Non coté            2 000     |  Brut       138 250
-                                     |  Crédit      40 000
+       Liquidites          6 500     |  Financier   18 250
+       Actifs de marche    9 750     |  Studio     120 000
+       Non cote            2 000     |  Brut       138 250
+                                     |  Credit      40 000
                                      |  Net global  98 250   */
 
   const auj = pts => pts[pts.length - 1];
@@ -1889,8 +1869,8 @@ suite('Deux réglages, deux questions, et ils ne se marchent pas dessus', () => 
 
   test('la légende ne peut annoncer que des bandes tracées', () => {
     /* Les points et les bandes se filtrent par la MEME fonction. Deux filtres
-       ecrits separement auraient fini par annoncer en legende une bande absente
-       du dessin, ou l'inverse : c'est le defaut que ce depot corrige sans arret. */
+       ecrits separement finiraient par annoncer en legende une bande absente du
+       dessin, ou l'inverse. */
     Fixture.poser();
     eq(pochesEvolution({ financier: true }).join(','), 'cash,bourse,crypto,pe,garanti',
       'la vue financière garde cinq poches, dans l’ordre de la pile');
@@ -1982,23 +1962,23 @@ suite('Deux réglages, deux questions, et ils ne se marchent pas dessus', () => 
     /* Cette application a deux natures de controle segmente, et elles ne
        demandent pas la meme presence.
 
-       La NAVIGATION — « Aujourd'hui | Historique | Projection », « Depenses |
-       Charges fixes » — porte `.sous-onglets` : une barre qu'on vise.
+       La NAVIGATION -- "Aujourd'hui | Historique | Projection", "Depenses |
+       Charges fixes" -- porte `.sous-onglets` : une barre qu'on vise.
 
-       Les FILTRES DE VUE — Net / Brut, Financier / Global, les plages, le tri
-       d'un journal, un filtre de role — portent `.seg-mini` : un etat qu'on
-       choisit dans une carte, a cote d'un titre. « Choisir un etat » n'a pas le
-       poids de « declencher une action », et c'est ce que l'ecart doit dire.
+       Les FILTRES DE VUE -- Net / Brut, Financier / Global, les plages, le tri
+       d'un journal, un filtre de role -- portent `.seg-mini` : un etat qu'on
+       choisit dans une carte, a cote d'un titre. "Choisir un etat" n'a pas le
+       poids de "declencher une action", et c'est ce que l'ecart doit dire.
 
-       Mesure apres harmonisation, hauteur du controle entier :
+       Hauteur du controle entier :
 
          navigation      36 px sur grand ecran, 40 sur telephone
          filtre de vue   31 px sur grand ecran, 35 sur telephone
 
-       Les trois filtres de l'accueil sont au pixel identiques, ce qui n'etait pas
-       le cas : la barre des plages avait sa propre regle. Cible au doigt : 33 px
-       sur grand ecran et 37 sur telephone, pour 25 et 29 a l'oeil — le debord est
-       pose en absolu, il n'occupe aucune place. */
+       Les trois filtres de l'accueil sont identiques au pixel : la barre des
+       plages n'a pas de regle a elle. Cible au doigt : 33 px sur grand ecran et
+       37 sur telephone, pour 25 et 29 a l'oeil -- le debord est pose en
+       absolu, il n'occupe aucune place. */
     const css = lireSource('assets/styles.css');
     const app = lireSource('assets/app.js');
     vrai(css && app, 'les deux fichiers doivent être lisibles');
@@ -2024,10 +2004,9 @@ suite('Deux réglages, deux questions, et ils ne se marchent pas dessus', () => 
         `« ${usage} » est un filtre de vue : il porte la famille compacte`);
     }
 
-    /* 2. `.seg-mini` doit SUIVRE `.segmented`, sinon elle ne fait rien. C'est
-       exactement ce qui s'est passe pendant des mois : declaree avant, a
-       specificite egale, elle perdait, et trois controles la portaient en
-       croyant obtenir une version reduite. */
+    /* 2. `.seg-mini` doit SUIVRE `.segmented`, sinon elle ne fait rien :
+       declaree avant, a specificite egale, elle perdrait, et les controles qui
+       la portent n'obtiendraient pas leur version reduite. */
     vrai(css.indexOf('.seg-mini button {') > css.indexOf('.segmented button {'),
       'la famille compacte suit celle qu’elle doit battre : c’est l’ordre qui tranche');
 
@@ -2037,9 +2016,9 @@ suite('Deux réglages, deux questions, et ils ne se marchent pas dessus', () => 
     vrai(/\.seg-mini button \{[^}]*position: relative;/.test(css),
       'et son ancrage avec lui');
 
-    /* 4. La hauteur des deux familles est POSEE, jamais subie. Deux fois elle
-       l'etait : la pastille de rappel gonflait la boite de ligne de la
-       navigation, et la bande collante l'etirait a sa propre hauteur. */
+    /* 4. La hauteur des deux familles est POSEE, jamais subie : sans cela, la
+       pastille de rappel gonflerait la boite de ligne de la navigation, et la
+       bande collante l'etirerait a sa propre hauteur. */
     vrai(/\.sous-onglets \.segmented button \{[^}]*min-height: 30px;/.test(css),
       'la navigation déclare sa hauteur');
     vrai(/\.sous-onglets \{[^}]*align-items: center;/.test(css),
@@ -2047,31 +2026,32 @@ suite('Deux réglages, deux questions, et ils ne se marchent pas dessus', () => 
     vrai(/\.sous-onglets \.segmented button \{[^}]*line-height: 1\.25;/.test(css),
       'sa boîte de ligne ne dépend plus de ce que la pilule contient');
 
-    /* 5. La navigation reste PLUS HAUTE que les filtres : c'est la hierarchie
-       entiere de cette passe. Les deux valeurs se lisent dans la feuille. */
+    /* 5. La navigation reste PLUS HAUTE que les filtres : c'est toute la
+       hierarchie entre les deux familles. Les deux valeurs se lisent dans la
+       feuille. */
     const hNav = Number((css.match(/\.sous-onglets \.segmented button \{[^}]*min-height: (\d+)px/) || [])[1]);
     const padFiltre = Number((css.match(/\.seg-mini button \{[^}]*padding: (\d+)px/) || [])[1]);
     vrai(hNav >= 30, `la navigation garde de la présence (${hNav} px)`);
     vrai(padFiltre <= 6, `le filtre reste compact (${padFiltre} px de remplissage)`);
 
-    /* 6. Et les vrais boutons ne bougent pas : un toggle choisit un etat, un
-       bouton declenche une action, et rien de cette passe ne les touche. */
+    /* 6. Et les vrais boutons restent hors de ces familles : un toggle choisit
+       un etat, un bouton declenche une action, et aucune regle des deux
+       familles ne les redefinit. */
     vrai(!/\.btn \{[^}]*min-height/.test(css.slice(css.indexOf('.seg-mini button {'))),
       'aucune règle de cette passe ne redéfinit les boutons d’action');
   });
 
   test('les deux bascules vivent en haut à droite de leur carte', () => {
     /* L'intitule a gauche, SA bascule au bord droit. C'est la ou vivent les
-       commandes dans toute l'application — les vingt-six en-tetes de carte y
-       posent leurs boutons — et une bascule calee a gauche sous un titre se lit
+       commandes dans toute l'application -- les vingt-six en-tetes de carte y
+       posent leurs boutons -- et une bascule calee a gauche sous un titre se lit
        comme un sous-titre.
 
-       Elle a d'abord ete posee sous l'intitule, a gauche, parce que l'en-tete du
-       graphique s'y repliait deja. Le bord droit vaut mieux, et il vaut aux deux
-       tailles d'ecran : une seule regle au lieu d'une par point de rupture.
+       Le bord droit vaut aux deux tailles d'ecran : une seule regle au lieu
+       d'une par point de rupture.
 
-       Mesure a 375 px : le grand chiffre pose « Net | Brut » a 208 px du bord de
-       la carte, contre l'autre bord ; le graphique y pose « Financier | Global »
+       Mesure a 375 px : le grand chiffre pose "Net | Brut" a 208 px du bord de
+       la carte, contre l'autre bord ; le graphique y pose "Financier | Global"
        de meme. Aucun debordement, aucune bascule comprimee. */
     const css = lireSource('assets/styles.css');
     vrai(css, 'la feuille de style doit être lisible');
@@ -2080,44 +2060,40 @@ suite('Deux réglages, deux questions, et ils ne se marchent pas dessus', () => 
       'la bascule du grand chiffre se cale au bord droit');
     /* Une seule regle, hors de tout bloc telephone : elle vaut partout. Dans ce
        fichier une regle de PREMIER NIVEAU commence en colonne 0, celles d'un
-       bloc media sont indentees de deux espaces — l'ancrage suffit a le dire. */
+       bloc media sont indentees de deux espaces -- l'ancrage suffit a le dire. */
     vrai(/^\.hero-label > \.segmented \{ margin-left: auto; \}/m.test(css),
       'et elle ne dépend pas d’un point de rupture');
     vrai(/\.evo-commandes \{ justify-content: flex-end; \}/.test(css),
       'les commandes du graphique se calent au même bord quand elles se replient');
 
-    /* Le plancher de 9,8 em est parti, et il n'a plus d'objet : l'intitule ne
-       change plus de longueur, et la bascule est ancree a droite. */
+    /* Aucun plancher de largeur : la bascule est ancree a droite, donc la
+       longueur de l'intitule ne la deplace pas. */
     vrai(!/min-width: 9\.8em/.test(css),
       'le plancher qui réservait la place de « PATRIMOINE BRUT » n’a plus d’objet');
-    /* Les regles de l'ancienne convention sont parties avec elle. */
+    /* La bascule ne se pose pas sous l'intitule, en seconde rangee. */
     vrai(!/\.hero-label > \.segmented \{[^}]*grid-row: 2;/.test(css),
       'la bascule n’est plus posée sous l’intitulé');
 
     const app = lireSource('assets/app.js');
-    /* L'intitule ne dit plus que « Patrimoine » : le qualifier a cote d'une
-       bascule qui dit lequel des deux repetait le bouton, et le mot changeait de
-       longueur a chaque clic. */
     const hero = app.slice(app.indexOf('<div class="hero-label">'),
                            app.indexOf('<div class="hero-value">'));
     /* L'INTITULE NOMME LA GRANDEUR QU'IL SURMONTE.
 
-       Il a dit « Patrimoine » tout court un temps, au motif que la bascule d'a
-       cote disait deja lequel des deux. Le motif tenait devant l'ecran, le
-       bouton actif sous les yeux ; il ne tient ni sur une capture, ni pour une
-       synthese vocale qui lit la carte de haut en bas, ni pour un coup d'oeil
-       de trois secondes. Deux mots disent si les credits sont deduits, et c'est
-       la premiere chose a savoir sur le plus gros chiffre de l'application. */
+       Compter sur la bascule d'a cote pour dire lequel des deux tient devant
+       l'ecran, le bouton actif sous les yeux ; cela ne tient ni sur une
+       capture, ni pour une synthese vocale qui lit la carte de haut en bas, ni
+       pour un coup d'oeil de trois secondes. Deux mots disent si les credits
+       sont deduits, et c'est la premiere chose a savoir sur le plus gros
+       chiffre de l'application. */
     vrai(/<span>\$\{trad\(evoNet \? 'Patrimoine net' : 'Patrimoine brut'\)\}<\/span>/.test(hero),
       'l’intitulé suit la bascule');
-    /* Sa longueur varie de nouveau, et cela ne coute rien : la bascule est
-       ancree au bord droit, verifie plus haut, donc la fin du mot ne la
-       deplace pas. */
+    /* Sa longueur varie, et cela ne coute rien : la bascule est ancree au bord
+       droit, verifie plus haut, donc la fin du mot ne la deplace pas. */
     vrai(!/min-width/.test(hero), 'aucune largeur réservée à la main');
 
-    /* L'oeil du masquage a quitte la carte : l'en-tete le porte sur telephone,
-       la barre laterale sur grand ecran. Trois exemplaires a trente pixels les
-       uns des autres n'encombrent plus la ligne. */
+    /* L'oeil du masquage vit hors de la carte : l'en-tete le porte sur
+       telephone, la barre laterale sur grand ecran. Un troisieme exemplaire a
+       trente pixels des autres encombrerait la ligne. */
     vrai(!/hero-oeil/.test(app), 'l’œil a quitté la carte du patrimoine');
     vrai(!/hero-oeil/.test(css), 'et sa règle est partie avec lui');
     const html = lireSource('index.html');
@@ -2131,17 +2107,17 @@ suite('Deux réglages, deux questions, et ils ne se marchent pas dessus', () => 
   });
 
   test('l’aide du titre dit la différence, et ne peut pas mentir', () => {
-    /* Les deux boutons portent chacun une infobulle, qui n'existe qu'au survol.
-       Au doigt, l'explication etait donc inatteignable — et c'est precisement la
-       que la difference des deux perimetres se devine le moins. La pastille vit
-       sur le titre, ou elle la dit une fois, plutot que deux definitions
-       separees qu'il faudrait rapprocher soi-meme. */
+    /* Les deux boutons portent chacun une infobulle, qui n'existe qu'au survol :
+       au doigt, une explication portee par elles seules serait inatteignable
+       -- et c'est precisement la que la difference des deux perimetres se
+       devine le moins. La pastille vit sur le titre, ou elle la dit une fois,
+       plutot que deux definitions separees qu'il faudrait rapprocher soi-meme. */
     const src = lireSource('assets/app.js');
     const carte = src.slice(src.indexOf('function carteEvolution()'),
                             src.indexOf('function monterEvolution()'));
     /* La pastille vit sur le titre, et elle y vit SI ET SEULEMENT SI la bascule
-       y vit aussi : une aide qui explique la différence entre deux vues n'a
-       rien à dire quand une seule existe. Les deux lisent le même booléen. */
+       y vit aussi : une aide qui explique la difference entre deux vues n'a
+       rien a dire quand une seule existe. Les deux lisent le meme booleen. */
     vrai(/<h2>\$\{trad\('Évolution du patrimoine'\)\}\$\{\s*\n\s*perimetreUtile \? aide\(trad\(AIDE_PERIMETRE\)\) : ''\}<\/h2>/.test(carte),
       'la pastille vit sur le titre de la carte, et seulement quand le périmètre se choisit');
     /* Ecrit une fois : l'infobulle des boutons et la pastille ne peuvent pas
@@ -2171,17 +2147,17 @@ suite('Deux réglages, deux questions, et ils ne se marchent pas dessus', () => 
   });
 
   test('le périmètre vit sur la ligne du titre, les périodes sur la leur', () => {
-    /* Les deux commandes ont partage un bloc, pour se replier ensemble. Elles ne
-       repondent pourtant pas a la meme question — l'une dit QUOI on regarde,
-       l'autre SUR QUELLE DUREE — et le bloc les faisait descendre toutes les deux
-       sous le titre, dont la ligne restait vide.
+    /* Les deux commandes ne repondent pas a la meme question -- l'une dit QUOI
+       on regarde, l'autre SUR QUELLE DUREE -- et ne partagent pas de bloc : un
+       bloc commun les ferait descendre toutes les deux sous le titre, dont la
+       ligne resterait vide.
 
        Separees, l'en-tete se comporte comme les vingt-cinq autres : titre a
        gauche, commande a droite. Mesure a 1440 px : la bascule finit au bord
        droit du contenu de la carte, sur la ligne du titre. A 375 px en francais,
-       « Evolution du patrimoine » prend 179 des 311 px et la bascule en demande
+       "Evolution du patrimoine" prend 179 des 311 px et la bascule en demande
        140 : elle passe a la ligne suivante, toujours contre le bord droit. En
-       anglais, « Wealth over time » lui laisse la place et elle reste en haut.
+       anglais, "Wealth over time" lui laisse la place et elle reste en haut.
        C'est le repli du flex qui en decide, pas une valeur ecrite a la main. */
     const src = lireSource('assets/app.js');
     const carte = src.slice(src.indexOf('function carteEvolution()'),

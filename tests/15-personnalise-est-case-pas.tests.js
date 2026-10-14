@@ -7,12 +7,11 @@ partieDeTests('tests/15-personnalise-est-case-pas.tests.js');
    ------------------------------------------------------------------ */
 suite('Personnalisé est une case, pas un quatrième scénario', () => {
 
-  /* Deux questions vivaient sous un seul nom. « D'ou viennent les taux ? » --
-     de la table d'un scenario nomme, ou de l'etat -- et « a quoi ces taux
-     ressemblent-ils ? ». La premiere decide du calcul, la seconde de ce que
-     l'ecran allume, et les confondre rendait le retour impossible : remettre
-     6 % sur le marche laissait « personnalise » enfonce alors que les quatre
-     valeurs etaient exactement celles de Central.
+  /* Deux questions, deux fonctions. "D'ou viennent les taux ?" -- de la
+     table d'un scenario nomme, ou de l'etat -- et "a quoi ces taux
+     ressemblent-ils ?". La premiere decide du calcul, la seconde de ce que
+     l'ecran allume. Les confondre rendrait le retour impossible : des taux
+     remis exactement a ceux de Central laisseraient "personnalise" enfonce.
 
      `sourceDesTaux()` repond a la premiere, `detecteScenario()` a la seconde, et
      c'est la seconde que la vue lit. */
@@ -22,7 +21,7 @@ suite('Personnalisé est une case, pas un quatrième scénario', () => {
   const tauxDe = cle => TAUX_SCENARIO[cle];
 
   /* Poser les taux d'un scenario a la main, comme le fait le gel du depliant :
-     l'etat porte les trois chemins et `projScenario` vaut « perso », donc les
+     l'etat porte les trois chemins et `projScenario` vaut "perso", donc les
      taux viennent de l'etat et non d'une table. */
   const poserAlaMain = (marche, autres, garanti) => Fixture.poser(s => {
     s.meta.projScenario = 'perso';
@@ -51,7 +50,7 @@ suite('Personnalisé est une case, pas un quatrième scénario', () => {
   test('les quatre cases descendent d’une seule liste', () => {
     /* Trois paves derives de la table plus un ecrit a cote auraient donne deux
        balisages a tenir d'accord. Une seule liste, un seul gabarit de bouton, et
-       « Personnalise » herite donc de tout : hauteur, coins, etat retenu, focus,
+       "Personnalise" herite donc de tout : hauteur, coins, etat retenu, focus,
        aria-pressed. */
     const src = lireSource('assets/app.js');
     const bloc = src.slice(src.indexOf('function choixHypothese'),
@@ -104,11 +103,12 @@ suite('Personnalisé est une case, pas un quatrième scénario', () => {
   });
 
   test('le dépliant reste ouvert quand les taux redeviennent ceux d’un preset', () => {
-    /* Son ouverture venait de `scenario === 'perso'`. Depuis que le scenario se
-       deduit, remettre 6 % rallume Central — et le depliant se serait referme
-       sous le doigt de celui qui venait de regler le champ. Un drapeau de
-       session porte le geste, et il n'est jamais enregistre : aucune preference
-       de plus dans le stockage pour une chose qui ne survit pas a l'onglet. */
+    /* Le scenario se deduit des taux : remettre ceux de Central rallume
+       Central. Si l'ouverture du depliant suivait `scenario === 'perso'`, il se
+       refermerait sous le doigt de celui qui vient de regler le champ. Un
+       drapeau de session porte le geste, et il n'est jamais enregistre : aucune
+       preference de plus dans le stockage pour une chose qui ne survit pas a
+       l'onglet. */
     const src = lireSource('assets/app.js');
     vrai(/let avanceOuvert = false;/.test(src), 'le drapeau existe');
     vrai(/avanceOuvert \|\| s\.scenario === 'perso' \? 'open' : ''/.test(src),
@@ -151,9 +151,9 @@ suite('Personnalisé est une case, pas un quatrième scénario', () => {
   });
 
   test('cliquer sur un preset depuis Personnalisé applique ses valeurs', () => {
-    /* Le comportement existant, inchange : le clic pose `projScenario`, et les
-       taux viennent alors de la table — les chiffres personnalises restent dans
-       l'etat, ignores, prets a revenir si l'on repasse par le depliant. */
+    /* Le clic pose `projScenario`, et les taux viennent alors de la table --
+       les chiffres personnalises restent dans l'etat, ignores, prets a revenir
+       si l'on repasse par le depliant. */
     poserAlaMain(7, 1, 3.5);
     eq(projectionSettings().scenario, 'perso', 'on part de personnalisé');
     for (const [cle] of SCENARIOS_PROJECTION) {
@@ -182,7 +182,7 @@ suite('Personnalisé est une case, pas un quatrième scénario', () => {
     pres(projectionSettings().rate, 7, 'ses chiffres sont intacts');
 
     /* Et si ses valeurs tombent pile sur un preset, c'est ce preset qui
-       s'allume : personne n'a « choisi » Central, mais c'est bien Central que
+       s'allume : personne n'a "choisi" Central, mais c'est bien Central que
        ses chiffres decrivent. */
     const c = tauxDe('central');
     Fixture.poser(s => {
@@ -197,7 +197,7 @@ suite('Personnalisé est une case, pas un quatrième scénario', () => {
   test('l’inflation ne fait pas basculer en personnalisé', () => {
     /* Elle n'est pas dans les presets : aucune entree de SCENARIOS_PROJECTION ne
        la porte. La regler ne quitte donc aucun scenario, et c'est la logique
-       actuelle du produit — pas une decision prise au passage. */
+       actuelle du produit -- pas une decision prise au passage. */
     vrai(!POCHES_SCENARIO.includes('inflation'),
       'l’inflation n’est pas une hypothèse de scénario');
     for (const [cle] of SCENARIOS_PROJECTION) {
@@ -219,7 +219,7 @@ suite('Personnalisé est une case, pas un quatrième scénario', () => {
   test('les quatre poches du scénario se dérivent de la table', () => {
     /* La liste qui sert a comparer descend de la table : l'ecrire a la main
        aurait menti le jour ou une poche s'ajoute, et la comparaison aurait
-       declare « Central » deux jeux de taux differents. */
+       declare "Central" deux jeux de taux differents. */
     eq(POCHES_SCENARIO.join(' '), Object.keys(TAUX_SCENARIO.central).join(' '),
       'les poches comparées sont exactement celles que la table déclare');
     const src = lireSource('assets/store.js');
@@ -237,7 +237,7 @@ suite('Personnalisé est une case, pas un quatrième scénario', () => {
   });
 
   test('le résumé replié nomme personnalisé quand c’est le cas, et pas avant', () => {
-    /* Le resume dit « 1 650 EUR / mois · scenario personnalise ». Il lit le meme
+    /* Le resume dit le versement mensuel puis "scenario personnalise". Il lit le meme
        `s.scenario` que les paves : deux lectures de cette question finiraient par
        se contredire, et l'une des deux allumerait un pave que l'autre eteint. */
     const src = lireSource('assets/app.js');
@@ -258,13 +258,13 @@ suite('Personnalisé est une case, pas un quatrième scénario', () => {
 
   test('le chevron d’un dépliant imbriqué suit son propre pli', () => {
     /* Le depliant des taux vit A L'INTERIEUR de la carte des hypotheses, et les
-       deux portent `pli-reglages`. La regle qui retourne le chevron visait un
-       DESCENDANT : la carte ouverte retournait donc aussi le chevron de son
-       enfant ferme, et l'on lisait « Ouvrir ^ » sur un pli qui ne montrait
-       rien -- une fleche qui annonce l'inverse de ce que le clic va faire.
+       deux portent `pli-reglages`. Une regle qui viserait un DESCENDANT ferait
+       retourner par la carte ouverte le chevron de son enfant ferme, et l'on
+       lirait "Ouvrir ^" sur un pli qui ne montre rien -- une fleche qui annonce
+       l'inverse de ce que le clic va faire.
 
-       Mesure en DOM plutot qu'en lecture de CSS : c'est la cascade qui se
-       trompait, pas le texte de la regle. */
+       Mesure en DOM plutot qu'en lecture de CSS : c'est la cascade qui peut se
+       tromper, pas le texte de la regle. */
     const css = lireSource('assets/styles.css');
     vrai(/details\.pli-reglages\[open\] > summary \.pli-action::after/.test(css),
       'la rotation porte sur le sommaire du dépliant lui-même');
@@ -272,8 +272,8 @@ suite('Personnalisé est une case, pas un quatrième scénario', () => {
     const style = document.createElement('style');
     /* La transition est neutralisee : `getComputedStyle` rendue pendant les
        150 ms d'animation donne la valeur interpolee, soit la matrice identite au
-       premier instant. Un controle qui se contente de « different de none »
-       passerait donc sans qu'aucune rotation n'ait lieu -- il l'a fait. */
+       premier instant. Un controle qui se contente de "different de none"
+       passerait donc sans qu'aucune rotation n'ait lieu. */
     style.textContent = css + ' .pli-action::after { transition: none !important; }';
     const boite = document.createElement('div');
     boite.innerHTML = `
@@ -309,7 +309,7 @@ suite('Personnalisé est une case, pas un quatrième scénario', () => {
   });
 
   test('la case libre garde le style des trois autres, en clair comme en sombre', () => {
-    /* Aucune couleur « custom » : l'etat retenu est celui de tout le monde, un
+    /* Aucune couleur "custom" : l'etat retenu est celui de tout le monde, un
        lavis d'accent et un bord accentue, et les deux themes le tiennent parce
        que la regle passe par les variables. */
     const css = lireSource('assets/styles.css');
@@ -353,13 +353,13 @@ suite('Sans catégories, aucune commande de catégorie', () => {
   };
 
   test('les gestes qui créent une catégorie disparaissent avec elles', () => {
-    /* Le geste et son inverse cote a cote : « Une seule case a remplir » et
-       « + Ajouter une categorie ». Le second defaisait le premier en silence --
-       une categorie ajoutee est une categorie active, donc la page repassait en
-       saisie detaillee sans qu'un mot le dise.
+    /* Le geste et son inverse cote a cote : "Une seule case a remplir" et
+       "+ Ajouter une categorie". Le second deferait le premier en silence --
+       une categorie ajoutee est une categorie active, donc la page repasserait
+       en saisie detaillee sans qu'un mot le dise.
 
-       Le seul retour offert est celui qui l'annonce : « Remettre toutes les
-       categories ». */
+       Le seul retour offert est celui qui l'annonce : "Remettre toutes les
+       categories". */
     const src = lireSource('assets/app.js');
     const vue = src.slice(src.indexOf('function viewBudget(section'),
                           src.indexOf('function mountBudget('));
@@ -376,7 +376,7 @@ suite('Sans catégories, aucune commande de catégorie', () => {
       'gardé de la même façon : créer une case pendant qu’on en demande une seule '
       + 'ferait repasser la fenêtre en douze cases au rendu suivant');
     /* Et son cablage se garde aussi : sans quoi le premier rendu du mode
-       « une seule case » levait sur un `null`. */
+       "une seule case" leverait sur un `null`. */
     vrai(/if \(\$\('#depNouvelleCat'\)\) \$\('#depNouvelleCat'\)\.onclick/.test(src),
       'le câblage vérifie que le bouton est là');
   });
@@ -457,13 +457,13 @@ suite('Sans catégories, aucune commande de catégorie', () => {
   });
 
   test('aucune année de relevés ne se précrée', () => {
-    /* Douze lignes vides par an dans le stockage : ce n'etait pas une annee
-       ouverte, c'etaient douze mois a zero. Le journal n'affiche que les mois
-       renseignes, et « Ajouter un releve » cree la ligne du mois demande.
+    /* Douze lignes vides par an dans le stockage ne feraient pas une annee
+       ouverte, mais douze mois a zero. Le journal n'affiche que les mois
+       renseignes, et "Ajouter un releve" cree la ligne du mois demande.
 
        Le calendrier des DEPENSES reste : le tableau du detail mensuel est la
        seule porte vers un mois passe, et le retirer sans lui donner un
-       remplaçant fermerait cette porte. */
+       remplacant fermerait cette porte. */
     const src = lireSource('assets/store.js');
     const mig = src.slice(src.indexOf('ensureCalendarMonths(s.budget.expenses') - 1200,
                           src.indexOf('ensureCalendarMonths(s.budget.expenses') + 80);
@@ -501,9 +501,9 @@ suite('Sans catégories, aucune commande de catégorie', () => {
 suite('Les textes de Projection suivent les presets', () => {
 
   test('le capital garanti n’est plus annoncé à zéro par défaut', () => {
-    /* Les trois scenarios lui donnent 2, 2,5 ou 3 %, et l'infobulle disait
-       encore « zero par defaut, c'est a toi de l'affirmer ». Un texte qui
-       decrit un etat du moteur disparu fait douter d'un chiffre juste. */
+    /* Les trois scenarios lui donnent 2, 2,5 ou 3 % : une infobulle qui
+       l'annoncerait a zero par defaut decrirait un autre moteur, et ferait
+       douter d'un chiffre juste. */
     for (const [cle, , taux] of SCENARIOS_PROJECTION) {
       vrai(taux.garanti > 0, `« ${cle} » applique bien un taux au capital garanti`);
     }
@@ -518,10 +518,10 @@ suite('Les textes de Projection suivent les presets', () => {
   });
 
   test('la bande de la courbe nomme le taux qu’elle fait varier', () => {
-    /* Les deux courbes pointillees sont `capitalisation({ rate: s.rate ± 2 })` :
+    /* Les deux courbes pointillees sont `capitalisation({ rate: s.rate +/- 2 })` :
        seul le taux des actifs de marche bouge, le garanti et les autres actifs
-       gardent le leur. « Si le rendement fait deux points de plus ou de moins »
-       ne designait plus rien de precis depuis que chaque poche a le sien. */
+       gardent le leur, et la legende le dit : parler du rendement tout court ne
+       designerait rien de precis, chaque poche ayant le sien. */
     const src = lireSource('assets/app.js');
     vrai(/rate: num\(s\.rate\) - 2/.test(src) && /rate: num\(s\.rate\) \+ 2/.test(src),
       'les deux bandes ne font varier que le taux du marché');
@@ -550,11 +550,11 @@ suite('Les textes de Projection suivent les presets', () => {
 
   test('le levier du rendement nomme la poche qu’il fait bouger', () => {
     /* `targetRequirements` rejoue le moteur avec `rate` modifie, et lui seul :
-       « obtenir 8,4 % par an » se lisait comme un rendement du patrimoine
-       entier, et personne ne savait quel réglage bouger. */
+       un taux annonce sans nommer sa poche se lirait comme un rendement du
+       patrimoine entier, et personne ne saurait quel reglage bouger. */
     const store = lireSource('assets/store.js');
     /* La borne haute est la fonction SUIVANTE : `capitalisation` vit plus haut
-       dans le fichier, donc s'y fier rendait une tranche vide -- et un controle
+       dans le fichier, donc s'y fier rendrait une tranche vide -- et un controle
        sur une chaine vide passe pour de mauvaises raisons. */
     const iT = store.indexOf('function targetRequirements');
     const fn = store.slice(iT, store.indexOf('function monthsToObjective', iT));
@@ -569,9 +569,9 @@ suite('Les textes de Projection suivent les presets', () => {
   });
 
   test('aucun texte de Projection ne décrit une poche disparue', () => {
-    /* Le balayage : les mots des moteurs precedents, dans ce que l'ecran
-       affiche. Les commentaires sont ecartes -- ils ont le droit de raconter ce
-       qui n'est plus, c'est meme leur usage ici. */
+    /* Le balayage : des formulations qui decriraient une poche que le moteur
+       n'a pas, dans ce que l'ecran affiche. Les commentaires sont ecartes : ils
+       ne s'affichent pas. */
     const src = (lireSource('assets/app.js') || '').replace(/\/\*[\s\S]*?\*\//g, '');
     const vue = src.slice(src.indexOf('function viewObjective'),
                           src.indexOf('function mountObjective'));
@@ -727,8 +727,9 @@ suite('Un crédit ne s’amortit que d’une seule façon', () => {
   });
 
   test('un taux à zéro s’amortit tout droit', () => {
-    /* La formule fermee rendait `null` : un logarithme n'aime pas ce cas, et le
-       pret le plus simple restait sans reponse. */
+    /* Une formule fermee rendrait `null` : un logarithme n'aime pas ce cas, et
+       le pret le plus simple resterait sans reponse. L'echeancier amortit mois
+       par mois. */
     poserPret({ montant: 12000, taux: 0, mensualite: 1000, tauxAssurance: null, initial: null });
     const d = Store.state.etabs[0].dettes[0];
     const e = echeancierCredit(d);
@@ -741,8 +742,8 @@ suite('Un crédit ne s’amortit que d’une seule façon', () => {
   });
 
   test('un taux absent n’est pas un taux nul', () => {
-    /* Sans taux on ne sait pas departager capital et interets : annoncer « zero
-       de capital » sur une mensualite de 900 EUR serait faux dans l'autre sens,
+    /* Sans taux on ne sait pas departager capital et interets : annoncer "zero
+       de capital" sur une mensualite de 900 EUR serait faux dans l'autre sens,
        et l'annoncer entier le serait aussi. On se tait. */
     poserPret({ taux: undefined, tauxAssurance: null, initial: null });
     const d = Store.state.etabs[0].dettes[0];
@@ -840,8 +841,8 @@ suite('Un crédit ne s’amortit que d’une seule façon', () => {
   });
 
   test('les deux anciens moteurs délèguent, ils ne calculent plus', () => {
-    /* Si l'un des deux reprend un calcul a lui, les dates se remettront a
-       diverger sans qu'un ecran le signale. */
+    /* Si l'un des deux reprenait un calcul a lui, les dates divergeraient sans
+       qu'un ecran le signale. */
     const src = lireSource('assets/store.js');
     for (const nom of ['finCredit', 'resteAPayer']) {
       const i = src.indexOf(`function ${nom}(d) {`);
@@ -853,10 +854,10 @@ suite('Un crédit ne s’amortit que d’une seule façon', () => {
     /* Et une seule boucle d'amortissement dans tout le fichier. */
     eq((src.match(/function echeancierCredit/g) || []).length, 1,
       'un seul échéancier');
-    /* Le taux d'assurance d'un credit ne se lit plus que dans la definition :
-       les quatre copies sont parties. Le controle compte les lectures HORS de
-       cette fonction, pour ne pas dependre du nombre de fois qu'elle s'y
-       reference elle-meme. */
+    /* Le taux d'assurance d'un credit ne se lit que dans la definition de
+       assuranceMensuelleCredit. Le controle compte les lectures HORS de cette
+       fonction, pour ne pas dependre du nombre de fois qu'elle s'y reference
+       elle-meme. */
     const iA = src.indexOf('function assuranceMensuelleCredit');
     const defA = src.slice(iA, src.indexOf('\n}', iA));
     const dehors = src.replace(defA, '');
@@ -867,9 +868,8 @@ suite('Un crédit ne s’amortit que d’une seule façon', () => {
   });
 
   test('la banque du crédit vit dans une seule propriété', () => {
-    /* La fiche d'un etablissement editait « organisme » quand tout le reste lit
-       « preteur » : taper le nom de la banque depuis cet ecran partait dans une
-       clef que personne ne relisait. */
+    /* Tout lit "preteur" : un champ qui ecrirait "organisme" enverrait le nom
+       de la banque dans une clef que personne ne relit. */
     const src = lireSource('assets/app.js');
     vrai(!/dettes\.\$\{i\}\.organisme/.test(src),
       'aucun champ n’écrit plus la clef abandonnée');
@@ -880,30 +880,29 @@ suite('Un crédit ne s’amortit que d’une seule façon', () => {
     /* La migration : `preteur` gagne, sinon `organisme` la prend. Idempotente. */
     Fixture.poser(e => {
       e.etabs = [{ id: 'e_bq', nom: 'Banque', notes: '', dettes: [
-        { id: 'd1', libelle: 'A', montant: 1000, organisme: 'Crédit Agricole' },
-        { id: 'd2', libelle: 'B', montant: 1000, preteur: 'BNP', organisme: 'Autre' },
+        { id: 'd1', libelle: 'A', montant: 1000, organisme: 'Banque A' },
+        { id: 'd2', libelle: 'B', montant: 1000, preteur: 'Banque B', organisme: 'Autre' },
         { id: 'd3', libelle: 'C', montant: 1000, organisme: '' },
       ] }];
     });
     Store.migrate();
     const [a, b, c] = Store.state.etabs.find(x => x.id === 'e_bq').dettes;
-    eq(a.preteur, 'Crédit Agricole', 'la valeur orpheline devient le prêteur');
-    eq(b.preteur, 'BNP', 'un prêteur déjà là n’est pas écrasé');
+    eq(a.preteur, 'Banque A', 'la valeur orpheline devient le prêteur');
+    eq(b.preteur, 'Banque B', 'un prêteur déjà là n’est pas écrasé');
     eq(c.preteur, undefined, 'une valeur vide n’invente rien');
     for (const d of [a, b, c]) {
       eq(d.organisme, undefined, 'et la clef abandonnée disparaît');
     }
     Store.migrate();
-    eq(Store.state.etabs.find(x => x.id === 'e_bq').dettes[0].preteur, 'Crédit Agricole',
+    eq(Store.state.etabs.find(x => x.id === 'e_bq').dettes[0].preteur, 'Banque A',
       'deux passes donnent le même état');
   });
 
   test('le loyer se déclare avant les charges du propriétaire', () => {
-    /* Le texte disait « charges deduites si tu les paies », et `cashFlowBien`
-       retranche ensuite les charges rattachees : qui avait compris « net de
-       charges » les voyait retirees deux fois. Le libelle change, les montants
-       deja saisis ne bougent pas -- personne ne peut savoir comment un ancien
-       texte a ete lu. */
+    /* `cashFlowBien` retranche les charges rattachees : un loyer compris "net
+       de charges" les verrait retirees deux fois. Le loyer se declare donc hors
+       charges recuperables. Les montants deja saisis ne se convertissent pas :
+       rien ne dit sous quel libelle ils l'ont ete. */
     const src = lireSource('assets/app.js');
     vrai(!/charges déduites si tu les paies/.test(src),
       'la formulation qui invitait au double comptage est partie');
@@ -962,9 +961,6 @@ suite('Un crédit ne s’amortit que d’une seule façon', () => {
    La jauge de variation du journal
    ------------------------------------------------------------------ */
 /* ------------------------------------------------------------------
-   « Impact mensuel » montre ce qui a un sens, et rien d'autre
-   ------------------------------------------------------------------ */
-/* ------------------------------------------------------------------
    Le francais ecrit hors de trad()
    ------------------------------------------------------------------ */
 suite('Aucun français ne s’affiche hors du dictionnaire', () => {
@@ -979,14 +975,14 @@ suite('Aucun français ne s’affiche hors du dictionnaire', () => {
        btn.setAttribute('title', 'Vider le champ')
        titre: `Charge de ${nomCompteV2(c)}`
 
-     Onze chaines s'affichaient ainsi en francais dans l'interface anglaise, et
-     seule une lecture du texte REELLEMENT rendu par le navigateur les a
-     trouvees. Ce controle-ci les cherche dans la source, ou il peut tourner.
+     Seule une lecture du texte REELLEMENT rendu par le navigateur les trouve
+     toutes ; cette suite garde ce qui se verifie sans navigateur.
 
-     La methode : effacer d'abord tout ce qui est deja traduit -- le contenu de
-     chaque `trad(...)`, les commentaires -- puis chercher une lettre accentuee
-     dans ce qui reste. L'accent est le signal le plus sur : il ne se trouve ni
-     dans un identifiant, ni dans une classe CSS, ni dans un mot anglais. */
+     L'accent est le signal le plus sur : il ne se trouve ni dans un
+     identifiant, ni dans une classe CSS, ni dans un mot anglais. `nettoyer`
+     efface d'abord tout ce qui est deja traduit -- le contenu de chaque
+     `trad(...)`, les commentaires -- avant qu'on y cherche une lettre
+     accentuee. */
 
   /* Ce qui reste apres nettoyage, fichier par fichier. */
   const nettoyer = src => src
@@ -1002,35 +998,28 @@ suite('Aucun français ne s’affiche hors du dictionnaire', () => {
 
   const ACCENT = /[àâäéèêëîïôöùûüÿçœÀÂÄÉÈÊËÎÏÔÖÙÛÜŸÇŒ]/;
 
-  /* Un second controle a ete essaye ici, puis retire : il cherchait toute lettre
-     accentuee vivant hors d'un `trad(...)` dans app.js. Il a rendu 147
-     trouvailles dont presque toutes fausses -- le nettoyage prealable ne sait pas
-     suivre un `trad('...' + '...')` etale sur cinq lignes, ni les chaines qu'un
+  /* Aucun balayage de app.js ne cherche ici une lettre accentuee hors d'un
+     `trad(...)` : le nettoyage prealable ne sait pas suivre un
+     `trad('...' + '...')` etale sur plusieurs lignes, ni les chaines qu'un
      appelant traduit pour son compte (`aide()`, les libelles d'`askForm`). Un
      controle qui crie sur du code juste finit par ne plus etre lu.
 
-     La methode qui marche est ailleurs, et elle a trouve les onze : lire le
-     texte REELLEMENT affiche par le navigateur en anglais, sur chaque vue et
-     chaque fiche. Elle demande un navigateur, donc elle ne tient pas dans cette
-     suite ; elle se refait a la main quand un ecran change. */
+     La lecture du texte REELLEMENT affiche par le navigateur en anglais, sur
+     chaque vue et chaque fiche, demande un navigateur : elle ne tient pas dans
+     cette suite, et se refait a la main quand un ecran change. */
 
   test('les tables de données ont toutes leur traduction', () => {
-    /* L'autre moitie du meme defaut, et l'audit ne la voit pas non plus : quand
-       la clef se calcule -- `trad(typeCompte(c.type).label)` -- rien dans la
-       source ne dit quelle chaine sera demandee. On interroge donc les tables
-       elles-memes.
-
-       « Bien immobilier » manquait ici, et s'ecrivait en toutes lettres en tete
-       de la carte d'un bien dans l'interface anglaise. */
+    /* L'autre moitie du meme defaut : quand la clef se calcule --
+       `trad(typeCompte(c.type).label)` -- rien dans la source ne dit quelle
+       chaine sera demandee. On interroge donc les tables elles-memes. */
     const dico = lireSource('assets/i18n.js') || '';
     const manque = [];
     const verifier = (source, valeurs) => {
       for (const v of valeurs) {
         if (typeof v !== 'string' || !v.trim() || !ACCENT.test(v)) continue;
         /* Les deux ecritures : ce dictionnaire declare ses clefs tantot entre
-         guillemets, tantot entre apostrophes. N'en chercher qu'une signalait
-         trois clefs qui existaient -- et les ajouter aurait fait trois doublons,
-         que le controle voisin a immediatement vus. */
+         guillemets, tantot entre apostrophes. N'en chercher qu'une signalerait
+         des clefs qui existent, et les ajouter ferait des doublons. */
       if (!dico.includes(`"${v}"`) && !dico.includes(`'${v}'`)) {
         manque.push(`${source} → ${v}`);
       }
@@ -1050,11 +1039,11 @@ suite('Aucun français ne s’affiche hors du dictionnaire', () => {
 
 suite('La fiche d’un logement habité parle de coût, pas de rendement', () => {
 
-  /* Elle couvrait tous les cas a la fois : mensualite, cash-flow, patrimoine,
-     rendement, apport, mois loues, fiscalite. Sur une residence principale, la
-     moitie n'a aucun sens -- « Rendement brut 0,00 % » laisse croire qu'un calcul
-     locatif s'applique, « Mois loues par an : 12 » repond a une question que ce
-     bien ne pose pas.
+  /* Une fiche qui couvrirait tous les cas a la fois -- mensualite, cash-flow,
+     patrimoine, rendement, apport, mois loues, fiscalite -- n'aurait qu'une
+     moitie de sens sur une residence principale : "Rendement brut 0,00 %"
+     laisserait croire qu'un calcul locatif s'applique, "Mois loues par an : 12"
+     repondrait a une question que ce bien ne pose pas.
 
      Un logement qu'on habite pose UNE question : combien il fait sortir chaque
      mois. Et elle a deux reponses qu'il ne faut jamais additionner -- ce qui sort
@@ -1146,7 +1135,7 @@ suite('La fiche d’un logement habité parle de coût, pas de rendement', () =>
     pres(x.assuranceMois, 240000 * 0.003 / 12, 'la prime, sur le capital emprunté');
     pres(x.capitalMois, 1000 - x.assuranceMois - x.interetsMois,
       'et le capital est ce qui reste de la mensualité');
-    /* L'invariant qui compte : les deux lignes affichees refont le total payé. */
+    /* L'invariant qui compte : les deux lignes affichees refont le total paye. */
     pres(x.capitalMois + x.horsCapital, x.totalSorties,
       'capital remboursé et coût hors capital font exactement le total');
     pres(x.horsCapital, x.interetsMois + x.assuranceMois + x.autresCharges,
@@ -1263,7 +1252,7 @@ suite('La fiche d’un logement habité parle de coût, pas de rendement', () =>
       .test(residence), 'le titre suit l’usage, et lui seul');
     vrai(/trad\('À ta charge'\)/.test(residence),
       'les deux affichent ce qui reste à ta charge');
-    /* « Autres charges » et non « Charges proprietaire » : sur un logement qu'on
+    /* "Autres charges" et non "Charges proprietaire" : sur un logement qu'on
        habite, le mot designe un statut qui n'apprend rien. */
     vrai(/ligneCharges\(cf, 0, 'Autres charges'\)/.test(residence),
       'et le mot du locatif ne deborde pas sur le logement');
@@ -1320,7 +1309,7 @@ suite('Une jauge dit le rythme sans rien ajouter au chiffre', () => {
     vrai(/<i class="plat" style="left:clamp\(3px, \$\{zero\.toFixed\(1\)\}%, calc\(100% - 3px\)\)"><\/i>/.test(fn),
       'et pose un point neutre sur le zéro, qui reste dans la piste à ses bords');
     /* La longueur est une fraction de la piste entiere : le zero se place, la
-       barre ne se borne plus a une moitie. */
+       barre ne se borne pas a une moitie. */
     vrai(/Math\.abs\(part\) \* 100/.test(fn),
       'une fraction pleine occupe toute la piste');
   });
@@ -1443,9 +1432,10 @@ suite('Une jauge dit le rythme sans rien ajouter au chiffre', () => {
   });
 
   test('le dépliant « Voir les données » de la courbe est parti, et son attirail', () => {
-    /* Il rendait les memes nombres que la courbe trace juste au-dessus, sous une
-       autre forme, derriere un pli. Le journal des releves donne deja mois par
-       mois ce qu'il montrait, avec la porte pour corriger chaque ligne. */
+    /* Un depliant "Voir les donnees" rendrait les memes nombres que la courbe
+       trace juste au-dessus, sous une autre forme, derriere un pli. Le journal
+       des releves les donne deja mois par mois, avec la porte pour corriger
+       chaque ligne. */
     const src = lireSource('assets/app.js');
     const sansCom = src.replace(/\/\*[\s\S]*?\*\//g, '');
     for (const mort of ['detailEvolution', 'evoDetail', 'evoYear', 'evo-year']) {
@@ -1454,7 +1444,7 @@ suite('Une jauge dit le rythme sans rien ajouter au chiffre', () => {
     /* Les deux ecrans rendent donc la meme carte, sans drapeau. */
     vrai(/function carteEvolution\(\) \{/.test(src),
       'carteEvolution n’a plus de paramètre');
-    /* Et la classe CSS qui n'avait que ce tableau pour cliente. */
+    /* Et aucune regle CSS n'epingle le total d'un tableau absent. */
     const css = lireSource('assets/styles.css') || '';
     vrai(!css.includes('sticky-fin'), 'la règle qui épinglait son total est partie avec');
     vrai(css.includes('sticky-col'), 'celle des autres tableaux reste');
@@ -1486,18 +1476,14 @@ suite('Le net dit la vérité, même sous zéro', () => {
   });
 
   test('la pile de la courbe nette ne perd pas le reliquat de dette', () => {
-    /* Le defaut, precisement : la dette se retranchait poche par poche en
-       s'arretant a zero sur chacune, donc tout ce qui depassait les avoirs
-       disparaissait. La courbe se posait a zero au lieu de descendre sous
-       l'axe, et un patrimoine negatif n'apparaissait jamais.
+    /* Une dette retranchee poche par poche en s'arretant a zero sur chacune
+       ferait disparaitre tout ce qui depasse les avoirs : la courbe se poserait
+       a zero au lieu de descendre sous l'axe, et un patrimoine negatif
+       n'apparaitrait jamais. Le reliquat va sur la poche des prets.
 
-       Ce controle REJOUAIT la regle sur ses propres donnees, parce que
-       `pointsEvolution` vivait dans app.js, que le harnais ne charge pas : une
-       copie du calcul servait a verifier le calcul. Elle ne pouvait rien
-       prouver — les deux pouvaient se tromper de la meme facon, et le seul
-       ancrage sur le vrai code etait une expression rationnelle sur sa source.
-
-       La fonction vit dans `store.js` : on l'appelle. */
+       `pointsEvolution` vit dans `store.js` : on l'appelle, plutot que de
+       rejouer la regle sur une copie du calcul, qui se tromperait de la meme
+       facon que l'original. */
     poser(releve(50000, 70000, '2026-01-01'));
     /* Sans le point d'aujourd'hui : le fixture de cette suite n'a qu'un compte
        de cash a zero, et la photo actuelle ecraserait le releve qu'on teste. */
@@ -1510,9 +1496,8 @@ suite('Le net dit la vérité, même sous zéro', () => {
   });
 
   test('en brut, la même courbe ne retranche rien', () => {
-    /* La bascule du haut de page gouverne la courbe depuis qu'elle n'a plus la
-       sienne. Le brut doit donc rendre les avoirs tels quels, dette comprise
-       nulle part. */
+    /* La bascule du haut de page gouverne la courbe, qui n'en a pas a elle.
+       Le brut doit donc rendre les avoirs tels quels, sans dette nulle part. */
     poser(releve(50000, 70000, '2026-01-01'));
     const pt = pointsEvolution({ net: false }).find(p => p.date === '2026-01-01');
     pres(pt.total, 50000, 'les avoirs seuls');
@@ -1520,12 +1505,12 @@ suite('Le net dit la vérité, même sous zéro', () => {
   });
 
   test('un mois sans relevé compte pour le temps qu’il a pris', () => {
-    /* LE DEFAUT. La moyenne valait `somme / nombre d'ecarts`. Tant qu'on saisit
-       tous les mois les deux coincident, et c'est pour ca qu'il a tenu. Un mois
-       saute, et ils divergent : janvier 100 000, avril 106 000, un seul ecart de
-       +6 000, donc « 6 000 EUR par mois » pour un rythme reel de 2 000. Le
-       chiffre nourrit le rythme d'accumulation, la trajectoire vers l'objectif
-       et l'ecart au budget : trois lectures triplees d'un coup, du cote
+    /* La moyenne se divise par des mois, pas par des ecarts. Tant qu'on saisit
+       tous les mois les deux coincident ; un mois saute, et ils divergent :
+       janvier 100 000, avril 106 000, un seul ecart de +6 000, donc "6 000 EUR
+       par mois" pour un rythme reel de 2 000. Le chiffre nourrit le rythme
+       d'accumulation, la trajectoire vers l'objectif et l'ecart au budget :
+       diviser par les ecarts triplerait ces trois lectures d'un coup, du cote
        flatteur. */
     poser(releve(100000, 0, '2026-01-01'), releve(106000, 0, '2026-04-01'));
     const p = monthlyPace();
@@ -1534,14 +1519,14 @@ suite('Le net dit la vérité, même sous zéro', () => {
     eq(p.points[0].mois, 3, 'et l’écart le porte lui-même');
     pres(p.points[0].delta, 6000, 'le delta brut reste le delta brut');
     pres(p.average, 2000, 'la moyenne mensuelle vaut deux mille, pas six');
-    /* Février et mars ne sont pas inventés pour autant. */
+    /* Fevrier et mars ne sont pas inventes pour autant. */
     eq(historySeries({ includeNow: false }).length, 2, 'deux points, et deux seulement');
     eq(p.positive, 1, 'une hausse observée');
   });
 
   test('sans mois manqué, la moyenne ne bouge pas d’un centime', () => {
-    /* La correction ne doit rien changer au cas ordinaire : douze relevés
-       mensuels, douze écarts, douze mois. */
+    /* Le cas ordinaire ne bouge pas : douze releves mensuels, onze ecarts,
+       onze mois. */
     const lignes = [];
     for (let m = 1; m <= 12; m++)
       lignes.push(releve(100000 + m * 500, 0, `2026-${String(m).padStart(2, '0')}-01`));
@@ -1555,10 +1540,10 @@ suite('Le net dit la vérité, même sous zéro', () => {
   });
 
   test('le journal dit quand un écart couvre plusieurs mois', () => {
-    /* Le chiffre de droite ne change pas : c'est le delta brut entre deux
-       relevés. Mais « +2 850 EUR » sous « juil. 26 » se lit comme un mois
-       exceptionnel quand mai et juin manquent, et trois mois ordinaires
-       l'expliquent. La mention se tait dans le cas ordinaire. */
+    /* Le chiffre de droite reste le delta brut entre deux releves. Mais
+       "+6 000 EUR" sous "avr. 26" se lit comme un mois exceptionnel quand
+       fevrier et mars manquent, et trois mois ordinaires l'expliquent. La
+       mention se tait dans le cas ordinaire. */
     const src = lireSource('assets/app.js');
     const vue = src.slice(src.indexOf('const lignes = tous.filter'),
                           src.indexOf('Entrées et sorties exceptionnelles'));
@@ -1571,8 +1556,8 @@ suite('Le net dit la vérité, même sous zéro', () => {
   });
 
   test('la moyenne se divise par des mois, jusque dans la réconciliation', () => {
-    /* `savingsReconciliation` annonce « N derniers mois clos » : elle lisait le
-       nombre d'écarts, donc « 1 dernier mois clos » pour une période de trois. */
+    /* `savingsReconciliation` annonce "N derniers mois clos" : lire le nombre
+       d'ecarts y ecrirait "1 dernier mois clos" pour une periode de trois. */
     poser(releve(100000, 0, '2026-01-01'), releve(106000, 0, '2026-04-01'));
     const rec = savingsReconciliation();
     eq(rec.monthsSpan, 3, 'trois mois clos, et non un écart');
@@ -1580,8 +1565,8 @@ suite('Le net dit la vérité, même sous zéro', () => {
   });
 
   test('deux relevés du même mois ne divisent pas par zéro', () => {
-    /* Une clôture au 31/12 est une deuxième photo de décembre. `monthlyPace`
-       l'écarte déjà ; la borne à un mois est la ceinture. */
+    /* Une cloture au 31/12 est une deuxieme photo de decembre. `monthlyPace`
+       l'ecarte deja ; la borne a un mois est la ceinture. */
     eq(moisEntre('2026-12-01', '2026-12-31'), 1, 'le même mois vaut un');
     eq(moisEntre('2026-12-01', '2027-01-01'), 1, 'décembre à janvier vaut un');
     eq(moisEntre('2026-01-01', '2027-01-01'), 12, 'et une année en vaut douze');
@@ -1589,9 +1574,9 @@ suite('Le net dit la vérité, même sous zéro', () => {
   });
 
   test('le passé ne se recalcule pas avec les comptes d’aujourd’hui', () => {
-    /* Trois faits d'un coup, et ils tiennent tous : un compte créé plus tard
-       n'apparaît pas dans le passé, un compte archivé n'efface pas le passé, et
-       un compte renommé garde son montant parce que la clef est son identifiant. */
+    /* Trois faits d'un coup, et ils tiennent tous : un compte cree plus tard
+       n'apparait pas dans le passe, un compte archive n'efface pas le passe, et
+       un compte renomme garde son montant parce que la clef est son identifiant. */
     Fixture.poser(e => {
       e.comptes = [
         { id: 'c_a', etabId: 'e_b', type: 'courant', statut: 'ouvert', libelle: 'Mon compte',
@@ -1607,11 +1592,11 @@ suite('Le net dit la vérité, même sous zéro', () => {
     refreshAccounts();
     const janvier = () => historySeries({ includeNow: false })[0].total;
     pres(janvier(), 30000, 'janvier vaut trente mille');
-    /* Archivage : le passé ne bouge pas. */
+    /* Archivage : le passe ne bouge pas. */
     compteById('c_b').statut = 'archive';
     refreshAccounts();
     pres(janvier(), 30000, 'archiver le livret n’efface pas les vingt mille de janvier');
-    /* Renommage : le montant suit l'identifiant, jamais le libellé. */
+    /* Renommage : le montant suit l'identifiant, jamais le libelle. */
     compteById('c_a').libelle = 'Compte courant principal';
     compteById('c_a').court = 'Compte courant principal';
     refreshAccounts();
@@ -1620,9 +1605,9 @@ suite('Le net dit la vérité, même sous zéro', () => {
   });
 
   test('un compte créé plus tard n’apparaît pas dans le passé', () => {
-    /* Les deux comptes existent aujourd'hui ; seul le relevé de février porte le
-       second. C'est la question posée : le passé connaît-il un compte ouvert
-       après lui ? */
+    /* Les deux comptes existent aujourd'hui ; seul le releve de fevrier porte le
+       second. C'est la question posee : le passe connait-il un compte ouvert
+       apres lui ? */
     Fixture.poser(e => {
       e.comptes = [
         { id: 'c_courant', etabId: 'e_b', type: 'courant', statut: 'ouvert', libelle: 'Courant',
@@ -1647,11 +1632,11 @@ suite('Le net dit la vérité, même sous zéro', () => {
   });
 
   test('supprimer un compte laisse une pierre tombale, et le passé avec', () => {
-    /* Un relevé ancien n'a pas de ventilation `parts` : son total se recompose
-       en parcourant les comptes CONNUS. Un compte retiré de la liste emporterait
-       donc ses montants passés. L'application ne le retire pas vraiment : elle
+    /* Un releve ancien n'a pas de ventilation `parts` : son total se recompose
+       en parcourant les comptes CONNUS. Un compte retire de la liste emporterait
+       donc ses montants passes. L'application ne le retire pas vraiment : elle
        pose d'abord une pierre tombale dans `accounts`, invisible partout, et
-       c'est elle qui garde son sens à la colonne du relevé. */
+       c'est elle qui garde son sens a la colonne du releve. */
     Fixture.poser(e => {
       e.comptes = [
         { id: 'c_a', etabId: 'e_b', type: 'courant', statut: 'ouvert', libelle: 'A', court: 'A',
@@ -1662,7 +1647,7 @@ suite('Le net dit la vérité, même sous zéro', () => {
           cash: [{ montant: 0, affectation: 'precaution' }], lignes: [] },
       ];
       e.etabs = [{ id: 'e_b', nom: 'Banque', notes: '', dettes: [] }];
-      /* Sans `parts` : la forme des relevés écrits avant qu'elle existe. */
+      /* Sans `parts` : la forme des releves ecrits avant qu'elle existe. */
       e.monthly = [{ date: '2026-01-01', comment: '', dettes: 0, v: { c_a: 10000, c_b: 20000 } }];
     });
     refreshAccounts();
@@ -1702,7 +1687,7 @@ suite('Le net dit la vérité, même sous zéro', () => {
   });
 
   test('dépenses et relevé ne se valident jamais l’un l’autre', () => {
-    /* Deux notions, deux questions : un flux du mois et un stock à une date. */
+    /* Deux notions, deux questions : un flux du mois et un stock a une date. */
     poser();
     Store.state.budget.expenses = [{ date: '2026-09-01', v: { courses: 600 } }];
     eq(aUnRelevePatrimonial(), false, 'des dépenses ne font pas un relevé');
@@ -1715,8 +1700,8 @@ suite('Le net dit la vérité, même sous zéro', () => {
   });
 
   test('la performance de marché n’est pas une capacité d’épargne', () => {
-    /* Non-regression : dix mille de hausse entre deux relevés ne deviennent ni
-       du budget investissable, ni un versement suggéré. */
+    /* Non-regression : dix mille de hausse entre deux releves ne deviennent ni
+       du budget investissable, ni un versement suggere. */
     poser(releve(100000, 0, '2026-01-01'), releve(110000, 0, '2026-02-01'));
     Store.state.budget.income = []; Store.state.budget.fixedCharges = [];
     pres(monthlyPace().points[0].delta, 10000, 'le patrimoine a bien monté de dix mille');
@@ -1726,10 +1711,10 @@ suite('Le net dit la vérité, même sous zéro', () => {
   });
 
   test('un relevé qui ne porte qu’une dette n’est pas vide', () => {
-    /* Zero avoir, vingt mille de dette : `rowIsEmpty` ne regardait que les
-       montants par compte, donc ce relevé disparaissait du journal, des années
-       offertes au sélecteur, de la courbe et de toutes les statistiques. Son
-       patrimoine net vaut -20 000 EUR, ce qui est un fait. */
+    /* Zero avoir, vingt mille de dette : `rowIsEmpty` regarde aussi la dette,
+       sans quoi ce releve disparaitrait du journal, des annees offertes au
+       selecteur, de la courbe et de toutes les statistiques. Son patrimoine
+       net vaut -20 000 EUR, ce qui est un fait. */
     poser(releve(0, 20000, '2026-01-01'));
     const r = Store.state.monthly[0];
     vrai(!rowIsEmpty(r), 'il porte une dette, donc il porte quelque chose');
@@ -1740,13 +1725,12 @@ suite('Le net dit la vérité, même sous zéro', () => {
   });
 
   test('une ligne du calendrier reste vide', () => {
-    /* L'autre moitie : la definition ne s'est pas seulement elargie, elle est
-       restee juste. Une ligne du calendrier ne devient pas un releve.
+    /* L'autre moitie : une ligne du calendrier ne devient pas un releve.
 
-       Le fixture disait `v: { c_courant: 0 }`, ce qui n'est PAS une ligne de
-       calendrier mais un zero declare — et un zero declare est desormais un
-       fait. Une ligne du calendrier ne porte aucune clef : c'est ce que
-       `clearMonthRow` ecrit, et ce que le calendrier ouvre. */
+       Une ligne du calendrier ne porte aucune clef : c'est ce que
+       `clearMonthRow` ecrit, et ce que le calendrier ouvre. `v: { c_courant: 0 }`
+       n'en est PAS une : c'est un zero declare, et un zero declare est un
+       fait. */
     poser({ date: '2026-01-01', comment: '', v: {}, dettes: 0 });
     vrai(rowIsEmpty(Store.state.monthly[0]), 'aucun champ rempli : vide');
     Store.state.monthly[0].dettes = undefined;
@@ -1778,18 +1762,18 @@ suite('Le net dit la vérité, même sous zéro', () => {
   });
 
   test('effacer un relevé le fait vraiment quitter le journal', () => {
-    /* La consequence de l'elargissement, et elle se serait vue tout de suite :
-       `clearMonthRow` videt les montants et laissait la dette, donc le relevé
-       qu'on vient d'effacer restait au journal avec son seul capital restant dû.
-       Le geste aurait dit l'inverse de ce qu'il fait. */
+    /* Une dette suffit a faire un releve : `clearMonthRow` vide donc la dette
+       avec les montants. Sinon le releve qu'on vient d'effacer resterait au
+       journal avec son seul capital restant du, et le geste dirait l'inverse
+       de ce qu'il fait. */
     poser(releve(50000, 70000, '2026-01-01'));
     vrai(!rowIsEmpty(Store.state.monthly[0]), 'le relevé existe');
     clearMonthRow(Store.state.monthly[0], 'comment');
     vrai(rowIsEmpty(Store.state.monthly[0]), 'effacé, il est vide');
     eq(Store.state.monthly[0].dettes, undefined, 'sa dette est partie avec ses montants');
     eq(historySeries({ includeNow: false }).length, 0, 'et il quitte la série');
-    /* Le texte du geste ne promet plus une liste de douze mois : cette liste
-       n'existe plus pour les relevés. */
+    /* Le texte du geste ne promet pas une liste de douze mois : les releves
+       n'en ont pas. */
     const src = lireSource('assets/app.js');
     const fn = src.slice(src.indexOf('async function viderOuSupprimerMois'),
                          src.indexOf('function askMonthlySnapshot'));
@@ -1799,8 +1783,8 @@ suite('Le net dit la vérité, même sous zéro', () => {
   });
 
   test('la confirmation d’enregistrement annonce le net', () => {
-    /* Annoncer le brut, « 354 000 EUR enregistre », quand le journal affiche
-       198 000 EUR, donnerait deux chiffres pour un seul geste. */
+    /* Annoncer le brut quand le journal affiche le net donnerait deux
+       chiffres pour un seul geste. */
     const src = lireSource('assets/app.js');
     const i = src.indexOf("${trad('enregistré')}`);", src.indexOf('function askMonthlySnapshot'));
     const bloc = src.slice(i - 500, i + 40);
@@ -1867,9 +1851,8 @@ suite('Le net dit la vérité, même sous zéro', () => {
   });
 
   test('les données catégorisées survivent au mode, une fois de plus', () => {
-    /* Deja verifie, et re-verifie ici parce que c'est la promesse que cette
-       passe ne doit pas casser : masquer des commandes ne touche a aucun
-       montant. */
+    /* Deja verifie plus haut, et re-verifie ici a cote des commandes qu'on
+       masque : masquer des commandes ne touche a aucun montant. */
     Fixture.poser(e => {
       e.budget.categories = ['Courses', 'Sport'];
       e.budget.retirees = [];
@@ -1894,10 +1877,10 @@ suite('Le net dit la vérité, même sous zéro', () => {
 
 suite('Un relevé se lit en net, partout', () => {
 
-  /* « Aujourd'hui » annonce un net, les variations se comptent en net, le rythme
-     d'accumulation aussi -- et le journal des releves montrait le brut. Le meme
-     mois valait donc deux montants selon la carte qui le lisait, et l'ecart
-     valait un pret immobilier entier. */
+  /* "Aujourd'hui" annonce un net, les variations se comptent en net, le rythme
+     d'accumulation aussi : le journal des releves montre donc le net. En brut,
+     le meme mois vaudrait deux montants selon la carte qui le lit, et l'ecart
+     vaudrait un pret immobilier entier. */
 
   /* Un patrimoine rond : un compte courant, et une dette qu'on fait varier. */
   const releve = (avoirs, dettes, mois) => ({
@@ -1941,7 +1924,8 @@ suite('Un relevé se lit en net, partout', () => {
   test('rembourser sans rien gagner fait monter le net', () => {
     /* Le cas qui rend la convention necessaire : les avoirs ne bougent pas d'un
        centime, la dette baisse de mille, et le patrimoine a monte de mille. Un
-       journal en brut affichait deux fois le meme montant et une variation nulle. */
+       journal en brut afficherait deux fois le meme montant et une variation
+       nulle. */
     poserReleves(releve(300000, 150000, '2026-01-31'),
                  releve(300000, 149000, '2026-02-28'));
     const [a, b] = Store.state.monthly;
@@ -1951,9 +1935,8 @@ suite('Un relevé se lit en net, partout', () => {
   });
 
   test('la série, les variations et le rythme lisent la même définition', () => {
-    /* La soustraction s'ecrivait a trois endroits. Elle s'ecrit dans `rowNet`, et
-       `historySeries` la publie : un quatrieme lecteur ne pourra pas la refaire
-       de travers. */
+    /* La soustraction s'ecrit dans `rowNet`, et `historySeries` la publie : un
+       nouveau lecteur ne peut pas la refaire de travers. */
     poserReleves(releve(300000, 150000, '2026-01-31'),
                  releve(302000, 149000, '2026-02-28'));
     const pts = historySeries({ includeNow: false });
@@ -1973,18 +1956,16 @@ suite('Un relevé se lit en net, partout', () => {
 
   test('le journal et la fiche du relevé montrent le même montant', () => {
     /* La ligne qu'on touche doit retrouver le meme chiffre dans la fenetre qui
-       s'ouvre. Le journal affichait le brut, la fiche le brut en tete et le net
-       en note : trois lectures pour un mois. */
+       s'ouvre : le journal et la fiche annoncent tous deux le net, et le brut
+       se lit en dessous. */
     const src = lireSource('assets/app.js');
     const vue = src.slice(src.indexOf('function viewHistory('),
                           src.indexOf('function mountHistory('));
     vrai(/const net = rowNet\(r\), total = rowTotal\(r\)/.test(vue),
       'le journal calcule le net du relevé');
     vrai(/valeur: fmtEUR0\(net\)/.test(vue), 'et c’est lui qu’il affiche');
-    /* La borne haute est la fiche suivante : « /* --- Budget » existe plus haut
-       dans le fichier, donc la tranche partait vide. */
-    /* La borne haute est la fiche suivante d'APERCUS. « /* --- Budget » existe
-       aussi plus haut dans le fichier, donc s'y fier rendait une tranche vide. */
+    /* La borne haute est la fiche suivante d'APERCUS. "/* --- Budget" existe
+       aussi plus haut dans le fichier, donc s'y fier rendrait une tranche vide. */
     const iF = src.indexOf('releveMois: (arg)');
     const fiche = src.slice(iF, src.indexOf('moisObjectif: (sens)', iF));
     vrai(fiche.length > 500, 'la fiche du relevé doit être trouvable');
@@ -2001,10 +1982,9 @@ suite('Un relevé se lit en net, partout', () => {
   });
 
   test('le montant annoncé avant l’enregistrement est celui de la liste', () => {
-    /* Le bandeau du mois en attente promet « tous les montants actuels ({v}) ».
-       `nowTotals().total` est le patrimoine NET -- il l'a toujours ete -- donc
-       promettre un net puis afficher un brut dans la liste faisait deux chiffres
-       pour un seul geste. */
+    /* Le bandeau du mois en attente promet "tous les montants actuels ({v})".
+       `nowTotals().total` est le patrimoine NET : promettre un net puis afficher
+       un brut dans la liste ferait deux chiffres pour un seul geste. */
     const src = lireSource('assets/app.js');
     const vue = src.slice(src.indexOf('function viewHistory('),
                           src.indexOf('function mountHistory('));

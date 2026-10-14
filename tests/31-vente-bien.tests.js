@@ -270,7 +270,7 @@ suite('Vente d’un bien', () => {
   });
 
   test('un prix qui ne couvre pas les crédits se paie depuis un compte qui le peut', () => {
-    const prix = { l_appart: 150000 };           // 75 000 pour ta part, 100 000 de crédit
+    const prix = { l_appart: 150000 };           // 75 000 pour ta part, 100 000 de credit
     poser();
     vrai(/désigne le compte qui paie la différence/.test(verifierVenteBien(saisie({ prix, cashAccount: '', cashPart: '' }))),
       'sans compte : refus');

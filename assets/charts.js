@@ -100,6 +100,7 @@ const Charts = (() => {
       if (cur) cur.setAttribute('hidden', '');
       const spark = tip.parentElement && tip.parentElement.querySelector('.spark-curseur');
       if (spark) spark.style.display = 'none';
+      if (tip.parentElement) tip.parentElement.querySelectorAll('.vb.actif').forEach(n => n.classList.remove('actif'));
     }
   }
 
@@ -140,17 +141,41 @@ const Charts = (() => {
      tous deux notes dans app.js. */
   const SEUIL_GLISSE = 8;    // px
   const DELAI_APPUI = 130;   // ms
+  const ECART_DOIGT = 28;    // px entre le point de contact et une bulle rangee a cote
 
-  function cablerInfobulle(cible, montrer, masquer) {
-    let arme = false, abandonne = false, depart = null, minuteur = null;
+  function masqueParLeHaut(x, y) {
+    if (y < 0) return true;
+    for (let e = document.elementFromPoint(x, y); e && e !== document.body; e = e.parentElement) {
+      const p = getComputedStyle(e).position;
+      if (p === 'fixed' || p === 'sticky') return true;
+    }
+    return false;
+  }
+
+  /* `options.tap`, en ms, donne aussi un sens au tap court : le doigt leve
+     avant l'armement, sans glissement, montre le point touche et le laisse
+     lire ce temps-la. Sans l'option, un tap ne montre rien -- la courbe de
+     l'accueil se lit en appuyant.
+
+     Le minuteur de fermeture d'un tap s'annule au `pointerdown` suivant, quel
+     qu'il soit : sans cela, deux taps rapproches fermeraient la bulle du
+     second avec le minuteur du premier. Et `pointerleave`, qui suit toujours
+     `pointerup` au doigt, ne ferme pas une bulle de tap en attente. */
+  function cablerInfobulle(cible, montrer, masquer, options = {}) {
+    let arme = false, abandonne = false, depart = null, minuteur = null, fermeture = null;
     const desarmer = () => {
       clearTimeout(minuteur); minuteur = null;
       arme = false; abandonne = false; depart = null;
     };
-    const cacher = () => { desarmer(); masquer(); };
+    const cacher = () => { desarmer(); clearTimeout(fermeture); fermeture = null; masquer(); };
+    const fermerPlusTard = () => {
+      clearTimeout(fermeture);
+      fermeture = setTimeout(() => { fermeture = null; masquer(); }, options.tap);
+    };
 
     cible.addEventListener('pointerdown', ev => {
       try { cible.setPointerCapture(ev.pointerId); } catch (e) { /* pointeur deja parti */ }
+      clearTimeout(fermeture); fermeture = null;
       desarmer();
       if (ev.pointerType !== 'touch') { arme = true; montrer(ev); return; }
       depart = { x: ev.clientX, y: ev.clientY, ev };
@@ -167,8 +192,20 @@ const Charts = (() => {
       if (dx > SEUIL_GLISSE) { clearTimeout(minuteur); minuteur = null; arme = true; montrer(ev); }
     });
 
-    cible.addEventListener('pointerleave', cacher);
-    cible.addEventListener('pointerup', cacher);
+    cible.addEventListener('pointerleave', ev => {
+      if (ev.pointerType === 'touch' && fermeture) return;
+      cacher();
+    });
+    cible.addEventListener('pointerup', ev => {
+      if (options.tap && ev.pointerType === 'touch' && !arme && !abandonne && depart) {
+        const touche = depart.ev;
+        desarmer();
+        montrer(touche);
+        fermerPlusTard();
+        return;
+      }
+      cacher();
+    });
 
     /* `pointercancel` ne ferme pas une infobulle deja ouverte.
 
@@ -179,8 +216,15 @@ const Charts = (() => {
 
        Tant qu'elle n'est pas ouverte, en revanche, l'annulation est le signal
        le plus sur qui existe : le navigateur vient de decider que ce geste est
-       un defilement. Le minuteur en attente n'a plus rien a ouvrir. */
-    cible.addEventListener('pointercancel', () => { if (!arme) desarmer(); });
+       un defilement. Le minuteur en attente n'a plus rien a ouvrir.
+
+       Avec `options.tap`, une annulation apres armement ferme plus tard :
+       sinon la bulle resterait ouverte sans doigt pour la refermer. Un vrai
+       defilement la ferme tout de suite, par l'ecouteur pose dans `ensureTip`. */
+    cible.addEventListener('pointercancel', () => {
+      if (!arme) { desarmer(); return; }
+      if (options.tap) { desarmer(); fermerPlusTard(); }
+    });
   }
 
   function ensureTip(el) {
@@ -940,7 +984,50 @@ const Charts = (() => {
     });
   }
 
+  function miniSerie(serie, couleur) {
+    if (!serie || serie.length < 2) return '';
+    const max = Math.max(...serie.map(s => Math.abs(num(s.value))), 0);
+    if (max <= 0.005) return '';
+    const pas = 12, bw = 8, hMax = 26, lettre = 11;
+    const neg = serie.some(s => num(s.value) < -0.005);
+    const zero = neg ? hMax / 2 : hMax;
+    const echelle = zero / max;
+    let haut = -1;
+    serie.forEach((s, i) => { if (num(s.value) > 0.005 && (haut < 0 || num(s.value) > num(serie[haut].value))) haut = i; });
+    const W = serie.length * pas, H = hMax + lettre + 2;
+    const initiale = mois => new Date(+mois.slice(0, 4), +mois.slice(5, 7) - 1, 1)
+      .toLocaleString(locale(), { month: 'narrow' });
+    return `<svg class="tt-mois" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">
+      ${serie.map((s, i) => {
+        const v = num(s.value), h = Math.abs(v) * echelle;
+        return `<rect x="${i * pas + (pas - bw) / 2}" y="${v >= 0 ? zero - h : zero}" width="${bw}"
+                      height="${Math.abs(v) > 0.005 ? Math.max(1, h) : 0}" rx="1.5"
+                      fill="${i === haut ? couleur : 'currentColor'}" fill-opacity="${i === haut ? 1 : .35}"/>
+          <text x="${i * pas + pas / 2}" y="${H - 1}" text-anchor="middle" class="tt-mois-lettre">${esc(initiale(s.month))}</text>`;
+      }).join('')}
+      <line x1="0" x2="${W}" y1="${zero}" y2="${zero}" stroke="currentColor" stroke-opacity=".35"/>
+    </svg>`;
+  }
+
+  /* L'ecart avec la meme periode de l'annee d'avant, signe. La part ne se
+     dit que sur une base positive : `pct` vaut null sinon, et la ligne garde
+     l'ecart en euros seul. "memes mois" quand la periode comparee est plus
+     courte que l'annee lue. */
+  function ligneComparaison(c) {
+    const signe = v => (v > 0.005 ? '+' : v < -0.005 ? '−' : '');
+    const libelle = trad(c.memesMois ? 'vs {a}, mêmes mois' : 'vs {a}').replace('{a}', c.annee);
+    const part = c.pct == null ? '' : ` (${signe(c.pct)}${fmtPct(Math.abs(c.pct), 0)})`;
+    return `<div class="tt-row tt-total">${esc(libelle)}<b>${signe(c.ecart)}${fmtEUR0(Math.abs(c.ecart))}${part}</b></div>`;
+  }
+
   function rankedBars(el, opts) {
+    /* Sa bulle peut etre plus haute que le graphique : avec une ou deux
+       lignes, il ne fait que 38 ou 68 px. Le `contain: paint` de `.chart`, qui
+       borne une serie hors echelle, la couperait ; un classement horizontal
+       n'a pas de serie hors echelle, ses barres se calculent dans sa largeur.
+       La feuille lui rend donc le debordement. Un conteneur absent passe en
+       silence, comme dans `mount`. */
+    if (el) el.classList.add('chart-debord');
     mount(el, () => {
       const items = opts.items.filter(i => opts.keepZero || i.value !== 0);
       const c = ink();
@@ -993,7 +1080,11 @@ const Charts = (() => {
             ${sous ? `<div class="tt-sous">${esc(sous)}</div>` : ''}
             <div class="tt-row">${esc(opts.valueLabel || trad('Montant'))}<b>${fmtEUR(it.value)}</b></div>
             ${it.average != null ? `<div class="tt-row">${trad('Par mois')}<b>${fmtEUR(it.average)}</b></div>` : ''}
-            <div class="tt-row">${trad('Part')}<b>${fmtPct(it.pct ?? 0)}</b></div>`;
+            <div class="tt-row">${trad('Part')}<b>${fmtPct(it.pct ?? 0)}</b></div>
+            ${miniSerie(it.serie, it.couleur || color)}
+            ${it.plusHaut ? `<div class="tt-row tt-haut">${trad('Le plus haut')}<b>${esc(it.plusHaut.label)} · ${fmtEUR0(it.plusHaut.value)}</b></div>` : ''}
+            ${it.comparaison ? ligneComparaison(it.comparaison) : ''}`;
+          tip.style.left = '0px';
           tip.style.left = Math.max(4, W - tip.offsetWidth - 8) + 'px';
           /* Le haut suit la ligne survolee, et c'est la seule infobulle des
              graphiques dans ce cas : les autres s'epinglent en tete, donc rien
@@ -1097,6 +1188,11 @@ const Charts = (() => {
   }
 
   function barsWithTarget(el, opts) {
+    /* Sa bulle peut sortir par le haut, au-dessus d'un doigt pose au milieu
+       du graphique : le decoupage de `.chart` la couperait. Les barres, elles,
+       restent sous la plus haute graduation, qui couvre le plus grand mois et
+       l'objectif : aucune serie ne sort de l'echelle. */
+    if (el) el.classList.add('chart-debord');
     mount(el, () => {
       const { items, target, targetLabel } = opts;   // items: {label, value, note}
       const c = ink();
@@ -1130,7 +1226,7 @@ const Charts = (() => {
             const h = Math.max(it.value > 0 ? 2 : 0, y(0) - y(it.value));
             const fill = teinte[niveauDepassement(it.value, target)] || none;
             return `<g class="vb" data-i="${i}">
-              <rect x="${m.l + band * i}" y="${m.t}" width="${band}" height="${ih}" fill="transparent"/>
+              <rect class="vb-colonne" x="${m.l + band * i}" y="${m.t}" width="${band}" height="${ih}" fill="transparent"/>
               <rect class="vb-barre" x="${cx - bw / 2}" y="${y(it.value)}" width="${bw}" height="${h}" rx="4" fill="${fill}" fill-opacity=".9"/>
               ${etiquetteDuMois(i, items.length, every)
                 ? `<text x="${cx}" y="${H - 12}" text-anchor="middle" class="tick">${esc(it.label)}</text>` : ''}
@@ -1145,30 +1241,50 @@ const Charts = (() => {
         </svg>`;
 
       const tip = ensureTip(el);
-      el.querySelectorAll('.vb').forEach(node => {
-        node.addEventListener('mouseenter', () => {
-          const it = items[+node.dataset.i];
-          const diff = target ? it.value - target : null;
-          tip.hidden = false;
-          tip.innerHTML = `<div class="tt-head">${esc(it.label)}</div>
-            <div class="tt-row">${trad('Dépensé')}<b>${fmtEUR0(it.value)}</b></div>
-            ${target && it.value > 0 ? `<div class="tt-row tt-total">${trad('vs objectif')}<b>${diff > 0 ? '+' : '−'}${fmtEUR0(Math.abs(diff))}</b></div>` : ''}
-            ${it.note ? `<div class="tt-note">${esc(it.note)}</div>` : ''}`;
-          const cx = m.l + band * (+node.dataset.i) + band / 2;
-          const r = el.querySelector('svg').getBoundingClientRect();
-          tip.style.left = Math.max(4, Math.min(r.width - tip.offsetWidth - 4,
-            cx * (r.width / W) - tip.offsetWidth / 2)) + 'px';
-          tip.style.top = '4px';
-        });
-        node.addEventListener('mouseleave', () => { tip.hidden = true; });
-        /* Au doigt, aucun `mouseleave` ne suit l'appui : sans ce relais,
-           l'infobulle resterait collee. Lever le doigt la referme, apres un
-           instant de repit pour laisser lire le chiffre. Toucher ailleurs
-           referme aussi, par l'ecouteur pose dans `ensureTip`. */
-        node.addEventListener('pointerup', ev => {
-          if (ev.pointerType === 'touch') setTimeout(() => { tip.hidden = true; }, 1400);
-        });
-      });
+      const svg = el.querySelector('svg');
+      const colonnes = [...el.querySelectorAll('.vb')];
+      const indexDe = ev => {
+        const r = svg.getBoundingClientRect();
+        const k = Math.floor(((ev.clientX - r.left) * (W / r.width) - m.l) / band);
+        if (ev.pointerType !== 'touch' && (k < 0 || k >= items.length)) return -1;
+        return Math.max(0, Math.min(items.length - 1, k));
+      };
+      const montrerMois = ev => {
+        const i = indexDe(ev);
+        if (i < 0) { cacher(); return; }
+        const it = items[i];
+        const diff = target ? it.value - target : null;
+        colonnes.forEach((n, k) => n.classList.toggle('actif', k === i));
+        tip.hidden = false;
+        tip.innerHTML = `<div class="tt-head">${esc(it.label)}</div>
+          <div class="tt-row">${trad('Dépensé')}<b>${fmtEUR0(it.value)}</b></div>
+          ${target && it.value > 0 ? `<div class="tt-row tt-total">${trad('vs objectif')}<b>${diff > 0 ? '+' : '−'}${fmtEUR0(Math.abs(diff))}</b></div>` : ''}
+          ${it.note ? `<div class="tt-note">${esc(it.note)}</div>` : ''}`;
+        const r = svg.getBoundingClientRect();
+        const cx = (m.l + band * i + band / 2) * (r.width / W);
+        const w = tip.offsetWidth, h = tip.offsetHeight;
+        let left = cx - w / 2, top = 4;
+        if (ev.pointerType === 'touch') {
+          const doigtX = ev.clientX - r.left, doigtY = ev.clientY - r.top;
+          if (doigtY < top + h + ECART_DOIGT) {
+            if (doigtX - ECART_DOIGT - w >= 4) left = doigtX - ECART_DOIGT - w;
+            else if (doigtX + ECART_DOIGT + w <= r.width - 4) left = doigtX + ECART_DOIGT;
+            else {
+              top = doigtY - ECART_DOIGT - h;
+              const gauche = Math.max(4, Math.min(r.width - w - 4, left));
+              if (masqueParLeHaut(r.left + gauche + w / 2, r.top + top)) top = doigtY + ECART_DOIGT;
+            }
+          }
+        }
+        tip.style.left = Math.max(4, Math.min(r.width - w - 4, left)) + 'px';
+        tip.style.top = Math.min(r.height - h, top) + 'px';
+      };
+      const cacher = () => {
+        tip.hidden = true;
+        colonnes.forEach(n => n.classList.remove('actif'));
+      };
+      el.style.touchAction = 'pan-y';
+      cablerInfobulle(svg, montrerMois, cacher, { tap: 1400 });
     });
   }
 

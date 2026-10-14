@@ -17,12 +17,12 @@ suite('L’infobulle de l’historique dit la composition, pas seulement les mon
 
   test('une décimale, jamais plus, jamais moins', () => {
     setLang('fr');
-    /* « 33 % » perdrait la difference avec 33,4 ; « 0,2826 % » n'apprend rien. */
+    /* "33 %" perdrait la difference avec 33,4 ; "0,2826 %" n'apprend rien. */
     vrai(/^\d+,\d %$/.test(fmtPoids(9900, TOTAL)), '33,0 % garde son zéro');
     vrai(/^\d+,\d %$/.test(fmtPoids(90, TOTAL)), '0,3 % garde sa décimale');
     const c = lireSource('assets/charts.js');
     const bulle = c.slice(c.indexOf('const base = totals[i];'), c.indexOf('const left = Math.min'));
-    /* La ligne Total dit « 100 % » sans decimale : cent n'est pas une mesure
+    /* La ligne Total dit "100 %" sans decimale : cent n'est pas une mesure
        arrondie, c'est la definition de la base. */
     vrai(/fmtPct\(100, 0\)/.test(bulle), 'le total dit 100 % sans décimale');
   });
@@ -51,11 +51,11 @@ suite('L’infobulle de l’historique dit la composition, pas seulement les mon
     }
     /* Ni zero de substitution, ni tiret : les six autres endroits de
        l'application qui portent une part indisponible n'ecrivent rien, et le
-       tiret cadratin est proscrit du texte affiché. */
+       tiret cadratin est proscrit du texte affiche. */
     const c = lireSource('assets/charts.js');
     const bulle = c.slice(c.indexOf('const base = totals[i];'), c.indexOf('const left = Math.min'));
     vrai(!/—/.test(bulle), 'aucun tiret cadratin');
-    /* Et la colonne disparaît entière : l'infobulle redevient celle d'avant. */
+    /* Et la colonne disparait entiere : l'infobulle redevient celle d'avant. */
     vrai(/const avecPoids = !!opts\.parts && baseDivisible\(base\);/.test(bulle),
       'la colonne ne paraît que sur une base divisible');
     vrai(/: lignes\.map\(\(sr, k\) => `<div class="tt-row">/.test(bulle),
@@ -64,8 +64,8 @@ suite('L’infobulle de l’historique dit la composition, pas seulement les mon
 
   test('une poche négative garde son signe, sur une base positive', () => {
     setLang('fr');
-    /* Le tracé net impute le reliquat de dette sur la poche qui porte les
-       prêts : elle devient négative, et la carte de répartition montre déjà
+    /* Le trace net impute le reliquat de dette sur la poche qui porte les
+       prets : elle devient negative, et la carte de repartition montre deja
        cette part telle quelle. La masquer ferait un total qui ne vaudrait plus
        la somme de ses parts. */
     pres(poidsDansTotal(-5000, 20000), -25, 'la part suit le signe de la poche');
@@ -81,17 +81,17 @@ suite('L’infobulle de l’historique dit la composition, pas seulement les mon
     eq(fmtPoids(0.4, TOTAL), '0,0 %', 'sous le dixième, la part s’affiche nulle sans erreur');
     eq(fmtPoids(0, TOTAL), '0,0 %', 'et zéro reste zéro');
     /* Mais une poche absente n'entre pas dans l'infobulle : elle n'y entre pas
-       davantage pour montrer « 0,0 % ». */
+       davantage pour montrer "0,0 %". */
     const c = lireSource('assets/charts.js');
     vrai(/const lignes = series\.filter\(sr => Math\.abs\(Number\(p\[sr\.key\]\) \|\| 0\) > 0\.005\);/.test(c),
       'une poche vide ce mois-là reste hors de la bulle');
   });
 
   test('les deux langues, les deux devises', () => {
-    /* Le poids suit la locale, jamais une virgule écrite à la main. */
+    /* Le poids suit la locale, jamais une virgule ecrite a la main. */
     enFrancais(() => eq(fmtPoids(7200, TOTAL), '24,0 %', 'virgule décimale et espace insécable'));
     enAnglais(() => eq(fmtPoids(7200, TOTAL), '24.0%', 'point décimal, pas d’espace'));
-    /* Et il ne dépend d’aucune devise : c’est un rapport, pas un montant. */
+    /* Et il ne depend d'aucune devise : c'est un rapport, pas un montant. */
     setLang('fr');
     const avant = Store.state.meta.devise;
     try {
@@ -107,7 +107,7 @@ suite('L’infobulle de l’historique dit la composition, pas seulement les mon
   test('le montant et sa part sortent du même instantané', () => {
     const c = lireSource('assets/charts.js');
     const bulle = c.slice(c.indexOf('const base = totals[i];'), c.indexOf('const left = Math.min'));
-    /* LA BASE EST LE TOTAL AFFICHÉ. Relire un patrimoine d'aujourd'hui pour
+    /* LA BASE EST LE TOTAL AFFICHE. Relire un patrimoine d'aujourd'hui pour
        diviser un montant de mars donnerait des parts qui ne totalisent pas
        cent, et personne ne pourrait dire laquelle des deux lignes ment. */
     vrai(/const base = totals\[i\];/.test(c), 'la base est le total du point');
@@ -116,7 +116,7 @@ suite('L’infobulle de l’historique dit la composition, pas seulement les mon
     for (const interdit of ['patrimoine(', 'nowTotals(', 'historySeries(', 'poidsPoches(']) {
       vrai(!bulle.includes(interdit), `l’infobulle ne relit pas ${interdit}`);
     }
-    /* Et le montant de la ligne vient du même point que sa part. */
+    /* Et le montant de la ligne vient du meme point que sa part. */
     /* Le montant passe par `arrondirParts`, pour refaire le total a l'euro,
        mais il part du meme point que sa part. */
     vrai(/const euros = arrondirParts\(lignes\.map\(sr => p\[sr\.key\] \|\| 0\), totals\[i\]\);/.test(bulle)
@@ -127,15 +127,15 @@ suite('L’infobulle de l’historique dit la composition, pas seulement les mon
   test('trois colonnes qui s’alignent, et rien ne déborde', () => {
     const css = lireSource('assets/styles.css');
     const bloc = css.slice(css.indexOf('.tt-parts {'), css.indexOf('.tt-fin {') + 60);
-    /* UNE SEULE GRILLE POUR TOUTE LA BULLE. Une rangée en flex est son propre
+    /* UNE SEULE GRILLE POUR TOUTE LA BULLE. Une rangee en flex est son propre
        conteneur : sa colonne de montants se cale sur la longueur de son propre
-       libellé, et rien ne s'aligne avec la rangée du dessus. */
+       libelle, et rien ne s'aligne avec la rangee du dessus. */
     vrai(/display: grid/.test(bloc), 'les rangées partagent une grille');
     vrai(/grid-template-columns: auto minmax\(0, 1fr\) auto auto/.test(bloc),
       'quatre colonnes : pastille, libellé, montant, poids');
     vrai(/\.tt-ligne \{ display: contents; \}/.test(bloc),
       'et chaque rangée s’y fond, sinon ses cellules ne seraient pas des cellules');
-    /* Des chiffres de largeur égale des deux côtés, sinon les virgules dansent. */
+    /* Des chiffres de largeur egale des deux cotes, sinon les virgules dansent. */
     eq((bloc.match(/font-variant-numeric: tabular-nums/g) || []).length, 2,
       'montants et poids alignent leurs chiffres');
     /* Le montant reste prioritaire : encre pleine contre encre secondaire. */
@@ -143,16 +143,16 @@ suite('L’infobulle de l’historique dit la composition, pas seulement les mon
     vrai(/\.tt-poids \{[^}]*color: var\(--muted\)/.test(bloc), 'le poids passe en second plan');
     /* Et il ne se coupe pas devant son signe. */
     vrai(/\.tt-poids \{[^}]*white-space: nowrap/.test(bloc), '« 24,0 % » tient sur une ligne');
-    /* Le filet du total traverse les quatre colonnes : une rangée fondue n'a
-       plus de boîte, donc plus de bordure. */
+    /* Le filet du total traverse les quatre colonnes : une rangee fondue n'a
+       plus de boite, donc plus de bordure. */
     vrai(/\.tt-filet \{[^}]*grid-column: 1 \/ -1/.test(bloc), 'le filet traverse la grille');
   });
 
   test('la Projection garde son infobulle, la part n’y a pas de sens', () => {
     const a = lireSource('assets/app.js');
-    /* Le même dessin sert deux courbes. « Départ et versements » et
-       « Rendement » ne composent pas un patrimoine : une part y répondrait à
-       une question que personne ne pose. L'option le dit, plutôt qu'un défaut
+    /* Le meme dessin sert deux courbes. "Depart et versements" et
+       "Rendement" ne composent pas un patrimoine : une part y repondrait a
+       une question que personne ne pose. L'option le dit, plutot qu'un defaut
        qui s'appliquerait partout. */
     const proj = a.slice(a.indexOf("Charts.stackedArea($('#chartProjection')"),
                          a.indexOf("Charts.stackedArea($('#chartProjection')") + 700);
@@ -165,7 +165,7 @@ suite('L’infobulle de l’historique dit la composition, pas seulement les mon
 
 /* --- Trois insights, trois endroits ---------------------------------------
 
-   « Progression du patrimoine » et « Poids d'une poche » sont deux lectures
+   "Progression du patrimoine" et "Poids d'une poche" sont deux lectures
    differentes, de deux familles differentes, et elles menaient toutes les deux
    a la courbe de l'evolution. Deux des trois places de la carte ouvraient donc
    le meme ecran, et la section paraissait se repeter.
@@ -198,10 +198,10 @@ suite('À retenir mène à trois endroits différents, pas trois fois au même',
     /* PAS LA VUE SEULE. Trois insights pointent vers `overview` et y visent
        trois cartes qui repondent a trois questions differentes : les confondre
        en ecarterait deux pour une ressemblance qui n'existe que dans l'URL. */
-    /* Deux des trois exemples ont quitté le catalogue : leur lecture redisait la
-       carte qu'elle visait, sur le même écran. Le fait que le contrôle protège
-       n'a pas bougé — plusieurs renvois vers `overview` restent distincts parce
-       que l'ancre les sépare — et il se vérifie sur ce qui reste. */
+    /* Deux des trois exemples ont quitte le catalogue : leur lecture redisait la
+       carte qu'elle visait, sur le meme ecran. Le fait que le controle protege
+       n'a pas bouge -- plusieurs renvois vers `overview` restent distincts parce
+       que l'ancre les separe -- et il se verifie sur ce qui reste. */
     const d = destinationsPresentation();
     eq(d.wealth_pace_shift, 'overview:evolution');
     eq(d.goal_projected_date, 'objective:trajectoire');
@@ -211,8 +211,8 @@ suite('À retenir mène à trois endroits différents, pas trois fois au même',
     vrai(Object.values(d).every(x => !x.endsWith(':')) === false
       || Object.values(d).some(x => x.includes(':') && !x.endsWith(':')),
       'une ancre entre bien dans la destination');
-    /* ET SURTOUT PAS LE LIBELLE : « Voir l'évolution » est du texte traduit, la
-       sélection changerait de comportement entre le français et l'anglais. */
+    /* ET SURTOUT PAS LE LIBELLE : "Voir l'evolution" est du texte traduit, la
+       selection changerait de comportement entre le francais et l'anglais. */
     /* La tranche s'arrete a la fin de la fonction : ses voisines parlent bien de
        libelles, et une fenetre trop large les aurait avalees. */
     const sel = a.slice(a.indexOf('const destinationInsight'),
@@ -224,8 +224,8 @@ suite('À retenir mène à trois endroits différents, pas trois fois au même',
     const d = destinationsPresentation();
     eq(Object.keys(d).length, REGLES_INSIGHT.length, 'les treize règles portent une destination');
     for (const r of REGLES_INSIGHT) vrai(!!d[r.id], `${r.id} a la sienne`);
-    /* LE CAS QUI A DEMANDE CETTE PASSE. Deux lectures différentes, deux familles
-       différentes, et le même graphique au bout du renvoi. */
+    /* LE CAS QUI A DEMANDE CETTE PASSE. Deux lectures differentes, deux familles
+       differentes, et le meme graphique au bout du renvoi. */
     eq(d.wealth_pace_shift, d.pocket_share_shift,
       'progression et poids d’une poche mènent au même endroit');
     const prog = REGLES_INSIGHT.find(r => r.id === 'wealth_pace_shift');
@@ -253,11 +253,11 @@ suite('À retenir mène à trois endroits différents, pas trois fois au même',
     const l = [['A', 'history'], ['B', 'history'], ['C', 'autonomy']];
     eq(selectionParClef(l, x => x[1], 3).map(x => x[0]).join(','), 'A,C,B',
       'B revient au second tour, mais après C');
-    /* Une seule destination : la carte se remplit quand même. */
+    /* Une seule destination : la carte se remplit quand meme. */
     const m = [['A', 'history'], ['B', 'history'], ['C', 'history']];
     eq(selectionParClef(m, x => x[1], 3).map(x => x[0]).join(','), 'A,B,C',
       'un seul endroit ne vide pas la carte');
-    /* Deux entrées, deux places occupées : la diversité ne crée pas de trou. */
+    /* Deux entrees, deux places occupees : la diversite ne cree pas de trou. */
     eq(selectionParClef([['A', 'history'], ['B', 'history']], x => x[1], 3)
       .map(x => x[0]).join(','), 'A,B', 'rien n’est perdu');
   });
@@ -267,7 +267,7 @@ suite('À retenir mène à trois endroits différents, pas trois fois au même',
     eq(selectionParClef([['A', 'history']], x => x[1], 3).map(x => x[0]).join(','), 'A');
     eq(selectionParClef([['A', 'history'], ['B', 'goal']], x => x[1], 3)
       .map(x => x[0]).join(','), 'A,B');
-    /* Et jamais plus que le plafond demandé. */
+    /* Et jamais plus que le plafond demande. */
     const cinq = 'ABCDE'.split('').map((n, i) => [n, 'd' + i]);
     eq(selectionParClef(cinq, x => x[1], 3).length, 3, 'trois places, trois entrées');
   });
@@ -292,7 +292,7 @@ suite('À retenir mène à trois endroits différents, pas trois fois au même',
   test('la déduplication métier passe avant la diversité de destination', () => {
     /* L'ordre est fige : le moteur retire d'abord ce qui dit deux fois la meme
        chose, la carte evite ensuite d'ouvrir deux fois le meme ecran. Inverser
-       les deux laisserait passer un doublon métier sous prétexte qu'il mène
+       les deux laisserait passer un doublon metier sous pretexte qu'il mene
        ailleurs. */
     Fixture.poser();
     const moteur = construireInsights();
@@ -312,12 +312,12 @@ suite('À retenir mène à trois endroits différents, pas trois fois au même',
     vrai(carte.length <= 3, `${carte.length} entrées`);
     const dests = carte.map(i => d[i.id]);
     /* Si le moteur propose au moins trois destinations distinctes, la carte en
-       montre trois distinctes. Sinon le second tour a comblé, et c'est voulu. */
+       montre trois distinctes. Sinon le second tour a comble, et c'est voulu. */
     const dispo = new Set(moteur.map(i => d[i.id]));
     if (dispo.size >= carte.length) {
       eq(new Set(dests).size, dests.length, 'autant de destinations que d’entrées');
     }
-    /* L'ordre reste celui du moteur pour le premier tour : la tête ne bouge
+    /* L'ordre reste celui du moteur pour le premier tour : la tete ne bouge
        jamais. */
     eq(carte[0] && carte[0].id, moteur[0] && moteur[0].id, 'le mieux classé garde sa place');
   });
@@ -329,7 +329,7 @@ suite('À retenir mène à trois endroits différents, pas trois fois au même',
       vrai(!rendu.includes(mot), `aucun bouton « ${mot} »`);
     }
     /* La vue ne reclasse toujours rien : elle lit la liste que le moteur a
-       ordonnée, et la sélection ne fait que retirer. */
+       ordonnee, et la selection ne fait que retirer. */
     vrai(!/\.sort\(/.test(rendu), 'aucun second classement dans la vue');
     vrai(/dernierARetenir = lus\.map/.test(rendu),
       'et la mémoire note ce qui a vraiment été montré, pas ce que le moteur proposait');
@@ -365,12 +365,12 @@ suite('La réserve de sécurité passe devant le mobilisable', () => {
     Fixture.poser();
     const r = runway();
     const p = poches();
-    /* LE COUSSIN EST CELUI SUR LEQUEL ON VIVRAIT DEMAIN : l'épargne de
-       précaution plus le cash courant. L'argent fléché vers un projet ou en
-       attente d'investissement a déjà un travail. */
+    /* LE COUSSIN EST CELUI SUR LEQUEL ON VIVRAIT DEMAIN : l'epargne de
+       precaution plus le cash courant. L'argent fleche vers un projet ou en
+       attente d'investissement a deja un travail. */
     pres(r.reserve, p.precaution + p.courant, 'la réserve est précaution + courant');
     pres(r.reserveMois, r.reserve / r.burn, 'et ses mois sont ce rapport');
-    /* La carte ne recalcule plus rien : elle lit le modèle. */
+    /* La carte ne recalcule plus rien : elle lit le modele. */
     const a = lireSource('assets/app.js');
     const carte = a.slice(a.indexOf('function carteReserveResume()'),
                           a.indexOf('\n}\n', a.indexOf('function carteReserveResume()')));
@@ -388,12 +388,12 @@ suite('La réserve de sécurité passe devant le mobilisable', () => {
   });
 
   test('le complément existe, il passe derrière, et la somme retombe juste', () => {
-    /* CE CONTRÔLE INTERROGE LE MODÈLE, PLUS UNE RÈGLE D'INSIGHT. Il passait par
-       `liquidity_runway`, dont la lecture redisait la carte du même écran et qui
-       a quitté le catalogue ; la propriété, elle, appartient à `runway()` et
-       n'avait rien à faire derrière une règle de présentation.
+    /* CE CONTROLE INTERROGE LE MODELE, PLUS UNE REGLE D'INSIGHT. Il passait par
+       `liquidity_runway`, dont la lecture redisait la carte du meme ecran et qui
+       a quitte le catalogue ; la propriete, elle, appartient a `runway()` et
+       n'avait rien a faire derriere une regle de presentation.
 
-       RIEN N'EST PERDU : ce que la réserve ne compte pas existe quand même, et
+       RIEN N'EST PERDU : ce que la reserve ne compte pas existe quand meme, et
        un total vaut la somme de ses parts. */
     Fixture.poser();
     const r = runway();
@@ -402,7 +402,7 @@ suite('La réserve de sécurité passe devant le mobilisable', () => {
       'réserve plus complément font les mois mobilisables');
     vrai(complement >= -1e-9, 'le complément ne peut pas être négatif');
     /* Et le mobilisable reste le plus grand des deux : c'est ce qui rendait la
-       confusion coûteuse, puisque le plus rassurant passait devant. */
+       confusion couteuse, puisque le plus rassurant passait devant. */
     vrai(num(r.liquidMonths) >= num(r.reserveMois),
       'le mobilisable contient la réserve, jamais l’inverse');
   });
@@ -444,9 +444,9 @@ suite('La réserve de sécurité passe devant le mobilisable', () => {
 
 /* --- La date d'atteinte, au mois, et la meme partout -----------------------
 
-   « franchie en 2029 » : entre janvier et decembre de cette annee-la il y a un
+   "franchie en 2029" : entre janvier et decembre de cette annee-la il y a un
    an de vie, et le moteur boucle au mois, donc il sait lequel c'est. L'arrondi
-   a l'annee jetait ce qu'il savait, deux fois — sur la date et sur le delai. */
+   a l'annee jetait ce qu'il savait, deux fois -- sur la date et sur le delai. */
 suite('La cible se date au mois, et les deux écrans disent le même mois', () => {
   const projection = () => {
     const a = lireSource('assets/app.js');
@@ -494,7 +494,7 @@ suite('La cible se date au mois, et les deux écrans disent le même mois', () =
 
   test('le wording reste une estimation, jamais une promesse', () => {
     const src = projection();
-    /* « franchie » affirmait. La trajectoire depend d'un scenario de rendement
+    /* "franchie" affirmait. La trajectoire depend d'un scenario de rendement
        et d'un versement que le lecteur a poses lui-meme. */
     vrai(!/franchie/.test(src), 'plus aucun verbe d’affirmation');
     vrai(/trad\('vers'\)/.test(src), 'la date est approchée');
@@ -526,23 +526,23 @@ suite('La cible se date au mois, et les deux écrans disent le même mois', () =
     Fixture.poser(s => { s.meta.projTarget = 200000; s.meta.projHorizon = 30; });
     const a = capitalisation({ years: horizonProjection() }).targetReached;
     vrai(!!a && !a.dejaAtteinte, 'la fixture atteint sa cible dans l’horizon');
-    /* UNE SEULE SOURCE. Les deux écrans lisent `targetReached` du même moteur,
-       avec le même horizon, et le formatent avec la même fonction. Diverger
-       demanderait d'en écrire une seconde. */
+    /* UNE SEULE SOURCE. Les deux ecrans lisent `targetReached` du meme moteur,
+       avec le meme horizon, et le formatent avec la meme fonction. Diverger
+       demanderait d'en ecrire une seconde. */
     const i = evaluerInsights().find(x => x.id === 'goal_projected_date');
     vrai(!!i, 'la lecture de l’accueil produit');
     eq(i.params.year, a.year, 'même année');
     eq(i.params.month, a.month, 'même mois');
     eq(i.params.monthsFromNow, a.monthsFromNow, 'même délai');
-    /* Et les deux passent par `moisEtAnnee` : la chaîne affichée est la même. */
+    /* Et les deux passent par `moisEtAnnee` : la chaine affichee est la meme. */
     const app = lireSource('assets/app.js');
     const bloc = app.slice(app.indexOf('goal_projected_date: {'),
                            app.indexOf('liquidity_runway_shift: {'));
     vrai(/moisEtAnnee\(p\.year, p\.month\)/.test(bloc), 'l’accueil formate avec moisEtAnnee');
     vrai(/moisEtAnnee\(anneeAtteinte\.year, anneeAtteinte\.month\)/.test(projection()),
       'la Projection aussi');
-    /* Un seul horizon, et un test le figeait déjà : `projHorizon` de la vue et
-       `horizonProjection()` du moteur sont la même dérivation. */
+    /* Un seul horizon, et un test le figeait deja : `projHorizon` de la vue et
+       `horizonProjection()` du moteur sont la meme derivation. */
     eq(horizonProjection(), num(Store.state.meta.projHorizon) || 20,
       'et le même horizon des deux côtés');
   });
@@ -561,7 +561,7 @@ suite('La cible se date au mois, et les deux écrans disent le même mois', () =
 
 /* --- La carte de repartition, sous le hero ---------------------------------
 
-   Elle disait « 14 965,00 € » pour une poche de patrimoine : deux decimales qui
+   Elle disait "9 000,00 EUR" pour une poche de patrimoine : deux decimales qui
    ne changent ni la part, ni la barre, ni la decision, et qui donnaient a une
    carte de composition l'allure d'un releve bancaire. Et sa plus petite poche
    dessinait une barre de moins d'un pixel. */
@@ -582,11 +582,11 @@ suite('La carte de répartition se lit au niveau du patrimoine', () => {
     vrai(/<b\$\{x\.value < 0 \? ' class="dette"' : ''\}>\$\{fmtEUR0\(x\.value\)\}<\/b>/.test(c),
       'le montant passe par le formateur à zéro décimale');
     vrai(!/fmtEUR\(x\.value\)/.test(c), 'et plus par celui qui en rend deux');
-    /* LE CONTRAIRE POUR LA PART : une poche à trois dixièmes disparaîtrait
-       derrière « 0 % », alors qu'elle existe. */
+    /* LE CONTRAIRE POUR LA PART : une poche a trois dixiemes disparaitrait
+       derriere "0 %", alors qu'elle existe. */
     vrai(/fmtPct\(x\.pct, 1\)/.test(c), 'le pourcentage garde sa décimale');
-    /* Aucun signe monétaire en dur : le formateur central décide. Le dollar
-       d'un `${}` n'en est pas un, et une fenêtre de balisage en est pleine. */
+    /* Aucun signe monetaire en dur : le formateur central decide. Le dollar
+       d'un `${}` n'en est pas un, et une fenetre de balisage en est pleine. */
     const nu = c.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
     vrai(!/€/.test(nu), 'aucun euro écrit à la main');
     vrai(!/\$(?!\{)/.test(nu), 'aucun dollar non plus');
@@ -596,21 +596,21 @@ suite('La carte de répartition se lit au niveau du patrimoine', () => {
     setLang('fr');
     const avant = Store.state.meta.devise;
     try {
-      /* Les séparateurs d'un montant formaté sont des espaces insécables fines,
+      /* Les separateurs d'un montant formate sont des espaces insecables fines,
          pas des espaces ordinaires : on les normalise pour comparer. */
       const m = v => fmtEUR0(v).replace(/\s/g, ' ');
       Store.state.meta.devise = 'EUR';
-      eq(m(4318.54), '4 319 €', 'EUR : arrondi à l’euro près');
-      eq(m(160.57), '161 €', 'et vers le haut quand il le faut');
-      eq(m(18906.19), '18 906 €');
-      eq(m(24181.77), '24 182 €');
+      eq(m(1234.56), '1 235 €', 'EUR : arrondi à l’euro près');
+      eq(m(150.75), '151 €', 'et vers le haut quand il le faut');
+      eq(m(12345.25), '12 345 €');
+      eq(m(23456.78), '23 457 €');
       setLang('en');
-      eq(m(18906.19), '€18,906', 'EUR en anglais');
+      eq(m(12345.25), '€12,345', 'EUR en anglais');
       Store.state.meta.devise = 'USD';
-      eq(m(4318.54), '$4,319', 'USD en anglais');
-      eq(m(18906.19), '$18,906');
+      eq(m(1234.56), '$1,235', 'USD en anglais');
+      eq(m(12345.25), '$12,345');
       setLang('fr');
-      eq(m(4318.54), '4 319 $', 'USD en français garde ses séparateurs');
+      eq(m(1234.56), '1 235 $', 'USD en français garde ses séparateurs');
     } finally { Store.state.meta.devise = avant; setLang('fr'); }
     /* ET LA VALEUR INTERNE NE BOUGE PAS. Le modele rend des centimes, la carte
        les tait : c'est l'ecran qui arrondit, jamais la donnee. */
@@ -653,7 +653,7 @@ suite('La carte de répartition se lit au niveau du patrimoine', () => {
   test('le chiffre affiché ne bouge pas avec le plancher', () => {
     const c = carte();
     /* Le plancher vit dans le style de la barre, et nulle part ailleurs : le
-       pourcentage passe par `fmtPct` sur `x.pct`, la valeur du modèle. */
+       pourcentage passe par `fmtPct` sur `x.pct`, la valeur du modele. */
     /* Plus de barre par ligne sur l'accueil : la barre du haut compose les
        memes parts. Le texte lit donc la part telle quelle, et le plancher ne
        sert plus qu'aux listes qui ont encore leurs barres. */
@@ -668,7 +668,7 @@ suite('La carte de répartition se lit au niveau du patrimoine', () => {
     vrai(/padding: 10px 0;/.test(bloc), 'la rangée rend trois pixels en haut et en bas');
     vrai(/gap: 5px;/.test(bloc), 'et un de plus entre le texte et sa barre');
     /* CE QUI NE BOUGE PAS : la police, la graisse, la hauteur de barre. Une
-       liste dense se reconnaît à ses petits caractères, pas à son remplissage. */
+       liste dense se reconnait a ses petits caracteres, pas a son remplissage. */
     vrai(!/font-size/.test(bloc), 'aucune police réduite');
     const barre = css.slice(css.indexOf('.repart-barre {'), css.indexOf('.repart-barre i'));
     vrai(/height: 5px;/.test(barre), 'la barre garde sa hauteur');
@@ -681,7 +681,7 @@ suite('La carte de répartition se lit au niveau du patrimoine', () => {
     vrai(iNom < iVal && iVal < iPct, 'l’ordre de lecture ne bouge pas');
     const css = lireSource('assets/styles.css');
     /* Le montant en encre pleine et en gras, la part en encre secondaire et
-       d'un cran plus petite : c'est elle la donnée secondaire. */
+       d'un cran plus petite : c'est elle la donnee secondaire. */
     vrai(/\.repart-haut b \{[^}]*tabular-nums/.test(css), 'le montant aligne ses chiffres');
     const pct = css.slice(css.indexOf('.repart-pct {'), css.indexOf('}', css.indexOf('.repart-pct {')));
     vrai(/color: var\(--muted\)/.test(pct), 'la part reste discrète');
@@ -702,8 +702,8 @@ suite('La carte de répartition se lit au niveau du patrimoine', () => {
 
   test('les trois niveaux partagent leurs couleurs et leurs proportions', () => {
     /* Hero, carte, historique : une seule source pour les couleurs et les
-       parts. Deux tables auraient fini par peindre la même poche de deux
-       couleurs sur deux écrans. */
+       parts. Deux tables auraient fini par peindre la meme poche de deux
+       couleurs sur deux ecrans. */
     Fixture.poser();
     const parts = repartitionClasses({ net: false });
     pres(parts.reduce((s, x) => s + x.pct, 0), 100, 'les parts font cent');
@@ -721,7 +721,7 @@ suite('La carte de répartition se lit au niveau du patrimoine', () => {
    UN COMMENTAIRE DE BLOC POSE DANS UN LITTERAL DE GABARIT N'EST PAS UN
    COMMENTAIRE, c'est du
    TEXTE. Le fichier se parse, la suite reste verte, la chaine de publication ne
-   le retire pas — et le visiteur lit le raisonnement du developpeur en clair, au
+   le retire pas -- et le visiteur lit le raisonnement du developpeur en clair, au
    milieu de l'ecran d'accueil. C'est arrive, en production, sur les trois
    deploiements a la fois.
 
@@ -729,7 +729,7 @@ suite('La carte de répartition se lit au niveau du patrimoine', () => {
    celui des backticks dans un commentaire HTML regarde l'autre moitie du piege.
    Ce controle-ci lit le fichier caractere par caractere, exactement comme le
    filtre de publication, et signale tout ouvrant de bloc rencontre alors qu'on
-   se trouve dans le TEXTE d'un gabarit — c'est-a-dire hors de tout `${'$'}{ }`. */
+   se trouve dans le TEXTE d'un gabarit -- c'est-a-dire hors de tout `${'$'}{ }`. */
 suite('Aucun commentaire ne part dans le balisage', () => {
   /* La pile dit ou l'on se trouve : `tpl` dans le texte d'un gabarit, `sub`
      dans une interpolation, vide dans du JavaScript ordinaire. */
@@ -812,7 +812,7 @@ suite('Aucun commentaire ne part dans le balisage', () => {
 
 /* --- Le hero : une fenetre nommee pour ce qu'elle est ----------------------
 
-   « 12 derniers mois » sous un « +127,7 % » se lit comme un rendement annuel.
+   "12 derniers mois" sous un "+42,7 %" se lit comme un rendement annuel.
    Deux choses le corrigent, et aucune ne touche a un calcul : la fenetre se dit
    glissante, et la bulle dit en toutes lettres que ce n'est pas une
    performance. */
@@ -826,7 +826,7 @@ suite('Le hero dit sa fenêtre et ce qu’elle n’est pas', () => {
 
   test('la fenêtre est vraiment glissante, et le moteur le prouve', () => {
     /* GLISSANTE VEUT DIRE : elle se termine aujourd'hui et remonte vers le
-       relevé le plus proche d'il y a un an, jamais vers un 1er janvier. */
+       releve le plus proche d'il y a un an, jamais vers un 1er janvier. */
     const st = lireSource('assets/store.js');
     const f = st.slice(st.indexOf('function variationAn'), st.indexOf('function variationAn') + 2600);
     vrai(/const maintenant = enMois\(aujourdhui\);/.test(f), 'la fenêtre part d’aujourd’hui');
@@ -835,9 +835,9 @@ suite('Le hero dit sa fenêtre et ce qu’elle n’est pas', () => {
   });
 
   test('mais elle ne prétend jamais faire douze mois', () => {
-    /* Le nombre affiché est l'AGE REEL du relevé retenu, dans une tolérance de
-       trois mois. Écrire « 12 » sous une comparaison qui en couvre quinze
-       serait le même mensonge que l'écrire sous quatre. */
+    /* Le nombre affiche est l'AGE REEL du releve retenu, dans une tolerance de
+       trois mois. Ecrire "12" sous une comparaison qui en couvre quinze
+       serait le meme mensonge que l'ecrire sous quatre. */
     setLang('fr');
     const a = vue();
     vrai(/'depuis le relevé de \{m\}'/.test(a), 'le gabarit porte une marque de date, pas une date écrite');
@@ -857,28 +857,28 @@ suite('Le hero dit sa fenêtre et ce qu’elle n’est pas', () => {
 
   test('le grand chiffre perd ses centimes, la variation aussi, le pourcentage non', () => {
     const b = bloc();
-    /* Le montant : formateur central à zéro décimale, comme la carte de
+    /* Le montant : formateur central a zero decimale, comme la carte de
        composition juste dessous. */
     vrai(/hero-value">\$\{fmtEUR0\(/.test(vue()), 'le patrimoine se lit sans centimes');
-    /* La variation en euros n'en a jamais porté : `fmtSigned` formate déjà à
-       zéro décimale. On le fige, pour que personne ne l'enrichisse. */
+    /* La variation en euros n'en a jamais porte : `fmtSigned` formate deja a
+       zero decimale. On le fige, pour que personne ne l'enrichisse. */
     vrai(/fmtSigned\(varAn\.eur\)/.test(b), 'la variation passe par le formateur signé');
     const st = lireSource('assets/store.js');
     vrai(/const fmtSigned = v => \(v >= 0 \? '\+' : '−'\) \+ fmtEUR\(Math\.abs\(v\), 0\);/.test(st),
       'et celui-là est à zéro décimale');
-    /* Le pourcentage, lui, garde la sienne : à l'entier près, un écart de six
-       dixièmes disparaîtrait. */
+    /* Le pourcentage, lui, garde la sienne : a l'entier pres, un ecart de six
+       dixiemes disparaitrait. */
     vrai(/fmtSignedPct\(varAn\.pct, 1\)/.test(b), 'le pourcentage garde sa décimale');
     setLang('fr');
-    eq(fmtSignedPct(127.74, 1), '+127,7 %');
+    eq(fmtSignedPct(42.74, 1), '+42,7 %');
     setLang('en');
-    try { eq(fmtSignedPct(127.74, 1), '+127.7%'); } finally { setLang('fr'); }
+    try { eq(fmtSignedPct(42.74, 1), '+42.7%'); } finally { setLang('fr'); }
   });
 
   test('rien n’est arrondi dans les données', () => {
     Fixture.poser();
     const t = nowTotals();
-    /* L'écran arrondit, le modèle jamais : les centimes sont toujours là. */
+    /* L'ecran arrondit, le modele jamais : les centimes sont toujours la. */
     eq(t.total, num(t.total), 'le net garde sa valeur exacte');
     eq(t.brut, num(t.brut), 'le brut aussi');
     const st = lireSource('assets/store.js');
@@ -888,13 +888,13 @@ suite('Le hero dit sa fenêtre et ce qu’elle n’est pas', () => {
 
   test('la bulle nomme ce qui bouge, et ce que ce n’est pas', () => {
     const b = bloc();
-    /* Elle ne cite que des composantes réellement incluses. */
+    /* Elle ne cite que des composantes reellement incluses. */
     vrai(/les versements, les retraits, le remboursement du capital des crédits/.test(b),
       'le net cite le capital remboursé');
     const iBrut = b.indexOf('Variation de ton patrimoine brut');
     vrai(!/remboursement du capital/.test(b.slice(iBrut)),
       'le brut ne le cite pas : il ne le mesure pas');
-    /* ET LE MOT EST RETOURNE, jamais posé. */
+    /* ET LE MOT EST RETOURNE, jamais pose. */
     vrai(/ce n’est pas la performance de tes placements/.test(b),
       'la bulle lève la confusion explicitement');
     const face = b.slice(0, b.indexOf('aide('));
@@ -903,13 +903,13 @@ suite('Le hero dit sa fenêtre et ce qu’elle n’est pas', () => {
 
   test('la hiérarchie et l’alignement ne bougent pas', () => {
     const css = lireSource('assets/styles.css');
-    /* Rien n'est centré : la lecture reste de gauche à droite. */
+    /* Rien n'est centre : la lecture reste de gauche a droite. */
     for (const sel of ['.hero-label', '.hero-value', '.hero-deltas', '.hero-delta']) {
       const r = css.slice(css.indexOf(sel + ' '), css.indexOf('}', css.indexOf(sel + ' ')));
       vrai(!/text-align: center|justify-content: center|align-items: center;[^}]*justify/.test(r),
         `${sel} n’est pas centré`);
     }
-    /* L'ordre de lecture : intitulé, montant, variation, période, barre. */
+    /* L'ordre de lecture : intitule, montant, variation, periode, barre. */
     const a = vue();
     const i = n => a.indexOf(n);
     vrai(i('hero-label') < i('hero-value'), 'l’intitulé précède le montant');
@@ -918,9 +918,9 @@ suite('Le hero dit sa fenêtre et ce qu’elle n’est pas', () => {
   });
 
   test('aucun élément n’a été ajouté à droite', () => {
-    /* Le vide à droite de la période est une respiration, pas un oubli : tout ce
-       qui pouvait s'y mettre répétait un chiffre déjà lu deux centimètres plus
-       bas. Le seul élément à droite reste la bascule Net / Brut, qui y était. */
+    /* Le vide a droite de la periode est une respiration, pas un oubli : tout ce
+       qui pouvait s'y mettre repetait un chiffre deja lu deux centimetres plus
+       bas. Le seul element a droite reste la bascule Net / Brut, qui y etait. */
     const a = vue();
     const i = a.indexOf('const blocVariation = !varAn');
     const b = a.slice(i, a.indexOf('`;', a.indexOf('</div>`', i)));
@@ -1079,9 +1079,9 @@ suite('Le hero illustre sa variation, ses points espacés selon leur date', () =
     const c = lireSource('assets/charts.js');
     const f = c.slice(c.indexOf('function sparkline'), c.indexOf('cablerInfobulle(svg', c.indexOf('function sparkline')));
     /* LE DEFAUT MESURE : cadree sur min/max, `[100 000, 110 000]` et
-       `[100 000, 100 012]` rendaient le meme trace, « 0,32 200,4 ». Douze euros
-       se lisaient comme dix mille, et c'est sur deux points — celui qui commence
-       — que rien ne vient nuancer la pente. */
+       `[100 000, 100 012]` rendaient le meme trace, "0,32 200,4". Douze euros
+       se lisaient comme dix mille, et c'est sur deux points -- celui qui commence
+       -- que rien ne vient nuancer la pente. */
     vrai(/const AMPLITUDE_MINIMALE = 0\.005;/.test(c),
       'le plancher vaut un demi pour cent du niveau');
     eq((c.match(/AMPLITUDE_MINIMALE\s*=/g) || []).length, 1,
@@ -1105,7 +1105,7 @@ suite('Le hero illustre sa variation, ses points espacés selon leur date', () =
   test('un patrimoine immobile ne se peint pas en bonne nouvelle', () => {
     const c = lireSource('assets/charts.js');
     const f = c.slice(c.indexOf('function sparkline'), c.indexOf('cablerInfobulle(svg', c.indexOf('function sparkline')));
-    /* Vert veut dire « ça monte ». Sur une ligne qui n'a pas bouge, c'etait une
+    /* Vert veut dire "ca monte". Sur une ligne qui n'a pas bouge, c'etait une
        bonne nouvelle inventee : l'encre neutre ne dit rien, ce qui est juste.
 
        LE CRITERE EST LA PENTE DESSINEE, PAS LE DRAPEAU DU CADRAGE, et c'est une
@@ -1134,7 +1134,7 @@ suite('Le hero illustre sa variation, ses points espacés selon leur date', () =
       'hausse et baisse prennent les deux couleurs du projet');
     vrai(!/#[0-9a-f]{3,6}/i.test(f.replace(/cssv\([^)]*\) \|\| '#fff'/g, '')),
       'aucune couleur écrite en dur');
-    /* Discrète : un trait fin, un remplissage à douze pour cent, aucune ombre. */
+    /* Discrete : un trait fin, un remplissage a douze pour cent, aucune ombre. */
     vrai(/stroke-width="2"/.test(f), 'trait fin');
     vrai(/fill-opacity="\.12"/.test(f), 'remplissage très léger');
     for (const interdit of ['filter:', 'drop-shadow', 'animate', 'linearGradient']) {
@@ -1148,26 +1148,26 @@ suite('Le hero illustre sa variation, ses points espacés selon leur date', () =
        caracteres : un commentaire ajoute en tete la faisait glisser, et le
        controle finissait par lire autre chose que ce qu'il croyait. */
     const f = c.slice(c.indexOf('function sparkline'), c.indexOf('cablerInfobulle(svg', c.indexOf('function sparkline')));
-    /* LE DESSIN RESTE DÉCORATIF : le montant, la variation et la période sont
-       écrits en toutes lettres à côté, et l'onglet Historique donne l'accès
-       détaillé. Rien n'est piégé au clavier : l'infobulle est un div posé par
+    /* LE DESSIN RESTE DECORATIF : le montant, la variation et la periode sont
+       ecrits en toutes lettres a cote, et l'onglet Historique donne l'acces
+       detaille. Rien n'est piege au clavier : l'infobulle est un div pose par
        `ensureTip`, sans tabindex. */
     vrai(/aria-hidden="true"/.test(f), 'le tracé ne se lit pas deux fois');
     vrai(!/tabindex/.test(f), 'et rien n’entre dans l’ordre de tabulation');
     /* `labels` allume l'exploration : le code du curseur et de l'infobulle
-       existait, il dormait faute d'étiquettes à montrer. */
+       existait, il dormait faute d'etiquettes a montrer. */
     const a = app();
     vrai(/labels: pts\.map\(p => p\.label\)/.test(a),
       'le montage passe les étiquettes, et c’est ce qui câble le doigt');
     vrai(/if \(!opts\.labels\) return;/.test(c), 'sans elles, rien ne se câble');
-    /* Le défilement vertical de la page reste possible depuis la courbe. */
+    /* Le defilement vertical de la page reste possible depuis la courbe. */
     vrai(/el\.style\.touchAction = 'pan-y';/.test(c),
       'un geste vertical fait défiler la page, il n’est pas capturé');
   });
 
   test('deux colonnes en haut, la barre de composition sur toute la largeur', () => {
     const a = app();
-    /* La lecture reste à gauche ; la courbe prend le vide de droite ; la barre
+    /* La lecture reste a gauche ; la courbe prend le vide de droite ; la barre
        passe sous les deux, comme avant. */
     const i = a.indexOf('<div class="hero-haut">');
     vrai(i > 0, 'le haut du hero est une rangée');
@@ -1177,19 +1177,19 @@ suite('Le hero illustre sa variation, ses points espacés selon leur date', () =
     vrai(a.indexOf('hero-barre') > a.indexOf('${blocSpark}'),
       'la barre reste sous les deux colonnes');
     const css = lireSource('assets/styles.css');
-    /* MOITIÉ-MOITIÉ. `3fr 2fr` réservait au texte trois cinquièmes qu'il ne
-       demandait pas, `fit-content(60%)` rendait à la courbe tout ce que le texte
-       laissait — sur un écran large elle s'étirait sur les trois quarts de la
-       carte. Deux fractions égales ne dépendent ni de l'un ni de l'autre. */
+    /* MOITIE-MOITIE. `3fr 2fr` reservait au texte trois cinquiemes qu'il ne
+       demandait pas, `fit-content(60%)` rendait a la courbe tout ce que le texte
+       laissait -- sur un ecran large elle s'etirait sur les trois quarts de la
+       carte. Deux fractions egales ne dependent ni de l'un ni de l'autre. */
     vrai(/grid-template-columns: minmax\(min-content, 1fr\) minmax\(0, 1fr\);/.test(css),
       'les deux colonnes se partagent la rangée en deux moitiés');
     vrai(/gap: 16px;/.test(css), 'et un écart normal les sépare');
     vrai(!/grid-template-columns: 50%/.test(css), 'sans pourcentages, qui déborderaient de l’écart');
-    /* LE PLANCHER `min-content` N'EST PAS DÉCORATIF, il est mesuré : à 375 px le
-       `clamp()` du grand chiffre reste à 34 px — il suit la fenêtre, pas sa
-       colonne — et « 4 200 909 € », dont les séparateurs sont insécables,
-       demande 166 px quand la moitié n'en donne que 148. Sans lui, dix-huit
-       pixels de débordement ; avec lui, la lecture prend 166 et la courbe 129,
+    /* LE PLANCHER `min-content` N'EST PAS DECORATIF, il est mesure : a 375 px le
+       `clamp()` du grand chiffre reste a 34 px -- il suit la fenetre, pas sa
+       colonne -- et "4 200 000 EUR", dont les separateurs sont insecables,
+       demande 166 px quand la moitie n'en donne que 148. Sans lui, dix-huit
+       pixels de debordement ; avec lui, la lecture prend 166 et la courbe 129,
        et dans ce cas seulement. */
     const rangee = css.slice(css.indexOf('.hero-haut {'), css.indexOf('}', css.indexOf('.hero-haut {')));
     vrai(!/1fr 1fr/.test(rangee),
@@ -1202,31 +1202,31 @@ suite('Le hero illustre sa variation, ses points espacés selon leur date', () =
 
   test('elle reste à droite à toutes les largeurs, téléphone compris', () => {
     const css = lireSource('assets/styles.css');
-    /* DEUX ESSAIS L'ONT PRÉCÉDÉ ET AUCUN NE TENAIT : l'effacer sous 560 px la
-       faisait simplement manquer, la passer sous la lecture l'éloignait du
-       chiffre qu'elle illustre. À 375 px la lecture tombe à 167 px et la courbe
-       prend son plancher de 120 : rien ne déborde. */
+    /* DEUX ESSAIS L'ONT PRECEDE ET AUCUN NE TENAIT : l'effacer sous 560 px la
+       faisait simplement manquer, la passer sous la lecture l'eloignait du
+       chiffre qu'elle illustre. A 375 px la lecture tombe a 167 px et la courbe
+       prend son plancher de 120 : rien ne deborde. */
     vrai(!/@media[^{]*\{\s*\.hero-(haut|spark)/.test(css),
       'aucune requête de média ne la déplace ni ne la masque');
     vrai(/\.hero-spark \{\s*min-width: 0;/.test(css),
       'la colonne de droite prend tout ce qui reste, sans plafond');
-    /* PAS DE SELECTION NATIVE SOUS LE DOIGT : un appui maintenu sur un téléphone
-       ouvrirait la loupe et la poignée de sélection, sur le geste même qui sert
-       à lire la courbe. */
+    /* PAS DE SELECTION NATIVE SOUS LE DOIGT : un appui maintenu sur un telephone
+       ouvrirait la loupe et la poignee de selection, sur le geste meme qui sert
+       a lire la courbe. */
     const zone = css.slice(css.indexOf('.hero-spark {'), css.indexOf('}', css.indexOf('.hero-spark {')));
     vrai(/-webkit-user-select: none/.test(zone) && /-webkit-touch-callout: none/.test(zone),
       'et rien ne se sélectionne sous le doigt');
-    /* AUCUNE HAUTEUR IMPOSÉE EN CSS, et c'est un piège mesuré : poser `height`
-       sur le SVG ne l'aplatit pas, sa `viewBox` se recentre et le tracé
-       rétrécit EN LARGEUR au milieu d'un conteneur pleine largeur. */
+    /* AUCUNE HAUTEUR IMPOSEE EN CSS, et c'est un piege mesure : poser `height`
+       sur le SVG ne l'aplatit pas, sa `viewBox` se recentre et le trace
+       retrecit EN LARGEUR au milieu d'un conteneur pleine largeur. */
     vrai(!/\.hero-spark svg \{[^}]*height/.test(css),
       'et aucune hauteur n’est imposée au SVG depuis le CSS');
   });
 
   test('aucun blanc ne peut revenir entre le texte et la courbe', () => {
     const css = lireSource('assets/styles.css');
-    /* DEUX FRACTIONS ÉGALES NE LAISSENT AUCUN RESTE À PLACER : ce qui n'est pas
-       dans une moitié est dans l'autre, et l'écart est le seul espace entre
+    /* DEUX FRACTIONS EGALES NE LAISSENT AUCUN RESTE A PLACER : ce qui n'est pas
+       dans une moitie est dans l'autre, et l'ecart est le seul espace entre
        elles. Le blanc d'autrefois naissait d'une colonne plus large que son
        contenu ; il ne peut plus revenir puisque aucune ne suit le sien. */
     vrai(/grid-template-columns: minmax\(min-content, 1fr\) minmax\(0, 1fr\);/.test(css),
@@ -1244,7 +1244,7 @@ suite('Le hero illustre sa variation, ses points espacés selon leur date', () =
     /* LE DEFAUT, MESURE AVANT CORRECTION. L'intitule et sa bascule vivaient dans
        la colonne de lecture. Tant qu'elle prenait la plus grande part de la
        rangee, ils tenaient sur une ligne ; le jour ou les deux colonnes sont
-       passees a la moitie chacune, la place a manque — a 390 px, 155 px de
+       passees a la moitie chacune, la place a manque -- a 390 px, 155 px de
        colonne pour 78 d'intitule, 10 d'ecart et 107 de pilule, soit 195. La
        pilule passait a la ligne, et sa marge automatique la posait au bord droit
        DE LA COLONNE, c'est-a-dire au milieu de la carte, juste au-dessus du
@@ -1268,13 +1268,13 @@ suite('Le hero illustre sa variation, ses points espacés selon leur date', () =
   test('la bulle se pose au-dessus du tracé, sans en sortir', () => {
     const c = lireSource('assets/charts.js');
     const b = c.slice(c.indexOf('function sparkline'), c.indexOf('return { stackedArea'));
-    /* À `-6px` elle commençait six pixels au-dessus du cadre et retombait sur
-       toute la hauteur de la courbe : on lisait le chiffre à travers le dessin
+    /* A `-6px` elle commencait six pixels au-dessus du cadre et retombait sur
+       toute la hauteur de la courbe : on lisait le chiffre a travers le dessin
        qu'il commente. Son bas se pose maintenant au-dessus du cadre. */
     vrai(/tip\.style\.top = -Math\.min\(tip\.offsetHeight \+ 8,/.test(b),
       'son bas remonte au-dessus du cadre, de sa propre hauteur plus huit pixels');
-    /* Et la montée est bornée par la place mesurée sur la carte, jamais par un
-       nombre écrit : sinon elle sortirait par le haut. */
+    /* Et la montee est bornee par la place mesuree sur la carte, jamais par un
+       nombre ecrit : sinon elle sortirait par le haut. */
     vrai(/el\.getBoundingClientRect\(\)\.top - carte\.getBoundingClientRect\(\)\.top/.test(b),
       'la borne se mesure sur la carte qui porte le graphique');
   });
@@ -1319,12 +1319,12 @@ suite('Rien ne se sélectionne dans l’interface, sauf ce qui s’édite', () =
     const c = css();
     vrai(c, 'assets/styles.css doit être lisible pour ce contrôle');
     /* `body` et non `html` : tout ce qui s'affiche est dedans, et les deux
-       propriétés s'héritent, donc une déclaration couvre l'arbre entier.
+       proprietes s'heritent, donc une declaration couvre l'arbre entier.
 
-       DEUX RÈGLES « body » COHABITENT, et l'ordre entre elles est tenu ailleurs :
-       la première porte la police, un contrôle de la maison le vérifie en la
-       lisant. La coupure vit donc dans la seconde, et ce contrôle-ci les lit
-       toutes plutôt que de parier sur laquelle. */
+       DEUX REGLES "body" COHABITENT, et l'ordre entre elles est tenu ailleurs :
+       la premiere porte la police, un controle de la maison le verifie en la
+       lisant. La coupure vit donc dans la seconde, et ce controle-ci les lit
+       toutes plutot que de parier sur laquelle. */
     const regles = [];
     for (let i = c.indexOf('\nbody {'); i >= 0; i = c.indexOf('\nbody {', i + 1)) {
       regles.push(c.slice(i, c.indexOf('}', i)));
@@ -1392,7 +1392,7 @@ suite('Rien ne se sélectionne dans l’interface, sauf ce qui s’édite', () =
 
   test('plus une seule garde locale ne dit ce que la racine dit déjà', () => {
     const nu = css().replace(/\/\*[\s\S]*?\*\//g, '');
-    /* Six gardes avaient ete posees une par une — graphique, carte a graphique,
+    /* Six gardes avaient ete posees une par une -- graphique, carte a graphique,
        en-tete de fiche, patrimoine de la barre laterale, montant masquable,
        colonnes triables. Elles disaient toutes la meme chose, et l'une d'elles
        la contredisait. Il en reste deux, et ce sont celles de la courbe. */
@@ -1407,9 +1407,9 @@ suite('Rien ne se sélectionne dans l’interface, sauf ce qui s’édite', () =
 
 /* --- COPIER SANS ROUVRIR LA SELECTION --------------------------------------
 
-   La regle de la maison est « rien ne se selectionne ». Son prix : une donnee
-   qu'on recopie vraiment ailleurs n'a plus de chemin. Deux en ont un — le numero
-   de compte et l'ISIN — par un bouton, jamais par une exception CSS. Ces
+   La regle de la maison est "rien ne se selectionne". Son prix : une donnee
+   qu'on recopie vraiment ailleurs n'a plus de chemin. Deux en ont un -- le numero
+   de compte et l'ISIN -- par un bouton, jamais par une exception CSS. Ces
    controles tiennent les deux bords : que le bouton existe la ou il sert, et
    qu'aucune classe ne reprenne la selection par la fenetre. */
 suite('La copie est un geste explicite, jamais une exception de sélection', () => {
@@ -1470,7 +1470,7 @@ suite('La copie est un geste explicite, jamais une exception de sélection', () 
   test('le bouton porte son nom, sa cible et sa discrétion', () => {
     const a = nu(app());
     const b = a.slice(a.indexOf('const boutonCopier ='), a.indexOf('\n};', a.indexOf('const boutonCopier =')));
-    /* UN NOM PRECIS, PAS « Copier » TOUT SEUL : a l'oreille, « Copier » ne dit
+    /* UN NOM PRECIS, PAS "Copier" TOUT SEUL : a l'oreille, "Copier" ne dit
        pas quoi. Le meme mot sert d'infobulle a la souris. */
     vrai(/aria-label="\$\{nom\}"/.test(b) && /title="\$\{nom\}"/.test(b),
       'il porte un nom accessible et le même en infobulle');
@@ -1498,14 +1498,14 @@ suite('La copie est un geste explicite, jamais une exception de sélection', () 
   test('seules deux données portent un bouton, et ce sont les bonnes', () => {
     const a = nu(app());
     /* TROIS APPELS POUR DEUX DONNEES : le numero de compte se lit a deux
-       endroits — la fiche d'un placement et celle d'un compte — et l'ISIN a un.
+       endroits -- la fiche d'un placement et celle d'un compte -- et l'ISIN a un.
        Un quatrieme appel serait une icone de plus dans une interface qui n'en
        demande pas. */
     const appels = [...a.matchAll(/boutonCopier\(([^,]+), '([^']+)'\)/g)].map(m => [m[1], m[2]]);
     /* Deux : le numero de compte sur la carte d'identite, et l'ISIN sur la fiche
        d'une ligne de titres. Il y en avait trois tant que la carte de valeur
        d'un actif en parts portait sa propre copie du numero ; elle l'a rendue a
-       « Informations » avec le reste de l'identite. */
+       "Informations" avec le reste de l'identite. */
     eq(appels.length, 2, `${appels.length} boutons de copie dans toute l’application`);
     for (const [valeur, libelle] of appels) {
       vrai(/^(c\.numero|p\.isin)$/.test(valeur.trim()),
@@ -1513,7 +1513,7 @@ suite('La copie est un geste explicite, jamais une exception de sélection', () 
       vrai(/^Copier (le numéro de compte|l’ISIN)$/.test(libelle),
         `« ${libelle} » nomme ce qu’il copie`);
     }
-    /* ET AUCUN MONTANT. « Est-ce qu'on le colle dans un autre formulaire ? »
+    /* ET AUCUN MONTANT. "Est-ce qu'on le colle dans un autre formulaire ?"
        Pour un patrimoine, une variation ou un solde : non. */
     vrai(!/boutonCopier\([^)]*(fmtEUR|montant|solde|total|valeur\()/i.test(a),
       'aucun montant ne porte de bouton de copie');
@@ -1566,19 +1566,19 @@ suite('La courbe du hero s’explore au doigt', () => {
     const v = variationAn(todayISO(), true);
     const pts = pointsAn(v.depuis, true);
     vrai(pts.length >= 2, `${pts.length} points`);
-    /* UN SEUL PARCOURS : deux filtres écrits côte à côte auraient fini par ne
-       pas retenir les mêmes relevés, et la courbe aurait porté des étiquettes
-       décalées d'un cran sur ses propres montants. */
+    /* UN SEUL PARCOURS : deux filtres ecrits cote a cote auraient fini par ne
+       pas retenir les memes releves, et la courbe aurait porte des etiquettes
+       decalees d'un cran sur ses propres montants. */
     eq(pts.map(p => p.valeur).join('|'), serieAn(v.depuis, true).join('|'),
       'la série des valeurs dérive des points, elle ne les refait pas');
     const st = lireSource('assets/store.js');
     vrai(/const serieAn = \(depuis, net = true\) => pointsAn\(depuis, net\)\.map\(p => p\.valeur\);/.test(st),
       'et cela se lit dans le code');
-    /* L'ANNÉE EN ENTIER, par le formateur qui existe déjà pour ça. Le ruban des
-       relevés abrège parce que ses colonnes sont étroites ; une bulle de deux
-       lignes n'a pas cette contrainte. `fmtMoisAn()` sert déjà aux échéances de
-       crédit : en poser un second ici aurait donné deux façons de nommer le
-       même mois. */
+    /* L'ANNEE EN ENTIER, par le formateur qui existe deja pour ca. Le ruban des
+       releves abrege parce que ses colonnes sont etroites ; une bulle de deux
+       lignes n'a pas cette contrainte. `fmtMoisAn()` sert deja aux echeances de
+       credit : en poser un second ici aurait donne deux facons de nommer le
+       meme mois. */
     const dans = historySeries({ includeNow: false }).filter(p => String(p.date) >= String(v.depuis));
     eq(pts.slice(0, -1).map(p => p.label).join('|'), dans.map(p => fmtMoisAn(p.date)).join('|'),
       'aucun second format de mois');
@@ -1594,8 +1594,8 @@ suite('La courbe du hero s’explore au doigt', () => {
        courbe dessine : aucun patrimoine intermediaire n'est calcule. */
     vrai(/const i = indexLePlusProche\(xs, \(ev\.clientX - r\.left\) \/ r\.width \* W\);/.test(b),
       'le doigt prend le point d’abscisse la plus proche');
-    /* DEUX LIGNES, LA DATE AU-DESSUS. En ligne, séparées d'un point médian, les
-       deux se disputaient la même lecture et c'est la date qui gagnait, puisque
+    /* DEUX LIGNES, LA DATE AU-DESSUS. En ligne, separees d'un point median, les
+       deux se disputaient la meme lecture et c'est la date qui gagnait, puisque
        qu'elle finissait la phrase. */
     vrai(/tip\.innerHTML = `<div class="tt-head">\$\{opts\.labels\[i\]\}<\/div>`/.test(b),
       'la date ouvre la bulle, dans l’intitulé partagé des infobulles');
@@ -1610,8 +1610,8 @@ suite('La courbe du hero s’explore au doigt', () => {
 
   test('elle ne déborde jamais de son cadre', () => {
     const b = bloc();
-    /* Près du bord droit elle se décale à gauche, près du gauche elle se cale à
-       zéro : le clamp le dit en une ligne. */
+    /* Pres du bord droit elle se decale a gauche, pres du gauche elle se cale a
+       zero : le clamp le dit en une ligne. */
     vrai(/tip\.style\.left = Math\.max\(0, Math\.min\(W - tw, x\(i\) - tw \/ 2\)\) \+ 'px';/.test(b),
       'l’infobulle se recale dans la largeur du tracé');
   });
@@ -1622,14 +1622,15 @@ suite('La courbe du hero s’explore au doigt', () => {
       'un geste vertical fait défiler la page');
     const s = c();
     const g = s.slice(s.indexOf('function cablerInfobulle'), s.indexOf('function ensureTip'));
-    /* À ÉGALITÉ, LE GESTE VA AU DÉFILEMENT : c'est celui qu'on perd le plus mal,
-       et une infobulle manquée se rattrape en reposant le doigt. */
+    /* A EGALITE, LE GESTE VA AU DEFILEMENT : c'est celui qu'on perd le plus mal,
+       et une infobulle manquee se rattrape en reposant le doigt. */
     vrai(/if \(dy > SEUIL_GLISSE && dy >= dx\)/.test(g), 'un glissement vertical abandonne');
     vrai(/if \(dx > SEUIL_GLISSE\)/.test(g), 'un glissement horizontal ouvre');
     vrai(!/preventDefault/.test(g), 'et rien n’est capturé de force');
-    /* La levée referme, sans minuteur. */
-    vrai(/cible\.addEventListener\('pointerup', cacher\);/.test(g), 'lever le doigt referme');
-    vrai(/cible\.addEventListener\('pointerleave', cacher\);/.test(g), 'sortir referme aussi');
+    /* La levee referme, sans minuteur, hors du tap court d'un graphique qui
+       le demande. */
+    vrai(/cible\.addEventListener\('pointerup', ev => \{[\s\S]*?\n      cacher\(\);\n    \}\);/.test(g), 'lever le doigt referme');
+    vrai(/cible\.addEventListener\('pointerleave', ev => \{[\s\S]*?\n      cacher\(\);\n    \}\);/.test(g), 'sortir referme aussi');
   });
 
   test('rien ne se rend à nouveau pendant le mouvement', () => {
@@ -1645,9 +1646,9 @@ suite('La courbe du hero s’explore au doigt', () => {
 });
 
 /* --- UN SEUL SQUELETTE, PARCE QU'ON BALAYE CETTE CARTE ---------------------
-   « À retenir » ne se lit pas ligne a ligne, on la parcourt. Un parcours
-   suppose que le meme element se trouve toujours au meme endroit — titre,
-   chiffre, contexte, complement, renvoi — et que rien d'important ne se cache
+   "A retenir" ne se lit pas ligne a ligne, on la parcourt. Un parcours
+   suppose que le meme element se trouve toujours au meme endroit -- titre,
+   chiffre, contexte, complement, renvoi -- et que rien d'important ne se cache
    au milieu d'une phrase. Ces controles tiennent l'ordre et la hierarchie, pas
    les mots : les mots, eux, ont leurs propres suites plus bas. */
 suite('À retenir : chaque insight se lit dans le même ordre', () => {
@@ -1657,11 +1658,11 @@ suite('À retenir : chaque insight se lit dans le même ordre', () => {
     return a.slice(a.indexOf('const PRESENTATION_INSIGHT'), a.indexOf('function carteARetenir()'));
   };
   /* LA BORNE BASSE EST LA FONCTION SUIVANTE, QUELLE QU'ELLE SOIT. Elle nommait
-     `viewOverview()`, qui se trouvait être la voisine : la carte commune des
-     insights et le rendu d'une entrée se sont posés entre les deux, et la
-     tranche a gonflé de deux fonctions que ces contrôles ne visent pas — d'où
-     « deux listes » là où la carte de l'Aperçu n'en porte qu'une. Une borne se
-     dérive de la structure, jamais d'un voisinage que rien ne garantit. */
+     `viewOverview()`, qui se trouvait etre la voisine : la carte commune des
+     insights et le rendu d'une entree se sont poses entre les deux, et la
+     tranche a gonfle de deux fonctions que ces controles ne visent pas -- d'ou
+     "deux listes" la ou la carte de l'Apercu n'en porte qu'une. Une borne se
+     derive de la structure, jamais d'un voisinage que rien ne garantit. */
   const rendu = () => {
     const a = app();
     const d = a.indexOf('function carteARetenir()');
@@ -1684,9 +1685,9 @@ suite('À retenir : chaque insight se lit dans le même ordre', () => {
 
   test('le gabarit pose les cinq blocs dans cet ordre', () => {
     /* LE GABARIT D'UNE ENTREE A DEMENAGE dans `ligneInsight()`, qui le rend pour
-       tous les onglets. C'est la le bon endroit pour ce contrôle : l'ordre des
-       cinq blocs est une propriété de l'entrée, pas de la carte qui la porte, et
-       le vérifier dans une seule carte laisserait les autres libres d'en
+       tous les onglets. C'est la le bon endroit pour ce controle : l'ordre des
+       cinq blocs est une propriete de l'entree, pas de la carte qui la porte, et
+       le verifier dans une seule carte laisserait les autres libres d'en
        inventer un second. */
     const a = app();
     const d = a.indexOf('function ligneInsight(');
@@ -1708,10 +1709,10 @@ suite('À retenir : chaque insight se lit dans le même ordre', () => {
                                  ['goal_projected_date', 'liquidity_runway_shift']]) {
       const b = entree(id, suivant).replace(/\/\*[\s\S]*?\*\//g, '');
       vrai(b.length > 80, `« ${id} » a bien été trouvé`);
-      /* UN TITRE PEUT ÊTRE UNE FONCTION, et c'est même le cas quand il porte
-         une conclusion : « Ton patrimoine avance plus vite qu'avant » se décide
-         sur les chiffres de la règle, il ne peut pas être une constante. Le
-         motif n'exigeait qu'une chaîne, donc il interdisait par accident le
+      /* UN TITRE PEUT ETRE UNE FONCTION, et c'est meme le cas quand il porte
+         une conclusion : "Ton patrimoine avance plus vite qu'avant" se decide
+         sur les chiffres de la regle, il ne peut pas etre une constante. Le
+         motif n'exigeait qu'une chaine, donc il interdisait par accident le
          titre qui dit quelque chose. */
       for (const [champ, motif] of [['un titre', /\n    titre: ('|p =>)/],
                                     ['une valeur forte', /\n    valeur: /],
@@ -1725,11 +1726,11 @@ suite('À retenir : chaque insight se lit dans le même ordre', () => {
 
   test('le contexte prolonge le chiffre, il ne recommence pas une phrase', () => {
     const p = presentation();
-    /* La réserve dit « de dépenses immédiates » depuis que son titre porte le
-       verbe : « Ce que ta réserve couvre » suivi de « immédiatement couvertes »
-       répétait le même mot à deux lignes d'écart. Ce que le contrôle défend est
-       la FORME du contexte — un complément qui prolonge le chiffre au lieu de
-       rouvrir une phrase — pas le choix des mots. */
+    /* La reserve dit "de depenses immediates" depuis que son titre porte le
+       verbe : "Ce que ta reserve couvre" suivi de "immediatement couvertes"
+       repetait le meme mot a deux lignes d'ecart. Ce que le controle defend est
+       la FORME du contexte -- un complement qui prolonge le chiffre au lieu de
+       rouvrir une phrase -- pas le choix des mots. */
     for (const c of ['sur les {n} derniers mois',
                      'pour atteindre ta cible de {t}']) {
       vrai(p.includes(`trad('${c}')`), `« ${c} » est le contexte affiché`);
@@ -1767,8 +1768,8 @@ suite('À retenir : chaque insight se lit dans le même ordre', () => {
     vrai(/font-size: var\(--font-sm\)/.test(bloc('second'))
       && /var\(--muted\)/.test(bloc('second')),
       'et l’information secondaire est plus petite et plus pâle que lui');
-    /* « janvier 2030 » ouvre sa ligne comme un chiffre et merite la capitale
-       qu'un debut de ligne appelle ; `capitalize` aurait ecrit « 0,8 Mois ». */
+    /* "janvier 2030" ouvre sa ligne comme un chiffre et merite la capitale
+       qu'un debut de ligne appelle ; `capitalize` aurait ecrit "0,8 Mois". */
     vrai(/\.retenir-valeur::first-letter \{ text-transform: uppercase; \}/.test(css),
       'la date porte sa capitale sans que les autres valeurs y perdent');
     vrai(!/\.retenir-valeur \{[^}]*text-transform: capitalize/.test(css),
@@ -1789,7 +1790,7 @@ suite('Le moteur d’insights ne parle pas sans données', () => {
   const par = (l, id) => l.find(i => i.id === id) || null;
   const vierge = () => { Store.state = blankState(); Store.migrate(); refreshAccounts(); };
 
-  /* Un historique de N relevés mensuels consécutifs, valeur imposée mois par
+  /* Un historique de N releves mensuels consecutifs, valeur imposee mois par
      mois : c'est la seule facon de fabriquer un rythme comparable. */
   const poserHistorique = (valeurs, depart = '2024-01-31') => {
     const [y, m] = depart.split('-').map(Number);
@@ -1912,18 +1913,18 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
   test('chaque règle est unique, nommée, et rangée dans une famille', () => {
     const ids = REGLES_INSIGHT.map(r => r.id);
     eq(new Set(ids).size, ids.length, 'aucun identifiant en double');
-    /* UN GROUPE PEUT SE PARTAGER, ET C'EST TOUT SON OBJET. Ce contrôle exigeait
-       un groupe par règle, ce qui revenait à interdire le mécanisme qu'il
-       croyait protéger : le groupe existe pour que deux règles qui diraient la
-       même chose ne sortent pas ensemble. « Tes dépenses ont monté de 12 % » et
-       « tes restaurants passent de 180 a 300 EUR » racontent le meme fait, la
-       seconde en disant où ; elles partagent donc un groupe, et la plus forte
+    /* UN GROUPE PEUT SE PARTAGER, ET C'EST TOUT SON OBJET. Ce controle exigeait
+       un groupe par regle, ce qui revenait a interdire le mecanisme qu'il
+       croyait proteger : le groupe existe pour que deux regles qui diraient la
+       meme chose ne sortent pas ensemble. "Tes depenses ont monte de 12 %" et
+       "tes restaurants passent de 180 a 300 EUR" racontent le meme fait, la
+       seconde en disant ou ; elles partagent donc un groupe, et la plus forte
        gagne.
 
-       Ce qui reste interdit, et c'est la vraie règle : partager un groupe entre
-       deux familles. La famille sert à ordonner, le groupe à retirer — deux
-       règles de familles différentes qui s'excluent feraient disparaître une
-       question entière de l'écran sans que rien ne le dise. */
+       Ce qui reste interdit, et c'est la vraie regle : partager un groupe entre
+       deux familles. La famille sert a ordonner, le groupe a retirer -- deux
+       regles de familles differentes qui s'excluent feraient disparaitre une
+       question entiere de l'ecran sans que rien ne le dise. */
     const parGroupe = new Map();
     for (const r of REGLES_INSIGHT) {
       const l = parGroupe.get(r.dedupeGroup) || [];
@@ -1945,15 +1946,15 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
     vrai(INSIGHT_PRIORITE.HAUTE > INSIGHT_PRIORITE.BASSE, 'le rang monte avec l’importance');
   });
 
-  /* CES DEUX TESTS LISENT DU CODE, ET JAMAIS UN COMMENTAIRE. La chaîne de
-     publication retire les commentaires : une assertion posée sur une phrase
-     explicative passe ici et rougit dans l'arbre publié, sans qu'aucun
-     comportement n'ait changé. C'est arrivé, et une fois suffit. */
+  /* CES DEUX TESTS LISENT DU CODE, ET JAMAIS UN COMMENTAIRE. La chaine de
+     publication retire les commentaires : une assertion posee sur une phrase
+     explicative passe ici et rougit dans l'arbre publie, sans qu'aucun
+     comportement n'ait change. C'est arrive, et une fois suffit. */
   test('ce que les données ne permettent pas est écarté, et rien ne le remplace', () => {
     const c = sansCommentaires();
-    /* PAS DE RESERVE CIBLE INVENTEE. `runway()` porte un palier à trois et six
-       mois qui sert une jauge ailleurs ; aucune règle ne le lit, sinon une
-       phrase qui circule passerait pour un arbitrage du détenteur. */
+    /* PAS DE RESERVE CIBLE INVENTEE. `runway()` porte un palier a trois et six
+       mois qui sert une jauge ailleurs ; aucune regle ne le lit, sinon une
+       phrase qui circule passerait pour un arbitrage du detenteur. */
     /* Le palier de trois mois entre desormais dans le moteur, et a un seul
        titre : DECIDER qu'une reserve insuffisante passe devant une bonne
        nouvelle. Il ne sort jamais en chiffre, il ne devient jamais une cible
@@ -1964,8 +1965,8 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
       'les deux seules lignes qui le nomment sont des gardes de sélection');
     vrai(/const moisManquants = m => Math\.max\(0,/.test(c), 'et la seconde mesure le manque');
     vrai(!/targetHigh/.test(c), 'le palier haut n’entre pas dans le moteur');
-    /* PAS DE MARCHES. Le complément des apports mêle valorisation, capital
-       remboursé et réévaluation, et rien ici ne sait les séparer. */
+    /* PAS DE MARCHES. Le complement des apports mele valorisation, capital
+       rembourse et reevaluation, et rien ici ne sait les separer. */
     vrai(!/march[ée]s/i.test(c), 'aucune règle n’attribue quoi que ce soit aux marchés');
     Fixture.poser();
     const o = evaluerInsights().find(x => x.id === 'wealth_growth_origin');
@@ -1973,8 +1974,8 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
       vrai('rest' in o.params, 'le complément s’appelle « le reste »');
       eq(o.evidence.restIsNotOnlyMarkets, true, 'et la preuve le déclare');
     }
-    /* PAS D'HISTORIQUE PAR LIGNE. Les relevés notent des montants par compte :
-       la concentration ne compare donc le portefeuille qu'à lui-même. */
+    /* PAS D'HISTORIQUE PAR LIGNE. Les releves notent des montants par compte :
+       la concentration ne compare donc le portefeuille qu'a lui-meme. */
     const k = evaluerInsights().find(x => x.id === 'concentration_top_line');
     if (k) {
       vrai(!Object.keys(k.params).some(n => /previous|avant/i.test(n)),
@@ -1986,15 +1987,15 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
   test('deux règles se passent de tout seuil posé, et se comparent au détenteur', () => {
     const c = sansCommentaires();
     const tranche = (a, b) => c.slice(c.indexOf(a), c.indexOf(b));
-    /* Un mois sort de l'ordinaire quand il s'écarte de plus du DOUBLE de ce que
-       ses propres mois s'écartent habituellement. Aucun montant, aucun
-       pourcentage : trois cents euros de plus sont énormes chez l'un et
+    /* Un mois sort de l'ordinaire quand il s'ecarte de plus du DOUBLE de ce que
+       ses propres mois s'ecartent habituellement. Aucun montant, aucun
+       pourcentage : trois cents euros de plus sont enormes chez l'un et
        invisibles chez l'autre. */
     /* LA BORNE BASSE EST LA REGLE SUIVANTE, QUELLE QU'ELLE SOIT. Elle nommait
-       `concentration_top_line`, qui se trouvait être la voisine : trois règles
-       posées entre les deux ont fait entrer leurs seuils dans la tranche, et le
-       contrôle a crié sur du code qu'il ne visait pas. Une borne se dérive de
-       la structure — la prochaine déclaration de règle — jamais d'un voisinage
+       `concentration_top_line`, qui se trouvait etre la voisine : trois regles
+       posees entre les deux ont fait entrer leurs seuils dans la tranche, et le
+       controle a crie sur du code qu'il ne visait pas. Une borne se derive de
+       la structure -- la prochaine declaration de regle -- jamais d'un voisinage
        qui n'est garanti par rien. */
     const regleSuivante = depuis => {
       const i = c.indexOf(depuis);
@@ -2005,13 +2006,13 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
     vrai(/2 \* dispersion/.test(mois), 'le seuil est le double de sa propre dispersion');
     vrai(/mediane\(avant\.map/.test(mois), 'mesurée sur ses propres mois');
     vrai(!/SEUIL_/.test(mois), 'et aucun seuil posé n’entre dans la règle');
-    /* Une ligne est remarquable quand elle pèse autant que les deux suivantes DU
-       MEME portefeuille. « Seize pour cent, est-ce beaucoup » n'a pas de réponse
-       générale, et toutes celles qui circulent sont des opinions. */
+    /* Une ligne est remarquable quand elle pese autant que les deux suivantes DU
+       MEME portefeuille. "Seize pour cent, est-ce beaucoup" n'a pas de reponse
+       generale, et toutes celles qui circulent sont des opinions. */
     const ligne = tranche("id: 'concentration_top_line'", 'function creditBientotSolde');
     vrai(/deuxSuivantes/.test(ligne), 'la première ligne se compare aux deux suivantes');
     vrai(!/SEUIL_/.test(ligne), 'et aucun seuil posé n’y entre non plus');
-    /* Aucun jugement ne peut sortir du moteur, même par une clef. */
+    /* Aucun jugement ne peut sortir du moteur, meme par une clef. */
     for (const mot of ['prudent', 'sain', 'risque', 'recommand', 'optimal']) {
       vrai(!new RegExp(mot, 'i').test(c), `« ${mot} » ne sort pas du moteur`);
     }
@@ -2026,17 +2027,17 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
     const ilYA = n => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
 
     /* CELUI D'AUJOURD'HUI RESTE A L'ECRAN. La vue note ce qu'elle vient de
-       montrer ; si la note le faisait taire aussitôt, le rendu suivant du même
-       jour le retirerait, et les entrées suivantes remonteraient pour subir le
-       même sort. La carte se vidait en trois rendus, et c'est arrivé. */
+       montrer ; si la note le faisait taire aussitot, le rendu suivant du meme
+       jour le retirerait, et les entrees suivantes remonteraient pour subir le
+       meme sort. La carte se vidait en trois rendus, et c'est arrive. */
     Store.state.meta.insightsVus = { [i.id]: { date: todayISO(), valeur: i.valeur } };
     vrai(evaluerInsights().some(x => x.id === i.id), 'noté aujourd’hui, il reste affiché');
 
-    /* Le lendemain, il attend son tour — DERRIERE les autres, pas dehors. Ce
+    /* Le lendemain, il attend son tour -- DERRIERE les autres, pas dehors. Ce
        controle exigeait son absence, et c'est ce qui rendait le defaut legitime
        : un insight au repos etait retire de la liste, si bien qu'un patrimoine
        calme, dont trois regles seulement parlent, voyait sa carte se vider le
-       lendemain de la premiere lecture et annoncer « rien d'inhabituel ». */
+       lendemain de la premiere lecture et annoncer "rien d'inhabituel". */
     Store.state.meta.insightsVus[i.id].date = ilYA(1);
     const apres = evaluerInsights();
     const place = apres.findIndex(x => x.id === i.id);
@@ -2045,7 +2046,7 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
     vrai(apres.slice(0, place).every(x => !x.repos),
       'et rangé derrière tout ce qui est neuf : le repos classe, il ne fait pas taire');
 
-    /* Il revient dès que sa propre matérialité est franchie, et pas avant. */
+    /* Il revient des que sa propre materialite est franchie, et pas avant. */
     Store.state.meta.insightsVus[i.id].valeur = i.valeur + num(regle.materialite) * 2 + 1;
     vrai(evaluerInsights().some(x => x.id === i.id), 'le chiffre a bougé : il revient');
   });
@@ -2053,14 +2054,14 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
   test('tout le catalogue au repos ne fait pas dire « rien d’inhabituel »', () => {
     /* La carte d'insights ne portait plus que son etat calme.
 
-     Le moteur avait pourtant trois choses a dire — sa reserve, son ecart de
+     Le moteur avait pourtant trois choses a dire -- sa reserve, son ecart de
        cible, le glissement d'une poche. Les trois avaient ete lues la veille,
        aucune n'avait bouge, et leurs repos durent vingt et un a quarante-cinq
        jours : la carte se taisait donc pour des semaines en annoncant le calme.
 
-       L'ETAT CALME EST UNE REPONSE, ET ELLE DOIT RESTER VRAIE. « Rien
-       d'inhabituel a signaler » veut dire que le moteur a regarde et n'a rien
-       trouve. Il ne peut pas vouloir dire « tout ce qui a ete trouve dort ». */
+       L'ETAT CALME EST UNE REPONSE, ET ELLE DOIT RESTER VRAIE. "Rien
+       d'inhabituel a signaler" veut dire que le moteur a regarde et n'a rien
+       trouve. Il ne peut pas vouloir dire "tout ce qui a ete trouve dort". */
     Fixture.poser();
     const avant = evaluerInsights();
     vrai(avant.length > 0, 'la graine a de quoi parler');
@@ -2132,16 +2133,16 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
     const i = evaluerInsights().find(x => x.id === 'liquidity_runway_shift') || null;
     if (!avant) { eq(i, null, 'sans relevé assez ancien, elle se tait'); return; }
     /* LA CONSOMMATION EST LA MEME DES DEUX COTES. Les charges fixes n'ont pas
-       d'historique : en mêler deux attribuerait au cash une variation venue du
+       d'historique : en meler deux attribuerait au cash une variation venue du
        budget, et la phrase promettrait ce qu'elle ne mesure pas. */
     pres(avant.mois, num(avant.cash) / num(m.runway.burn),
       'les mois d’avant se comptent avec la consommation d’aujourd’hui');
     if (i) {
       vrai(i.evidence.burnConstant === true, 'la preuve le déclare');
-      /* ET LE MEME PERIMETRE DES DEUX COTES. Un relevé mensuel ne note qu'une
-         poche de trésorerie : répondre avec les liquidités mobilisables, qui
-         ajoutent le différé, aurait comparé une poche à trois et annoncé une
-         progression qui n'aurait été qu'un changement de définition. */
+      /* ET LE MEME PERIMETRE DES DEUX COTES. Un releve mensuel ne note qu'une
+         poche de tresorerie : repondre avec les liquidites mobilisables, qui
+         ajoutent le differe, aurait compare une poche a trois et annonce une
+         progression qui n'aurait ete qu'un changement de definition. */
       eq(i.evidence.scope, 'cash', 'les deux dates parlent de la trésorerie');
       pres(i.params.months, num(m.totaux.cash) / num(m.runway.burn),
         'aujourd’hui se compte sur la même poche qu’hier');
@@ -2161,8 +2162,8 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
     const p = partsDesPoches(m, 6);
     if (!p) { vrai(true, 'pas assez d’historique : rien à vérifier'); return; }
     /* LA REGLE CARDINALE DU PROJET : un total vaut la somme de ses parts. Les
-       deux photos totalisent cent pour cent, sinon l'écart affiché mêlerait un
-       changement de poids et un changement de périmètre. */
+       deux photos totalisent cent pour cent, sinon l'ecart affiche melerait un
+       changement de poids et un changement de perimetre. */
     const sommeAvant = p.lignes.reduce((s, x) => s + x.avant, 0);
     const sommeApres = p.lignes.reduce((s, x) => s + x.maintenant, 0);
     pres(sommeAvant, 100, 'les parts d’hier font cent');
@@ -2193,7 +2194,7 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
     });
     const anomalie = () => evaluerInsights().find(x => x.id === 'spending_month_anomaly') || null;
     /* UNE SERIE PARFAITEMENT PLATE N'A PAS DE DISPERSION, donc pas d'anomalie
-       possible : trois euros d'écart y seraient « inhabituels », ce qui ne veut
+       possible : trois euros d'ecart y seraient "inhabituels", ce qui ne veut
        rien dire. On se tait. */
     poser([1000, 1000, 1000, 1000, 1000, 1000, 1000, 2000]);
     eq(anomalie(), null, 'sans dispersion mesurable, aucune anomalie');
@@ -2226,6 +2227,6 @@ suite('Le catalogue s’est élargi, et il dit ce qu’il ne sait pas faire', ()
   });
 });
 
-/* --- Les règles, une par une ---------------------------------------- */
+/* --- Les regles, une par une ---------------------------------------- */
 
 finDePartieDeTests('tests/22-infobulle-historique-dit-composition.tests.js');

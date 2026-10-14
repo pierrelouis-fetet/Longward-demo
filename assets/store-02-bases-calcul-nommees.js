@@ -1739,13 +1739,8 @@ const Store = {
     }
 
     if (!Array.isArray(s.budget.contributors)) {
-      const partage = s.budget.fixedCharges.some(c => num(c.sharePK));
-      s.budget.contributors = partage ? [{ id: 'pk', name: 'PK' }] : [];
-      for (const c of s.budget.fixedCharges) {
-        if (!c.shares) c.shares = {};
-        if (num(c.sharePK)) c.shares.pk = num(c.sharePK);
-        delete c.sharePK;
-      }
+      s.budget.contributors = [];
+      for (const c of s.budget.fixedCharges) if (!c.shares) c.shares = {};
     }
 
     if (!s.meta.classementRevu) {

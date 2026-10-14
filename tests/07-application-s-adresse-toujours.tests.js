@@ -1,6 +1,6 @@
 partieDeTests('tests/07-application-s-adresse-toujours.tests.js');
 /* ------------------------------------------------------------------
-   L'application s'adresse toujours de la même façon
+   L'application s'adresse toujours de la meme facon
    ------------------------------------------------------------------ */
 suite('L’application s’adresse toujours de la même façon', () => {
 
@@ -26,7 +26,7 @@ suite('L’application s’adresse toujours de la même façon', () => {
     const fautifs = [];
     for (const m of src.matchAll(/'(view\.[a-z.]*\.sub)':\s*(['"])([\s\S]*?)\2/g)) {
       const premiere = m[3].trim().charAt(0);
-      /* `toLocaleUpperCase` et non une comparaison a A-Z : « Écart » et « Où »
+      /* `toLocaleUpperCase` et non une comparaison a A-Z : "Ecart" et "Ou"
          commencent par une lettre accentuee, qui est bien une majuscule. */
       if (premiere && premiere !== premiere.toLocaleUpperCase('fr'))
         fautifs.push(`${m[1]} = « ${m[3].slice(0, 40)} »`);
@@ -48,8 +48,8 @@ suite('L’application s’adresse toujours de la même façon', () => {
     for (const f of ['assets/app.js', 'assets/store.js', 'assets/i18n.js']) {
       const src = sansCommentaires(lireSource(f) || '');
       vrai(src, f + ' doit être lisible pour ce contrôle');
-      /* « votres » manquait a la liste, et c'est une phrase de la demonstration
-         qui l'a montre : « sans toucher aux votres ». Le mot suivant s'ajoute
+      /* "votres" manquait a la liste, et c'est une phrase de la demonstration
+         qui l'a montre : "sans toucher aux votres". Le mot suivant s'ajoute
          ici quand il se presente, comme le veut la regle de la maison. */
       for (const m of src.matchAll(/\b(vous|vos|votre|v\u00f4tre|v\u00f4tres|Vous|Vos|Votre|V\u00f4tre|V\u00f4tres)\b/g))
         fautifs.push(`${f}:${src.slice(0, m.index).split('\n').length} (${m[1]})`);
@@ -88,13 +88,13 @@ suite('L’application s’adresse toujours de la même façon', () => {
 });
 
 /* ------------------------------------------------------------------
-   Un champ qui se répète propose ce qu'on y a déjà mis
+   Un champ qui se repete propose ce qu'on y a deja mis
    ------------------------------------------------------------------ */
 suite('Un champ qui se répète propose ce qu’on y a déjà mis', () => {
 
   /* Trois champs libres se retapaient a chaque fois : le preteur d'un credit,
      l'organisme d'une charge fixe, la source d'un revenu. Deux orthographes du
-     meme nom ne se regroupent jamais, et personne ne s'en apercoit — ce sont
+     meme nom ne se regroupent jamais, et personne ne s'en apercoit -- ce sont
      des champs qu'on relit rarement.
 
      Les valeurs se derivent des donnees. Une table tenue a la main aurait vieilli
@@ -104,9 +104,9 @@ suite('Un champ qui se répète propose ce qu’on y a déjà mis', () => {
   test('les valeurs proposées sortent des données, dédoublonnées et triées', () => {
     Fixture.poser(e => {
       e.budget.fixedCharges = [
-        { label: 'Assurance', amount: 40, period: 'mois', provider: 'MAIF' },
-        { label: 'Habitation', amount: 20, period: 'mois', provider: 'maif' },
-        { label: 'Électricité', amount: 90, period: 'mois', provider: 'Engie' },
+        { label: 'Assurance', amount: 40, period: 'mois', provider: 'MUTUELLE' },
+        { label: 'Habitation', amount: 20, period: 'mois', provider: 'mutuelle' },
+        { label: 'Électricité', amount: 90, period: 'mois', provider: 'Fournisseur' },
         { label: 'Sans organisme', amount: 10, period: 'mois', provider: '' },
       ];
     });
@@ -115,7 +115,7 @@ suite('Un champ qui se répète propose ce qu’on y a déjà mis', () => {
     /* La derniere ecriture rencontree gagne.
        Peu importe laquelle : ce qui compte est qu'il n'y en ait qu'une, et que
        la regle soit la meme dans tout le fichier. */
-    eq(v.join('|'), 'Engie|maif', 'triés, une seule écriture par organisme');
+    eq(v.join('|'), 'Fournisseur|mutuelle', 'triés, une seule écriture par organisme');
   });
 
   test('un prêteur connu peut être l’établissement lui-même', () => {
@@ -151,7 +151,7 @@ suite('Un champ qui se répète propose ce qu’on y a déjà mis', () => {
 });
 
 /* ------------------------------------------------------------------
-   Un indice de ligne peut valoir zéro
+   Un indice de ligne peut valoir zero
    ------------------------------------------------------------------ */
 suite('Un indice de ligne peut valoir zéro', () => {
 
@@ -206,7 +206,7 @@ suite('Un indice de ligne peut valoir zéro', () => {
 });
 
 /* ------------------------------------------------------------------
-   Retirer une catégorie n'efface rien
+   Retirer une categorie n'efface rien
    ------------------------------------------------------------------ */
 suite('Retirer une catégorie n’efface rien', () => {
 
@@ -272,7 +272,7 @@ suite('Retirer une catégorie n’efface rien', () => {
 
   test('retirer deux fois ne fait rien de plus', () => {
     /* Les migrations et les gestes repetes doivent etre idempotents : un double
-       clic ne doit pas inscrire deux fois le meme nom, sinon « Reprendre » ne
+       clic ne doit pas inscrire deux fois le meme nom, sinon "Reprendre" ne
        l'enleverait qu'a moitie. */
     Fixture.poser(troisMois);
     retirerCategorie('Sport');
@@ -309,7 +309,7 @@ suite('Retirer une catégorie n’efface rien', () => {
 
   test('un état sans liste de retirées se comporte comme une liste vide', () => {
     /* Aucune migration n'a ete ecrite pour ce champ : les etats existants n'ont
-       pas `budget.retirees`, et c'est voulu — un champ absent doit se lire, pas
+       pas `budget.retirees`, et c'est voulu -- un champ absent doit se lire, pas
        se rattraper. */
     Fixture.poser(e => { troisMois(e); delete e.budget.retirees; });
     vrai(!categorieRetiree('Sport'), 'rien n’est retiré');
@@ -329,7 +329,7 @@ suite('Retirer une catégorie n’efface rien', () => {
        la case qui reste. La propriete a garder est celle de la maison, un total
        egale la somme de ses parts -- avant comme apres. */
     const src = lireSource('assets/app.js');
-    /* La borne de fin se cherche APRES le debut : « const fermer = v => »
+    /* La borne de fin se cherche APRES le debut : "const fermer = v =>"
        existe sept fois dans le fichier, et le premier vient bien avant. */
     const d = src.indexOf('async function regrouperCeMois()');
     const bloc = src.slice(d, src.indexOf('const fermer = v =>', d));
@@ -359,7 +359,7 @@ suite('Retirer une catégorie n’efface rien', () => {
   });
 
   test('aucun réglage d’affichage ne double le choix de saisie', () => {
-    /* Un commutateur « Synthetique | Detaille » a vecu en tete de page, avec sa
+    /* Un commutateur "Synthetique | Detaille" a vecu en tete de page, avec sa
        preference dans `meta`. C'etait un second systeme pour une question deja
        tranchee : l'ecran pouvait proposer de detailler ce que la saisie ne
        detaillait plus, et rien ne garantissait que les deux s'accordent. Deux
@@ -393,12 +393,12 @@ suite('Retirer une catégorie n’efface rien', () => {
       vrai(rangee.includes(action),
         `« ${action} » appartient à la rangée des commandes de catégories`);
     }
-    /* « + Ouvrir l'annee suivante » n'y est plus, et son action non plus : une
+    /* "+ Ouvrir l'annee suivante" n'y est plus, et son action non plus : une
        annee apparait quand des donnees existent, pas parce qu'on a appuye.
        Douze lignes vides precreees n'etaient pas une annee ouverte, c'etaient
        douze mois a zero euro dans le tableau et dans le store. */
     /* Commentaires retires : celui qui dit pourquoi l'action n'est plus la
-       nomme forcement, comme celui de « add-month » a cote. */
+       nomme forcement, comme celui de "add-month" a cote. */
     vrai(!src.replace(/\/\*[\s\S]*?\*\//g, '').includes('add-expense-month'),
       'ni le bouton qui ouvrait douze mois vides, ni son action');
     vrai(!(lireSource('assets/i18n.js') || '').includes('Ouvrir l’année suivante'),
@@ -425,7 +425,7 @@ suite('Retirer une catégorie n’efface rien', () => {
   });
 
   test('le fourre-tout naît dans la langue en vigueur, et se reconnaît dans les deux', () => {
-    /* La cle « Tout confondu » vivait dans le dictionnaire sans que personne ne
+    /* La cle "Tout confondu" vivait dans le dictionnaire sans que personne ne
        la traverse : le nom partait tel quel dans les donnees, donc un lecteur
        anglophone recevait une categorie francaise.
 
@@ -485,7 +485,7 @@ suite('Retirer une catégorie n’efface rien', () => {
   });
 
   test('le decoupage d un mois regroupe se garde, et se rend', () => {
-    /* « Ne plus detailler » sommait les montants du mois sur une seule case, et
+    /* "Ne plus detailler" sommait les montants du mois sur une seule case, et
        revenir rendait les categories sans les montants : tout restait sur la
        case unique. Ctrl+Z les rendait, mais il defait aussi tout le reste, et
        personne n'y pense. */
@@ -542,7 +542,7 @@ suite('Retirer une catégorie n’efface rien', () => {
     /* Il remet AUSSI ce qui avait ete retire a la main avant : l'application ne
        sait pas les distinguer, et retenir un avant demanderait un second etat
        qui se contredirait au premier retrait suivant. C'est assume, le libelle
-       du bouton le dit, et rien n'est perdu — re-retirer coute un clic. */
+       du bouton le dit, et rien n'est perdu -- re-retirer coute un clic. */
     Fixture.poser(troisMois);
     neePlusDetailler();
     const fait = reprendreLeDetail();
@@ -555,7 +555,7 @@ suite('Retirer une catégorie n’efface rien', () => {
 });
 
 /* ------------------------------------------------------------------
-   Ce qu'on règle une fois ne reste pas ouvert
+   Ce qu'on regle une fois ne reste pas ouvert
    ------------------------------------------------------------------ */
 suite('Ce qu’on règle une fois ne reste pas ouvert', () => {
 
@@ -594,7 +594,7 @@ suite('Ce qu’on règle une fois ne reste pas ouvert', () => {
 
   test('la note reste en saisie directe', () => {
     /* Le complement, et il compte autant : passer les notes derriere le bouton
-       aurait ete « plus coherent » et faux. Une note s'ecrit au moment ou l'on
+       aurait ete "plus coherent" et faux. Une note s'ecrit au moment ou l'on
        y pense, souvent parce qu'on vient de penser a quelque chose. */
     const fiche = ficheCompte();
     vrai(/data-path="comptes\.\$\{idx\}\.notes"/.test(fiche),
@@ -603,7 +603,7 @@ suite('Ce qu’on règle une fois ne reste pas ouvert', () => {
 
   test('le nom d’un établissement s’affiche ailleurs que dans son champ', () => {
     /* Le defaut trouve en appliquant la regle : sur cette page, le titre de la
-       barre du haut dit « Comptes ». Le seul endroit ou le nom de
+       barre du haut dit "Comptes". Le seul endroit ou le nom de
        l'etablissement se lisait etait donc l'interieur de son champ de saisie.
        Retirer le champ sans poser le nom aurait fait disparaitre de la page le
        nom de ce dont elle parle. */
@@ -649,7 +649,7 @@ suite('La police des titres ne descend pas sur les chiffres', () => {
      celui qui le saisit. Un chiffre qui danse pendant qu'on l'ecrit se lit
      comme une erreur.
 
-     Ces controles sont textuels — le harnais ne rend aucune page. Ils
+     Ces controles sont textuels -- le harnais ne rend aucune page. Ils
      attrapent le geste qui casse la regle, pas son effet a l'ecran. */
 
   const cssBrut = () => lireSource('assets/styles.css');
@@ -678,8 +678,8 @@ suite('La police des titres ne descend pas sur les chiffres', () => {
   test('le nom de l’application s’écrit partout dans la même police', () => {
     /* Le mot-marque est ecrit a deux endroits : l'ecran de lancement, une
        seconde, et la barre laterale, en permanence. La premiere version de
-       cette regle n'avait pris que le premier — celui qu'on ne voit
-       pratiquement jamais — et « Longward » s'affichait en deux polices selon
+       cette regle n'avait pris que le premier -- celui qu'on ne voit
+       pratiquement jamais -- et "Longward" s'affichait en deux polices selon
        l'ecran. Ce controle part du balisage : il trouve ou le nom est ecrit,
        et exige que chaque endroit soit couvert. */
     const idx = (lireSource('index.html') || '').replace(/<!--[\s\S]*?-->/g, ' ');
@@ -733,10 +733,10 @@ suite('La police des titres ne descend pas sur les chiffres', () => {
     const blanc = m => m.replace(/[^\n]/g, ' ');
     const nu = src.replace(/\/\*[\s\S]*?\*\//g, blanc).replace(/<!--[\s\S]*?-->/g, blanc);
 
-    /* `aide(...)` rend un `<span data-aide="…">?</span>` : son texte part dans
+    /* `aide(...)` rend un `<span data-aide="...">?</span>` : son texte part dans
        un attribut, jamais dans le titre rendu. Un montant cite dans une bulle
-       d'explication est de la prose, il ne s'aligne en colonne nulle part —
-       la premiere version de ce test signalait « Allocation par classe » pour
+       d'explication est de la prose, il ne s'aligne en colonne nulle part --
+       la premiere version de ce test signalait "Allocation par classe" pour
        cette raison, a tort.
 
        Le comptage de parentheses suppose que la prose d'aide les equilibre,
@@ -769,8 +769,8 @@ suite('La police des titres ne descend pas sur les chiffres', () => {
   });
 
   test('le préchargement et la feuille désignent le même fichier', () => {
-    /* Deux URL qui different d'un octet — une balise `?v=` posee d'un cote
-       seulement — font telecharger la police deux fois : le prechargement ne
+    /* Deux URL qui different d'un octet -- une balise `?v=` posee d'un cote
+       seulement -- font telecharger la police deux fois : le prechargement ne
        sert alors a rien, et il coute une requete. Rien ne le signale, sinon
        l'onglet reseau. */
     const css = cssBrut(), idx = lireSource('index.html');
@@ -812,7 +812,7 @@ suite('La police des titres ne descend pas sur les chiffres', () => {
 
   test('le sous-ensemble latin couvre le français et l’euro', () => {
     /* Un sous-ensemble mal choisi ne casse rien de visible non plus : les
-       accents tombent simplement sur la police du systeme, et « Repartition »
+       accents tombent simplement sur la police du systeme, et "Repartition"
        s'affiche en deux polices dans le meme mot. */
     const face = blocFontFace(cssBrut() || '');
     vrai(face, 'la déclaration @font-face doit exister dans styles.css');
@@ -824,7 +824,7 @@ suite('La police des titres ne descend pas sur les chiffres', () => {
 });
 
 /* ------------------------------------------------------------------
-   Un courtier qui prête sur marge
+   Un courtier qui prete sur marge
    ------------------------------------------------------------------ */
 suite('Un courtier qui prête sur marge', () => {
 
@@ -855,9 +855,9 @@ suite('Un courtier qui prête sur marge', () => {
 
   test('elle se retranche du net, une seule fois', () => {
     Fixture.poser(surMarge);
-    /* L'établissement « Courtier » tient deux comptes, le PEA et le CTO : c'est
-       le cas qui ferait compter la dette deux fois si elle était attribuée aux
-       comptes plutôt qu'à l'établissement. */
+    /* L'etablissement "Courtier" tient deux comptes, le PEA et le CTO : c'est
+       le cas qui ferait compter la dette deux fois si elle etait attribuee aux
+       comptes plutot qu'a l'etablissement. */
     const chez = Store.state.comptes.filter(c => c.etabId === 'e_courtier');
     eq(chez.length, 2, 'le courtier tient bien deux comptes dans le fixture');
     pres(dettesTotal(), Fixture.DETTE + MARGE, 'le prêt du studio et la marge');
@@ -884,17 +884,17 @@ suite('Un courtier qui prête sur marge', () => {
   });
 
   test('l’effet de levier se lit sur les capitaux propres', () => {
-    /* Le chiffre que la fiche du compte affiche : ce qu'on contrôle rapporté à
-       ce qui est vraiment à soi. Il vit dans la vue, mais son arithmétique doit
-       être dite une fois quelque part, sinon personne ne saura si « 195 % » est
-       la bonne façon de le dire. */
+    /* Le chiffre que la fiche du compte affiche : ce qu'on controle rapporte a
+       ce qui est vraiment a soi. Il vit dans la vue, mais son arithmetique doit
+       etre dite une fois quelque part, sinon personne ne saura si "140 %" est
+       la bonne facon de le dire. */
     Fixture.poser(surMarge);
     const cto = Store.state.comptes.find(c => c.id === 'c_cto');
-    const valeur = valeurCompte(cto);          // 750 d’or
+    const valeur = valeurCompte(cto);          // 750 d'or
     const propre = valeur - MARGE;
     vrai(propre < 0, 'ici la marge dépasse ce que le compte porte : pas de levier à afficher');
     const pea = Store.state.comptes.find(c => c.id === 'c_pea');
-    const v = valeurCompte(pea);               // 1 500 de cash + 9 000 d’ETF
+    const v = valeurCompte(pea);               // 1 500 de cash + 9 000 d'ETF
     pres(v, 10500, 'le PEA du fixture vaut 10 500 €');
     pres(v / (v - MARGE) * 100, 140,
       '10 500 € contrôlés pour 7 500 € à soi : 140 % de tes capitaux propres');
@@ -932,20 +932,20 @@ suite('Les paliers d’autonomie couvrent tout, dans le bon ordre', () => {
       e.comptes = [{ id: 'c_b', type: 'courant', libelle: 'Compte', cash: [
         { montant: 3000, affectation: 'courant' },
         { montant: 500, affectation: 'precaution' },
-        { montant: 2020, affectation: 'projet' },
+        { montant: 2500, affectation: 'projet' },
       ] }];
     });
     const p = poches(), r = runway();
-    pres(p.projet, 2020, 'l’argent du projet est bien rangé');
+    pres(p.projet, 2500, 'l’argent du projet est bien rangé');
     pres(p.precaution + p.courant, 3500, 'le coussin ne compte pas le projet');
-    pres(r.immediate, 5520, 'le palier immédiat, lui, porte tout le cash mobilisable');
+    pres(r.immediate, 6000, 'le palier immédiat, lui, porte tout le cash mobilisable');
     pres(p.precaution + p.courant + p.projet, r.immediate,
       'coussin + projets = disponible tout de suite : les deux montants de la '
       + 'carte doivent s’additionner, sinon l’écart reste inexpliqué');
 
-    /* Et le palier le dit. La note nommait les contenants — comptes courants,
-       livrets, especes — sans dire ce qui y est deja promis : quelqu'un qui
-       vient de lire « + 2 020 EUR reserves a un projet » les cherchait ici sans
+    /* Et le palier le dit. La note nommait les contenants -- comptes courants,
+       livrets, especes -- sans dire ce qui y est deja promis : quelqu'un qui
+       vient de lire "+ 2 500 EUR reserves a un projet" les cherchait ici sans
        les trouver. Les deux lignes se laissaient rapprocher sans se rejoindre. */
     vrai(/projets/i.test(r.tiers[0].note),
       'le palier immédiat doit dire qu’il comprend les projets');
@@ -968,23 +968,23 @@ suite('Les paliers d’autonomie couvrent tout, dans le bon ordre', () => {
       'des espèces ne peuvent pas être moins disponibles qu’un virement');
     eq(mobilisabilite('liquidites', 'courant'), 'immediat');
     eq(mobilisabilite('liquidites', 'livret'), 'immediat');
-    /* Le cash posé chez un courtier garde son délai : son compte est du groupe
-       bourse, l'argent doit d'abord être viré. */
+    /* Le cash pose chez un courtier garde son delai : son compte est du groupe
+       bourse, l'argent doit d'abord etre vire. */
     eq(mobilisabilite('liquidites', 'pea'), 'differe');
     eq(mobilisabilite('liquidites', 'cto'), 'differe');
   });
 
   test('le groupe du type décide, pas une liste recopiée', () => {
-    /* Ce qui protège du prochain type de compte de cash : la règle se lit dans
-       TYPES_COMPTE, elle ne se réécrit pas ici.
+    /* Ce qui protege du prochain type de compte de cash : la regle se lit dans
+       TYPES_COMPTE, elle ne se reecrit pas ici.
 
-       Une seule exception, et elle est devant : le PER est fermé jusqu'à la
+       Une seule exception, et elle est devant : le PER est ferme jusqu'a la
        retraite, y compris pour le cash qui y dort. Ce n'est pas une question de
-       délai de virement, c'est une question de droit d'y toucher. */
+       delai de virement, c'est une question de droit d'y toucher. */
     for (const t of TYPES_COMPTE) {
-      /* Un type peut déclarer sa disponibilité (PER fermé, enveloppes de
-         retraite américaines lentes) ; sinon le groupe décide. Le test lit la
-         même propriété que le code, il ne recopie plus un identifiant. */
+      /* Un type peut declarer sa disponibilite (PER ferme, enveloppes de
+         retraite americaines lentes) ; sinon le groupe decide. Le test lit la
+         meme propriete que le code, il ne recopie plus un identifiant. */
       const attendu = t.disponibilite || (t.groupe === 'cash' ? 'immediat' : 'differe');
       eq(mobilisabilite('liquidites', t.id), attendu,
         `${t.label} : liquidités ${attendu}`);
@@ -998,8 +998,8 @@ suite('Les paliers d’autonomie couvrent tout, dans le bon ordre', () => {
     pres(m.immediat + m.differe + m.lent + m.bloque, patrimoine().brut,
       'chaque euro tombe dans un palier, et dans un seul');
     /* Le fixture, palier par palier : 3 000 de courant + 2 000 de livret font
-       l'immédiat ; le cash du PEA et les titres font le différé ; le studio et
-       le crowdfunding sont lents ; rien n'est bloqué. */
+       l'immediat ; le cash du PEA et les titres font le differe ; le studio et
+       le crowdfunding sont lents ; rien n'est bloque. */
     pres(m.immediat, 5000, 'courant + livret');
     pres(m.differe, Fixture.CASH_A_INVESTIR + 9750, 'cash du PEA + ETF + or');
     pres(m.lent, 122000, 'studio + crowdfunding');
@@ -1007,8 +1007,8 @@ suite('Les paliers d’autonomie couvrent tout, dans le bon ordre', () => {
   });
 
   test('les espèces montent d’un palier sans changer le total', () => {
-    /* Le contrôle qui aurait attrapé le bug : poser des espèces et vérifier
-       qu'elles sont dans l'immédiat, le total ne bougeant pas. */
+    /* Le controle qui aurait attrape le bug : poser des especes et verifier
+       qu'elles sont dans l'immediat, le total ne bougeant pas. */
     const avant = Fixture.poser().comptes.length;
     poserEspeces(Store.state);
     refreshAccounts();
@@ -1048,16 +1048,16 @@ suite('Les paliers d’autonomie couvrent tout, dans le bon ordre', () => {
    ------------------------------------------------------------------ */
 suite('Les deux axes de la page Cible ne se mélangent pas', () => {
 
-  /* Le classeur Excel les mélangeait dans une feuille : « Actions core » et
-     « Actions satellite » voisinaient avec « Métaux précieux », puis deux lignes
-     d'agrégat fermaient le tableau — « Cash à investir » et « Placé en bourse »,
-     cette dernière valant la somme des précédentes. Dans un tableur, une ligne de
-     somme posée au milieu de ses membres passe dans les filtres et les
-     graphiques comme si elle était une part.
+  /* Le classeur Excel les melangeait dans une feuille : "Actions core" et
+     "Actions satellite" voisinaient avec "Metaux precieux", puis deux lignes
+     d'agregat fermaient le tableau -- "Cash a investir" et "Place en bourse",
+     cette derniere valant la somme des precedentes. Dans un tableur, une ligne de
+     somme posee au milieu de ses membres passe dans les filtres et les
+     graphiques comme si elle etait une part.
 
-     Ce que ces contrôles tiennent : chaque axe somme sa base, la base est la
-     même pour les deux — sinon les deux feuilles ne se recouperaient pas — et
-     l'agrégat reste identifiable comme tel. */
+     Ce que ces controles tiennent : chaque axe somme sa base, la base est la
+     meme pour les deux -- sinon les deux feuilles ne se recouperaient pas -- et
+     l'agregat reste identifiable comme tel. */
 
   test('les classes somment la base, sans ligne d’agrégat', () => {
     Fixture.poser();
@@ -1066,8 +1066,8 @@ suite('Les deux axes de la page Cible ne se mélangent pas', () => {
     pres(membres.reduce((s, x) => s + x.value, 0), r.base,
       'les classes et la trésorerie font la base des cibles');
     pres(membres.reduce((s, x) => s + x.pct, 0), 100, 'et leurs parts font 100 %');
-    /* `invested` est un sous-total : la base moins la trésorerie. Il a sa place
-       en synthèse, pas dans la liste des membres. */
+    /* `invested` est un sous-total : la base moins la tresorerie. Il a sa place
+       en synthese, pas dans la liste des membres. */
     pres(r.invested.value, r.base - (r.cash ? r.cash.value : 0),
       'l’agrégat vaut la base moins la trésorerie');
     vrai(!r.classes.some(c => c.label === r.invested.label),
@@ -1081,7 +1081,7 @@ suite('Les deux axes de la page Cible ne se mélangent pas', () => {
       'une seule base pour les deux axes, sinon les deux feuilles ne se recoupent pas');
     pres(rr.roles.reduce((s, x) => s + x.value, 0), rr.base, 'socle + satellites + trésorerie');
     pres(rr.roles.reduce((s, x) => s + x.pct, 0), 100, 'et leurs parts font 100 %');
-    /* Le fixture : 9 000 d’ETF au socle, 750 d’or en satellite, 1 500 à investir. */
+    /* Le fixture : 9 000 d'ETF au socle, 750 d'or en satellite, 1 500 a investir. */
     const val = cle => rr.roles.find(x => x.cle === cle).value;
     pres(val('core'), 9000, 'le MSCI World est au socle');
     pres(val('satellite'), 750, 'l’or est en satellite');
@@ -1113,15 +1113,15 @@ suite('Les deux axes de la page Cible ne se mélangent pas', () => {
 });
 
 /* ------------------------------------------------------------------
-   La tête de l'onglet Charges fixes
+   La tete de l'onglet Charges fixes
    ------------------------------------------------------------------ */
 suite('Ce qui sort chaque mois', () => {
 
   /* Trois chiffres nouveaux s'affichent au-dessus du tableau des charges : le
-     total mensuel, le même sur douze mois, et ce qui reste vraiment à ta charge.
-     Les deux derniers dérivent du premier, et c'est justement ce qu'il faut
+     total mensuel, le meme sur douze mois, et ce qui reste vraiment a ta charge.
+     Les deux derniers derivent du premier, et c'est justement ce qu'il faut
      tenir : un total annuel qui ne vaudrait pas douze fois le mensuel, ou une
-     part personnelle qui ne complèterait pas la part partagée, mentiraient sans
+     part personnelle qui ne completerait pas la part partagee, mentiraient sans
      que rien ne se voie. */
 
   const CHARGES = e => {
@@ -1145,17 +1145,17 @@ suite('Ce qui sort chaque mois', () => {
 
   test('le total sur douze mois vaut douze fois le mois', () => {
     Fixture.poser(CHARGES);
-    /* Le chiffre affiché est `f.fixed * 12`. Il doit valoir la somme des charges
-       ramenées à l'année, sinon l'annuel et le mensuel de la même carte se
+    /* Le chiffre affiche est `f.fixed * 12`. Il doit valoir la somme des charges
+       ramenees a l'annee, sinon l'annuel et le mensuel de la meme carte se
        contrediraient. */
     pres(budgetFrame().fixed * 12, 940 * 12, '11 280 € par an');
     pres(budgetFrame().fixed, fixedTotal(), 'et le cadre du budget lit le même total');
   });
 
   test('la liste des postes somme le total affiché', () => {
-    /* La carte ne montre que les six plus gros postes et annonce « et N autres ».
+    /* La carte ne montre que les six plus gros postes et annonce "et N autres".
        La somme de tous les postes, elle, doit valoir le total en gros
-       caractères — c'est ce que la mention promet. */
+       caracteres -- c'est ce que la mention promet. */
     Fixture.poser(CHARGES);
     const postes = Store.state.budget.fixedCharges
       .map(c => chargeMensuelle(c)).filter(v => v > 0);
@@ -1166,7 +1166,7 @@ suite('Ce qui sort chaque mois', () => {
 });
 
 /* ------------------------------------------------------------------
-   Les crédits en cours
+   Les credits en cours
    ------------------------------------------------------------------ */
 /* E3 : un tableau de bord PERSONNEL compte ce qui sort vraiment du compte. */
 suite('Créer un bien ne laisse plus passer une réponse sans suite', () => {
@@ -1180,7 +1180,7 @@ suite('Créer un bien ne laisse plus passer une réponse sans suite', () => {
 
   test('répondre oui au crédit exige un capital restant dû', () => {
     /* LE DEFAUT. La dette n'etait posee que si le capital restant etait positif :
-       repondre « oui », laisser le champ vide et saisir une mensualite creait un
+       repondre "oui", laisser le champ vide et saisir une mensualite creait un
        bien SANS credit, en silence, et le patrimoine net naissait faux. Une
        reponse qui n'a pas de suite est pire qu'une question qu'on n'a pas posee. */
     const r = regle();
@@ -1347,7 +1347,7 @@ suite('Créer un bien ne laisse plus passer une réponse sans suite', () => {
   });
 
   test('le texte de la transition est vrai dans les deux cas', () => {
-    /* « Tu viens d'ajouter » etait faux des qu'on changeait l'usage d'un bien
+    /* "Tu viens d'ajouter" etait faux des qu'on changeait l'usage d'un bien
        qu'on avait deja depuis des annees. */
     const s = app();
     vrai(/Ce bien est maintenant ta résidence principale\. Ce loyer est toujours compté dans tes charges fixes\./.test(s),
@@ -1413,7 +1413,7 @@ suite('La fiche d’un bien se lit dans l’ordre où l’argent sort', () => {
   test('la cascade suit l’ordre où l’argent sort', () => {
     /* Loyer, charges, credit, puis l'impot. La fiscalite se posait AVANT la
        mensualite : elle s'y lisait comme une charge du bien, alors qu'elle porte
-       sur ce que le bien degage — et le sous-total qui la precede n'existait
+       sur ce que le bien degage -- et le sous-total qui la precede n'existait
        nulle part. */
     const f = bloc('lignesDuMois', 'ligneFiscalite');
     const iCharges = f.indexOf('ligneCharges(cf, -1)');
@@ -1426,7 +1426,7 @@ suite('La fiche d’un bien se lit dans l’ordre où l’argent sort', () => {
   test('le sous-total d’avant fiscalité ne paraît que si elle est connue', () => {
     /* Sinon il EST le chiffre de tete deux lignes plus bas : l'ecrire deux fois
        est la meilleure facon de faire douter des deux. Meme regle que
-       « Loyer retenu », qui ne parait qu'en presence d'une vacance. */
+       "Loyer retenu", qui ne parait qu'en presence d'une vacance. */
     const f = bloc('lignesDuMois', 'ligneFiscalite');
     vrai(/\.\.\.\(cf\.fiscalite\.source === 'inconnue' \? \[\] : \[`/.test(f),
       'la ligne est conditionnée à l’état de la fiscalité');
@@ -1671,8 +1671,8 @@ suite('Un loyer qu’on paie encore se reconnaît, prudemment', () => {
            { label: 'Revenu locatif', amount: 100, period: 'mois' },
            { label: 'Location de box', amount: 100, period: 'mois' },
            { label: 'Loyers', amount: 100, period: 'mois' },
-           { label: 'Agence Nexity', amount: 1500, period: 'mois' }]);
-    eq(noms(), '', 'aucun n’est proposé, « Agence Nexity » compris');
+           { label: 'Agence du quartier', amount: 1500, period: 'mois' }]);
+    eq(noms(), '', 'aucun n’est proposé, « Agence du quartier » compris');
   });
 
   test('un lien structurel l’emporte sur le libellé', () => {
@@ -1711,7 +1711,7 @@ suite('Un loyer qu’on paie encore se reconnaît, prudemment', () => {
 
   test('un revenu nommé « Loyer » est ignoré', () => {
     poser([], e => {
-      e.budget.income = [{ label: 'Loyer studio Lyon', amount: 600, period: 'mois' }];
+      e.budget.income = [{ label: 'Loyer studio', amount: 600, period: 'mois' }];
     });
     eq(noms(), '', 'un loyer reçu n’est pas un loyer payé');
     const src = lireSource('assets/store.js');
@@ -1779,7 +1779,7 @@ suite('La transition vers la résidence principale demande, elle ne décide pas'
        ni un rendu : le detenteur serait harcele a chaque saisie. */
     const s = app();
     /* TROIS PORTES, et pas une de plus : la creation d'un bien declare
-       principale, le petit atelier « Choisir l'usage », et l'enregistrement de
+       principale, le petit atelier "Choisir l'usage", et l'enregistrement de
        la fiche quand son select vient de changer l'usage. Chacune suit un geste
        explicite ; aucune ne suit un rendu. */
     eq(s.split('proposerTransitionLoyer()').length - 1, 4,
@@ -1834,7 +1834,7 @@ suite('La transition vers la résidence principale demande, elle ne décide pas'
   });
 
   test('aucune date de fin n’a été inventée sur les charges', () => {
-    /* Le modele n'en a pas, et cette etape n'en cree pas : « terminer » veut
+    /* Le modele n'en a pas, et cette etape n'en cree pas : "terminer" veut
        dire quitter le budget COURANT. `echeanceLe` reste la prochaine echeance,
        elle ne devient pas une fin. */
     const store = lireSource('assets/store.js');
@@ -1959,8 +1959,8 @@ suite('Le geste qui offre un retour en arrière parle en dernier', () => {
 
   test('le toast de création précède la question du loyer', () => {
     /* LE DEFAUT. Un toast remplace le precedent : annonce APRES la transition,
-       celui de la creation effaçait « retire du budget » et son bouton
-       « Annuler ». La pile d'annulation restait pleine, mais la porte de sortie
+       celui de la creation effacait "retire du budget" et son bouton
+       "Annuler". La pile d'annulation restait pleine, mais la porte de sortie
        disparaissait de l'ecran une fraction de seconde apres s'y etre posee. */
     const s = app();
     const i = s.indexOf("if (bien && e3.usageBien === 'principale') await proposerTransitionLoyer();");
@@ -1993,7 +1993,7 @@ suite('Le geste qui offre un retour en arrière parle en dernier', () => {
   });
 
   test('seul « Le terminer » retire quelque chose', () => {
-    /* « Le conserver » et « Plus tard » sortent par la meme porte, et fermer la
+    /* "Le conserver" et "Plus tard" sortent par la meme porte, et fermer la
        fenetre aussi : une seule branche touche aux donnees. */
     const s = app();
     const i = s.indexOf('async function proposerTransitionLoyer()');
@@ -2025,7 +2025,7 @@ suite('« Rent guarantee insurance » n’est pas un loyer', () => {
 
   test('l’anglais qui désigne une prestation autour du loyer ne passe pas', () => {
     /* Toutes s'ouvrent par le mot, et la regle du mot en tete les laissait
-       passer — puis proposait de supprimer la garantie loyers impayes. */
+       passer -- puis proposait de supprimer la garantie loyers impayes. */
     poser(['Rent guarantee insurance', 'Rent guarantee', 'Rent insurance',
            'Rental management', 'Rent collection fee', 'Rent guarantee premium',
            'Rent protection', 'Rent arrears cover', 'Monthly rent guarantee']);

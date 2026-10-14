@@ -1265,7 +1265,7 @@ function askSale(indexInitial) {
             value="passee" ${sansLigne ? 'selected' : ''}>${trad('Une vente passée, pour mémoire')}</option></select></div>
         <div class="field" data-vente="passee" hidden><label>${trad('Titre vendu')}</label>
           <input id="vePasNom" maxlength="${NOM_LIGNE_MAX}" autocomplete="off"
-                 placeholder="${trad('ex. Total, vendu sur l’ancien PEA')}" style="text-align:left"></div>
+                 placeholder="${trad('ex. Une action vendue sur l’ancien PEA')}" style="text-align:left"></div>
         <div class="field" data-vente="reelle"><label>${trad('Nombre d\'actions vendues')}</label>
           <input type="number" step="any" id="veQty" autocomplete="off">
           <span class="hint" id="veDispo"></span></div>

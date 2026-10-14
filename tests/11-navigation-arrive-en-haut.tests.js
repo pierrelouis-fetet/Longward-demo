@@ -49,9 +49,9 @@ suite('Budget : le pourcentage dit sa base, l annee reste une annee', () => {
 
   test('aucun sélecteur d’année n’offre plus « Toutes les années »', () => {
     /* Retire de Budget le matin du 9 aout, puis de partout le meme jour :
-       « ce sera illisible en l'etant apres longtemps ». Les quatre selecteurs
+       une liste de toutes les annees y devient illisible. Les quatre selecteurs
        gouvernent des listes, et dix ans de lignes empilees ne repondent a
-       aucune question — la vue longue appartient a la courbe et a ses durees.
+       aucune question -- la vue longue appartient a la courbe et a ses durees.
        Le controle porte sur la fonction unique : un cran qui reviendrait chez
        un appelant reviendrait ici. */
     const src = lireSource('assets/app.js');
@@ -61,8 +61,8 @@ suite('Budget : le pourcentage dit sa base, l annee reste une annee', () => {
     /* Et une valeur `all` restee d un vieux geste retombe sur l annee en
        cours, pour chacun des quatre etats d annee. */
     /* `salesYear` a quitte cette liste avec le selecteur du journal : sa borne
-       est celle de la page, et `rangeControl` n'offre pas de cran « toutes ». */
-    /* `evoYear` a quitte cette liste avec le depliant « Voir les donnees » de la
+       est celle de la page, et `rangeControl` n'offre pas de cran "toutes". */
+    /* `evoYear` a quitte cette liste avec le depliant "Voir les donnees" de la
        courbe : son selecteur d'annee est parti avec le tableau qu'il filtrait. */
     for (const etat of ['budgetYear', 'historyYear']) {
       vrai(new RegExp(`if \\(${etat} === 'all'\\) ${etat} = null;`).test(src),
@@ -77,18 +77,18 @@ suite('Budget : le pourcentage dit sa base, l annee reste une annee', () => {
    ------------------------------------------------------------------ */
 suite('Une vente déclarée n’écrit que le journal', () => {
 
-  /* « Trouver un systeme pour pouvoir declarer d anciennes ventes, donc sans
-     impacter quoi que ce soit, ni le cash ni le patrimoine. Juste pour avoir
-     l info. » C est la reponse au chantier d ETAT.md : noter une vente d un
+  /* Declarer une ancienne vente sans toucher a quoi que ce soit, ni au
+     cash ni au patrimoine : la vente n entre au journal que pour
+     l information. C est la reponse au chantier d ETAT.md : noter une vente d un
      PEA cloture demandait de recreer le compte, la ligne, de vendre, puis
-     d archiver — quatre gestes pour fabriquer un fait passe. */
+     d archiver -- quatre gestes pour fabriquer un fait passe. */
 
   test('elle entre au journal sans toucher un euro', () => {
     Fixture.poser();
     const netAvant = patrimoine().net;
     const nbPositions = Store.state.positions.length;
     const cashAvant = JSON.stringify(Store.state.comptes.map(c => c.cash));
-    declarerVente({ date: '2023-05-10', name: 'Total', gross: 4800, realised: 300 });
+    declarerVente({ date: '2023-01-15', name: 'Ancienne ligne', gross: 4800, realised: 300 });
     eq(Store.state.sales.length, 1, 'la vente est au journal');
     eq(Store.state.sales[0].declaree, true, 'et elle dit ce qu elle est');
     pres(Store.state.sales[0].invested, 4500,
@@ -101,7 +101,7 @@ suite('Une vente déclarée n’écrit que le journal', () => {
 
   test('elle compte dans les statistiques du journal, c’est sa raison d’être', () => {
     Fixture.poser();
-    declarerVente({ date: '2023-05-10', name: 'Total', gross: 4800, realised: 300 });
+    declarerVente({ date: '2023-01-15', name: 'Ancienne ligne', gross: 4800, realised: 300 });
     const st = salesStats('all');
     eq(st.sales.length, 1, 'le journal la montre');
   });
@@ -111,7 +111,7 @@ suite('Une vente déclarée n’écrit que le journal', () => {
        Le derouler sur une vente declaree pousserait une ligne fantome de
        quantite nulle et retrancherait un produit jamais credite. */
     Fixture.poser();
-    declarerVente({ date: '2023-05-10', name: 'Total', gross: 4800, realised: 300 });
+    declarerVente({ date: '2023-01-15', name: 'Ancienne ligne', gross: 4800, realised: 300 });
     const nbPositions = Store.state.positions.length;
     const cashAvant = JSON.stringify(Store.state.comptes.map(c => c.cash));
     annulerVente(0);
@@ -122,9 +122,9 @@ suite('Une vente déclarée n’écrit que le journal', () => {
   });
 
   test('ses champs muets se taisent à l’écran, avec leur raison', () => {
-    /* Sans quantite ni prix, la ligne ecrivait « 0 » et « 0,00 € » : une vente
+    /* Sans quantite ni prix, la ligne ecrivait "0" et "0,00 EUR" : une vente
        amputee plutot qu'une vente declaree. Le tableau a cede la place a une liste
-       cliquable et a un panneau de detail, et la regle a suivi les deux — c'est le
+       cliquable et a un panneau de detail, et la regle a suivi les deux -- c'est le
        genre de silence qu'un remplacement d'affichage emporte sans le dire. */
     const src = lireSource('assets/app.js');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
@@ -200,8 +200,8 @@ suite('Détail mensuel : tri des lignes, ordre des colonnes', () => {
 
   test('le tri ne touche que le tableau du grand écran', () => {
     /* La liste de telephone n a pas d en-tetes pour dire son ordre, et un
-       ordre muet est un piege : elle reste chronologique. « vs obj. » ne trie
-       pas — son classement serait celui du total, l objectif etant le meme
+       ordre muet est un piege : elle reste chronologique. "vs obj." ne trie
+       pas -- son classement serait celui du total, l objectif etant le meme
        pour tous les mois. */
     const src = lireSource('assets/app.js');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
@@ -236,12 +236,12 @@ suite('Enregistrer : une règle, deux familles', () => {
     /* Le pied est le seul endroit de l'application ou la place est comptee
        d'avance : ses boutons se partagent la largeur a parts egales sur
        telephone. Trois boutons font 107 px chacun, quatre en font 80, et un
-       libelle trop long s'y plie en trois lignes — la hauteur du pied double, ses
-       voisins s'etirent avec lui, et « Enregistrer » parait enorme. C'est ce qui
-       est arrive avec « Voir les autres mois ».
+       libelle trop long s'y plie en trois lignes -- la hauteur du pied double, ses
+       voisins s'etirent avec lui, et "Enregistrer" parait enorme. C'est ce qui
+       est arrive avec "Voir les autres mois".
 
        La mesure porte sur la somme des libelles d'un meme pied, pas sur chacun :
-       « Enregistrer la vente » tient tres bien face au seul « Annuler », et
+       "Enregistrer la vente" tient tres bien face au seul "Annuler", et
        l'interdire aurait ete arbitraire. Trente-six caracteres, marge comprise
        pour l'anglais, qui est parfois plus long. */
     const src = lireSource('assets/app.js');
@@ -249,7 +249,7 @@ suite('Enregistrer : une règle, deux familles', () => {
     vrai(pieds.length >= 4, `au moins quatre pieds attendus, ${pieds.length} trouvés`);
     for (const pied of pieds) {
       const libelles = [...pied.matchAll(/trad\('([^']+)'\)/g)].map(m => m[1])
-        /* Les libelles hors bouton — un titre, une aide — ne comptent pas. */
+        /* Les libelles hors bouton -- un titre, une aide -- ne comptent pas. */
         .filter(l => l.length < 30);
       if (!libelles.length) continue;
       const somme = libelles.reduce((s, l) => s + l.length, 0);
@@ -261,10 +261,10 @@ suite('Enregistrer : une règle, deux familles', () => {
 
   test('toute fenêtre de saisie en série porte la paire, sans exception', () => {
     /* Le balayage qui manquait : la regle etait ecrite, mais verifiee sur un seul
-       cas — le releve mensuel. La fenetre des revenus est restee transfuge des
-       mois, douze champs sous les yeux et « Fermer » pour seul bouton.
+       cas -- le releve mensuel. La fenetre des revenus est restee transfuge des
+       mois, douze champs sous les yeux et "Fermer" pour seul bouton.
        La detection se fait sur les pieds de fenetre : chaque `#modalFoot` qui
-       porte « Fermer » doit porter « Enregistrer » a cote, sauf ceux d'un acte
+       porte "Fermer" doit porter "Enregistrer" a cote, sauf ceux d'un acte
        ou d'une simple lecture. */
     const src = lireSource('assets/app.js');
     const pieds = src.match(/\$\('#modalFoot'\)\.innerHTML =[\s\S]{0,700}?`;/g) || [];
@@ -283,7 +283,7 @@ suite('Enregistrer : une règle, deux familles', () => {
   test('le relevé mensuel rejoint la famille de sa jumelle', () => {
     const src = lireSource('assets/app.js');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
-    /* La borne haute etait « function askAccount », une fenetre morte que
+    /* La borne haute etait "function askAccount", une fenetre morte que
        rien n'appelait : elle est partie, la fenetre d'apercu la remplace
        comme frontiere. */
     const bloc = src.slice(src.indexOf('function askMonthlySnapshot'),
@@ -345,7 +345,7 @@ suite('Le pli des comptes s’anime sur place', () => {
 
   test('la grille passe de 0fr à 1fr, et la visibilité suit avec retard', () => {
     /* La seule facon d animer une hauteur inconnue sans la mesurer. La
-       visibilite differee sort le contenu replie du clavier et des lecteurs —
+       visibilite differee sort le contenu replie du clavier et des lecteurs --
        le role que tenait l attribut hidden quand le pli etait sec. */
     const css = (lireSource('assets/styles.css') || '').replace(/\/\*[\s\S]*?\*\//g, '');
     vrai(/\.cpt-pli \{[^}]*grid-template-rows: 0fr/.test(css), 'fermé : 0fr');
@@ -415,13 +415,13 @@ suite('Le détail d’une dépense accepte l’addition', () => {
 suite('Un indice ne se compte pas en euros', () => {
 
   test('la fiche d’un repère distingue un indice d’un actif', () => {
-    /* « Quand le marche est ferme j ai des trucs chelou » : la fiche du CAC 40
-       annonçait « 8 714,93 € ». Un indice vaut des POINTS — Yahoo joint
+    /* Marche ferme, la fiche du CAC 40
+       annoncait "8 000,00 EUR". Un indice vaut des POINTS -- Yahoo joint
        pourtant une devise a ses indices, et la coller au chiffre en faisait un
-       montant. C est la regle de la maison, « un intitule dit exactement ce
-       qu il compte », appliquee a une unite.
+       montant. C est la regle de la maison, "un intitule dit exactement ce
+       qu il compte", appliquee a une unite.
 
-       Le prefixe « ^ » designe un indice chez Yahoo sur toutes les places : on
+       Le prefixe "^" designe un indice chez Yahoo sur toutes les places : on
        s en sert plutot que de tenir une liste des cinq indices du ruban, qui
        oublierait le sixieme. */
     const src = lireSource('assets/app.js');
@@ -433,9 +433,9 @@ suite('Un indice ne se compte pas en euros', () => {
     vrai(/String\(l\?\.symbole \|\| ''\)\.startsWith\('\^'\) \? ` \$\{trad\('pts'\)\}`/
       .test(src), 'un indice s’affiche en points, jamais dans une devise');
     /* Une exception, nommee, et elle ne contredit pas la regle : le VIX ne
-       s'affiche dans aucune devise non plus, il s'affiche SANS unite. « pts »
+       s'affiche dans aucune devise non plus, il s'affiche SANS unite. "pts"
        serait juste pour un panier d'actions et faux pour une volatilite
-       implicite, qui s'exprime en pourcentage annualise — que personne n'ecrit,
+       implicite, qui s'exprime en pourcentage annualise -- que personne n'ecrit,
        et surement pas en points. */
     vrai(/const uniteRepere = l => estVix\(l\) \? ''/.test(src),
       'et le VIX se lit nu : « pts » mentirait sur ce qu’il mesure');
@@ -444,8 +444,8 @@ suite('Un indice ne se compte pas en euros', () => {
     vrai(!/const unite = l\.devise === 'USD'/.test(src),
       'plus aucun chemin ne colle une devise sans se demander ce qu’il chiffre');
 
-    /* Et le sous-titre cesse d etre un identifiant technique : « ^FCHI »
-       n apprend rien a qui vient de cliquer sur « CAC 40 ». */
+    /* Et le sous-titre cesse d etre un identifiant technique : "^FCHI"
+       n apprend rien a qui vient de cliquer sur "CAC 40". */
     vrai(/estIndice \? 'Indice boursier' : l\.symbole/.test(src),
       'la fiche dit ce que la chose est, et garde le symbole en second');
 
@@ -484,7 +484,7 @@ suite('La langue gouverne les formats, pas seulement les mots', () => {
 
   test('une date anglaise ne peut pas se lire à l’envers', () => {
     /* Le seul controle de cette suite qui protege un chiffre et non un style.
-       « 03/04/2026 » vaut le 3 avril a Londres et le 4 mars a New York : une
+       "03/04/2026" vaut le 3 avril a Londres et le 4 mars a New York : une
        date numerique change de sens selon le lecteur, ce qu'aucune traduction
        n'a le droit de faire. Le mois en lettres retire la question. */
     enLangue('en', () => {
@@ -508,17 +508,17 @@ suite('La langue gouverne les formats, pas seulement les mots', () => {
 
   test('l’heure d’un cours porte la préposition de sa langue', () => {
     /* `fmtCoursQuand` rend sa preposition avec elle, ses trois branches n'ayant
-       pas la meme. Traduire le seul dictionnaire aurait donc laisse « price de
-       11:05 » : c'est la fonction qui doit savoir. */
+       pas la meme. Traduire le seul dictionnaire aurait donc laisse "price de
+       11:05" : c'est la fonction qui doit savoir. */
     auJour('2026-08-09', () => {
       const jour = Math.floor(new Date('2026-08-09T11:05:00').getTime() / 1000);
       enLangue('fr', () => {
         const s = fmtCoursQuand(jour);
         vrai(s.startsWith('de '), `obtenu « ${s} »`);
       });
-      /* « from », la meme preposition sur les trois branches : elle se lit
-         aussi bien apres « price » qu'apres « the most recent price is »,
-         la ou « at » rendait la seconde phrase bancale. */
+      /* "from", la meme preposition sur les trois branches : elle se lit
+         aussi bien apres "price" qu'apres "the most recent price is",
+         la ou "at" rendait la seconde phrase bancale. */
       enLangue('en', () => {
         const s = fmtCoursQuand(jour);
         vrai(s.startsWith('from '), `obtenu « ${s} »`);
@@ -552,7 +552,7 @@ suite('Un type de compte peut naître à la main', () => {
 
   test('créé, il se retrouve et porte la forme de sa poche', () => {
     /* La forme vient de la poche et non du nom : c'est elle qui commande
-       calculs et regroupements. Un type « cash » doit compter comme du cash. */
+       calculs et regroupements. Un type "cash" doit compter comme du cash. */
     Fixture.poser();
     const id = creerTypePerso('Plan épargne logement', 'cash');
     eq(id, 't_plan-epargne-logement', 'l’identifiant se dérive du nom, accents à plat');
@@ -564,8 +564,8 @@ suite('Un type de compte peut naître à la main', () => {
   });
 
   test('le même nom ne crée pas un double, quelle que soit sa casse', () => {
-    /* Deux types du même nom seraient deux poches pour un seul fait — la
-       faute que ce projet corrige sans arrêt, offerte ici à l'utilisateur. */
+    /* Deux types du meme nom seraient deux poches pour un seul fait -- la
+       faute que ce projet corrige sans arret, offerte ici a l'utilisateur. */
     Fixture.poser();
     const a = creerTypePerso('Compte à terme', 'cash');
     const b = creerTypePerso('compte à terme', 'bourse');
@@ -597,12 +597,12 @@ suite('Un type de compte peut naître à la main', () => {
   });
 
   test('les deux formulaires listent les types depuis la même source', () => {
-    /* Une liste se dérive, elle ne se recopie pas : le type créé dans une
-       fenêtre doit exister dans l'autre. Les deux passent par
+    /* Une liste se derive, elle ne se recopie pas : le type cree dans une
+       fenetre doit exister dans l'autre. Les deux passent par
        typesCompteChoix(), et chacune offre le type libre. */
     const src = lireSource('assets/app.js');
-    /* La source est groupée par rubriques depuis les enveloppes américaines ;
-       les deux fenêtres la partagent, et plus aucune n'aplatit la liste. */
+    /* La source est groupee par rubriques depuis les enveloppes americaines ;
+       les deux fenetres la partagent, et plus aucune n'aplatit la liste. */
     const appels = src.match(/options: \[\.\.\.typesCompteParRubrique\(\),/g) || [];
     eq(appels.length, 2, 'la fiche et l’assistant, personne d’autre à la main');
     eq((src.match(/typesCompteChoix\(\)\.map\(\w+ => \[\w+\.id, \w+\.label\]\)/g) || []).length, 0,
@@ -614,10 +614,10 @@ suite('Un type de compte peut naître à la main', () => {
   });
 
   test('la fenêtre du type libre dit le comportement, chaque famille offerte', () => {
-    /* Le champ s'annoncait « Poche de patrimoine » : ce mot designe partout
+    /* Le champ s'annoncait "Poche de patrimoine" : ce mot designe partout
        ailleurs les classes de la repartition, et la liste offrait trois
        libelles qui n'en font pas partie. La question porte sur le
-       comportement, et le defaut suit l'exemple du champ du nom — un plan
+       comportement, et le defaut suit l'exemple du champ du nom -- un plan
        d'epargne logement est de l'argent disponible, pas un compte de titres
        range en bourse. */
     const src = lireSource('assets/app.js');
@@ -647,9 +647,9 @@ suite('Un type de compte peut naître à la main', () => {
 suite('La traduction des écrans ne peut pas heurter les totaux', () => {
 
   test('t() ne reçoit que des clés pointées, jamais une phrase', () => {
-    /* `t` est une variable locale dans une trentaine de portées d'app.js, où
+    /* `t` est une variable locale dans une trentaine de portees d'app.js, ou
        elle porte les totaux : `t.brut`, `t.net`, `t.label`. Ecrire
-       `t('Liquidités')` a cote de `num(t.bourse)` appelle l'objet des totaux
+       `t('Liquidites')` a cote de `num(t.bourse)` appelle l'objet des totaux
        comme une fonction, et c'est la portee qui decide laquelle gagne. Le
        defaut ne se voit pas a la relecture, il ne se voit qu'a l'execution du
        seul ecran concerne. `trad()` porte donc la traduction des phrases, et
@@ -665,8 +665,8 @@ suite('La traduction des écrans ne peut pas heurter les totaux', () => {
   });
 
   test('trad() rend le français quand le dictionnaire ignore la phrase', () => {
-    /* C'est ce repli qui permet de traduire écran par écran : une phrase
-       enveloppée mais pas encore traduite reste juste, dans les deux langues. */
+    /* C'est ce repli qui permet de traduire ecran par ecran : une phrase
+       enveloppee mais pas encore traduite reste juste, dans les deux langues. */
     const inedite = 'Phrase que le dictionnaire ne connaît pas';
     enLangue('fr', () => eq(trad(inedite), inedite, 'le français rend la phrase telle quelle'));
     enLangue('en', () => eq(trad(inedite), inedite, 'l’anglais retombe dessus au lieu d’une clé nue'));
@@ -677,17 +677,17 @@ suite('La traduction des écrans ne peut pas heurter les totaux', () => {
 suite('Le dictionnaire anglais ne laisse pas de trou', () => {
 
   test('l’anglais de l’application se prononce', () => {
-    /* « i.e. » est du latin abrege. Correct a l'ecrit juridique, illisible sur
+    /* "i.e." est du latin abrege. Correct a l'ecrit juridique, illisible sur
        un ecran de telephone : personne ne le prononce, et le lecteur le decode
-       au lieu de lire le chiffre qui suit. « soit » se disait de trois facons —
-       « i.e. », « that is », « left, i.e. » — donc la meme reformulation
+       au lieu de lire le chiffre qui suit. "soit" se disait de trois facons --
+       "i.e.", "that is", "left, i.e." -- donc la meme reformulation
        changeait de registre selon la carte ou elle tombait.
 
-       « e.g. » n'est pas juge sur le meme critere, et ce n'est pas une
+       "e.g." n'est pas juge sur le meme critere, et ce n'est pas une
        tolerance : il vit dans les indications de champ, ou le francais abrege
-       exactement pareil (« ex. Fortuneo »). Ce qui est verifie est donc la
-       SYMETRIE — une abreviation anglaise en face d'une abreviation francaise.
-       Un « e.g. » ecrit la ou le francais ecrit une phrase entiere serait une
+       exactement pareil ("ex. PEA"). Ce qui est verifie est donc la
+       SYMETRIE -- une abreviation anglaise en face d'une abreviation francaise.
+       Un "e.g." ecrit la ou le francais ecrit une phrase entiere serait une
        abreviation apparue a la traduction, et il tombe. */
     const latin = [];
     const dissymetrie = [];
@@ -704,12 +704,12 @@ suite('Le dictionnaire anglais ne laisse pas de trou', () => {
   });
 
   test('une même reformulation se dit d’une seule façon', () => {
-    /* Trois clefs portent « soit » comme CONNECTEUR : il introduit une seconde
+    /* Trois clefs portent "soit" comme CONNECTEUR : il introduit une seconde
        ecriture du montant qu'on vient de lire. Elles doivent partager le meme
        mot, sinon l'objectif, le revenu et la position parlent trois anglais.
 
-       L'ancrage est etroit a dessein : « soit » est aussi un subjonctif, et
-       « quelle que soit sa periodicite » n'introduit rien du tout. Le connecteur
+       L'ancrage est etroit a dessein : "soit" est aussi un subjonctif, et
+       "quelle que soit sa periodicite" n'introduit rien du tout. Le connecteur
        ouvre la clef ou suit une virgule ; le verbe a toujours un sujet devant. */
     const estConnecteur = fr => /^soit( |$)/.test(fr) || /, soit$/.test(fr);
     const soit = Object.entries(I18N.en).filter(([fr]) => estConnecteur(fr));
@@ -753,7 +753,7 @@ suite('Le dictionnaire anglais ne laisse pas de trou', () => {
     balise('en-tête', /<t[hd][^>]*>([^<>{}]*)</g);
     balise('bouton', /<button[^>]*>([^<>{}]*)</g);
     balise('option', /<option[^>]*>([^<>{}]*)</g);
-    /* Le texte nu d'un intitule : « Horizon » y dormait en francais, et
+    /* Le texte nu d'un intitule : "Horizon" y dormait en francais, et
        aucune des cinq formes precedentes ne le voyait. */
     balise('intitulé', /<label[^>]*>([^<>{}]*)</g);
 
@@ -763,9 +763,9 @@ suite('Le dictionnaire anglais ne laisse pas de trou', () => {
   });
 
   test('une clef ne se déclare qu’une fois', () => {
-    /* Deux sessions ont pose « sur » chacune de son cote, over puis of : en
-       JavaScript la derniere declaration gagne sans un mot, et « over 7
-       closed months » est devenu « of 7 closed months » sans que rien ne le
+    /* Deux sessions ont pose "sur" chacune de son cote, over puis of : en
+       JavaScript la derniere declaration gagne sans un mot, et "over 7
+       closed months" est devenu "of 7 closed months" sans que rien ne le
        dise. Un homographe se resout par une clef pointee avec son francais
        en repli, trad('sur.objectif', 'sur') ; un doublon, lui, n'a jamais
        raison d'exister. */
@@ -791,8 +791,8 @@ suite('Le dictionnaire anglais ne laisse pas de trou', () => {
   });
 
   test('aucune phrase ne reste en français sous couvert de traduction', () => {
-    /* Un mot identique dans les deux langues est normal — « Budget »,
-       « Performance », « Allocation ». Une phrase entiere identique est une
+    /* Un mot identique dans les deux langues est normal -- "Budget",
+       "Performance", "Allocation". Une phrase entiere identique est une
        traduction qu'on a cru faire. */
     const copiees = Object.keys(FR).filter(c =>
       I18N.en[c] === FR[c] && String(FR[c]).trim().split(/\s+/).length > 2);
@@ -805,7 +805,7 @@ suite('Le dictionnaire anglais ne laisse pas de trou', () => {
    ------------------------------------------------------------------ */
 suite('Un nom ne s’écrit pas trois fois', () => {
 
-  /* La carte Immobilier affichait « Flat » puis « Flat · Flat » : la ligne, le
+  /* La carte Immobilier affichait "Flat" puis "Flat . Flat" : la ligne, le
      compte et l etablissement portaient le meme mot, ce que la creation
      propose d elle-meme quand on saisit un bien d un seul geste. La meta se
      derive du nom affiche au lieu de le redire. */
@@ -830,7 +830,7 @@ suite('Un nom ne s’écrit pas trois fois', () => {
        assemblaient nom de compte et etablissement chacune de son cote. */
     const src = lireSource('assets/app.js');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
-    /* Un « || » entre les deux n'est pas une composition mais une disjonction :
+    /* Un "||" entre les deux n'est pas une composition mais une disjonction :
        la recherche interroge les deux noms, elle n'en affiche aucun. */
     const voisins = src.match(/[^\n]{0,60}nomCompteV2\([^)]*\)[^\n|]{0,40}nomEtabDe\(/g) || [];
     eq(voisins.filter(s => !/sousNom\(/.test(s)).join('\n'), '',
@@ -886,14 +886,14 @@ suite('Un bien détenu à plusieurs ne compte que pour sa part', () => {
 
   test('une part absente vaut le bien entier ; zéro vaut zéro ; hors bornes ne vaut rien', () => {
     /* Le zero a longtemps valu le tout, au motif qu'il ne voulait rien dire.
-       Mais le champ accepte zero, donc quelqu'un peut le saisir — et lire alors
-       « 100 % » est exactement le contraire de ce qu'il a ecrit. Un bien cede,
+       Mais le champ accepte zero, donc quelqu'un peut le saisir -- et lire alors
+       "100 %" est exactement le contraire de ce qu'il a ecrit. Un bien cede,
        garde en memoire pour son historique, se declare a zero.
 
        HORS BORNES NE VAUT PLUS LE TOUT. Rendre 1 disait que le bien etait detenu
        en entier, ce que personne n'avait declare : 150 % devenait 100 % en
        silence, au moment meme ou l'ecran demandait de corriger. Le raisonnement
-       d'avant — « le tout plutot qu'un total gonfle » — supposait qu'il fallait
+       d'avant -- "le tout plutot qu'un total gonfle" -- supposait qu'il fallait
        choisir un chiffre. Il n'y en a pas a choisir : la ligne sort des montants
        personnels, et le controle de coherence dit que ces totaux sont
        incomplets. */
@@ -1012,7 +1012,7 @@ suite('Un crédit dit quand il sera payé', () => {
   test('la mensualité lue est celle de la charge qui rembourse, pas une seconde', () => {
     /* Le meme fait a un seul porteur : quand une charge fixe rembourse le
        credit, c'est elle qui detient la mensualite, et la date de fin doit la
-       lire — sinon deux ecrans donneraient deux dates. */
+       lire -- sinon deux ecrans donneraient deux dates. */
     Fixture.poser(s => {
       s.etabs.find(e => e.id === 'e_bien').dettes[0].taux = 3;
       s.etabs.find(e => e.id === 'e_bien').dettes[0].mensualite = null;
@@ -1059,9 +1059,9 @@ suite('Ce qu’un bien rapporte, sans embellir', () => {
   });
 
   test('le même loyer donne le même montant sur les deux écrans', () => {
-    /* La regle du projet : « Liquidités » a deja valu deux choses differentes sur
+    /* La regle du projet : "Liquidites" a deja valu deux choses differentes sur
        deux pages, les deux totaux justes. Le loyer a failli refaire la faute deux
-       fois — la ligne de la carte affichait le montant lisse par la vacance,
+       fois -- la ligne de la carte affichait le montant lisse par la vacance,
        l'en-tete aussi, quand le budget compte le loyer plein. La vacance a sa
        propre ligne desormais, et c'est la qu'elle se lit. */
     loue(s => { s.comptes.find(c => c.id === 'c_immo').moisLoues = 11; });
@@ -1213,7 +1213,7 @@ suite('Ce qu’un bien rapporte, sans embellir', () => {
 
   test('le rendement dit toujours sur quelle base il se calcule', () => {
     /* Prix d'acquisition connu : c'est lui. Sinon la valeur du jour, et l'ecran
-       l'annonce — deux bases donnent deux chiffres pour la meme ligne. */
+       l'annonce -- deux bases donnent deux chiffres pour la meme ligne. */
     loue();
     eq(cashFlowBien(compteById('c_immo')).surAchat, true, 'le prix payé est connu');
     pres(cashFlowBien(compteById('c_immo')).base, 110000, 'donc la base, c’est lui');
@@ -1248,9 +1248,9 @@ suite('La fiscalité d’un bien se déclare, elle ne se devine pas', () => {
 
   test('rien de saisi ne vaut pas zéro d’impôt', () => {
     /* LE DEFAUT QUE CETTE ETAPE CORRIGE. `impot` valait 0 sans rien de declare,
-       et le cash-flow retranchait ce zero : le chiffre de tete s'annonçait donc
+       et le cash-flow retranchait ce zero : le chiffre de tete s'annoncait donc
        comme ce qui reste, apres un impot que personne n'avait estime. Une donnee
-       absente passait pour une mesure — exactement ce que `rendementBrut` refuse
+       absente passait pour une mesure -- exactement ce que `rendementBrut` refuse
        de faire depuis longtemps. */
     loue();
     const x = cf();
@@ -1275,8 +1275,8 @@ suite('La fiscalité d’un bien se déclare, elle ne se devine pas', () => {
   });
 
   test('un montant annuel déclaré à zéro est un zéro, pas une absence', () => {
-    /* « Vide n'est pas zero » se joue ici, et seulement ici : le montant est le
-       seul des deux champs qui sache dire « rien a payer ». Un deficit foncier
+    /* "Vide n'est pas zero" se joue ici, et seulement ici : le montant est le
+       seul des deux champs qui sache dire "rien a payer". Un deficit foncier
        reporte donne exactement ce cas. */
     regle(c => { c.fiscaliteEstimeeAnnuelle = 0; });
     const x = cf();
@@ -1319,7 +1319,7 @@ suite('La fiscalité d’un bien se déclare, elle ne se devine pas', () => {
 
   test('un taux à zéro n’est pas une déclaration de zéro', () => {
     /* Le champ pour cent affiche le vide quand il vaut zero, et ecrit le vide
-       quand on l'efface : il n'a jamais su exprimer « zero pour cent ». Lui
+       quand on l'efface : il n'a jamais su exprimer "zero pour cent". Lui
        preter ce sens aujourd'hui relirait autrement des donnees ecrites hier. */
     regle(c => { c.tauxImpot = 0; });
     const x = cf();
@@ -1360,7 +1360,7 @@ suite('La fiscalité d’un bien se déclare, elle ne se devine pas', () => {
 
   test('un montant déclaré ouvre le net d’impôt, que le taux n’ouvrait plus seul', () => {
     /* Le rendement net d'impot se testait sur le TAUX. Un detenteur qui declare
-       son montant annuel, et lui seul, n'y avait donc pas droit — alors que sa
+       son montant annuel, et lui seul, n'y avait donc pas droit -- alors que sa
        donnee est la meilleure des deux. */
     const src = lireSource('assets/store.js');
     vrai(!/\(base && tauxImpot\)/.test(src), 'la condition ne porte plus sur le taux');
@@ -1440,7 +1440,7 @@ suite('La fiche pose la question de l’usage', () => {
        locative, et c'est faux dans l'autre sens. L'usage se demande desormais a
        la creation et un bandeau le reclame sur les anciens biens : il est
        rempli, donc il peut decider. C'est la seule donnee qui distingue une
-       residence principale d'un investissement — aucun calcul ne le devine. */
+       residence principale d'un investissement -- aucun calcul ne le devine. */
     const src = lireSource('assets/app.js');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
     const aiguillage = src.slice(src.indexOf('function carteUsageBien(c, idx)'),
@@ -1475,7 +1475,7 @@ suite('La fiche pose la question de l’usage', () => {
       'et jamais agrégé au premier, nulle part');
     /* Ni revenu, ni epargne disponible, ni cash-flow positif : une reduction de
        dette. La phrase le dit A L'ECRAN, et non dans une infobulle qu'il faut
-       ouvrir — c'est exactement le chiffre qu'on additionne par erreur. */
+       ouvrir -- c'est exactement le chiffre qu'on additionne par erreur. */
     vrai(/Elle ne rentre sur aucun compte/.test(bloc),
       'la phrase qui empêche de le lire de travers est visible');
     vrai(!/revenu|épargne/i.test(bloc.replace(/\/\*[\s\S]*?\*\//g, '')),
@@ -1556,7 +1556,7 @@ suite('La fiche pose la question de l’usage', () => {
 
   test('les réglages locatifs ne s’affichent que sur un bien loué', () => {
     /* Ils repondaient a une question que la residence principale ne pose pas :
-       « Mois loues par an : 12 » et « Impot sur ce loyer » sur le logement qu'on
+       "Mois loues par an : 12" et "Impot sur ce loyer" sur le logement qu'on
        habite. Ils n'agissent d'ailleurs sur rien la-bas -- sans loyer, la vacance
        ne retire rien et l'impot porte sur une base nulle -- donc les cacher ne
        cache aucun effet. C'etait la crainte qui les avait fait rester. */
@@ -1605,7 +1605,7 @@ suite('Un patrimoine net négatif a deux causes', () => {
 
   /* Neuf fois sur dix c'est une dette saisie sans son bien. Mais un achat
      recent finance a 110 % donne le meme signe sans que rien ne soit faux, et
-     envoyer « declare ce bien » a qui vient de le declarer est faux. */
+     envoyer "declare ce bien" a qui vient de le declarer est faux. */
 
   const alerte = () => healthChecks().find(n => /net négatif/i.test(n.title || ''));
 
@@ -1681,14 +1681,14 @@ suite('Un patrimoine net négatif a deux causes', () => {
 suite('Une application vide dit quoi faire', () => {
 
   test('le bouton d’ajout ouvre une carte qui existe', () => {
-    /* « Enorme bug, sur un compte vide le bouton ajouter un titre ça marche pas. »
-       Il posait son drapeau, relançait le rendu, ne trouvait rien à ouvrir — la
-       carte de recherche ne se rendait qu'avec le tableau des lignes, c'est-à-dire
-       partout sauf sur l'écran sans aucune ligne. Le clic ne faisait donc rien
-       précisément là où l'on vient tout ajouter.
+    /* Sur un compte vide, le bouton d'ajout d'un titre ne faisait rien.
+       Il posait son drapeau, relancait le rendu, ne trouvait rien a ouvrir -- la
+       carte de recherche ne se rendait qu'avec le tableau des lignes, c'est-a-dire
+       partout sauf sur l'ecran sans aucune ligne. Le clic ne faisait donc rien
+       precisement la ou l'on vient tout ajouter.
 
-       Deux moitiés à ce défaut, et il fallait les deux : la carte doit se rendre,
-       et le montage doit la câbler — il sortait avant, faute de positions. */
+       Deux moities a ce defaut, et il fallait les deux : la carte doit se rendre,
+       et le montage doit la cabler -- il sortait avant, faute de positions. */
     const src = lireSource('assets/app.js');
     const vue = src.slice(src.indexOf('function viewPositions('), src.indexOf('function mountPositions('));
     const vide = vue.slice(0, vue.indexOf('${barreEtatCours()}'));
@@ -1704,8 +1704,8 @@ suite('Une application vide dit quoi faire', () => {
       'et il le fait avant de sortir faute de lignes, sinon le champ reste inerte');
   });
 
-  /* Chaque ecran portait son texte d'ecran vide, mais l'accueil — le premier
-     ouvert — ne disait rien, et rien ne donnait l'ordre. La forme retenue est
+  /* Chaque ecran portait son texte d'ecran vide, mais l'accueil -- le premier
+     ouvert -- ne disait rien, et rien ne donnait l'ordre. La forme retenue est
      celle qui existait deja pour le revenu : un bouton, une phrase, dans la
      carte qui manque de la donnee. Pas de panneau central qui renverrait
      ailleurs. */
@@ -1715,8 +1715,8 @@ suite('Une application vide dit quoi faire', () => {
   });
 
   test('un premier lancement ne pose aucune ligne de données', () => {
-    /* Il posait un compte courant, un livret, un « Salaire 0 € » et un
-       « Loyer 0 € » : des exemples deguises en donnees, qui faisaient croire a
+    /* Il posait un compte courant, un livret, un "Salaire 0 EUR" et un
+       "Loyer 0 EUR" : des exemples deguises en donnees, qui faisaient croire a
        l'application qu'elle etait configuree. Aucune invite ne s'affichait, les
        rappels reclamaient un releve a qui n'avait aucun compte, et la page Actifs
        ouvrait sur deux comptes a zero rattaches a rien. */
@@ -1758,8 +1758,8 @@ suite('Une application vide dit quoi faire', () => {
 
   test('la création d’un placement en parts propose le prix par part', () => {
     /* LA FICHE SAVAIT COMPTER PAR PART, LA CREATION NON. Elle reclamait deux
-       totaux, donc on posait « 7 529 parts a 1,33 » sur un coin de table pour
-       taper 10 000 — puis la fiche rouvrait en affichant fierement les deux
+       totaux, donc on posait "2 000 parts a 1,50" sur un coin de table pour
+       taper 3 000 -- puis la fiche rouvrait en affichant fierement les deux
        prix par part qu'on venait de calculer a la main. Le mecanisme existait,
        il n'etait pas offert au moment ou il sert.
 
@@ -1803,8 +1803,8 @@ suite('Une application vide dit quoi faire', () => {
        la valeur du jour : deux declarations, la fiche et la creation. */
     eq((src.match(/parPartDeduitParts: true/g) || []).length, 2,
       'le montant investi le porte, à la fiche comme à la création');
-    /* Le libelle se choisit selon le type (une SCPI dit « Valeur retenue par
-       part ») : c'est le libelle du prix du jour qui se cherche. */
+    /* Le libelle se choisit selon le type (une SCPI dit "Valeur retenue par
+       part") : c'est le libelle du prix du jour qui se cherche. */
     const dujour = "'Prix de la part aujourd’hui ({dev})'";
     let vus = 0;
     for (let i = src.indexOf(dujour); i >= 0; i = src.indexOf(dujour, i + 1)) {
@@ -1834,9 +1834,9 @@ suite('Une application vide dit quoi faire', () => {
        comportent differemment sans que rien ne le signale. */
     vrai(/parPartSous: 'il donne le nombre de parts'/.test(src),
       'le champ annonce ce qu’il déduit');
-    /* « L'un remplit l'autre » est parti : la formule montre le calcul reel au
+    /* "L'un remplit l'autre" est parti : la formule montre le calcul reel au
        lieu de le decrire en abstrait. Le sous-titre qui reste dit un fait que la
-       formule ne montre pas — taper ce prix redonne le nombre de parts. */
+       formule ne montre pas -- taper ce prix redonne le nombre de parts. */
     vrai(!/l’un remplit l’autre/.test(src) && !I18N.en['l’un remplit l’autre'],
       'la phrase abstraite n’existe plus, ni sa clef');
     vrai(/\$\{c\.parPartSous \? `<span class="sub formule-sous">/.test(src),
@@ -1844,14 +1844,14 @@ suite('Une application vide dit quoi faire', () => {
   });
 
   test('la liste de démarrage ne coche pas un pas qu’on ne peut pas avoir franchi', () => {
-    /* DEUX QUESTIONS QUI DIVERGENT. `fait` repond a « faut-il encore le
-       reclamer ? » : sans compte, non, il n'y a rien a photographier et
+    /* DEUX QUESTIONS QUI DIVERGENT. `fait` repond a "faut-il encore le
+       reclamer ?" : sans compte, non, il n'y a rien a photographier et
        l'invite se tait. La liste posait cette question-la pour dessiner ses
-       coches, et cochait donc « Ton premier relevé » sur une application vide,
-       juste au-dessus de « Tes comptes » qui restait a faire. On ne
+       coches, et cochait donc "Ton premier releve" sur une application vide,
+       juste au-dessus de "Tes comptes" qui restait a faire. On ne
        photographie pas des comptes qu'on n'a pas.
 
-       Mesure a l'ecran : « 1 sur 4 » sur un etat vierge. */
+       Mesure a l'ecran : "1 sur 4" sur un etat vierge. */
     Store.state = blankState();
     Store.migrate();
     refreshAccounts();
@@ -1867,8 +1867,8 @@ suite('Une application vide dit quoi faire', () => {
       'la carte demande si le pas est franchi, pas s’il se réclame');
 
     /* LA DECLARATION SE DERIVE DU PAS, elle ne se recopie pas par cas. Les
-       comptes et les rentrees ont le meme defaut — la premiere ligne saisie
-       franchit le pas alors qu'il en manque quatre — et l'ecrire deux fois
+       comptes et les rentrees ont le meme defaut -- la premiere ligne saisie
+       franchit le pas alors qu'il en manque quatre -- et l'ecrire deux fois
        aurait garanti qu'un troisieme cas soit ecrit une troisieme fois. */
     /* Les trois pas qui portent une LISTE la declarent. Le releve n'en est pas
        une : un seul suffit, il n'y a rien a compter. */
@@ -1883,11 +1883,11 @@ suite('Une application vide dit quoi faire', () => {
     eq(new Set(drapeaux).size, drapeaux.length,
       'chaque pas a son propre drapeau : répondre pour l’un ne répond pas pour l’autre');
 
-    /* Un titre et son bouton disent le meme pas. « Tes charges fixes » sous un
-       bouton « Entrer tes dépenses » faisait douter qu'il s'agisse du meme
+    /* Un titre et son bouton disent le meme pas. "Tes charges fixes" sous un
+       bouton "Entrer tes depenses" faisait douter qu'il s'agisse du meme
        geste. */
-    /* Le mot commun, pas le premier : « Ton premier relevé » et « Enregistrer
-       un relevé » se rejoignent sur le dernier. Les mots courts sont écartés,
+    /* Le mot commun, pas le premier : "Ton premier releve" et "Enregistrer
+       un releve" se rejoignent sur le dernier. Les mots courts sont ecartes,
        ils rapprocheraient n'importe quoi de n'importe quoi. */
     const motsUtiles = t => new Set(t.toLowerCase()
       .normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -1910,7 +1910,7 @@ suite('Une application vide dit quoi faire', () => {
        mensuel s'affichait sous la carte, qui porte le meme geste a son
        troisieme pas : deux fois la meme demande, a deux centimetres l'une de
        l'autre, dans deux formes differentes. Le bandeau ne disparait pas pour
-       autant, il revient chaque mois — il attend que le guide ait fini. */
+       autant, il revient chaque mois -- il attend que le guide ait fini. */
     for (const attente of ['moisEnAttente', 'depEnAttente']) {
       vrai(new RegExp(`\\$\\{${attente}\\.missing && !guide \\?`).test(vue),
         `le bandeau « ${attente} » attend que le guide ait fini`);
@@ -1927,9 +1927,9 @@ suite('Une application vide dit quoi faire', () => {
        mensuel attend sa reponse.
 
        Avoir UN compte ne veut pas dire les avoir TOUS, et rien dans les donnees
-       ne distingue les deux etats — seule la personne le sait. D'ou une
+       ne distingue les deux etats -- seule la personne le sait. D'ou une
        question, la seule de la cloche. */
-    Fixture.poser(e => { e.monthly = []; });   // des comptes, aucun relevé encore
+    Fixture.poser(e => { e.monthly = []; });   // des comptes, aucun releve encore
     vrai(notifications().some(n => n.cle === CLE_INVENTAIRE),
       'la question de l’inventaire se pose');
     eq(currentMonthPending().missing, false,
@@ -1959,7 +1959,7 @@ suite('Une application vide dit quoi faire', () => {
     for (const cle of ['comptes', 'revenus', 'depenses']) {
       vrai(pasAFaire(cle), `« ${cle} » reste à faire sur une application vide`);
     }
-    /* Un drapeau « premiers pas termines » aurait menti des le premier import. */
+    /* Un drapeau "premiers pas termines" aurait menti des le premier import. */
     Fixture.poser();
     for (const cle of ['comptes', 'revenus', 'depenses']) {
       vrai(!pasAFaire(cle), `« ${cle} » est fait dès que la donnée existe`);
@@ -2008,10 +2008,10 @@ suite('Une application vide dit quoi faire', () => {
   });
 
   test('aucune page n’étale de tableau de zéros', () => {
-    /* Allocation repartissait 0 € entre sept classes, Projection etalait « 0 € »
+    /* Allocation repartissait 0 EUR entre sept classes, Projection etalait "0 EUR"
        sur cinquante ans et dix horizons, Releves ouvrait douze mois vides sans un
        mot. Un tableau de zeros n'est pas un resultat, c'est une question mal
-       posee — et c'est la premiere impression d'une application publique. */
+       posee -- et c'est la premiere impression d'une application publique. */
     const src = lireSource('assets/app.js');
     vrai(/function pageAvantDonnees\(phrase, cle = 'comptes'\)/.test(src),
       'un seul helper pour les trois, sinon trois formulations');
@@ -2047,7 +2047,7 @@ suite('Une application vide dit quoi faire', () => {
 
   test('un pli replié le reste après un enregistrement', () => {
     /* Le geste ne basculait qu'une classe CSS : le premier rendu suivant
-       reconstruisait le balisage avec « ouvert » en dur, et tout se redepliait.
+       reconstruisait le balisage avec "ouvert" en dur, et tout se redepliait.
        Le registre est celui des groupes de comptes, sous un prefixe : le meme
        fait, une seule liste. */
     /* `cleLiqPli` et `compteReplies` vivent dans app.js, que le harnais ne charge
@@ -2075,7 +2075,7 @@ suite('Une application vide dit quoi faire', () => {
   test('les cartes qui ne peuvent rien montrer disent ce qui les remplirait', () => {
     const src = lireSource('assets/app.js');
     /* La courbe : le graphique est monte apres le rendu, il ne connait pas ce qui
-       le remplirait — c'est donc la carte qui le dit. */
+       le remplirait -- c'est donc la carte qui le dit. */
     const evo = src.slice(src.indexOf('<div class="chart" id="chartEvo">'),
                           src.indexOf('<div class="chart" id="chartEvo">') + 700);
     vrai(/invitePremierPas\('releves'\)/.test(evo),
@@ -2116,7 +2116,7 @@ suite('Une application vide dit quoi faire', () => {
   });
 
   test('la cloche ne réclame rien qui n’ait de sens sur une application vide', () => {
-    /* « Épargne de précaution : 0 mois, 0 € pour 0 € de coût mensuel » etait la
+    /* "Epargne de precaution : 0 mois, 0 EUR pour 0 EUR de cout mensuel" etait la
        caricature de la regle : la cloche ne parle que de ce qui existe chez
        celui qui la regarde. */
     vide();

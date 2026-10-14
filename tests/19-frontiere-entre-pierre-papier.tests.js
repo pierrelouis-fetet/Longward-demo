@@ -1,7 +1,7 @@
 partieDeTests('tests/19-frontiere-entre-pierre-papier.tests.js');
 /* Deux fuites restaient : des metres carres et une adresse sur une SCPI, et un
-   bouton « + Charge » qui lui proposait une taxe fonciere. Chacune invite a
-   saisir quelque chose qui n'existe pas — et la taxe fonciere, saisie, aurait
+   bouton "+ Charge" qui lui proposait une taxe fonciere. Chacune invite a
+   saisir quelque chose qui n'existe pas -- et la taxe fonciere, saisie, aurait
    ampute le rendement de charges payees par la gerance. */
 suite('La frontière entre pierre et papier passe aussi par les champs', () => {
 
@@ -53,7 +53,7 @@ suite('La frontière entre pierre et papier passe aussi par les champs', () => {
     const e = espace();
     vrai(/if \(!estBienEnDirect\(c\) \|\| !surface \|\| !entiere\) return '';/.test(e),
       'le bloc du prix au m² se tait pour un placement');
-    /* Et il reste pour un bien physique, qui est tout son intérêt. */
+    /* Et il reste pour un bien physique, qui est tout son interet. */
     vrai(/trad\('Prix au m²'\)/.test(e), 'le bloc existe toujours');
   });
 
@@ -168,7 +168,7 @@ suite('La frontière entre pierre et papier passe aussi par les champs', () => {
 
   test('la fenêtre de frais parle de frais, et crée une vraie charge du budget', () => {
     const src = lireSource('assets/app.js');
-    /* La borne haute est l'action SUIVANTE dans le fichier. « ajouter-placement »
+    /* La borne haute est l'action SUIVANTE dans le fichier. "ajouter-placement"
        vit plus haut : la tranche etait donc vide, et le controle ne verifiait
        rien tout en passant pour vert sur ses regex. */
     const action = src.slice(src.indexOf("async 'ajouter-charge-bien'(btn) {"),
@@ -226,8 +226,8 @@ suite('La frontière entre pierre et papier passe aussi par les champs', () => {
   });
 });
 
-/* Un zero n'est pas un prix. La ligne le disait deja — « prix de revient
-   manquant », et les deux performances muettes — mais trois chemins le
+/* Un zero n'est pas un prix. La ligne le disait deja -- "prix de revient
+   manquant", et les deux performances muettes -- mais trois chemins le
    laissaient s'installer, et un quatrieme le transformait en chiffre. */
 suite('Un prix de revient ne s’invente pas, et ne reste pas vide', () => {
 
@@ -245,7 +245,7 @@ suite('Un prix de revient ne s’invente pas, et ne reste pas vide', () => {
   test('la moyenne pondérée ne dilue plus le prix payé par une base absente', () => {
     /* Quarante titres sans base, dix achetes a 20. L'ancienne formule faisait
        entrer l'ancien lot A ZERO -- comme s'il avait ete recu gratuitement --
-       et ecrivait un PRU de 4. La ligne annonçait alors +400 %, un chiffre faux
+       et ecrivait un PRU de 4. La ligne annoncait alors +400 %, un chiffre faux
        et confiant la ou il n'y avait qu'une donnee manquante. */
     const ligne = (buyPrice) => ({ qty: 50, buyPrice, price: 20, fx: 1, currency: 'EUR' });
 
@@ -363,8 +363,8 @@ suite('Un prix de revient ne s’invente pas, et ne reste pas vide', () => {
   });
 });
 
-/* « Prix d'acquisition » nommait tantot le prix, tantot le prix frais compris,
-   selon qui remplissait le champ — et l'ecart entre les deux vaut les frais de
+/* "Prix d'acquisition" nommait tantot le prix, tantot le prix frais compris,
+   selon qui remplissait le champ -- et l'ecart entre les deux vaut les frais de
    notaire, sept a huit pour cent. Un intitule qui peut vouloir dire deux choses
    finit par vouloir dire la mauvaise. */
 suite('Un coût d’acquisition se décompose, il ne se devine pas', () => {
@@ -410,9 +410,9 @@ suite('Un coût d’acquisition se décompose, il ne se devine pas', () => {
   });
 
   test('vide n’est pas zéro, et zéro n’est pas vide', () => {
-    /* Des travaux a zero disent « il n'y en a pas eu » ; des travaux absents ne
-       disent rien. Le total est le meme, la completude non — et c'est elle qui
-       decide si l'ecran ose l'appeler « cout total ». */
+    /* Des travaux a zero disent "il n'y en a pas eu" ; des travaux absents ne
+       disent rien. Le total est le meme, la completude non -- et c'est elle qui
+       decide si l'ecran ose l'appeler "cout total". */
     lot({ prixAchat: 300000, frais: 24000, travaux: 0 });
     pres(a().total, 324000, 'des travaux nuls n’ajoutent rien');
     eq(a().travaux, 0, 'mais ils sont déclarés');
@@ -469,7 +469,7 @@ suite('Un coût d’acquisition se décompose, il ne se devine pas', () => {
     pres(a().sousTotal, 324000, 'et un sous-total qui s’approche');
     eq(a().complet, false, 'le détail n’est pas entier');
 
-    /* Une fois les trois declares, le detail prend le relais — et le legacy
+    /* Une fois les trois declares, le detail prend le relais -- et le legacy
        n'est jamais efface, personne ne sachant ce qu'il contenait. */
     lot({ legacy: 334000, prixAchat: 300000, frais: 24000, travaux: 10000 });
     pres(a().total, 334000, 'le détail donne le même total, et prend le relais');
@@ -513,7 +513,7 @@ suite('Un coût d’acquisition se décompose, il ne se devine pas', () => {
     pres(cf.rendementBrut, 1200 * 12 / 334000 * 100, 'le rendement suit');
 
     /* Sans acquisition, la base retombe sur la valeur du jour, et l'ecran
-       l'annonce — c'est la regle posee en C. */
+       l'annonce -- c'est la regle posee en C. */
     lot({ valeur: 370000, usage: 'locative', loyer: 1200 });
     const sans = cashFlowBien(compteById('c_b'));
     pres(sans.base, 370000, 'la valeur du jour prend le relais');
@@ -525,8 +525,8 @@ suite('Un coût d’acquisition se décompose, il ne se devine pas', () => {
   });
 
   test('le haut de fiche lit le coût total, jamais le champ legacy en direct', () => {
-    /* Le defaut exact : un bien dont le detail est renseigne — prix, frais,
-       travaux — mais qui n'a jamais porte de `prixDeRevient` affichait un cout
+    /* Le defaut exact : un bien dont le detail est renseigne -- prix, frais,
+       travaux -- mais qui n'a jamais porte de `prixDeRevient` affichait un cout
        de zero, donc AUCUN ecart. La ligne la plus regardee de la fiche
        disparaissait au moment ou l'on venait justement de la renseigner. C'est
        la divergence que la porte unique existe pour empecher. */
@@ -668,7 +668,7 @@ suite('Un apport est un fait d’hier, pas un mouvement d’aujourd’hui', () =
 });
 
 /* Le capital restant du et le capital EMPRUNTE sont deux montants differents.
-   Prendre le premier pour le second ferait afficher « 0 % rembourse » a qui a
+   Prendre le premier pour le second ferait afficher "0 % rembourse" a qui a
    paye la moitie de son pret. */
 suite('Le capital emprunté et le capital restant dû sont deux montants', () => {
 
@@ -860,8 +860,8 @@ suite('Une mensualité contient son assurance, et le dit', () => {
 
   test('l’assurance dit sur quelle base elle est calculée', () => {
     /* La plupart des contrats la calculent sur le capital EMPRUNTE. Sans lui, on
-       retombe sur le restant du — la prime est alors sous-estimee, ce qui est le
-       bon sens de l'erreur — mais ce repli ne doit pas etre silencieux. */
+       retombe sur le restant du -- la prime est alors sous-estimee, ce qui est le
+       bon sens de l'erreur -- mais ce repli ne doit pas etre silencieux. */
     pret({ initial: 240000, tauxAssurance: 0.3 });
     eq(baseAssuranceCredit(d()).sur, 'initial', 'avec le capital emprunté, c’est lui');
     pres(baseAssuranceCredit(d()).base, 240000, 'et la base le vaut');
@@ -960,7 +960,7 @@ suite('Créer un bien ne force aucune donnée inconnue', () => {
   });
 
   test('un crédit créé porte son bienId dès sa naissance', () => {
-    /* Le repli « un seul compte chez ce preteur » reste une lecture
+    /* Le repli "un seul compte chez ce preteur" reste une lecture
        conservatrice pour les anciennes donnees ; aucun enregistrement nouveau
        n'en depend. */
     const p = parcours();
@@ -969,7 +969,7 @@ suite('Créer un bien ne force aucune donnée inconnue', () => {
     const j = p.indexOf('bienId: id');
     vrai(i > 0 && j > i, 'et l’identifiant du compte est tiré avant le crédit');
     /* Et le repli reste une lecture, jamais une ecriture : rien ne cree un
-       credit en comptant sur « un seul compte chez ce preteur ». */
+       credit en comptant sur "un seul compte chez ce preteur". */
     vrai(!/bienId: null|bienId: undefined/.test(p),
       'aucun crédit ne naît sans son bien');
     vrai(/etabSansAmbiguite/.test(lireSource('assets/store.js')),
@@ -980,8 +980,8 @@ suite('Créer un bien ne force aucune donnée inconnue', () => {
     const p = parcours();
     /* Les trois champs d'acquisition et l'apport sont gardes par le meme
        drapeau que l'usage : `immoDirect`, soit un bien immobilier detenu en
-       direct. Une SCPI garde son « montant investi », qui est son prix de
-       souscription — et un bien de valeur aussi. */
+       direct. Une SCPI garde son "montant investi", qui est son prix de
+       souscription -- et un bien de valeur aussi. */
     vrai(/\.\.\.\(immoDirect \? \[\n?\s*\{ cle: 'section_acq'/.test(p),
       'l’acquisition détaillée est réservée au logement détenu en direct');
     vrai(/\.\.\.\(!immoDirect \? \[\] : \[\n?\s*\{ cle: 'apport'/.test(p),
@@ -1093,13 +1093,13 @@ suite('Un détail partiel ne se fait pas passer pour un coût total', () => {
   const a = () => acquisitionLigne(compteById('c_b').lignes[0]);
 
   test('les quatre cas, dans l’ordre où on les rencontre', () => {
-    /* A — le legacy seul. */
+    /* A -- le legacy seul. */
     lot({ legacy: 334000 });
     pres(a().total, 334000, 'A : le total officiel est le legacy');
     eq(a().source, 'legacy', 'A : et il le dit');
     eq(a().sousTotal, null, 'A : aucun sous-total, rien n’est saisi');
 
-    /* B — le legacy tient tant que le detail n'est pas entier. */
+    /* B -- le legacy tient tant que le detail n'est pas entier. */
     lot({ legacy: 334000, prixAchat: 300000 });
     pres(a().total, 334000, 'B : le total officiel ne bouge pas');
     pres(a().sousTotal, 300000, 'B : le sous-total dit ce qui est saisi');
@@ -1109,7 +1109,7 @@ suite('Un détail partiel ne se fait pas passer pour un coût total', () => {
     pres(a().total, 334000, 'B : toujours le legacy, à deux champs sur trois');
     pres(a().sousTotal, 324000, 'B : et le sous-total s’approche');
 
-    /* C — le detail entier prend le relais. */
+    /* C -- le detail entier prend le relais. */
     lot({ legacy: 334000, prixAchat: 300000, frais: 24000, travaux: 10000 });
     eq(a().source, 'detail', 'C : le détail fait foi');
     eq(a().complet, true, 'C : il est entier');
@@ -1119,7 +1119,7 @@ suite('Un détail partiel ne se fait pas passer pour un coût total', () => {
     eq(num(compteById('c_b').lignes[0].prixDeRevient), 334000,
       'C : sans corriger le legacy, ni le détail');
 
-    /* D — un detail partiel SANS legacy n'est pas un cout total. */
+    /* D -- un detail partiel SANS legacy n'est pas un cout total. */
     lot({ prixAchat: 300000 });
     eq(a().total, null, 'D : aucun coût total');
     pres(a().sousTotal, 300000, 'D : seulement un sous-total');
@@ -1144,7 +1144,7 @@ suite('Un détail partiel ne se fait pas passer pour un coût total', () => {
     pres(lignesDe(compteById('c_b'))[0].prixDeRevient, 0,
       'la ligne ne porte aucun coût, donc aucun écart n’est affiché');
 
-    /* Des que le detail est entier, la base bascule — et le dit. */
+    /* Des que le detail est entier, la base bascule -- et le dit. */
     lot({ prixAchat: 300000, frais: 24000, travaux: 10000, valeur: 370000, loyer: 1200 });
     const entier = cashFlowBien(compteById('c_b'));
     pres(entier.base, 334000, 'la base devient le coût total');
@@ -1152,7 +1152,7 @@ suite('Un détail partiel ne se fait pas passer pour un coût total', () => {
   });
 
   test('le compte ne totalise pas des lots dont l’un ne dit pas son coût', () => {
-    /* Additionner les lots connus et appeler la somme « coût du bien » ferait
+    /* Additionner les lots connus et appeler la somme "cout du bien" ferait
        passer un total ampute d'un lot entier pour celui du projet. */
     Fixture.poser(s => {
       s.etabs = [{ id: 'e_bq', nom: 'Banque', notes: '', dettes: [] }];
@@ -1190,7 +1190,7 @@ suite('Un détail partiel ne se fait pas passer pour un coût total', () => {
   });
 });
 
-/* « As-tu encore un credit sur ce bien ? » ne sert a rien si les six champs du
+/* "As-tu encore un credit sur ce bien ?" ne sert a rien si les six champs du
    pret restent la dessous : la question se pose, la reponse ne change rien. */
 suite('Créer un bien se ramifie, et ne laisse pas naître un appartement à zéro', () => {
 
@@ -1206,7 +1206,7 @@ suite('Créer un bien se ramifie, et ne laisse pas naître un appartement à zé
     const p = parcours();
     vrai(/\{ cle: 'valeur', requis: true,/.test(p), 'la valeur est obligatoire');
     /* Et `vide()` compte un zero comme vide sur un champ nombre : c'est ce qui
-       fait que « 0 » ne suffit pas a passer la garde. */
+       fait que "0" ne suffit pas a passer la garde. */
     vrai(/if \(c\.type === 'nombre'\) return !num\(v\);/.test(lireSource('assets/app.js')),
       'zéro compte comme vide sur un champ nombre');
     /* Le nom et l'usage restent exiges, chacun a sa place. */
@@ -1232,7 +1232,7 @@ suite('Créer un bien se ramifie, et ne laisse pas naître un appartement à zé
   });
 
   test('un champ masqué ne se lit pas, donc « non » ne crée aucun crédit', () => {
-    /* Repondre « oui », saisir un montant, puis revenir a « non » creerait
+    /* Repondre "oui", saisir un montant, puis revenir a "non" creerait
        sinon un pret d'une reponse qu'on vient d'annuler. */
     const src = lireSource('assets/app.js');
     vrai(/if \(!el \|\| el\.closest\('\.field'\)\?\.hidden\) continue;/.test(src),
@@ -1253,7 +1253,7 @@ suite('Créer un bien se ramifie, et ne laisse pas naître un appartement à zé
   test('la visibilité se calcule après les valeurs qu’elle lit', () => {
     /* `majVisibles` appelle `valeurs()`. Invoquee avant la ligne qui definit
        `valeurs`, elle levait une erreur de zone morte et la fenetre ne
-       s'ouvrait pas du tout — sur le seul formulaire qui porte des champs
+       s'ouvrait pas du tout -- sur le seul formulaire qui porte des champs
        conditionnels, donc le parcours de creation d'un bien.
 
        Aucun test d'execution ne pouvait le voir : le harnais ne charge pas
@@ -1295,7 +1295,7 @@ suite('Créer un bien se ramifie, et ne laisse pas naître un appartement à zé
 });
 
 /* Le taux principal avait ete corrige ; ses voisins portaient la meme faute mot
-   pour mot. Un aller-retour dans la fenetre suffisait a perdre « 0 % ». */
+   pour mot. Un aller-retour dans la fenetre suffisait a perdre "0 %". */
 suite('Sur un crédit, vide et zéro ne se confondent plus nulle part', () => {
 
   const pret = (o) => Fixture.poser(s => {
@@ -1336,7 +1336,7 @@ suite('Sur un crédit, vide et zéro ne se confondent plus nulle part', () => {
     eq(estDeclare(d().tauxAssurance), true, 'il est déclaré');
     eq(num(d().tauxAssurance), 0, 'et vaut zéro');
     pres(assuranceMensuelleCredit(d()), 0, 'donc aucune prime');
-    /* La relecture rend « 0 » et non un champ vide. */
+    /* La relecture rend "0" et non un champ vide. */
     const src = lireSource('assets/app.js');
     vrai(/valeur: estDeclare\(d\.tauxAssurance\) \? num\(d\.tauxAssurance\) : ''/.test(src),
       'la fenêtre le rouvre à zéro, pas à vide');
@@ -1396,7 +1396,7 @@ suite('Sur un crédit, vide et zéro ne se confondent plus nulle part', () => {
   });
 });
 
-/* « 150 % » devenait 100 % en silence. C'est faux, et ca donne a croire que la
+/* "150 %" devenait 100 % en silence. C'est faux, et ca donne a croire que la
    saisie a ete prise en compte. */
 suite('Une quote-part impossible ne s’enregistre plus', () => {
 
@@ -1445,7 +1445,7 @@ suite('Une quote-part impossible ne s’enregistre plus', () => {
   });
 
   test('une donnée ancienne invalide se signale, et ne se migre pas', () => {
-    /* Personne ne sait si « 150 » voulait dire 15, 100 ou autre chose : choisir
+    /* Personne ne sait si "150" voulait dire 15, 100 ou autre chose : choisir
        a la place du detenteur ecrirait une valeur inventee. */
     bien(150);
     const dits = healthChecks().filter(x => /Quote-part à corriger/.test(x.title || ''));
@@ -1626,7 +1626,7 @@ suite('Une quote-part invalide n’a pas de valeur, et n’en reçoit pas', () =
     pres(round2(patrimoine().brut), 200000, 'la moitié de la valeur');
     pres(round2(dettesTotal()), 120000, 'la dette entière, telle qu’elle est due');
     pres(round2(patrimoine().net), 80000, 'donc deux cent mille moins cent vingt mille');
-    /* Et à 150 %, la dette ne bouge pas non plus : c'est la part qui manque. */
+    /* Et a 150 %, la dette ne bouge pas non plus : c'est la part qui manque. */
     bien(150);
     pres(round2(dettesTotal()), 120000, 'une part invalide ne touche pas la dette');
   });
@@ -1644,7 +1644,7 @@ suite('Une saisie invalide bloque vraiment l’enregistrement de la fiche', () =
     vrai(i > 0, 'l’action doit être trouvable');
     const fn = s.slice(i, s.indexOf('\n  },', i));
     /* L'ordre compte : le blur d'abord, parce qu'il fait passer la derniere
-       frappe par `applyField` — donc par la garde. */
+       frappe par `applyField` -- donc par la garde. */
     const blur = fn.indexOf('document.activeElement.blur()');
     const garde = fn.indexOf("const invalide = $('[data-invalide=\"1\"]');");
     const save = fn.indexOf('Store.save();');
@@ -1695,20 +1695,20 @@ suite('Une saisie invalide bloque vraiment l’enregistrement de la fiche', () =
   });
 
   test('aucune autre sortie de la fiche n’écrit derrière la garde', () => {
-    /* Le contrôle qui compte : `Store.save()` dans la fiche passe par
-       « Enregistrer », et par lui seul. */
+    /* Le controle qui compte : `Store.save()` dans la fiche passe par
+       "Enregistrer", et par lui seul. */
     const s = src();
     const i = s.indexOf("'enregistrer-fiche'(btn)");
     const fn = s.slice(i, s.indexOf('\n  },', i));
     eq((fn.match(/Store\.save\(\)/g) || []).length, 1,
       'un seul enregistrement dans l’action, après la garde');
-    /* Et le champ de la part porte bien ses bornes côté navigateur aussi. */
+    /* Et le champ de la part porte bien ses bornes cote navigateur aussi. */
     vrai(/min="0" max="100"/.test(s), 'le champ déclare ses bornes');
   });
 });
 
 /* Le `&& > 0` survivait sur le seul chemin de la creation d'un bien : un zero
-   declare y redevenait « absent ». */
+   declare y redevenait "absent". */
 suite('Un capital emprunté nul reste nul dans l’onboarding', () => {
 
   const parcours = () => {
@@ -1733,7 +1733,7 @@ suite('Un capital emprunté nul reste nul dans l’onboarding', () => {
 
        Consequence exacte : tous les `estDeclare(v.x)` poses sur les champs de
        credit lisaient vrai sur du vide, et ecrivaient 0 la ou il fallait `null`.
-       La convention « vide n'est pas zero » tombait avant meme d'atteindre le
+       La convention "vide n'est pas zero" tombait avant meme d'atteindre le
        code qui la respecte, et aucun des correctifs precedents ne pouvait
        fonctionner a travers une fenetre. */
     const src = lireSource('assets/app.js');
@@ -1952,7 +1952,7 @@ suite('Un capital restant dû négatif ne peut plus se saisir', () => {
   });
 
   test('un état déjà écrit se signale au lieu de se corriger tout seul', () => {
-    /* Personne ne peut savoir si « −12 000 » voulait dire 12 000 ou zero :
+    /* Personne ne peut savoir si "-12 000" voulait dire 12 000 ou zero :
        choisir a la place du detenteur ecrirait un chiffre invente. */
     Fixture.poser(e => {
       e.etabs.find(x => (x.dettes || []).length).dettes[0].montant = -12000;
@@ -2006,7 +2006,7 @@ suite('Un prêt à 0 % s’amortit dans la projection', () => {
   test('les trois lecteurs d’un taux partagent la même porte', () => {
     /* `tauxCreditDeclare` distingue le zero de l'ignorance. Trois lecteurs le
        lisent : l'echeancier, la projection d'un credit, et la projection de
-       patrimoine — la derniere a l'avoir appris. Le controle porte sur le CODE :
+       patrimoine -- la derniere a l'avoir appris. Le controle porte sur le CODE :
        les commentaires disparaissent de l'arbre publie. */
     const code = lireSource('assets/store.js').replace(/\/\*[\s\S]*?\*\//g, ' ');
     const corps = corpsDe(code, 'dettesAmortissables');

@@ -11,10 +11,10 @@ suite('Premier écran : le patrimoine d’abord, et rien de vide', () => {
   };
 
   test('le hero ne se rend pas sans compte : pas de coquille vide sous le guide', () => {
-    /* Sur un profil vierge, tout ce que la carte porte se taisait deja — sauf la
-       carte : un cadre de cinquante pixels, vide, entre le guide et l'explication.
-       Mesure a 375 px. La garde englobe la carte entiere, et c'est la meme que
-       celle de l'intitule et du montant : un seul fait decide. */
+    /* Sur un profil vierge, tout ce que la carte porte se tait -- mais la carte
+       seule resterait un cadre vide entre le guide et l'explication. La garde
+       englobe donc la carte entiere, et c'est la meme que celle de l'intitule
+       et du montant : un seul fait decide. */
     const v = vue();
     vrai(/\$\{!aUnComptePropre\(\) \? '' : `\s*<div class="hero">/.test(v),
       'la carte entière attend le premier compte, pas seulement son contenu');
@@ -25,10 +25,10 @@ suite('Premier écran : le patrimoine d’abord, et rien de vide', () => {
   });
 
   test('les bandeaux d’exploitation passent sous le patrimoine', () => {
-    /* « Enregistrer le releve de sept. 26 » etait la premiere ligne de l'ecran des
-       que le guide etait referme : un rappel d'exploitation au-dessus du chiffre
-       que l'application existe pour montrer. Les deux bandeaux se lisent sous le
-       hero et sous le guide replie, qui ne coexistent jamais avec eux. */
+    /* Un rappel d'exploitation, comme l'invitation a enregistrer le releve du
+       mois, n'a pas sa place au-dessus du chiffre que l'application existe pour
+       montrer. Les deux bandeaux se lisent sous le hero et sous le guide
+       replie, qui ne coexistent jamais avec eux. */
     const v = vue();
     const hero = v.indexOf('<div class="hero">');
     const guideDerriere = v.indexOf("${guideDevant ? '' : guide}");
@@ -50,10 +50,10 @@ suite('Premier écran : le patrimoine d’abord, et rien de vide', () => {
   });
 
   test('à quatre pas sur quatre, le guide tient en une ligne', () => {
-    /* Il redevenait une pleine carte au dernier pas — 335 px a 375 — pour dire
-       « c'est fait ». La barre repliee existait deja ; l'etat final l'emprunte,
-       avec le seul geste qui reste. Il ne se ferme pas tout seul : disparaitre a
-       l'instant ou l'on vient d'agir ressemble a une perte. */
+    /* Au dernier pas, une pleine carte prendrait presque tout l'ecran d'un
+       telephone pour dire "c'est fait". L'etat final emprunte donc la barre
+       repliee, avec le seul geste qui reste. Il ne se ferme pas tout seul :
+       disparaitre a l'instant ou l'on vient d'agir ressemble a une perte. */
     const app = lireSource('assets/app.js');
     const d = app.indexOf('function carteDemarrage()');
     const carte = app.slice(d, app.indexOf('\nfunction ', d + 10));
@@ -72,12 +72,12 @@ suite('Premier écran : le patrimoine d’abord, et rien de vide', () => {
 suite('Démarrage : le local d’abord, là où il n’y a personne à confondre', () => {
 
   test('la sonde ne précède la lecture que si le site peut tenir des comptes', () => {
-    /* 3,3 s mesurees avant le premier pixel sur la demonstration avec des donnees
-       locales et une passerelle qui pend, pour une sonde dont la reponse ne
-       changeait rien a la lecture. La page se rend d'abord, la sonde part apres.
-       Mais seulement sur un fait deja constate — le site a repondu « sans
-       comptes » — jamais sur une supposition : premiere visite, site muet et
-       instance a comptes gardent l'identite avant toute lecture. */
+    /* Avec des donnees locales et une passerelle qui pend, attendre la sonde
+       retarderait le premier pixel de plusieurs secondes, pour une reponse qui
+       ne change rien a la lecture. La page se rend d'abord, la sonde part
+       apres. Mais seulement sur un fait deja constate -- le site a repondu
+       "sans comptes" -- jamais sur une supposition : premiere visite, site
+       muet et instance a comptes gardent l'identite avant toute lecture. */
     const app = lireSource('assets/app.js');
     const d = app.indexOf('(async function init()');
     const init = app.slice(d, app.indexOf('CloudSync.setOnChange', d));
@@ -109,9 +109,9 @@ suite('Démarrage : le local d’abord, là où il n’y a personne à confondre
 suite('Vocabulaire : un relevé, un verbe', () => {
 
   test('le geste se dit « Enregistrer », en français comme en anglais', () => {
-    /* Quatre verbes pour un meme geste — ajouter, creer, enregistrer, prendre —
-       et un cinquieme mot en anglais, « snapshot », qui designait aussi la vue
-       d'ensemble et l'export. Un mot, un geste. */
+    /* Un mot, un geste : "Enregistrer", sans synonyme -- ni ajouter, ni creer,
+       ni prendre -- et, en anglais, jamais "snapshot", qui designerait aussi la
+       vue d'ensemble et l'export. */
     const app = lireSource('assets/app.js');
     for (const mort of ['+ Ajouter un relevé', '+ Ajouter le relevé', '+ Ajouter ton premier relevé', 'Créer mon relevé'])
       vrai(!app.includes(`trad('${mort}')`) && !I18N.en[mort], '« ' + mort + ' » n’a plus d’appelant ni de clef');
@@ -130,9 +130,10 @@ suite('Vocabulaire : un relevé, un verbe', () => {
 suite('Le pourcentage tient sur sa ligne', () => {
 
   test('la colonne des parts ne se coupe pas au téléphone', () => {
-    /* « 32,09 » puis « % » a la ligne, a 390 px, dans le tableau sous l'anneau du
-       portefeuille : la regle du telephone autorise la coupure n'importe ou dans
-       une cellule, et la colonne des parts est la plus etroite. */
+    /* La regle du telephone autorise la coupure n'importe ou dans une
+       cellule, et la colonne des parts est la plus etroite : sans exception, le
+       "%" d'une part tomberait seul a la ligne, dans le tableau sous l'anneau
+       du portefeuille. */
     const app = lireSource('assets/app.js');
     const css = lireSource('assets/styles.css');
     vrai(/<td class="muted pct">\$\{i\.pct == null \? '' : fmtPct\(i\.pct, 1\)\}<\/td>/.test(app), 'la cellule se nomme');
@@ -147,10 +148,10 @@ suite('Le pourcentage tient sur sa ligne', () => {
 suite('Trois montants voisins, trois noms qui disent leur périmètre', () => {
 
   test('chaque total se décompose en parts nommées, et aucun calcul ne bouge', () => {
-    /* Mesure sur la demonstration : « Tes titres » 48 586, « Investi » 51 586,
-       « Ton portefeuille » 52 177. Les trois etaient justes et personne ne pouvait
-       dire pourquoi ils differaient. Les relations ci-dessous sont celles que les
-       noms doivent laisser deviner :
+    /* Trois montants voisins -- "Tes titres", "Placements", "Comptes de
+       marche" -- peuvent etre tous justes et differer sans qu'on sache
+       pourquoi. Les relations ci-dessous sont celles que les noms doivent
+       laisser deviner :
          titres            = positions cotees
          comptes de marche = titres + lignes sans cours des comptes de marche + cash a investir
          placements        = comptes de marche - cash a investir + autres placements hors liquidites */
@@ -191,8 +192,9 @@ suite('Trois montants voisins, trois noms qui disent leur périmètre', () => {
 suite('Budget vierge : une explication, une action, pas de tableau vide', () => {
 
   test('le détail mensuel attend la première dépense', () => {
-    /* 761 px de structure a 375 px — douze mois vides, neuf categories, trois
-       commandes — sous une page qui n'avait encore rien a corriger. */
+    /* Sans depense saisie, la carte ne serait que structure -- douze mois
+       vides, les categories, les commandes -- sous une page qui n'a encore
+       rien a corriger. */
     const src = lireSource('assets/app.js');
     const i = src.indexOf('data-anchor="detail-mensuel"');
     const avant = src.slice(i - 400, i);
@@ -222,11 +224,11 @@ suite('Actif non coté : la formule montre pourquoi les montants sont liés', ()
   const cablage = () => { const s = src(); return s.slice(s.indexOf('const fmtPartsFormule'), s.indexOf("const premier = $('#modalBody')")); };
 
   test('le montant du jour se lit « parts × prix = total », l’investi « montant ÷ parts = prix »', () => {
-    /* Quatre champs nombre se suivaient, et « l'un remplit l'autre » decrivait
-       la relation en abstrait : lequel remplir, lequel est calcule, lequel fait
-       foi. La formule montre le calcul avec les valeurs reelles. Le sens suit
-       le geste : un prix du jour revalorise le total ; un montant investi se
-       ramene a un prix d'achat. */
+    /* Quatre champs nombre a la suite, avec "l'un remplit l'autre" pour toute
+       explication, laisseraient la relation en abstrait : lequel remplir,
+       lequel est calcule, lequel fait foi. La formule montre le calcul avec les
+       valeurs reelles. Le sens suit le geste : un prix du jour revalorise le
+       total ; un montant investi se ramene a un prix d'achat. */
     const r = rendu();
     const produit = r.slice(r.indexOf('` : `'), );
     const division = r.slice(0, r.indexOf('` : `'));
@@ -245,7 +247,7 @@ suite('Actif non coté : la formule montre pourquoi les montants sont liés', ()
     const c = cablage();
     vrai(/maximumFractionDigits: 4/.test(c), 'le nombre de parts garde ses quatre décimales');
     vrai(/style: 'currency', currency: deviseBase\(\), currencyDisplay: 'narrowSymbol'/.test(c),
-      'le montant en euros, sans décimales inutiles : « 8 250 € »');
+      'le montant en euros, sans décimales inutiles : « 9 000 € »');
     vrai(/moinsTypographique/.test(c) && /locale\(\)/.test(c), 'séparateurs et signe moins de la langue');
     vrai(/n\(\) > 0 \? fmtPartsFormule\(n\(\)\) : `… \$\{trad\('parts'\)\}`/.test(c), 'un terme absent s’écrit « … », le tiret cadratin étant proscrit à l’écran');
     vrai(/egal\.hidden = !aTotal; terme\('total'\)\.hidden = !aTotal;/.test(c),
@@ -260,9 +262,9 @@ suite('Actif non coté : la formule montre pourquoi les montants sont liés', ()
 
   test('deux groupes nommés, seulement pour les types qui se comptent en parts', () => {
     const s = src();
-    /* « Valeur estimee » quand c'est le detenteur qui l'apprecie, « Valeur
-       actuelle » sinon ; et « Cout d'achat » plutot qu'« Investissement
-       initial » : trois choses qui ne se confondent pas, le cout, l'estimation,
+    /* "Valeur estimee" quand c'est le detenteur qui l'apprecie, "Valeur
+       actuelle" sinon ; et "Cout d'achat" plutot qu'"Investissement
+       initial" : trois choses qui ne se confondent pas, le cout, l'estimation,
        et le produit reel, qui ne se saisit qu'a la cession. */
     eq((s.match(/cle: 'section_valeur', label: estime \? 'Valeur estimée' : 'Valeur actuelle', type: 'section'/g) || []).length, 1,
       '« Valeur estimée » ou « Valeur actuelle » à la fiche');
@@ -293,7 +295,7 @@ suite('Actif non coté : la formule montre pourquoi les montants sont liés', ()
 });
 
 /* ------------------------------------------------------------------
-   Données : un centre de données, pas un panneau technique
+   Donnees : un centre de donnees, pas un panneau technique
    ------------------------------------------------------------------ */
 suite('Données se lit comme un centre de données', () => {
 
@@ -302,9 +304,9 @@ suite('Données se lit comme un centre de données', () => {
   const croissant = l => l.every((v, i) => v > 0 && (i === 0 || v > l[i - 1]));
 
   test('l’ordre va du rassurant au dangereux, et rien n’a disparu', () => {
-    /* Sept cartes de meme poids, un avertissement d'un ecran entier en tete :
-       la securite des donnees n'aurait pas de reponse avant deux mille pixels.
-       Le meme contenu, dans l'ordre de la question. */
+    /* Des cartes de meme poids, avec un avertissement d'un ecran entier en
+       tete, laisseraient la securite des donnees sans reponse avant deux mille
+       pixels. Le contenu suit donc l'ordre de la question. */
     const v = vue();
     const l = positions(v, 'class="page-tete"', 'class="card tight etat-donnees',
       "trad('Contrôles de cohérence')", "trad('Sauvegarde et restauration')", "trad('Exporter pour analyse')",
@@ -340,7 +342,7 @@ suite('Données se lit comme un centre de données', () => {
   });
 
   test('les premiers pas ne sont pas des anomalies', () => {
-    /* « Commence par tes comptes » est une invitation : la presenter en jaune,
+    /* "Commence par tes comptes" est une invitation : la presenter en jaune,
        parmi les chiffres faux, apprend a ignorer le jaune. */
     const v = vue();
     vrai(/const premiersPas = checks\.filter\(c => c\.level === 'action' && c\.sujet === 'saisies'\);/.test(v),
@@ -415,7 +417,7 @@ suite('Données se lit comme un centre de données', () => {
 });
 
 /* ------------------------------------------------------------------
-   Préférences : des lignes de réglages, des feuilles de choix
+   Preferences : des lignes de reglages, des feuilles de choix
    ------------------------------------------------------------------ */
 suite('Préférences se lit comme les réglages d’un téléphone', () => {
 
@@ -502,11 +504,11 @@ suite('Préférences se lit comme les réglages d’un téléphone', () => {
 
 suite('Une page qui échoue le dit', () => {
   test('render attrape l’exception d’une vue et la montre en toast', () => {
-    /* Sur un telephone, sans console, une vue qui leve une exception se lisait
-       « le bouton ne marche plus » : l'adresse changeait, l'ecran restait. */
+    /* Sur un telephone, sans console, une vue qui leve une exception sans le
+       dire ressemble a un bouton casse : l'adresse change, l'ecran reste. */
     const src = lireSource('assets/app.js');
     /* Bornee sur le code, pas sur un compte de caracteres : un commentaire ajoute
-       plus haut dans render() la faisait sortir de sa fenetre. */
+       plus haut dans render() la ferait sortir de sa fenetre. */
     const i = src.indexOf('function render()');
     const r = src.slice(i, src.indexOf('host.innerHTML = html;', i) + 30);
     vrai(/try \{ html = collerAides\(v\.render\(\)\); \}\s*catch \(e\) \{[\s\S]*?toast\(`\$\{trad\('Cette page n’a pas pu s’afficher'\)\}/.test(r),
@@ -521,8 +523,9 @@ suite('Une page qui échoue le dit', () => {
 
 suite('Une société ou plateforme contient des placements', () => {
   test('le mot du contenu suit le contenant, et la fiche s’en sert', () => {
-    /* « Parts 2024 » et « Parts 2025 » sont des lignes d'investissement : sous le
-       nom de la societe, « 2 comptes » se lisait comme deux comptes bancaires. */
+    /* Des lignes de parts d'une meme societe sont des lignes d'investissement :
+       sous le nom de la societe, "2 comptes" se lirait comme deux comptes
+       bancaires. */
     Fixture.poser();
     Store.state.etabs.push({ id: 'e_soc', nom: 'Essai SAS', notes: '', dettes: [] });
     Store.state.comptes.push({ id: 'c_soc1', etabId: 'e_soc', type: 'pe', cash: [], lignes: [] },
@@ -586,7 +589,7 @@ suite('Premier lancement : Longward prend vie sous les yeux', () => {
     vrai(/trad\('Bienvenue dans Longward'\)/.test(b) && /trad\('Tout ton patrimoine\. Une seule trajectoire\.'\)/.test(b), 'le titre et l’accroche');
     vrai(/data-action="\$\{esc\(premier\.action\)\}">\$\{trad\('Construire mon Longward'\)\}/.test(b), 'le CTA mène à l’action du premier pas existant');
     vrai(/PREMIERS_PAS\.map\(p => `[\s\S]*?motCourtPas\(p\)/.test(b), 'la progression se dérive des quatre pas du guide');
-    /* Aucun chiffre inventé dans l’accueil vierge : ni montant, ni appel de format. */
+    /* Aucun chiffre invente dans l'accueil vierge : ni montant, ni appel de format. */
     /* Les bornes sont du code, pas des commentaires : l'arbre publie n'en garde aucun. */
     const debut = s.indexOf("${sansComptes ? `");
     const v = s.slice(debut, s.indexOf(': piedApercu()}', debut)).replace(/<!--[\s\S]*?-->/g, '');
@@ -680,12 +683,12 @@ suite('Premier lancement : Longward prend vie sous les yeux', () => {
     vrai(/\.bienvenue-actes \.btn \{ flex: 1 1 12em; \}/.test(css) && /max-width: 420px\) \{ \.bienvenue-actes \.btn \{ flex-basis: 100%; \}/.test(css),
       'les deux gestes s’empilent sous 420 px');
     vrai(/\.demarrage-texte \{ flex: 1 1 auto; min-width: 0;/.test(css), 'la barre repliée replie son texte');
-    /* Deux lignes voulues sur téléphone, une seule dès 768 px ; la police ne bouge pas. */
+    /* Deux lignes voulues sur telephone, une seule des 768 px ; la police ne bouge pas. */
     vrai(/\.bienvenue-pas \{[^}]*display: grid;\s*grid-template-columns: minmax\(0, 1\.25fr\) minmax\(0, 1fr\)/.test(css)
       && /min-width: 768px\) \{ \.bienvenue-pas \{ display: flex;/.test(css)
       && !/\.bienvenue-pas[^{]*\{[^}]*font-size: var\(--font-xs\)/.test(css),
       'les quatre pas tiennent une grille de deux colonnes sur téléphone, une ligne sur bureau');
-    /* Le patrimoine net est le premier résultat : marqué seul, sans changer de taille. */
+    /* Le patrimoine net est le premier resultat : marque seul, sans changer de taille. */
     const app = lireSource('assets/app.js');
     eq((app.match(/, 'barre', true\)\}/g) || []).length, 1, 'un seul aperçu principal, le patrimoine net');
     vrai(/\.apercu-verrou\.principal \{/.test(css) && !/\.apercu-verrou\.principal[^{]*\{[^}]*(font-size|padding:|grid-column)/.test(css),
@@ -696,9 +699,9 @@ suite('Premier lancement : Longward prend vie sous les yeux', () => {
 /* --- Aucun ecran ne se donne pour vide, aucun ne ment ----------------------
 
    Le parcours de reference est l'accueil : rien d'invente, une promesse, un
-   geste. Cette suite verifie que les ecrans qui s'en ecartaient le tiennent, et
+   geste. Cette suite verifie que les autres ecrans le tiennent aussi, et
    surtout que leurs gardes se DERIVENT de l'etat plutot que d'etre poses en
-   dur — un profil rempli ne doit pas voir passer un seul de ces textes. */
+   dur -- un profil rempli ne doit pas voir passer un seul de ces textes. */
 suite('Aucun ecran vide ne ment, aucun ne se tait', () => {
   const app = () => lireSource('assets/app.js');
   const css = () => lireSource('assets/styles.css');
@@ -736,17 +739,16 @@ suite('Aucun ecran vide ne ment, aucun ne se tait', () => {
       'la page sait qu’elle n’a aucun compte réel');
     vrai(/\$\{sansCompte && !filtre \? '' : `<dl class="kv cpt-resume">/.test(s),
       'et « Tes avoirs : 0,00 € » ne s’affiche pas avant le premier compte');
-    /* Les familles se dérivent de la table des types : aucune n’est écrite à
-       côté. Une liste de six identifiants a vécu ici, et il en manquait sept à
-       l’écran — livret, PEA, assurance-vie, PER, prêt participatif, SCPI, bien
-       de valeur. Toute sélection écrite à la main se remet à diverger. */
+    /* Les familles se derivent de la table des types : aucune n'est ecrite a
+       cote. Une selection ecrite a la main diverge de la table, et des familles
+       entieres -- livret, PEA, assurance-vie, PER -- manqueraient a l'ecran. */
     const f = s.slice(s.indexOf('function famillesDActifs()'), s.indexOf('function viewAccounts()'));
     vrai(/const dispo = famillesEnVue\(\)\.map\(id => choix\.find\(t => t\.id === id\)\)\.filter\(Boolean\);/.test(f),
       'une famille retirée de la table disparaît d’ici, elle n’est pas recopiée');
-    /* AUCUN TYPE N’EST HORS D’ATTEINTE. La table s’allonge avec le temps et la
-       grille ne peut pas la suivre : « Autre… » ouvre la même fenêtre sans type
-       imposé, donc la liste entière. Sans cette porte, un type ajouté demain
-       n’aurait plus aucun chemin depuis une page vierge. */
+    /* AUCUN TYPE N'EST HORS D'ATTEINTE. La table s'allonge avec le temps et la
+       grille ne peut pas la suivre : "Autre..." ouvre la meme fenetre sans type
+       impose, donc la liste entiere. Sans cette porte, un type ajoute demain
+       n'aurait plus aucun chemin depuis une page vierge. */
     vrai(/const reste = choix\.length > dispo\.length;/.test(f)
       && /\$\{!reste \? '' : `\s*<button type="button" class="famille" data-action="ajouter-compte">\s*<span class="famille-nom">\$\{trad\('Autre…'\)\}/.test(f),
       'et tout ce qui n’a pas sa porte reste atteignable par « Autre… »');
@@ -786,8 +788,8 @@ suite('Aucun ecran vide ne ment, aucun ne se tait', () => {
     const s = app();
     vrai(/if \(!aUnComptePropre\(\) && !tout\.length\) return '';/.test(s),
       'la carte s’efface tant qu’il n’y a ni compte ni mouvement');
-    /* `!tout.length` et non le seul compte : un mouvement déjà saisi doit rester
-       visible, la carte ne se referme pas sur une donnée réelle. */
+    /* `!tout.length` et non le seul compte : un mouvement deja saisi doit rester
+       visible, la carte ne se referme pas sur une donnee reelle. */
     vrai(/&& !tout\.length\) return '';/.test(s), 'mais jamais sur un mouvement existant');
   });
 
@@ -840,11 +842,11 @@ suite('Aucun ecran vide ne ment, aucun ne se tait', () => {
 
 /* --- Les cinq premieres minutes ------------------------------------------
 
-   L'ecran vierge est au niveau ; c'est juste apres le premier compte que
-   l'application se decidait a redevenir un mur : un compteur a zero sous le
-   geste qu'on venait de faire, un graphique a axes nus, une liste vide en
-   guise de formulaire, un dialogue qui repondait « non » au bouton qu'on avait
-   touche. Chaque garde ci-dessous se derive de l'etat ; rien n'est un drapeau. */
+   Juste apres le premier compte, l'application ne doit pas redevenir un mur :
+   pas de compteur a zero sous le geste qu'on vient de faire, pas de graphique
+   a axes nus, pas de liste vide en guise de formulaire, pas de dialogue qui
+   repond "non" au bouton qu'on a touche. Chaque garde ci-dessous se derive de
+   l'etat ; rien n'est un drapeau. */
 suite('Les cinq premières minutes après le premier compte', () => {
   const app = () => lireSource('assets/app.js');
   const store = () => lireSource('assets/store.js');
@@ -902,10 +904,10 @@ suite('Les cinq premières minutes après le premier compte', () => {
     const s = app();
     vrai(/\$\{trad\('Étape'\)\} 2 \$\{trad\('sur\.etape', 'sur'\)\} \$\{etapes\} · \$\{trad\('Son nom, tel qu’il s’affichera partout\.'\)\}/.test(s),
       'la deuxième marche est numérotée comme les deux autres');
-    /* Le contrôle des noms de tiers vit dans verifier-avant-publication.py, et
-       lui seul : ce test n'en recopie aucun, il vérifie que les exemples sont
-       les nôtres. Une première version les énumérait, et le vérificateur a
-       refusé l'arbre : la liste des noms à ne pas écrire s'était retrouvée écrite. */
+    /* Le controle des noms de tiers vit dans verifier-avant-publication.py, et
+       lui seul : ce test n'en recopie aucun, il verifie que les exemples sont
+       les notres. Les enumerer ici ecrirait la liste des noms a ne pas ecrire,
+       et le verificateur refuserait l'arbre. */
     vrai(/exemple: 'ex\. Ma banque en ligne',/.test(store()) && /exemple: 'ex\. Mon assureur',/.test(s)
       && (s.match(/ex\. Ma banque'/g) || []).length >= 4,
       'les exemples de banque et d’assureur sont génériques');
@@ -927,8 +929,9 @@ suite('Les cinq premières minutes après le premier compte', () => {
 
 /* --- Audit pre-beta : les dix premieres minutes ---------------------------
 
-   Le parcours a ete rejoue en vrai, du compte vierge a la fin du guide. Ce qui
-   a ete corrige se tient ici, et chaque garde se derive de l'etat. */
+   Le parcours du compte vierge a la fin du guide. Chaque garde ci-dessous
+   tient un ecart qui ne se voit qu'en rejouant ce parcours, et se derive de
+   l'etat. */
 suite('Audit pré-bêta : les dix premières minutes', () => {
   const app = () => lireSource('assets/app.js');
   const store = () => lireSource('assets/store.js');
@@ -939,7 +942,7 @@ suite('Audit pré-bêta : les dix premières minutes', () => {
     eq((s.match(/\$\{faits \? `\$\{trad\('\{n\} sur \{t\}'\)\.replace\('\{n\}', faits\)\.replace\('\{t\}', PREMIERS_PAS\.length\)\} · ` : ''\}/g) || []).length, 2,
       '« 0 sur 4 » ne s’écrit ni dans la barre repliée ni dans l’en-tête déplié');
     vrai(!/<span class="sub">\$\{trad\('\{n\} sur \{t\}'\)/.test(s), 'la barre ne commence plus par le compte');
-    /* Le compte reste juste : rien ici ne compte un pas non déclaré. */
+    /* Le compte reste juste : rien ici ne compte un pas non declare. */
     vierge(); eq(etapesDemarrage().faits, 0, 'un état vierge n’a rien franchi');
   });
 
@@ -990,10 +993,10 @@ suite('Audit pré-bêta : les dix premières minutes', () => {
 
 /* --- Des enveloppes americaines, sans fiscalite -----------------------------
 
-   Quatre contenants de plus, pas une regle fiscale : un 401(k), deux IRA et un
-   HSA se comportent comme les enveloppes de placement qui existaient. Les
-   identifiants francais ne bougent pas, la langue ne change jamais une donnee,
-   et aucun seuil americain n'entre dans le code. */
+   Quatre contenants, pas une regle fiscale : un 401(k), deux IRA et un HSA se
+   comportent comme les autres enveloppes de placement. Les identifiants
+   francais ne bougent pas, la langue ne change jamais une donnee, et aucun
+   seuil americain n'entre dans le code. */
 suite('Des enveloppes américaines, sans fiscalité', () => {
   const app = () => lireSource('assets/app.js');
   const store = () => lireSource('assets/store.js');
@@ -1040,7 +1043,7 @@ suite('Des enveloppes américaines, sans fiscalité', () => {
     }
     vrai(typeCompte('us401k').classes.includes('garanti') && typeCompte('us401k').melange && typeCompte('us401k').sansCash,
       'le 401(k) est un plan de fonds : support garanti possible, pas de poche de cash à investir');
-    /* Marchés retient les types qui peuvent porter une action ou une obligation. */
+    /* Marches retient les types qui peuvent porter une action ou une obligation. */
     const porteurs = TYPES_COMPTE.filter(t => (t.classes || []).some(c => ['actions', 'obligations', 'crypto'].includes(c))).map(t => t.id);
     for (const id of US) vrai(porteurs.includes(id), `${id} est éligible à Marchés`);
   });
@@ -1060,7 +1063,7 @@ suite('Des enveloppes américaines, sans fiscalité', () => {
     eq(Math.round(p.brut), 6200, 'le brut additionne les quatre poches');
     vrai(p.classes.liquidites >= 6200 - 0.01, 'leur cash est classé en liquidités');
     const avant = patrimoine().brut;
-    /* Un fonds de plan sans cours : une ligne manuelle, valorisée par `value`. */
+    /* Un fonds de plan sans cours : une ligne manuelle, valorisee par `value`. */
     Store.state.positions.push({ id: 'p_us', name: 'Index fund', qty: 10, buyPrice: 90, price: 100, fx: 1, fxBuy: 1,
       currency: 'EUR', assetClass: 'actions', role: 'core', account: 'c_401k', manual: true, value: 1000 });
     refreshAccounts();
@@ -1098,7 +1101,7 @@ suite('Des enveloppes américaines, sans fiscalité', () => {
     vrai(/PER/.test(I18N.en['Plan d’épargne retraite (PER)']) && !/401/.test(I18N.en['Plan d’épargne retraite (PER)']),
       'le PER se traduit, il ne devient pas un 401(k)');
     vrai(!/Roth|IRA/.test(I18N.en['Assurance-vie'] || ''), 'l’assurance-vie ne devient pas un IRA');
-    /* Les deux ne partagent qu'une propriété générale, déclarée : la disponibilité. */
+    /* Les deux ne partagent qu'une propriete generale, declaree : la disponibilite. */
     eq(mobilisabilite('liquidites', 'per'), 'bloque', 'un PER est fermé jusqu’à la retraite');
     eq(mobilisabilite('actions', 'us401k'), 'lent', 'une enveloppe de retraite américaine se casse, lentement et avec décote');
     eq(mobilisabilite('liquidites', 'hsa'), 'differe', 'le HSA suit ses classes');
@@ -1118,7 +1121,7 @@ suite('Des enveloppes américaines, sans fiscalité', () => {
 
   test('le contenant se déclare aussi : un 401(k) est chez un teneur de compte, pas chez un assureur', () => {
     for (const id of US) eq(contenantDuType(id).titre, 'Banque ou courtier', `${id}`);
-    /* Et son vocabulaire suit : un plan, pas un contrat, à l'étape 3 comme sur la fiche. */
+    /* Et son vocabulaire suit : un plan, pas un contrat, a l'etape 3 comme sur la fiche. */
     vrai(!enContrat(typeCompte('us401k')) && enContrat(typeCompte('av')) && enContrat(typeCompte('per')),
       'le 401(k) est un plan, l’assurance-vie et le PER des contrats');
     const s = app();
@@ -1131,7 +1134,7 @@ suite('Des enveloppes américaines, sans fiscalité', () => {
 
   test('le sélecteur se lit par rubriques, et rien ne s’y perd', () => {
     /* Le contexte se pose : en euros, les enveloppes francaises sont chez
-       elles et les americaines descendent dans « Autres pays ». */
+       elles et les americaines descendent dans "Autres pays". */
     Fixture.poser(s => { s.meta.devise = 'EUR'; s.meta.deviseChoisie = true; });
     const rub = typesCompteParRubrique();
     const titres = rub.map(([t]) => t);
@@ -1164,11 +1167,11 @@ suite('Des enveloppes américaines, sans fiscalité', () => {
 
 /* --- Le site sert l'application, le depot sert le code ---------------------
 
-   Pages publie le depot entier : la suite de tests, le fichier des agents, les
-   scripts de developpement, le schema de la base et le flux d'integration se
-   telechargeaient depuis le domaine de l'application. Aucun secret dedans, et
-   le depot public les porte de toute facon ; mais rien de cela n'a a repondre
-   sur le site. */
+   L'hebergeur publie le depot entier : sans le refus du worker, la suite de
+   tests, le fichier des agents, les scripts de developpement, le schema de la
+   base et le flux d'integration se telechargeraient depuis le domaine de
+   l'application. Aucun secret dedans, et le depot public les porte de toute
+   facon ; mais rien de cela n'a a repondre sur le site. */
 suite('Le site ne sert que l’application', () => {
   const worker = () => lireSource('_worker.js');
   const motif = () => {
@@ -1296,7 +1299,7 @@ suite('Se déconnecter existe aussi sur téléphone', () => {
     vrai(/<a href="\/api\/logout" id="btnLogout" data-i18n="account.signout">/.test(src), 'la sortie existe');
     eq(I18N.en['account.signout'], 'Sign out');
     eq(FR['account.signout'], 'Se déconnecter');
-    /* Le pied reste masqué sur téléphone : il ne porte plus que des doublons. */
+    /* Le pied reste masque sur telephone : il n'y porterait que des doublons. */
     vrai(/\.sidebar-foot \{ display: none; \}/.test(lireSource('assets/styles.css')),
       'le pied, lui, n’a toujours rien à montrer là-haut');
   });
@@ -1314,10 +1317,10 @@ suite('Se déconnecter existe aussi sur téléphone', () => {
 });
 
 /* --- La porte se choisit sa langue ---------------------------------------
-   La page de connexion suivait l'en-tete du navigateur, sans recours. Un
-   francais sur un telephone regle en anglais, ou l'inverse, n'avait aucun moyen
-   de changer : l'application, elle, porte ce choix, mais on ne l'atteint
-   qu'apres s'etre connecte. */
+   Une page de connexion qui ne suivrait que l'en-tete du navigateur
+   laisserait sans recours un francais sur un telephone regle en anglais, ou
+   l'inverse : l'application porte ce choix, mais on ne l'atteint qu'apres
+   s'etre connecte. */
 suite('La page de connexion se choisit sa langue', () => {
   const worker = () => lireSource('_worker.js');
 
@@ -1360,17 +1363,15 @@ suite('La page de connexion se choisit sa langue', () => {
 
 /* --- Rien ne s'affiche hors du dictionnaire -------------------------------
 
-   Trente-quatre textes francais etaient ecrits en dur dans le balisage : un
-   bouton « − Vendre » a cote de son jumeau traduit, des en-tetes de colonnes
-   entre des en-tetes traduits, des etiquettes de champs, des phrases entieres.
-   L'interface anglaise les rendait en francais, et rien ne le disait — la
-   moitie des clefs existaient deja dans le dictionnaire, elles n'etaient
-   simplement pas appelees.
+   Un texte francais ecrit en dur dans le balisage -- un bouton "- Vendre" a
+   cote de son jumeau traduit, un en-tete de colonne, une etiquette de champ --
+   s'affiche en francais dans l'interface anglaise, et rien ne le dit, meme
+   quand sa clef existe deja dans le dictionnaire.
 
    Ce controle lit le balisage et refuse tout texte porteur de lettres pose
    juste apres une balise, qu'il soit suivi d'une fermeture ou d'une
-   interpolation. C'est la deuxieme forme qui avait laisse passer
-   « Surface (m²) », colle a son infobulle. */
+   interpolation. La seconde forme est la plus discrete : un libelle comme
+   "Surface (m2)", colle a son infobulle. */
 suite('Rien ne s’affiche hors du dictionnaire', () => {
   test('aucun texte français n’est écrit en dur dans le balisage', () => {
     let src = lireSource('assets/app.js');
@@ -1478,13 +1479,13 @@ suite('L’âge exact le long de la projection', () => {
     const a = app();
     vrai(/const ageDetaille = a => !a \? '' :/.test(a) && /const ageCompact = a => !a \? '' :/.test(a),
       'deux formes, un seul calcul');
-    /* Le tableau des horizons, sous l'année. */
+    /* Le tableau des horizons, sous l'annee. */
     vrai(/<span class="sub">\$\{ageDetaille\(ageAuPoint\(j\)\)\}<\/span>/.test(a),
       'chaque horizon porte son âge');
-    /* L'en-tête de la trajectoire, en compact. */
+    /* L'en-tete de la trajectoire, en compact. */
     vrai(/ageFin \? ` · \$\{ageCompact\(ageFin\)\}` : ''/.test(a),
       'et l’horizon choisi le porte à côté de son année');
-    /* Et le réglage existe, en date. */
+    /* Et le reglage existe, en date. */
     vrai(/champDate\('Date de naissance', 'meta\.naissance'/.test(a), 'la date se saisit dans les hypothèses');
     vrai(/<input type="date" data-path="\$\{path\}"/.test(a), 'c’est un vrai champ date');
   });
@@ -1563,7 +1564,7 @@ suite('Une devise principale par profil', () => {
     eq(enUsd, '$1,000', 'anglais + dollar');
     vrai(/^1 000 \$/.test(frUsd), `français + dollar : le nombre au format français, le signe du dollar (${frUsd})`);
     eq(enEur, '€1,000', 'anglais + euro');
-    /* Et la preuve que ce sont deux axes : quatre résultats distincts. */
+    /* Et la preuve que ce sont deux axes : quatre resultats distincts. */
     eq(new Set(cas).size, 4, 'aucune combinaison n’en recopie une autre');
   });
 
@@ -1811,13 +1812,6 @@ suite('La devise, avant la première saisie', () => {
   });
 });
 
-/* --- Le poids de chaque poche dans l'infobulle de l'historique -------------
-
-   « Liquidites 6 150 EUR » ne dit pas de quoi le patrimoine etait fait ce
-   mois-la : il fallait diviser de tete par un total lu deux lignes plus bas.
-   L'infobulle porte desormais la part, sur la meme base que le total qu'elle
-   affiche, et les chiffres de cette suite sont ceux de l'exemple qui l'a
-   demandee. */
 /* --- Les gestes qui remplacent tout disent la copie en ligne ---------------
    Le harnais ne charge pas la synchronisation : un faux `CloudSync` dit
    seulement s'il est branche. Le mode d'exemple se retablit tel qu'il etait. */

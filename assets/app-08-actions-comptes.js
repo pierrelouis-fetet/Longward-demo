@@ -488,7 +488,7 @@ Object.assign(ACTIONS, {
       },
       champs: placementTiers ? champsTiers : bien ? [
         ...(t.sansEtab ? [{ cle: 'nom', label: trad('Nom du bien'), type: 'texte', requis: true,
-          max: NOM_LIGNE_MAX, exemple: 'ex. Rolex Submariner',
+          max: NOM_LIGNE_MAX, exemple: 'ex. Montre de collection',
           aide: trad('une montre, une voiture, un tableau : ce nom s’affichera partout') }] : []),
         ...(valeurAuPrixDeRetrait(t) ? [{ cle: 'nom', label: trad('Nom de la SCPI'), type: 'texte', requis: true,
           max: NOM_LIGNE_MAX, exemple: 'ex. Ma SCPI' }] : []),
@@ -1317,7 +1317,7 @@ Object.assign(ACTIONS, {
         { cle: 'label', label: 'Source', type: 'texte', requis: true, max: NOM_LIGNE_MAX,
           valeur: direct ? `Loyer ${nomCompteV2(c)}`
                          : `${trad('Distribution')} ${nomCompteV2(c)}`,
-          exemple: 'ex. Loyer studio Lyon' },
+          exemple: 'ex. Loyer du studio' },
         { cle: 'amount', label: trad('Montant mensuel ({dev})'), type: 'nombre',
           requis: true, exemple: '0' },
       ],
