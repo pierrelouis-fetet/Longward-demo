@@ -139,19 +139,21 @@ PARCOURS = [
           dt.items.add(new File([blob], 'capture.png', { type: 'image/png' }));
           champ.files = dt.files;
           champ.dispatchEvent(new Event('change', { bubbles: true }));
-          if (!await attendre(() => document.querySelector('#impColDate'))) return 'la lecture ne mène pas à l’étape des colonnes';
+          if (!await attendre(() => document.querySelector('#modalBody select[data-groupe]')))
+            return 'la lecture ne mène pas aux catégories';
+          if (document.querySelector('#impColDate')) return 'la fenêtre redemande les colonnes d’une capture';
           if (!envoye || envoye.images.length !== 1 || envoye.images[0].type !== 'image/jpeg'
               || !(envoye.images[0].data.length > 0) || envoye.images[0].data.length > LECTURE_LIMITES.octets)
             return 'la capture ne part pas en JPEG sous son plafond';
           if (envoye.aujourdhui !== todayISO()) return 'le jour envoyé n’est pas celui de l’appareil';
           if (JSON.stringify(envoye.categories) !== JSON.stringify(expenseCategories())) return 'les catégories ne partent pas avec la capture';
-          if (expenseCategories().length && document.querySelector('#impColCat')?.value !== '3')
-            return 'la catégorie proposée ne trouve pas sa colonne';
+          if (expenseCategories().length
+              && document.querySelector('#modalBody select[data-groupe]').value !== expenseCategories()[0])
+            return 'la catégorie proposée n’est pas choisie d’office';
           const corps = document.querySelector('#modalBody').textContent;
           if (!corps.includes(trad('Lu par l’IA'))) return 'la fenêtre ne dit pas qui a lu';
           if (/claude/i.test(document.querySelector('#modal').textContent)) return 'la fenêtre nomme le modèle';
           if (!corps.includes('CB PAIN')) return 'la ligne lue avec un doute n’est pas montrée';
-          if (document.querySelector('#impColMontant')?.value !== '2') return 'la colonne des montants n’est pas devinée';
           document.querySelector('#modalClose').click();
           return true;
         } finally {

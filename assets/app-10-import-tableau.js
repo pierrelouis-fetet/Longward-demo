@@ -235,6 +235,11 @@ function importerTableau(cible, fichierDonne = null) {
         etat.cibles = devinerColonnesReleves(etat.entete, etat.lignes, ACCOUNTS,
           { ignorer: SERIES_PATRIMOINE().map(s => s.label) });
       }
+      if (etat.resumeLecture && depenses) {
+        etat.forme = 'operations';
+        etat.deuxColonnes = false;
+        if (!blocagesColonnes().length) { etapeVerification(); return; }
+      }
       etapeColonnes();
     };
     const nomColonne = i => {
@@ -502,6 +507,7 @@ function importerTableau(cible, fichierDonne = null) {
         lignes, choix: etat.choix, ecartees, ecarteesAcceptees: etat.ecarteesAcceptees });
       const retenus = mois.filter(m => etat.decisions[m] === 'remplacer' && !(etats[m].aVenir && !etat.aVenir));
       $('#modalBody').innerHTML = `
+        ${resumeLecture()}
         <p class="hint" style="margin:0 0 8px">${trad('Une catégorie par marchand : elle s’applique à toutes ses lignes, et Longward s’en souviendra. Ouvre un marchand pour changer une ligne seule.')}</p>
         <div class="imp-groupes">${groupesHtml || `<p class="empty">${trad('Aucune dépense dans ce fichier.')}</p>`}</div>
         <h3 class="imp-titre">${trad('Mois')}</h3>
