@@ -834,6 +834,104 @@ function ecrireImport(plan, { sauver = true } = {}) {
   return { ok: true, modifies, enregistre: !Store._ecritureKo };
 }
 
+/* --- DEPENSES : DES CAPTURES D'ECRAN LUES PAR LE SERVEUR -------------------
+
+   Une capture ne cree pas un second import : elle devient la feuille qu'un
+   export de banque aurait donnee, "Date | Libelle | Montant", et tout le
+   reste -- colonnes, sens, categories, mois, verification -- est le chemin du
+   tableur. Le serveur lit, l'application decide, et rien ne s'ecrit avant
+   "Importer".
+
+   La lecture n'existe que sur un serveur qui l'annonce (`lecture: true` dans
+   /api/health) : elle envoie l'image hors de l'appareil, ce que le tableur ne
+   fait jamais, et la fenetre le dit.
+
+   LES CAPTURES PARTENT EN JPEG, ET LEGERES. Le serveur doit lire le corps
+   recu et en assembler un autre, et l'offre gratuite de Cloudflare ne lui
+   donne que 10 ms de calcul par requete : trois captures en PNG en coutaient
+   pres de trente. Un JPEG de bonne qualite garde le texte d'un ecran lisible
+   pour cinq fois moins d'octets. `octets` borne chaque image encodee en
+   base64, `images` le nombre par envoi ; le serveur applique les memes. */
+const LECTURE_LIMITES = { images: 6, octets: 1.5e6, libelle: 200, cote: 2576 };
+const TYPES_CAPTURE = ['image/png', 'image/jpeg', 'image/webp'];
+const FORMATS_TABLEUR = '.csv,.txt,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+const formatsImport = ({ cible, lecture }) =>
+  FORMATS_TABLEUR + (lecture && cible === 'depenses' ? ',' + TYPES_CAPTURE.join(',') : '');
+
+const estCapture = f => !!f && TYPES_CAPTURE.includes(String(f.type || '').toLowerCase());
+
+function dimensionsCapture(largeur, hauteur, cote = LECTURE_LIMITES.cote) {
+  const l = Math.max(1, Math.round(num(largeur))), h = Math.max(1, Math.round(num(hauteur)));
+  const r = Math.min(1, cote / Math.max(l, h));
+  return { largeur: Math.max(1, Math.round(l * r)), hauteur: Math.max(1, Math.round(h * r)) };
+}
+
+/* La reponse du serveur, verifiee comme une saisie. Une date qui n'existe
+   pas, un montant illisible ou hors des bornes, une capture qui n'a pas ete
+   envoyee, un libelle trop long : la ligne est ecartee et comptee, jamais
+   corrigee. `capture` est le rang de l'image, a partir de 1. */
+function lectureValide(reponse, nbImages) {
+  const brutes = Array.isArray(reponse && reponse.operations) ? reponse.operations : [];
+  const operations = [];
+  let ecartees = 0;
+  for (const o of brutes) {
+    const m = o && typeof o.date === 'string' && /^(\d{4})-(\d{2})-(\d{2})$/.exec(o.date);
+    const date = m ? isoJour(+m[1], +m[2], +m[3]) : null;
+    const montant = o && typeof o.montant === 'number' ? o.montant : NaN;
+    const libelle = o && typeof o.libelle === 'string' ? o.libelle.trim() : null;
+    const capture = o && Number.isInteger(o.capture) ? o.capture : 0;
+    if (!date || !Number.isFinite(montant) || Math.abs(montant) > MONTANT_MAX
+        || libelle === null || libelle.length > LECTURE_LIMITES.libelle
+        || capture < 1 || capture > nbImages) { ecartees++; continue; }
+    operations.push({ date, libelle, montant: round2(montant), capture, incertain: o.incertain === true });
+  }
+  return { operations, ecartees };
+}
+
+function retirerChevauchement(operations) {
+  const cle = o => `${o.date}|${normaliserTexte(o.libelle)}|${round2(o.montant)}`;
+  const parCapture = new Map();
+  for (const o of operations) {
+    if (!parCapture.has(o.capture)) parCapture.set(o.capture, []);
+    parCapture.get(o.capture).push(o);
+  }
+  const rangs = [...parCapture.keys()].sort((a, b) => a - b);
+  /* La plus longue fin de `a` qui est aussi le debut de `b`. */
+  const recouvrement = (a, b) => {
+    for (let k = Math.min(a.length, b.length); k > 0; k--) {
+      if (a.slice(a.length - k).every((o, i) => cle(o) === cle(b[i]))) return k;
+    }
+    return 0;
+  };
+  const out = [];
+  let retirees = 0;
+  let precedente = null;
+  for (const r of rangs) {
+    let liste = parCapture.get(r);
+    if (precedente) {
+      const avant = recouvrement(precedente, liste);
+      const apres = recouvrement(liste, precedente);
+      if (avant >= apres && avant > 0) { liste = liste.slice(avant); retirees += avant; }
+      else if (apres > 0) { liste = liste.slice(0, liste.length - apres); retirees += apres; }
+    }
+    out.push(...liste);
+    precedente = parCapture.get(r);
+  }
+  return { operations: out, retirees };
+}
+
+/* La feuille qu'un export de banque aurait donnee. Les en-tetes sont ceux du
+   modele d'operations, que `devinerColonnesOperations` reconnait dans les deux
+   langues ; une date est une cellule date, un montant une cellule nombre :
+   ni l'ordre jj/mm ni le separateur decimal n'ont a etre devines. */
+function grilleDepuisLecture(operations) {
+  return [
+    [celluleTexte(trad('Date')), celluleTexte(trad('Libellé')), celluleTexte(trad('Montant'))],
+    ...operations.map(o => [{ t: 'date', v: o.date }, celluleTexte(o.libelle), { t: 'nombre', v: o.montant }]),
+  ];
+}
+
 /* --- MODELES A REMPLIR ----------------------------------------------------
 
    Un classeur pret a remplir, fait des colonnes de CE profil : ses

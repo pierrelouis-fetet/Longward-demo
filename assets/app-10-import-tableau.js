@@ -14,7 +14,58 @@ const MESSAGES_IMPORT = {
   'xlsx-illisible': 'Ce classeur ne se lit pas. Enregistre-le en CSV depuis ton tableur.',
   'trop-gros': 'Ce fichier est trop volumineux pour être lu ici.',
   vide: 'Ce fichier ne contient aucun tableau.',
+  melange: 'Choisis soit un tableur, soit des captures d’écran, pas les deux à la fois.',
+  'un-tableur': 'Un seul tableur à la fois.',
+  'trop-de-captures': 'Six captures au plus à la fois.',
+  'image-illisible': 'Cette image ne se lit pas. Une capture d’écran en PNG ou en JPEG convient.',
+  'lecture-indisponible': 'La lecture des captures n’est pas disponible ici.',
+  'lecture-quota': 'La limite de lectures du jour est atteinte. Réessaie demain.',
+  'lecture-illisible': 'Aucune opération lisible sur ces captures.',
+  'lecture-trop-longue': 'Trop d’opérations d’un coup : envoie moins de captures à la fois.',
+  'lecture-echec': 'La lecture n’a pas abouti. Réessaie dans un instant.',
+  'lecture-vide': 'Aucune opération lisible sur ces captures.',
 };
+
+const ERREUR_DE_LECTURE = (statut, code) => statut === 403 || statut === 404 || statut === 501
+  ? 'lecture-indisponible' : statut === 413 ? 'trop-gros' : statut === 429 ? 'lecture-quota'
+  : statut === 422 ? (code === 'tronque' ? 'lecture-trop-longue' : 'lecture-illisible') : 'lecture-echec';
+
+async function preparerCapture(f) {
+  let image;
+  try { image = await createImageBitmap(f); } catch (e) { throw new ErreurImport('image-illisible'); }
+  const enBase64 = blob => new Promise((ok, ko) => {
+    const r = new FileReader();
+    r.onload = () => ok(String(r.result).split(',')[1] || '');
+    r.onerror = () => ko(new ErreurImport('image-illisible'));
+    r.readAsDataURL(blob);
+  });
+  let d = dimensionsCapture(image.width, image.height);
+  try {
+    for (let essai = 0; essai < 4; essai++) {
+      const toile = document.createElement('canvas');
+      toile.width = d.largeur;
+      toile.height = d.hauteur;
+      const ctx = toile.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, d.largeur, d.hauteur);
+      ctx.drawImage(image, 0, 0, d.largeur, d.hauteur);
+      const blob = await new Promise(ok => toile.toBlob(ok, 'image/jpeg', essai ? 0.75 : 0.9));
+      if (!blob) throw new ErreurImport('image-illisible');
+      const data = await enBase64(blob);
+      if (data.length <= LECTURE_LIMITES.octets) return { type: 'image/jpeg', data };
+      if (essai) d = dimensionsCapture(d.largeur, d.hauteur, Math.round(Math.max(d.largeur, d.hauteur) * 0.75));
+    }
+  } finally {
+    if (image.close) image.close();
+  }
+  throw new ErreurImport('trop-gros');
+}
+
+async function lectureOfferte() {
+  if (typeof Quotes === 'undefined') return false;
+  const d = await Quotes.healthData().catch(() => null);
+  return !!(d && d.lecture === true);
+}
 
 const EXEMPLE_OPERATIONS = [
   ['03/10/2026', 'CB BOULANGERIE', -4.2],
@@ -27,26 +78,31 @@ function importerTableau(cible, fichierDonne = null) {
     const m = $('#modal');
     apercuOuvert = null;
     const depenses = cible === 'depenses';
-    const etat = { feuilles: null, feuille: 0, nomFichier: '' };
+    const etat = { feuilles: null, feuille: 0, nomFichier: '', lecture: false, resumeLecture: null, envoi: null };
     let ouverte = true;
     const fermer = v => {
       if (!ouverte) return;
       ouverte = false;
+      if (etat.envoi) etat.envoi.abort();
       masquerModal(m);
       $('#modalClose').onclick = null;
       resolve(v);
     };
     $('#modalClose').onclick = () => fermer(null);
     $('#modalTitle').textContent = depenses ? trad('Importer des dépenses') : trad('Importer des relevés');
-    $('#modalSub').textContent = trad('Le fichier se lit sur cet appareil et n’est envoyé nulle part ; les montants importés s’enregistrent ensuite comme tes saisies.');
 
+    const avecCaptures = () => etat.lecture && depenses;
     const etapeFichier = (erreur = '') => {
+      $('#modalSub').textContent = avecCaptures()
+        ? trad('Un tableur se lit sur cet appareil. Une capture est envoyée à Claude, d’Anthropic, pour être lue ; rien ne s’enregistre avant « Importer ».')
+        : trad('Le fichier se lit sur cet appareil et n’est envoyé nulle part ; les montants importés s’enregistrent ensuite comme tes saisies.');
       $('#modalBody').innerHTML = `
         <p style="margin:0 0 12px">${depenses
           ? trad('L’export de ta banque, en Excel (.xlsx) ou en CSV : une ligne par opération, avec sa date, son libellé et son montant. Ou ton propre tableau de suivi : un mois par ligne, une colonne par catégorie.')
           : trad('Ton tableau de suivi, en Excel (.xlsx) ou en CSV : un mois par ligne, une colonne par compte. Les mois en colonnes se lisent aussi, et la feuille « Relevés mensuels » de l’export Longward s’importe telle quelle.')}</p>
-        <input type="file" id="impFichier" class="fichier-cache"
-               accept=".csv,.txt,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+        ${avecCaptures() ? `<p style="margin:0 0 12px">${trad('Ou des captures d’écran de ton appli bancaire, six au plus : Claude y lit les opérations, et tu vérifies tout avant d’importer.')}</p>` : ''}
+        <input type="file" id="impFichier" class="fichier-cache"${avecCaptures() ? ' multiple' : ''}
+               accept="${formatsImport({ cible, lecture: etat.lecture })}">
         ${depenses ? `<p class="hint" style="margin:12px 0 4px">${trad('Par exemple, trois opérations d’un export :')}</p>
         <div class="imp-exemple">${EXEMPLE_OPERATIONS.map(([d, l, m]) => `
           <span>${d}</span><span>${esc(trad(l))}</span><b>${m < 0 ? '−' : '+'}${
@@ -60,8 +116,9 @@ function importerTableau(cible, fichierDonne = null) {
           <button type="button" class="btn sm ghost" id="impModeleRel">${icone('exporter')} ${trad('Télécharger un modèle')}</button>`}
         </div>
         ${erreur ? `<p class="note" style="margin:12px 0 0">⚠ <span>${esc(erreur)}</span></p>` : ''}`;
-      $('#modalFoot').innerHTML = `<label class="btn" for="impFichier">${trad('Choisir un fichier')}</label>`;
-      $('#impFichier').onchange = () => { const f = $('#impFichier').files[0]; if (f) lire(f); };
+      $('#modalFoot').innerHTML = `<label class="btn" for="impFichier">${avecCaptures()
+        ? trad('Choisir un fichier ou des captures') : trad('Choisir un fichier')}</label>`;
+      $('#impFichier').onchange = () => { const fs = [...$('#impFichier').files]; if (fs.length) choisir(fs); };
       const modele = (id, nom, feuilles) => { const b = $(id); if (b) b.onclick = () => Xlsx.save(nom, feuilles()); };
       modele('#impModeleOps', trad('longward-modele-operations.xlsx'), () => modeleOperations());
       modele('#impModeleMois', trad('longward-modele-depenses-par-mois.xlsx'),
@@ -77,12 +134,73 @@ function importerTableau(cible, fichierDonne = null) {
         if (!feuilles.length) throw new ErreurImport('vide');
         etat.feuilles = feuilles;
         etat.nomFichier = f.name;
+        etat.resumeLecture = null;
         const voulue = depenses ? /^d[eé]penses$/i : /^rel[eé]ves? mensuels$/i;
         const i = feuilles.findIndex(x => voulue.test(x.nom.trim()));
         etat.feuille = i >= 0 ? i : 0;
         nouvelleFeuille();
       } catch (e) {
         etapeFichier(trad(MESSAGES_IMPORT[e && e.code] || 'Ce fichier ne se lit pas.'));
+      }
+    };
+
+    const choisir = fichiers => {
+      const captures = fichiers.filter(estCapture);
+      if (!captures.length) {
+        if (fichiers.length > 1) { etapeFichier(trad(MESSAGES_IMPORT['un-tableur'])); return; }
+        lire(fichiers[0]);
+      } else if (captures.length < fichiers.length) {
+        etapeFichier(trad(MESSAGES_IMPORT.melange));
+      } else {
+        lireCaptures(captures);
+      }
+    };
+
+    const etapeLecture = n => {
+      $('#modalBody').innerHTML = `
+        <p style="margin:0 0 12px">${n > 1 ? trad('Lecture de {n} captures…').replace('{n}', n) : trad('Lecture de la capture…')}</p>
+        <p class="hint" style="margin:0">${trad('Claude lit les opérations visibles : compte une dizaine de secondes par capture.')}</p>`;
+      $('#modalFoot').innerHTML = `<button class="btn ghost" id="impAnnulerLecture" type="button">${trad('Annuler')}</button>`;
+      $('#impAnnulerLecture').onclick = () => { if (etat.envoi) etat.envoi.abort(); };
+    };
+
+    const lireCaptures = async fichiers => {
+      const envoi = new AbortController();
+      try {
+        if (!await lectureOfferte() || !depenses) throw new ErreurImport('lecture-indisponible');
+        if (fichiers.length > LECTURE_LIMITES.images) throw new ErreurImport('trop-de-captures');
+        etat.envoi = envoi;
+        etapeLecture(fichiers.length);
+        const images = [];
+        for (const f of fichiers) images.push(await preparerCapture(f));
+        if (envoi.signal.aborted) throw new ErreurImport('annule');
+        let r;
+        try {
+          r = await fetch(Quotes.BASE + '/api/lire-captures', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ images, aujourdhui: todayISO() }), signal: envoi.signal });
+        } catch (e) {
+          throw new ErreurImport(envoi.signal.aborted ? 'annule' : 'lecture-echec');
+        }
+        const d = await r.json().catch(() => null);
+        if (!r.ok) throw new ErreurImport(ERREUR_DE_LECTURE(r.status, d && d.code));
+        const v = lectureValide(d, images.length);
+        const c = retirerChevauchement(v.operations);
+        if (!c.operations.length) throw new ErreurImport('lecture-vide');
+        if (!ouverte) return;
+        etat.feuilles = [{ nom: trad('Captures'), grille: grilleDepuisLecture(c.operations) }];
+        etat.feuille = 0;
+        etat.nomFichier = fichiers.length > 1
+          ? trad('{n} captures').replace('{n}', fichiers.length) : trad('Une capture');
+        etat.resumeLecture = { operations: c.operations.length, retirees: c.retirees, ecartees: v.ecartees,
+                               incertaines: c.operations.filter(o => o.incertain) };
+        nouvelleFeuille();
+      } catch (e) {
+        if (!ouverte) return;
+        etapeFichier(e && e.code === 'annule' ? ''
+          : trad(MESSAGES_IMPORT[e && e.code] || 'Ce fichier ne se lit pas.'));
+      } finally {
+        if (etat.envoi === envoi) etat.envoi = null;
       }
     };
 
@@ -167,6 +285,21 @@ function importerTableau(cible, fichierDonne = null) {
       return b;
     };
 
+    const resumeLecture = () => {
+      const r = etat.resumeLecture;
+      if (!r) return '';
+      const morceaux = [trad('Lu par Claude'), r.operations > 1
+        ? trad('{n} opérations').replace('{n}', r.operations) : trad('Une opération')];
+      if (r.retirees) morceaux.push((r.retirees > 1 ? trad('{n} vues sur deux captures, comptées une fois')
+        : trad('Une vue sur deux captures, comptée une fois')).replace('{n}', r.retirees));
+      if (r.ecartees) morceaux.push((r.ecartees > 1 ? trad('{n} illisibles, écartées')
+        : trad('Une illisible, écartée')).replace('{n}', r.ecartees));
+      const doutes = r.incertaines.slice(0, 8).map(o =>
+        `${esc(fmtDate(o.date))} · ${esc(o.libelle)} · ${esc(fmtEUR(o.montant))}`);
+      return `<div class="note" style="margin:0 0 12px">ⓘ <span>${morceaux.map(esc).join(' · ')}${doutes.length
+        ? `<br>${esc(trad('Lues avec un doute, à comparer à l’écran de ta banque :'))}<br>${doutes.join('<br>')}` : ''}</span></div>`;
+    };
+
     const etapeColonnes = () => {
       const feuilles = etat.feuilles.length > 1 ? `
         <div class="field"><label for="impFeuille">${trad('Feuille')}</label>
@@ -223,7 +356,7 @@ function importerTableau(cible, fichierDonne = null) {
       $('#modalBody').innerHTML = `
         <p class="hint" style="margin:0 0 8px">${esc(etat.nomFichier)} · ${etat.lignes.length > 1
           ? trad('{n} lignes lues').replace('{n}', etat.lignes.length) : trad('Une ligne lue')}</p>
-        ${feuilles}${ordre}${corps}
+        ${resumeLecture()}${feuilles}${ordre}${corps}
         ${blocages.length ? `<div class="note" style="margin:12px 0 0">ⓘ <span>${blocages.map(esc).join('<br>')}</span></div>` : ''}`;
       $('#modalFoot').innerHTML = `<button class="btn" id="impSuite" type="button"${blocages.length ? ' disabled' : ''}>${trad('Continuer')}</button>
         <button class="btn ghost" id="impRetour" type="button">${trad('Retour')}</button>`;
@@ -524,6 +657,10 @@ function importerTableau(cible, fichierDonne = null) {
     };
 
     if (fichierDonne) lire(fichierDonne); else etapeFichier();
+    lectureOfferte().then(l => {
+      etat.lecture = l;
+      if (l && depenses && ouverte && !fichierDonne && !etat.feuilles && !etat.envoi) etapeFichier();
+    });
     montrerModal(m);
   });
 }

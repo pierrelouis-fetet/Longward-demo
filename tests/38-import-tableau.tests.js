@@ -601,4 +601,91 @@ suite('Import d’un tableau : les modèles à remplir', () => {
   });
 });
 
+/* Des captures lues par le serveur : la reponse se verifie comme une saisie,
+   le recouvrement de deux captures se compte une fois, et la feuille fabriquee
+   suit le chemin d'un tableur jusqu'au plan. Operations fictives. */
+suite('Import d’un tableau : des captures lues par le serveur', () => {
+  const op = (capture, date, libelle, montant, incertain = false) => ({ capture, date, libelle, montant, incertain });
+
+  test('la réponse se vérifie : ce qui ne tient pas est écarté et compté, jamais corrigé', () => {
+    const r = lectureValide({ operations: [
+      op(1, '2026-10-03', 'CB CAFE', -3.2),
+      op(1, '2026-02-30', 'DATE IMPOSSIBLE', -1),
+      op(1, '03/10/2026', 'DATE MAL ECRITE', -1),
+      op(2, '2026-10-04', 'MONTANT EN TEXTE', '-4,10'),
+      op(2, '2026-10-04', 'MONTANT INFINI', Infinity),
+      op(2, '2026-10-04', 'HORS PLAFOND', -(MONTANT_MAX * 2)),
+      op(3, '2026-10-04', 'CAPTURE NON ENVOYEE', -2),
+      op(0, '2026-10-04', 'CAPTURE ZERO', -2),
+      op(2, '2026-10-05', 'X'.repeat(LECTURE_LIMITES.libelle + 1), -2),
+      op(2, '2026-10-05', ' VIR SALAIRE ', 2000, true),
+    ] }, 2);
+    eq(r.operations.map(o => o.libelle).join(','), 'CB CAFE,VIR SALAIRE', 'deux lignes valides, libellé rogné');
+    eq(r.ecartees, 8, 'huit lignes écartées, comptées');
+    eq(r.operations[1].incertain, true, 'le doute du lecteur est gardé');
+    eq(lectureValide(null, 1).operations.length, 0, 'une réponse vide ne lève pas');
+    eq(lectureValide({ operations: 'non' }, 1).ecartees, 0, 'une réponse mal formée ne lève pas');
+  });
+
+  test('deux captures qui se recouvrent : le recouvrement compte une fois, les doublons réels restent', () => {
+    const a = [op(1, '2026-10-05', 'CB CAFE', -3.2), op(1, '2026-10-05', 'CB CAFE', -3.2),
+               op(1, '2026-10-04', 'CB PAIN', -1.1), op(1, '2026-10-03', 'CB THE', -2)];
+    const b = [op(2, '2026-10-04', 'CB PAIN', -1.1), op(2, '2026-10-03', 'cb  the', -2),
+               op(2, '2026-10-02', 'CB JUS', -2.5)];
+    const r = retirerChevauchement([...a, ...b]);
+    eq(r.retirees, 2, 'le bas de la première est le haut de la seconde');
+    eq(r.operations.map(o => o.libelle).join(','), 'CB CAFE,CB CAFE,CB PAIN,CB THE,CB JUS',
+      'les deux cafés du même jour restent deux');
+    const inverse = retirerChevauchement([...b.map(o => ({ ...o, capture: 1 })), ...a.map(o => ({ ...o, capture: 2 }))]);
+    eq(inverse.retirees, 2, 'choisies du bas vers le haut, le recouvrement se retire aussi');
+    pres(inverse.operations.reduce((s, o) => s + o.montant, 0), -12, 'la somme ne compte chaque opération qu’une fois');
+    const seule = retirerChevauchement(a);
+    eq(seule.retirees, 0, 'une capture seule ne perd rien');
+    eq(seule.operations.length, 4);
+    const sansLien = retirerChevauchement([op(1, '2026-10-05', 'A', -1), op(2, '2026-10-01', 'B', -2)]);
+    eq(sansLien.retirees, 0, 'deux captures sans recouvrement restent entières');
+  });
+
+  test('la feuille fabriquée suit le chemin d’un tableur jusqu’au plan', () => {
+    const lues = [op(1, '2026-09-29', 'CB CAFE', -3.2), op(1, '2026-10-01', 'CB PAIN', -1.1),
+                  op(1, '2026-10-02', 'VIR SALAIRE', 2000), op(1, '2026-10-03', 'CB THE', -2)];
+    const g = grilleDepuisLecture(lues);
+    const d = detecterEntete(g);
+    eq(d, 0, 'l’en-tête est la première ligne');
+    const col = devinerColonnesOperations(g[d], g.slice(d + 1));
+    eq(`${col.date},${col.libelle},${col.montant}`, '0,1,2', 'date, libellé et montant se devinent');
+    eq(ordreAChoisir(g.slice(1).map(l => l[col.date])).aDemander, false, 'aucun ordre de date à demander');
+    eq(sensMajoritaire(g.slice(1), col.montant), 'negatif', 'les débits sont négatifs');
+    const { lignes, ecartees } = lignesOperations(g, d + 1, col, { sens: 'negatif' });
+    eq(ecartees.length, 0, 'aucune ligne écartée');
+    eq(lignes.filter(l => l.credit).map(l => l.libelle).join(','), 'VIR SALAIRE', 'le salaire est un crédit');
+    const plan = planOperations(lignes, lignes.map(() => 'Courses'));
+    pres(plan.mois['2026-09-01'].total, 3.2, 'septembre');
+    pres(plan.mois['2026-10-01'].total, 3.1, 'octobre, salaire à part');
+    for (const m of Object.values(plan.mois)) {
+      pres(m.total, Object.values(m.v).reduce((s, x) => s + x, 0), 'le total du mois est la somme de ses catégories');
+    }
+  });
+
+  test('les images n’entrent que pour les dépenses, sur un serveur qui sait les lire', () => {
+    const images = s => TYPES_CAPTURE.every(t => s.includes(t));
+    eq(images(formatsImport({ cible: 'depenses', lecture: true })), true, 'dépenses, lecture offerte');
+    eq(images(formatsImport({ cible: 'depenses', lecture: false })), false, 'sans lecture, aucune image');
+    eq(images(formatsImport({ cible: 'releves', lecture: true })), false, 'les relevés restent aux tableurs');
+    eq(formatsImport({ cible: 'depenses', lecture: false }), formatsImport({ cible: 'releves', lecture: false }),
+      'sans lecture, la liste d’avant');
+    eq(estCapture({ type: 'image/PNG' }), true); eq(estCapture({ type: 'text/csv' }), false);
+  });
+
+  test('une capture se réduit sans s’agrandir, proportions gardées', () => {
+    const r = dimensionsCapture(1170, 2532);
+    eq(`${r.largeur}x${r.hauteur}`, '1170x2532', 'un téléphone passe tel quel');
+    const g = dimensionsCapture(3000, 6000);
+    eq(g.hauteur, LECTURE_LIMITES.cote, 'le grand côté au plafond');
+    eq(g.largeur, Math.round(3000 * LECTURE_LIMITES.cote / 6000), 'l’autre en proportion');
+    const p = dimensionsCapture(300, 200);
+    eq(`${p.largeur}x${p.hauteur}`, '300x200', 'une petite image ne s’agrandit pas');
+  });
+});
+
 finDePartieDeTests('tests/38-import-tableau.tests.js');

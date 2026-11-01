@@ -107,6 +107,55 @@ PARCOURS = [
         """,
     ),
     (
+        "Une capture d'écran devient des dépenses à vérifier",
+        "#/budget", "budget", 390,
+        r"""
+        /* Un serveur qui sait lire, simule dans la page : la sante annonce la
+           lecture, la route rend deux operations. Rien ne s'ecrit : la fenetre
+           s'arrete a l'etape des colonnes et se referme. */
+        const sante0 = Quotes.healthData, fetch0 = window.fetch;
+        try {
+          Quotes.healthData = () => Promise.resolve({ ok: true, lecture: true });
+          let envoye = null;
+          window.fetch = async (url, o) => {
+            if (!String(url).endsWith('/api/lire-captures')) return fetch0(url, o);
+            envoye = JSON.parse(o.body);
+            return new Response(JSON.stringify({ operations: [
+              { date: '2026-10-02', libelle: 'CB CAFE', montant: -3.2, capture: 1, incertain: false },
+              { date: '2026-10-03', libelle: 'CB PAIN', montant: -1.1, capture: 1, incertain: true },
+            ] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+          };
+          if (!cliquerVisible('[data-action="importer-tableau"][data-cible="depenses"]')) return 'aucun bouton visible n’ouvre l’import des dépenses';
+          if (!await attendre(() => (document.querySelector('#impFichier')?.accept || '').includes('image/png')))
+            return 'le champ n’accepte pas les captures quand la lecture est offerte';
+          const champ = document.querySelector('#impFichier');
+          if (!champ.multiple) return 'le champ ne prend pas plusieurs captures';
+          const toile = document.createElement('canvas');
+          toile.width = 40; toile.height = 80;
+          toile.getContext('2d').fillRect(0, 0, 40, 80);
+          const blob = await new Promise(r => toile.toBlob(r, 'image/png'));
+          const dt = new DataTransfer();
+          dt.items.add(new File([blob], 'capture.png', { type: 'image/png' }));
+          champ.files = dt.files;
+          champ.dispatchEvent(new Event('change', { bubbles: true }));
+          if (!await attendre(() => document.querySelector('#impColDate'))) return 'la lecture ne mène pas à l’étape des colonnes';
+          if (!envoye || envoye.images.length !== 1 || envoye.images[0].type !== 'image/jpeg'
+              || !(envoye.images[0].data.length > 0) || envoye.images[0].data.length > LECTURE_LIMITES.octets)
+            return 'la capture ne part pas en JPEG sous son plafond';
+          if (envoye.aujourdhui !== todayISO()) return 'le jour envoyé n’est pas celui de l’appareil';
+          const corps = document.querySelector('#modalBody').textContent;
+          if (!corps.includes(trad('Lu par Claude'))) return 'la fenêtre ne dit pas qui a lu';
+          if (!corps.includes('CB PAIN')) return 'la ligne lue avec un doute n’est pas montrée';
+          if (document.querySelector('#impColMontant')?.value !== '2') return 'la colonne des montants n’est pas devinée';
+          document.querySelector('#modalClose').click();
+          return true;
+        } finally {
+          Quotes.healthData = sante0;
+          window.fetch = fetch0;
+        }
+        """,
+    ),
+    (
         "La carte Par catégorie bascule entre l'année et la moyenne par mois",
         "#/budget", "budget", 390,
         r"""
