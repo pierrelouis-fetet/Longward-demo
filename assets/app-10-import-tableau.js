@@ -94,13 +94,13 @@ function importerTableau(cible, fichierDonne = null) {
     const avecCaptures = () => etat.lecture && depenses;
     const etapeFichier = (erreur = '') => {
       $('#modalSub').textContent = avecCaptures()
-        ? trad('Un tableur se lit sur cet appareil. Une capture est envoyée à Claude, d’Anthropic, pour être lue ; rien ne s’enregistre avant « Importer ».')
+        ? trad('Un tableur se lit sur cet appareil. Une capture est envoyée à un service d’IA pour être lue ; rien ne s’enregistre avant « Importer ».')
         : trad('Le fichier se lit sur cet appareil et n’est envoyé nulle part ; les montants importés s’enregistrent ensuite comme tes saisies.');
       $('#modalBody').innerHTML = `
         <p style="margin:0 0 12px">${depenses
           ? trad('L’export de ta banque, en Excel (.xlsx) ou en CSV : une ligne par opération, avec sa date, son libellé et son montant. Ou ton propre tableau de suivi : un mois par ligne, une colonne par catégorie.')
           : trad('Ton tableau de suivi, en Excel (.xlsx) ou en CSV : un mois par ligne, une colonne par compte. Les mois en colonnes se lisent aussi, et la feuille « Relevés mensuels » de l’export Longward s’importe telle quelle.')}</p>
-        ${avecCaptures() ? `<p style="margin:0 0 12px">${trad('Ou des captures d’écran de ton appli bancaire, six au plus : Claude y lit les opérations, et tu vérifies tout avant d’importer.')}</p>` : ''}
+        ${avecCaptures() ? `<p style="margin:0 0 12px">${trad('Ou des captures d’écran de ton appli bancaire, six au plus : l’IA y lit les opérations et propose leurs catégories, et tu vérifies tout avant d’importer.')}</p>` : ''}
         <input type="file" id="impFichier" class="fichier-cache"${avecCaptures() ? ' multiple' : ''}
                accept="${formatsImport({ cible, lecture: etat.lecture })}">
         ${depenses ? `<p class="hint" style="margin:12px 0 4px">${trad('Par exemple, trois opérations d’un export :')}</p>
@@ -159,7 +159,7 @@ function importerTableau(cible, fichierDonne = null) {
     const etapeLecture = n => {
       $('#modalBody').innerHTML = `
         <p style="margin:0 0 12px">${n > 1 ? trad('Lecture de {n} captures…').replace('{n}', n) : trad('Lecture de la capture…')}</p>
-        <p class="hint" style="margin:0">${trad('Claude lit les opérations visibles : compte une dizaine de secondes par capture.')}</p>`;
+        <p class="hint" style="margin:0">${trad('L’IA lit les opérations visibles : compte une dizaine de secondes par capture.')}</p>`;
       $('#modalFoot').innerHTML = `<button class="btn ghost" id="impAnnulerLecture" type="button">${trad('Annuler')}</button>`;
       $('#impAnnulerLecture').onclick = () => { if (etat.envoi) etat.envoi.abort(); };
     };
@@ -174,17 +174,18 @@ function importerTableau(cible, fichierDonne = null) {
         const images = [];
         for (const f of fichiers) images.push(await preparerCapture(f));
         if (envoi.signal.aborted) throw new ErreurImport('annule');
+        const categories = expenseCategories();
         let r;
         try {
           r = await fetch(Quotes.BASE + '/api/lire-captures', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ images, aujourdhui: todayISO() }), signal: envoi.signal });
+            body: JSON.stringify({ images, aujourdhui: todayISO(), categories }), signal: envoi.signal });
         } catch (e) {
           throw new ErreurImport(envoi.signal.aborted ? 'annule' : 'lecture-echec');
         }
         const d = await r.json().catch(() => null);
         if (!r.ok) throw new ErreurImport(ERREUR_DE_LECTURE(r.status, d && d.code));
-        const v = lectureValide(d, images.length);
+        const v = lectureValide(d, images.length, categories);
         const c = retirerChevauchement(v.operations);
         if (!c.operations.length) throw new ErreurImport('lecture-vide');
         if (!ouverte) return;
@@ -288,7 +289,7 @@ function importerTableau(cible, fichierDonne = null) {
     const resumeLecture = () => {
       const r = etat.resumeLecture;
       if (!r) return '';
-      const morceaux = [trad('Lu par Claude'), r.operations > 1
+      const morceaux = [trad('Lu par l’IA'), r.operations > 1
         ? trad('{n} opérations').replace('{n}', r.operations) : trad('Une opération')];
       if (r.retirees) morceaux.push((r.retirees > 1 ? trad('{n} vues sur deux captures, comptées une fois')
         : trad('Une vue sur deux captures, comptée une fois')).replace('{n}', r.retirees));
@@ -456,8 +457,11 @@ function importerTableau(cible, fichierDonne = null) {
         Store.state.budget.expenses.find(x => x.month === m), aujourdhui, 'operations')]));
       for (const m of mois) if (!(m in etat.decisions)) etat.decisions[m] = etats[m].defaut;
       const rap = rapprochementOperations(lignes, ecartees, plan);
+      const nouvelles = [...new Set([...lignes.map(l => l.categorieBanque), ...etat.choix].filter(estNouvelle))];
       const options = choix => `<option value=""${!choix ? ' selected' : ''}>${trad('À choisir')}</option>${
-        cats.map(c => `<option value="${esc(c)}"${choix === c ? ' selected' : ''}>${esc(c)}</option>`).join('')}
+        cats.map(c => `<option value="${esc(c)}"${choix === c ? ' selected' : ''}>${esc(c)}</option>`).join('')}${
+        nouvelles.map(n => `<option value="${esc(n)}"${choix === n ? ' selected' : ''}>${
+          esc(trad('Nouvelle catégorie : {c}').replace('{c}', nomDeChoix(n)))}</option>`).join('')}
         <option value="${IGNORER}"${choix === IGNORER ? ' selected' : ''}>${trad('Ignorer')}</option>`;
       const groupesHtml = [...groupes.entries()]
         .map(([cle, ids]) => ({ cle, ids, total: ids.reduce((s, i) => s + lignes[i].montant, 0) }))
@@ -516,9 +520,10 @@ function importerTableau(cible, fichierDonne = null) {
         const regles = {};
         for (const [cle, ids] of groupes) {
           const vals = new Set(ids.map(i => etat.choix[i]));
-          if (etat.confirmes.has(cle) && vals.size === 1 && [...vals][0] && cle !== '?') regles[cle] = [...vals][0];
+          if (etat.confirmes.has(cle) && vals.size === 1 && [...vals][0] && cle !== '?') regles[cle] = nomDeChoix([...vals][0]);
         }
-        return { cible: 'depenses', forme: 'operations', mois: moisPlan, regles };
+        const nouvelles = plan.nouvelles.filter(n => retenus.some(m => n in plan.mois[m].v));
+        return { cible: 'depenses', forme: 'operations', mois: moisPlan, regles, nouvelles };
       }, retenus.length);
       for (const s of $$('#modalBody [data-groupe]')) {
         s.onclick = ev => ev.stopPropagation();

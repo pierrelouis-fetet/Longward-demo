@@ -121,8 +121,9 @@ PARCOURS = [
             if (!String(url).endsWith('/api/lire-captures')) return fetch0(url, o);
             envoye = JSON.parse(o.body);
             return new Response(JSON.stringify({ operations: [
-              { date: '2026-10-02', libelle: 'CB CAFE', montant: -3.2, capture: 1, incertain: false },
-              { date: '2026-10-03', libelle: 'CB PAIN', montant: -1.1, capture: 1, incertain: true },
+              { date: '2026-10-02', libelle: 'CB CAFE', montant: -3.2, capture: 1, incertain: false,
+                categorie: expenseCategories()[0] || '' },
+              { date: '2026-10-03', libelle: 'CB PAIN', montant: -1.1, capture: 1, incertain: true, categorie: '' },
             ] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
           };
           if (!cliquerVisible('[data-action="importer-tableau"][data-cible="depenses"]')) return 'aucun bouton visible n’ouvre l’import des dépenses';
@@ -143,8 +144,12 @@ PARCOURS = [
               || !(envoye.images[0].data.length > 0) || envoye.images[0].data.length > LECTURE_LIMITES.octets)
             return 'la capture ne part pas en JPEG sous son plafond';
           if (envoye.aujourdhui !== todayISO()) return 'le jour envoyé n’est pas celui de l’appareil';
+          if (JSON.stringify(envoye.categories) !== JSON.stringify(expenseCategories())) return 'les catégories ne partent pas avec la capture';
+          if (expenseCategories().length && document.querySelector('#impColCat')?.value !== '3')
+            return 'la catégorie proposée ne trouve pas sa colonne';
           const corps = document.querySelector('#modalBody').textContent;
-          if (!corps.includes(trad('Lu par Claude'))) return 'la fenêtre ne dit pas qui a lu';
+          if (!corps.includes(trad('Lu par l’IA'))) return 'la fenêtre ne dit pas qui a lu';
+          if (/claude/i.test(document.querySelector('#modal').textContent)) return 'la fenêtre nomme le modèle';
           if (!corps.includes('CB PAIN')) return 'la ligne lue avec un doute n’est pas montrée';
           if (document.querySelector('#impColMontant')?.value !== '2') return 'la colonne des montants n’est pas devinée';
           document.querySelector('#modalClose').click();

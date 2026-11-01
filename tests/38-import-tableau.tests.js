@@ -667,6 +667,53 @@ suite('Import d’un tableau : des captures lues par le serveur', () => {
     }
   });
 
+  test('la catégorie proposée se garde si elle nomme une catégorie, et les règles apprises passent devant', () => {
+    const cats = ['Courses', 'Restos'];
+    const r = lectureValide({ operations: [
+      { ...op(1, '2026-10-03', 'CB CAFE', -3.2), categorie: 'restos' },
+      { ...op(1, '2026-10-03', 'VIR LIVRET', -50), categorie: 'Ignorer' },
+      { ...op(1, '2026-10-04', 'CB PAIN', -1.1), categorie: 'Boulangerie' },
+      { ...op(1, '2026-10-04', 'CB THE', -2), categorie: 42 },
+      op(1, '2026-10-05', 'CB JUS', -2.5),
+    ] }, 1, cats);
+    eq(r.ecartees, 0, 'une proposition inconnue n’écarte pas la ligne');
+    eq(r.operations.map(o => o.categorie).join(','), `Restos,${IGNORER},,,`, 'nom exact, Ignorer, sinon à choisir');
+    const g = grilleDepuisLecture(r.operations);
+    const col = devinerColonnesOperations(g[0], g.slice(1));
+    eq(col.categorie, 3, 'la colonne des catégories se devine');
+    const { lignes } = lignesOperations(g, 1, col, { sens: 'negatif' });
+    eq(proposerCategories(lignes, { categories: cats }).map(x => x.choix).join(','), `Restos,${IGNORER},,,`,
+      'la proposition arrive au choix de chaque ligne');
+    const regle = proposerCategories(lignes, { categories: cats, regles: { [cleMarchand('CB CAFE')]: 'Courses' } });
+    eq(regle[0].choix, 'Courses', 'une règle apprise passe devant la proposition');
+    eq(grilleDepuisLecture([op(1, '2026-10-03', 'CB CAFE', -3.2)])[0].length, 3, 'sans proposition, pas de colonne');
+  });
+
+  test('une catégorie trop éloignée se propose, et ne se crée qu’à l’import', () => {
+    const cats = ['Courses', 'Restos'];
+    const r = lectureValide({ operations: [
+      { ...op(1, '2026-10-03', 'BILLET TRAIN', -40), categorie: '', nouvelle: 'Voyages' },
+      { ...op(1, '2026-10-04', 'CB BRASSERIE', -12), categorie: '', nouvelle: 'restos' },
+      { ...op(1, '2026-10-05', 'CB X', -1), categorie: '', nouvelle: 'X'.repeat(LECTURE_LIMITES.categorie + 1) },
+    ] }, 1, cats);
+    eq(r.operations.map(o => o.categorie).join(','), `${NOUVELLE}Voyages,Restos,`,
+      'un nom nouveau se marque, un nom existant se reprend, un nom trop long se laisse');
+    const g = grilleDepuisLecture(r.operations);
+    const { lignes } = lignesOperations(g, 1, devinerColonnesOperations(g[0], g.slice(1)), { sens: 'negatif' });
+    const choix = proposerCategories(lignes, { categories: cats }).map(x => x.choix);
+    eq(choix[0], `${NOUVELLE}Voyages`, 'la nouvelle catégorie arrive au choix');
+    const plan = planOperations(lignes, choix);
+    eq(JSON.stringify(plan.mois['2026-10-01'].v), JSON.stringify({ Voyages: 40, Restos: 12 }), 'le plan porte le vrai nom');
+    eq(plan.nouvelles.join(','), 'Voyages', 'et dit quelle catégorie créer');
+    const etat = { budget: { categories: [...cats], expenses: [] }, monthly: [] };
+    appliquerImport(etat, { cible: 'depenses', forme: 'operations', mois: { '2026-10-01': { v: plan.mois['2026-10-01'].v } },
+      nouvelles: plan.nouvelles });
+    eq(etat.budget.categories.join(','), 'Courses,Restos,Voyages', 'créée à l’import, à la suite des existantes');
+    eq(etat.budget.expenses.find(x => x.month === '2026-10-01').v.Voyages, 40, 'et porte son montant');
+    appliquerImport(etat, { cible: 'depenses', forme: 'operations', mois: {}, nouvelles: ['voyages'] });
+    eq(etat.budget.categories.length, 3, 'jamais en double');
+  });
+
   test('les images n’entrent que pour les dépenses, sur un serveur qui sait les lire', () => {
     const images = s => TYPES_CAPTURE.every(t => s.includes(t));
     eq(images(formatsImport({ cible: 'depenses', lecture: true })), true, 'dépenses, lecture offerte');

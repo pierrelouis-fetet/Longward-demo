@@ -490,6 +490,13 @@ function chargeFixeProbable(ligne, charges) {
 
 const IGNORER = '__ignorer';
 
+/* Une categorie a creer a l'import, proposee par une capture lue : la marque
+   suivie du nom. Elle vit dans les choix comme une categorie, ne devient un
+   nom qu'au plan (`nomDeChoix`), et n'est creee qu'a l'ecriture. */
+const NOUVELLE = '__nouvelle:';
+const estNouvelle = c => typeof c === 'string' && c.startsWith(NOUVELLE);
+const nomDeChoix = c => (estNouvelle(c) ? c.slice(NOUVELLE.length) : c);
+
 function proposerCategories(lignes, { regles = {}, categories = [], charges = [] } = {}) {
   const parNom = new Map(categories.map(c => [normaliserTexte(c), c]));
   return lignes.map(l => {
@@ -497,6 +504,8 @@ function proposerCategories(lignes, { regles = {}, categories = [], charges = []
     if (cle && regles[cle] && (regles[cle] === IGNORER || categories.includes(regles[cle]))) {
       return { cle, choix: regles[cle], raison: 'regle' };
     }
+    if (l.categorieBanque === IGNORER) return { cle, choix: IGNORER, raison: 'banque' };
+    if (estNouvelle(l.categorieBanque)) return { cle, choix: l.categorieBanque, raison: 'nouvelle' };
     const banque = parNom.get(normaliserTexte(l.categorieBanque));
     if (banque) return { cle, choix: banque, raison: 'banque' };
     if (chargeFixeProbable(l, charges)) return { cle, choix: IGNORER, raison: 'charge' };
@@ -507,11 +516,13 @@ function proposerCategories(lignes, { regles = {}, categories = [], charges = []
 function planOperations(lignes, choix) {
   const mois = {};
   const r = { importe: 0, credits: 0, ignore: 0, aClasser: 0, nImporte: 0, nCredits: 0, nIgnore: 0, aChoisir: 0 };
+  const nouvelles = new Set();
   lignes.forEach((l, i) => {
     if (l.credit) { r.credits += l.montant; r.nCredits++; return; }
-    const c = choix[i];
-    if (c === IGNORER) { r.ignore += l.montant; r.nIgnore++; return; }
-    if (!c) { r.aChoisir++; r.aClasser += l.montant; return; }
+    if (choix[i] === IGNORER) { r.ignore += l.montant; r.nIgnore++; return; }
+    if (!choix[i]) { r.aChoisir++; r.aClasser += l.montant; return; }
+    const c = nomDeChoix(choix[i]);
+    if (estNouvelle(choix[i])) nouvelles.add(c);
     const m = `${l.date.slice(0, 7)}-01`;
     const e = mois[m] || (mois[m] = { v: {}, total: 0, n: 0, du: l.date, au: l.date });
     e.v[c] = (e.v[c] || 0) + l.montant;
@@ -525,7 +536,7 @@ function planOperations(lignes, choix) {
     e.total = round2(Object.values(e.v).reduce((s, x) => s + x, 0));
   }
   for (const k of ['importe', 'credits', 'ignore', 'aClasser']) r[k] = round2(r[k]);
-  return { mois, rapprochement: r };
+  return { mois, rapprochement: r, nouvelles: [...nouvelles] };
 }
 
 const dernierJourDuMois = m => new Date(Date.UTC(+m.slice(0, 4), +m.slice(5, 7), 0)).toISOString().slice(0, 10);
@@ -740,6 +751,15 @@ function appliquerImport(etat, plan) {
   let modifies = 0;
   if (plan.cible === 'depenses') {
     const b = etat.budget;
+    /* Les categories proposees et retenues se creent avant les montants qui
+       les portent, a la suite des existantes. Une liste vide vaut celle par
+       defaut, comme pour `expenseCategories()`. */
+    if ((plan.nouvelles || []).length) {
+      if (!Array.isArray(b.categories) || !b.categories.length) b.categories = [...EXPENSE_CATEGORIES];
+      for (const n of plan.nouvelles) {
+        if (!b.categories.some(c => normaliserTexte(c) === normaliserTexte(n))) b.categories.push(n);
+      }
+    }
     for (const [m, e] of Object.entries(plan.mois)) {
       let r = b.expenses.find(x => x.month === m);
       if (!r) { r = { month: m, note: '', v: {} }; b.expenses.push(r); }
@@ -852,7 +872,7 @@ function ecrireImport(plan, { sauver = true } = {}) {
    pres de trente. Un JPEG de bonne qualite garde le texte d'un ecran lisible
    pour cinq fois moins d'octets. `octets` borne chaque image encodee en
    base64, `images` le nombre par envoi ; le serveur applique les memes. */
-const LECTURE_LIMITES = { images: 6, octets: 1.5e6, libelle: 200, cote: 2576 };
+const LECTURE_LIMITES = { images: 6, octets: 1.5e6, libelle: 200, cote: 2576, categorie: 40 };
 const TYPES_CAPTURE = ['image/png', 'image/jpeg', 'image/webp'];
 const FORMATS_TABLEUR = '.csv,.txt,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -870,9 +890,24 @@ function dimensionsCapture(largeur, hauteur, cote = LECTURE_LIMITES.cote) {
 /* La reponse du serveur, verifiee comme une saisie. Une date qui n'existe
    pas, un montant illisible ou hors des bornes, une capture qui n'a pas ete
    envoyee, un libelle trop long : la ligne est ecartee et comptee, jamais
-   corrigee. `capture` est le rang de l'image, a partir de 1. */
-function lectureValide(reponse, nbImages) {
+   corrigee. `capture` est le rang de l'image, a partir de 1.
+
+   LA CATEGORIE PROPOSEE N'EST QU'UNE PROPOSITION. Elle se garde si elle
+   nomme l'une des categories envoyees (rendue sous son nom exact), ou
+   "Ignorer". A defaut, un nom de categorie a creer, court, devient la marque
+   NOUVELLE ; s'il nomme deja une categorie, c'est elle. Toute autre valeur
+   devient "a choisir", sans ecarter la ligne. */
+function lectureValide(reponse, nbImages, categories = []) {
   const brutes = Array.isArray(reponse && reponse.operations) ? reponse.operations : [];
+  const parNom = new Map(categories.map(c => [normaliserTexte(c), c]));
+  const categorieProposee = (v, nouvelle) => {
+    const n = normaliserTexte(v);
+    if (n === 'ignorer') return IGNORER;
+    if (parNom.has(n)) return parNom.get(n);
+    const nom = typeof nouvelle === 'string' ? nouvelle.trim() : '';
+    if (!nom || nom.length > LECTURE_LIMITES.categorie || !normaliserTexte(nom)) return '';
+    return parNom.get(normaliserTexte(nom)) || NOUVELLE + nom;
+  };
   const operations = [];
   let ecartees = 0;
   for (const o of brutes) {
@@ -884,7 +919,8 @@ function lectureValide(reponse, nbImages) {
     if (!date || !Number.isFinite(montant) || Math.abs(montant) > MONTANT_MAX
         || libelle === null || libelle.length > LECTURE_LIMITES.libelle
         || capture < 1 || capture > nbImages) { ecartees++; continue; }
-    operations.push({ date, libelle, montant: round2(montant), capture, incertain: o.incertain === true });
+    operations.push({ date, libelle, montant: round2(montant), capture, incertain: o.incertain === true,
+                      categorie: categorieProposee(typeof o.categorie === 'string' ? o.categorie : '', o.nouvelle) });
   }
   return { operations, ecartees };
 }
@@ -924,11 +960,18 @@ function retirerChevauchement(operations) {
 /* La feuille qu'un export de banque aurait donnee. Les en-tetes sont ceux du
    modele d'operations, que `devinerColonnesOperations` reconnait dans les deux
    langues ; une date est une cellule date, un montant une cellule nombre :
-   ni l'ordre jj/mm ni le separateur decimal n'ont a etre devines. */
+   ni l'ordre jj/mm ni le separateur decimal n'ont a etre devines.
+
+   La categorie proposee passe par la colonne "Categorie", celle qu'un export
+   de banque porte parfois : `proposerCategories` la lit apres les regles
+   apprises, qui gardent donc le dernier mot. */
 function grilleDepuisLecture(operations) {
+  const avecCategorie = operations.some(o => o.categorie);
   return [
-    [celluleTexte(trad('Date')), celluleTexte(trad('Libellé')), celluleTexte(trad('Montant'))],
-    ...operations.map(o => [{ t: 'date', v: o.date }, celluleTexte(o.libelle), { t: 'nombre', v: o.montant }]),
+    [celluleTexte(trad('Date')), celluleTexte(trad('Libellé')), celluleTexte(trad('Montant')),
+     ...(avecCategorie ? [celluleTexte(trad('Catégorie'))] : [])],
+    ...operations.map(o => [{ t: 'date', v: o.date }, celluleTexte(o.libelle), { t: 'nombre', v: o.montant },
+      ...(avecCategorie ? [celluleTexte(o.categorie)] : [])]),
   ];
 }
 
