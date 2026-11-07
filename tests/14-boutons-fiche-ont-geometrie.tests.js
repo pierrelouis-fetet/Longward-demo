@@ -1697,11 +1697,12 @@ suite('Deux états, et l’affichage suit la saisie', () => {
     vrai(i > 0, 'la carte doit exister dans la source');
     vrai(/\$\{sansDistinction\(\) \? '' : `/.test(vue.slice(Math.max(0, i - 900), i)),
       'elle ne se rend que si les catégories sont actives');
-    eq((vue.match(/sansDistinction\(\)/g) || []).length, 9,
+    eq((vue.match(/sansDistinction\(\)/g) || []).length, 10,
       'la carte, ses trois rangées de colonnes, le compte de l’en-tête, la fiche '
-      + 'de la tuile de la moyenne, le bouton qui ajoute une catégorie, le '
-      + 'dépliant qui les renomme et les supprime, et le commentaire qui dit '
-      + 'pourquoi il n’y a pas de réglage de plus');
+      + 'de la tuile de la moyenne, le bouton qui ajoute une catégorie, la porte '
+      + 'du haut vers la feuille des catégories, la feuille qui se ferme quand une '
+      + 'seule case reste, et le commentaire qui dit pourquoi il n’y a pas de '
+      + 'réglage de plus');
   });
 
   test('aucune ventilation par catégorie ne survit, tuiles et fiches comprises', () => {

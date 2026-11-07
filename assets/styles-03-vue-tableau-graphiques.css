@@ -1753,8 +1753,7 @@ body.haut-cache .sous-onglets::before { content: ''; }
   .ptf-compo-lien { min-height: 35px; }
   .ptf-compo-lien::after { top: -3px; bottom: -3px; }
   .lien-nu[data-action="add-position"]::after { top: -6px; bottom: -6px; }
-  .cat-actions { gap: 8px; }
-  .cat-actions .btn::after { top: -4px; bottom: -4px; }
+  .cat-commandes .btn::after { top: -4px; bottom: -4px; }
   .rappel-sorties { gap: 12px; }
   .rappel-sorties > .btn:not(:last-child)::after { right: -7px; }
   .rappel-sorties > .btn:not(:first-child)::after { left: -7px; }

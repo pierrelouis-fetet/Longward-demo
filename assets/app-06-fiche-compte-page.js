@@ -1190,8 +1190,11 @@ function viewBudget(section = 'depenses') {
               title="${trad('Saisir les dépenses du mois')}"></button>
       <div>
         <div class="hero-label">${cur ? (cur.isCurrent ? trad('Dépenses du mois en cours') : `${trad('Dernier mois renseigné')} · ${esc(cur.label)}`) : trad('Dépenses')}
+          <span class="hero-actes">
           <button type="button" class="btn sm ghost import-lien" data-action="importer-tableau" data-cible="depenses"
-                  title="${esc(trad('Importer l’export de ta banque'))}">${trad('Importer')}</button></div>
+                  title="${esc(trad('Importer l’export de ta banque'))}">${trad('Importer')}</button>${sansDistinction() ? '' : `
+          <button type="button" class="btn sm ghost" data-action="gerer-categories"
+                  title="${esc(trad('Ordre, nom et retrait de tes catégories'))}">${trad('Catégories')}</button>`}</span></div>
         <div class="hero-value">${cur ? fmtEUR0(cur.total) : ''}</div>
       </div>
       <div class="hero-deltas">
@@ -1414,6 +1417,8 @@ function viewBudget(section = 'depenses') {
         <tfoot><tr><th scope="row">${trad('Total')}</th><td class="montant">${fmtEUR0(stats.total)}</td>
           <td class="montant">${fmtEUR0(stats.average)}</td><td></td></tr></tfoot>
     </table></div>
+    <p class="cats-pied"><button type="button" class="lien-vue" data-action="gerer-categories"
+      >${trad('Gérer les catégories')} →</button></p>
   </div>`}` : ''}
 
   ${!aDesDepensesSaisies() ? '' : `
@@ -1531,40 +1536,6 @@ function viewBudget(section = 'depenses') {
       </table>
     </div>
 
-    ${sansDistinction() ? '' : `    <details class="data-view" style="margin-top:12px">
-      <summary>${trad('Renommer, retirer ou supprimer une catégorie')}</summary>
-      <table class="editable table-serree">
-        <thead><tr><th>${trad('Catégorie')}</th><th>${trad('Total saisi')}</th><th></th></tr></thead>
-        <tbody>${expenseCategories().map(c => {
-          const total = expenseCategoryTotal(c);
-          const retiree = categorieRetiree(c);
-          return `<tr${retiree ? ' class="cat-retiree"' : ''}>
-            <td class="name"><input value="${esc(c)}" data-action-change="rename-category"
-                data-cat="${esc(c)}" title="${trad('Modifie le nom puis quitte le champ')}">
-              ${retiree ? `<span class="tag">${trad('retirée')}</span>` : ''}</td>
-            <td class="${total ? '' : 'muted'}">${total ? fmtEUR0(total) : ''}</td>
-            <td class="cat-actions">
-              <span class="large-seulement">
-                <button class="btn icon" data-action="monter-category" data-cat="${esc(c)}"
-                  title="${trad('Avancer cette colonne d’un cran')}">↑</button>
-                <button class="btn icon" data-action="descendre-category" data-cat="${esc(c)}"
-                  title="${trad('Reculer cette colonne d’un cran')}">↓</button>
-              </span>
-              <button class="btn sm ghost" data-action="${retiree ? 'reprendre' : 'retirer'}-category"
-                data-cat="${esc(c)}"
-                title="${trad(retiree ? 'La reproposer à la saisie du mois'
-                                    : 'La sortir de la saisie du mois, sans toucher aux montants passés')}"
-                >${trad(retiree ? 'Reprendre' : 'Retirer')}</button>
-              <button class="btn icon" data-action="del-category" data-cat="${esc(c)}"
-                title="${trad('Supprimer cette colonne et tous ses montants')}">✕</button>
-            </td>
-          </tr>`;
-        }).join('')}</tbody>
-      </table>
-      <p class="hint" style="margin-top:8px">
-        <b>${trad('Retirer')}</b> ${trad("garde l'historique,")} <b>${trad('Supprimer')}</b> ${trad("l'efface.")}${aide(trad("Renommer déplace les montants déjà saisis. Retirer sort la catégorie de la saisie du mois sans toucher aux montants passés : c’est le geste pour un poste dans lequel tu ne dépenses plus. Supprimer retire la colonne et tout ce qu’elle contient. Ctrl+Z annule dans les deux cas."))}
-      </p>
-    </details>`}
   </div>`}`}
 
   ${!cadre ? '' : `

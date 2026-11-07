@@ -206,7 +206,7 @@ suite('Détail mensuel : tri des lignes, ordre des colonnes', () => {
     const src = lireSource('assets/app.js');
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
     const carte = src.slice(src.indexOf('data-anchor="detail-mensuel"'),
-                            src.indexOf('Renommer, retirer ou supprimer'));
+                            src.indexOf("trad('Ce qui sort chaque mois')"));
     vrai(/depSort \? \(\(\) => \{/.test(carte), 'le tableau trie une copie de la vue indexée');
     const mobile = carte.slice(carte.indexOf('liste-mobile'), carte.indexOf('table-wrap'));
     vrai(/lignesDepenses\.map/.test(mobile) && !/depSort/.test(mobile),

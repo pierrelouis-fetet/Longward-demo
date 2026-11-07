@@ -1061,9 +1061,11 @@ function ouvrirFeuille({ titre, sous = '', corps, pied = '' }) {
   $('#modalClose').onclick = fermerFeuille;
 }
 function fermerFeuille() {
+  const retour = sortieCategories();
   feuilleCourante = null;
   const m = $('#modal');
   if (m) { masquerModal(m); $('#modalClose').onclick = null; }
+  if (retour) retour.focus();
 }
 function rafraichirFeuille() { if (feuilleCourante && !$('#modal').hidden) feuilleCourante(); }
 

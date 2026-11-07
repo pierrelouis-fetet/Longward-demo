@@ -174,8 +174,11 @@ function askText(titre, message, exemple = '', valeur = '', max = NOM_LIGNE_MAX)
     const fermer = v => {
       masquerModal(m);      $('#modalClose').onclick = null;
       champ.onkeydown = null;
+      if (annulerFenetre === annuler) annulerFenetre = null;
       resolve(v);
     };
+    const annuler = () => fermer(null);
+    annulerFenetre = annuler;
     /* Valider a vide ne ferme pas : cette fenetre ne demande qu'une chose, et
        repartir sans elle n'a jamais de sens. Elle le dit et garde la main, comme
        un champ `requis` d'`askForm` -- c'est "Annuler" qui sert a renoncer. */

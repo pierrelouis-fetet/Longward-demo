@@ -1828,23 +1828,34 @@ suite('Le net dit la vérité, même sous zéro', () => {
     eq(j.lignes.length, 0, 'et elle ne figure pas dans la liste');
   });
 
-  test('le dépliant qui renomme et supprime suit le mode de saisie', () => {
-    /* Renommer, retirer, supprimer : trois gestes sur des categories, sans objet
-       quand on a demande a ne plus en avoir. Le seul geste qui reste offert est
-       celui qui annonce ce qu'il fait. */
+  test('la feuille des catégories porte tous les gestes, et ses portes suivent le mode de saisie', () => {
+    /* Ranger, renommer, retirer, supprimer : des gestes sur des categories, sans
+       objet quand on a demande a ne plus en avoir. Ils vivent dans une feuille,
+       a toutes les largeurs, et ses deux portes se taisent dans ce mode. Le
+       seul geste qui reste offert est celui qui annonce ce qu'il fait. */
     const src = lireSource('assets/app.js');
     const vue = src.slice(src.indexOf('function viewBudget(section'),
                           src.indexOf('function mountBudget('));
-    const i = vue.indexOf("trad('Renommer, retirer ou supprimer une catégorie')");
-    vrai(i > 0, 'le dépliant existe, pour qui détaille');
-    vrai(/\$\{sansDistinction\(\) \? '' : `/.test(vue.slice(Math.max(0, i - 900), i)),
-      'et il ne se rend que si les catégories servent encore');
-    /* Les trois actions vivent dedans, donc elles disparaissent avec lui. */
-    const fin = vue.indexOf('</details>', i);
-    const bloc = vue.slice(i, fin);
-    for (const action of ['rename-category', 'retirer', 'del-category']) {
-      vrai(bloc.includes(action), `« ${action} » vit dans ce dépliant`);
+    const feuille = src.slice(src.indexOf('function corpsCategories('), src.indexOf('const flecheCategorie'));
+    vrai(feuille.length > 200, 'la feuille existe');
+    for (const action of ['rename-category', 'monter-category', 'descendre-category', 'retirer', 'del-category']) {
+      vrai(feuille.includes(action), `« ${action} » vit dans la feuille`);
     }
+    vrai(!/large-seulement/.test(feuille), 'l’ordre se règle à toutes les largeurs');
+    vrai(!vue.includes('<details class="data-view" style="margin-top:12px">'), 'et plus au bas de la page');
+    /* Les portes se comptent dans le gabarit de la page, avant les fonctions
+       de la feuille qui les retrouvent par leur selecteur. */
+    const page = vue.slice(0, vue.indexOf('function corpsCategories('));
+    const portes = [...page.matchAll(/data-action="gerer-categories"/g)].map(m => m.index);
+    eq(portes.length, 2, 'deux portes : le haut de l’onglet et la carte « Par catégorie »');
+    /* La porte du haut porte sa propre garde ; celle du bas vit dans la carte
+       "Par categorie", gardee en entier. */
+    vrai(/\$\{sansDistinction\(\) \? '' : `\s*<button type="button" class="btn sm ghost" data-action="gerer-categories"/.test(vue),
+      'la porte du haut ne se rend que si les catégories servent encore');
+    const carte = vue.indexOf('<div class="card cats-carte');
+    vrai(/\$\{sansDistinction\(\) \? '' : `\s*<div class="card cats-carte/.test(vue)
+      && portes[1] > carte && portes[1] < vue.indexOf('data-anchor="detail-mensuel"'),
+      'celle de la carte « Par catégorie » non plus');
     /* Et le retour reste offert dans les deux modes. */
     vrai(/data-action="reprendre-detail"/.test(vue),
       '« Remettre toutes les catégories » reste, c’est la seule sortie');

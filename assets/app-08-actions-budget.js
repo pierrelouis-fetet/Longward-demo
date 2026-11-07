@@ -14,11 +14,19 @@ Object.assign(ACTIONS, {
             : depSort.dir === 'desc' ? { key, dir: 'asc' } : null;
     render();
   },
+  'gerer-categories'(btn) { ouvrirCategories({}, btn); },
+  'fermer-categories'() { fermerFeuille(); },
   'monter-category'(btn) {
-    if (deplacerCategorie(btn.dataset.cat, -1)) { Store.save(); render(); }
+    const cat = btn.dataset.cat;
+    if (!deplacerCategorie(cat, -1)) return;
+    Store.save(); render();
+    redessinerCategories({ cat, action: 'monter-category', annonce: annonceRangCategorie(cat) });
   },
   'descendre-category'(btn) {
-    if (deplacerCategorie(btn.dataset.cat, +1)) { Store.save(); render(); }
+    const cat = btn.dataset.cat;
+    if (!deplacerCategorie(cat, +1)) return;
+    Store.save(); render();
+    redessinerCategories({ cat, action: 'descendre-category', annonce: annonceRangCategorie(cat) });
   },
   'budget-year'(btn) {
     budgetYear = btn.dataset.year === 'all' ? 'all' : btn.dataset.year;
@@ -109,12 +117,19 @@ Object.assign(ACTIONS, {
   },
 
   async 'add-category'() {
+    const depuisFeuille = categoriesOuvertes();
+    const rouvrir = focus => { if (depuisFeuille) ouvrirCategories(focus); };
     const nom = await askText('Nouvelle catégorie de dépenses',
       'Elle devient une colonne du tableau, vide sur tous les mois.', 'ex. Abonnements');
-    if (!nom) return;
-    if (!addExpenseCategory(nom)) { toast(trad('Cette catégorie existe déjà')); return; }
+    if (!nom) { rouvrir({ action: 'add-category' }); return; }
+    if (!addExpenseCategory(nom)) {
+      toast(trad('Cette catégorie existe déjà'));
+      rouvrir({ action: 'add-category' });
+      return;
+    }
     Store.save(); render();
     toast(`${trad('Colonne')} ${guill(nom.trim())} ${trad('ajoutée')}`);
+    rouvrir({ cat: nom.trim(), action: 'rename-category' });
   },
   'retirer-category'(btn) {
     const cat = btn.dataset.cat;
@@ -125,12 +140,14 @@ Object.assign(ACTIONS, {
       ? `${guill(cat)} ${trad('quitte la saisie. Ses {v} restent dans l’historique.')
           .replace('{v}', fmtEUR0(total))}`
       : `${guill(cat)} ${trad('quitte la saisie du mois.')}`);
+    redessinerCategories({ cat, action: 'reprendre-category' });
   },
   'reprendre-category'(btn) {
     const cat = btn.dataset.cat;
     if (!reprendreCategorie(cat)) return;
     Store.save(); render();
     toast(`${guill(cat)} ${trad('revient dans la saisie du mois')}`);
+    redessinerCategories({ cat, action: 'retirer-category' });
   },
   async 'sans-distinction'() {
     const fait = await nePlusDetaillerPartout();
@@ -154,11 +171,17 @@ Object.assign(ACTIONS, {
              + "totaux baisseront d'autant.")
             .replace('{v}', fmtEUR0(total)).replace('{m}', mois) + '\n\n'
         : trad('Elle est vide, rien ne sera perdu.') + '\n\n')
-      + trad('Réversible avec Ctrl+Z.'), { danger: total > 0, ok: 'Supprimer la colonne' })) return;
+      + trad('Réversible avec Ctrl+Z.'), { danger: total > 0, ok: 'Supprimer la colonne' })) {
+      if (categoriesOuvertes()) focusCategories({ cat, action: 'del-category' });
+      return;
+    }
+    const liste = expenseCategories(), rang = liste.indexOf(cat);
+    const voisine = liste[rang + 1] ?? liste[rang - 1] ?? null;
     Store.addBackup('avant suppression de catégorie');
     removeExpenseCategory(cat);
     Store.save(); render();
     toast(`${trad('Colonne')} ${guill(cat)} ${trad('supprimée')}`);
+    redessinerCategories({ cat: voisine, action: 'del-category' });
   },
   async 'del-expense-month'(btn) {
     const i = +btn.dataset.i, r = Store.state.budget.expenses[i];

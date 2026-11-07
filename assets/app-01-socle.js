@@ -315,6 +315,8 @@ function nettoyerApres(el, repli, apres) {
    Geler d'abord coute exactement la meme chose, mais avant que quoi que ce soit
    ne bouge a l'ecran : le recalcul se fait pendant que la page est encore
    immobile, et l'animation demarre sur une mise en page stable. */
+let annulerFenetre = null;
+
 function montrerModal(m) {
   generationSuivante(m);
   const panneau = m.querySelector('.modal-panel');

@@ -12,6 +12,118 @@ function paliersCible(courant) {
   return p.sort((a, b) => a - b);
 }
 
+function corpsCategories() {
+  const cats = expenseCategories();
+  const pour = (libelle, c) => `${trad(libelle)}${deuxPoints()} ${esc(c)}`;
+  return `
+  <ol class="cats-liste">${cats.map((c, i) => {
+    const total = expenseCategoryTotal(c);
+    const retiree = categorieRetiree(c);
+    return `
+    <li class="cat-ligne${retiree ? ' cat-retiree' : ''}" data-cat="${esc(c)}">
+      <span class="cat-nom">
+        <input value="${esc(c)}" data-action-change="rename-category" data-cat="${esc(c)}"
+               aria-label="${pour('Nom de la catégorie', c)}" title="${trad('Modifie le nom puis quitte le champ')}">
+        ${retiree ? `<span class="tag">${trad('retirée')}</span>` : ''}</span>
+      <span class="cat-total${total ? '' : ' muted'}">${total ? fmtEUR0(total) : ''}</span>
+      <span class="cat-commandes">
+        <button type="button" class="btn ghost apercu-fleche" data-action="monter-category" data-cat="${esc(c)}"
+                aria-label="${pour('Monter', c)}" title="${trad('Monter')}"${i === 0 ? ' disabled' : ''}>${flecheCategorie(true)}</button>
+        <button type="button" class="btn ghost apercu-fleche" data-action="descendre-category" data-cat="${esc(c)}"
+                aria-label="${pour('Descendre', c)}" title="${trad('Descendre')}"${i === cats.length - 1 ? ' disabled' : ''}>${flecheCategorie(false)}</button>
+        <button type="button" class="btn sm ghost" data-action="${retiree ? 'reprendre' : 'retirer'}-category" data-cat="${esc(c)}"
+                title="${trad(retiree ? 'La reproposer à la saisie du mois'
+                                    : 'La sortir de la saisie du mois, sans toucher aux montants passés')}"
+                >${trad(retiree ? 'Reprendre' : 'Retirer')}</button>
+        <button type="button" class="btn icon" data-action="del-category" data-cat="${esc(c)}"
+                aria-label="${pour('Supprimer', c)}" title="${trad('Supprimer cette colonne et tous ses montants')}">✕</button>
+      </span>
+    </li>`;
+  }).join('')}</ol>
+  <p class="hint cats-regle">
+    <b>${trad('Retirer')}</b> ${trad("garde l'historique,")} <b>${trad('Supprimer')}</b> ${trad("l'efface.")}${aide(trad("Renommer déplace les montants déjà saisis. Retirer sort la catégorie de la saisie du mois sans toucher aux montants passés : c’est le geste pour un poste dans lequel tu ne dépenses plus. Supprimer retire la colonne et tout ce qu’elle contient. Ctrl+Z annule dans les deux cas."))}
+  </p>
+  <p class="hors-ecran" role="status" id="catsAnnonce"></p>`;
+}
+const flecheCategorie = haut => `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none"
+  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${
+  haut ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'}"/></svg>`;
+
+const categoriesOuvertes = () => {
+  const m = $('#modal');
+  return !!m && !m.hidden && !m.classList.contains('modal-ferme') && !!$('#modalBody .cats-liste');
+};
+
+let porteCategories = null;
+
+function ouvrirCategories(focus = {}, porte = null) {
+  if (porte) porteCategories = porte.closest('.hero-actes')
+    ? '#view .hero-actes [data-action="gerer-categories"]' : '#view .cats-pied [data-action="gerer-categories"]';
+  ouvrirFeuille({
+    titre: trad('Tes catégories'),
+    sous: trad('L’ordre est celui de la saisie du mois, du tableau détaillé et des exports. Le graphique classe par montant.'),
+    corps: corpsCategories,
+    pied: `<button type="button" class="btn ghost" data-action="add-category"
+             aria-label="${esc(trad('+ Ajouter une catégorie'))}">${trad('+ Ajouter')}</button>
+      <button type="button" class="btn" data-action="fermer-categories">${trad('Terminé')}</button>`,
+  });
+  if (focus.cat != null || focus.action) focusCategories(focus);
+  else { const t = $('#modalTitle'); t.tabIndex = -1; t.focus(); }
+}
+
+function sortieCategories() {
+  if (!categoriesOuvertes()) return null;
+  return (porteCategories && $(porteCategories)) || $('#view .import-lien') || $('.sous-onglets .on');
+}
+
+function renommerDansFeuille(ancien, nouveau) {
+  if (!categoriesOuvertes()) return;
+  const ligne = [...$('#modalBody').querySelectorAll('.cat-ligne')].find(l => l.dataset.cat === ancien);
+  if (!ligne) return;
+  ligne.dataset.cat = nouveau;
+  for (const el of ligne.querySelectorAll('[data-cat]')) {
+    el.dataset.cat = nouveau;
+    const nom = el.getAttribute('aria-label');
+    if (nom && nom.endsWith(ancien)) el.setAttribute('aria-label', nom.slice(0, -ancien.length) + nouveau);
+  }
+}
+
+const annonceRangCategorie = cat => {
+  const l = expenseCategories();
+  return trad('{c}, position {n} sur {t}').replace('{c}', cat)
+    .replace('{n}', l.indexOf(cat) + 1).replace('{t}', l.length);
+};
+
+function focusCategories({ cat = null, action = null } = {}) {
+  const corps = $('#modalBody');
+  const ligne = cat == null ? null
+    : [...corps.querySelectorAll('.cat-ligne')].find(l => l.dataset.cat === cat);
+  let cible = null;
+  if (ligne) {
+    const voulu = action && ligne.querySelector(action === 'rename-category' ? 'input' : `[data-action="${action}"]`);
+    cible = voulu && !voulu.disabled ? voulu : ligne.querySelector('button:not([disabled])');
+  }
+  cible = cible || $('#modalFoot [data-action="add-category"]');
+  if (cible) cible.focus({ preventScroll: !ligne });
+  if (ligne) ligne.scrollIntoView({ block: 'nearest' });
+}
+
+function redessinerCategories({ cat = null, action = null, annonce = '' } = {}) {
+  if (!categoriesOuvertes()) return;
+  if (sansDistinction()) {
+    porteCategories = null;
+    fermerFeuille();
+    toast(`${trad('Une seule case à remplir :')} ${guill(categoriesSaisie()[0])}`);
+    return;
+  }
+  const corps = $('#modalBody');
+  const haut = corps.scrollTop;
+  rafraichirFeuille();
+  corps.scrollTop = haut;
+  focusCategories({ cat, action });
+  if (annonce) setTimeout(() => { const r = $('#catsAnnonce'); if (r) r.textContent = annonce; }, 60);
+}
+
 function mountBudget() {
   const year = budgetAnnee();
   /* `expenseSeriesVisible` et non `expenseSeries` : un mois a venir n'est pas

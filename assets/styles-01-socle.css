@@ -1364,7 +1364,10 @@ table .field :is(input, select) { max-width: none; }
   fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
 }
 .btn:not(.icon) > .ic-geste:first-child { margin-right: .4em; }
-.hero-label > .import-lien { margin-left: auto; text-transform: none; letter-spacing: normal; }
+.hero-label > .hero-actes {
+  margin-left: auto; display: inline-flex; gap: 8px;
+  text-transform: none; letter-spacing: normal;
+}
 
 /* La version reduite du controle segmente vit plus bas, apres `.segmented` :
    ecrite ici, avant lui et a specificite egale, elle perdrait. */

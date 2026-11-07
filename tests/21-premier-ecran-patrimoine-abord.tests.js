@@ -200,7 +200,7 @@ suite('Budget vierge : une explication, une action, pas de tableau vide', () => 
     const avant = src.slice(i - 400, i);
     vrai(/\$\{!aDesDepensesSaisies\(\) \? '' : `\s*<div class="card" data-anchor="detail-mensuel">/.test(src.slice(i - 200, i + 60)),
       'la carte entière est gardée par la première dépense saisie');
-    vrai(/<\/details>`\}\s*<\/div>`\}`\}/.test(src), 'et la garde se referme avec la carte');
+    vrai(/<\/table>\s*<\/div>\s*(?:<!--[\s\S]*?-->\s*)?<\/div>`\}`\}/.test(src), 'et la garde se referme avec la carte');
     vrai(avant.length > 0, 'tranche trouvée');
   });
 

@@ -354,6 +354,118 @@ PARCOURS = [
         ],
     ),
     (
+        "Les catégories se rangent au téléphone, depuis le haut de l'onglet",
+        "#/budget", "budget", 375,
+        [r"""
+        /* La porte du haut, sa feuille, et chaque geste par le bouton que la
+           feuille montre : descendre, renommer par une vraie frappe puis
+           toucher "Retirer" du doigt, ajouter (et renoncer par le fond),
+           reprendre, Termine. L'etat et la chaine brute reviennent a l'identique
+           a la fin, meme apres un echec. */
+        if (!aDesDepensesSaisies() || sansDistinction()) return 'SAUTE';
+        const cle = cleStockage(), brut = localStorage.getItem(cle), sauve = structuredClone(Store.state);
+        window.__catsFin = async () => {
+          if (categoriesOuvertes()) fermerFeuille();
+          Store.state = sauve; render();
+          await pause(120);
+          if (brut == null) localStorage.removeItem(cle); else localStorage.setItem(cle, brut);
+          return localStorage.getItem(cle) === brut;
+        };
+        const lanc = document.querySelector('#lancement'); if (lanc) lanc.style.display = 'none';
+        const corps = document.querySelector('#modalBody');
+        const ligne = c => [...corps.querySelectorAll('.cat-ligne')].find(l => l.dataset.cat === c);
+        const auDoigt = el => { const q = el.getBoundingClientRect(); const e = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2); return e === el || el.contains(e); };
+        const echec = async m => { await window.__catsFin(); return m; };
+        const porte = document.querySelector('#view .hero-actes [data-action="gerer-categories"]');
+        if (!porte) return echec('aucune porte des catégories en haut de l’onglet');
+        porte.scrollIntoView({ block: 'center' }); await pause(60);
+        if (!auDoigt(porte)) return echec('la couverture de la carte prend le toucher de la porte');
+        porte.click();
+        if (!await attendre(() => categoriesOuvertes())) return echec('la feuille ne s’ouvre pas');
+        await pause(300);
+        if (document.activeElement !== document.querySelector('#modalTitle')) return echec('le focus n’entre pas dans la feuille');
+        const cadre = corps.getBoundingClientRect();
+        for (const b of corps.querySelectorAll('.cat-commandes .btn')) {
+          const q = b.getBoundingClientRect();
+          if (q.left < cadre.left - 1 || q.right > cadre.right + 1) return echec(`une commande sort de la feuille : ${b.dataset.action}`);
+        }
+        const premiere = expenseCategories()[0];
+        const bas = ligne(premiere).querySelector('[data-action="descendre-category"]');
+        if (!auDoigt(bas)) return echec('la flèche de la première catégorie ne reçoit pas le toucher');
+        bas.click();
+        if (!await attendre(() => expenseCategories()[1] === premiere)) return echec('descendre ne déplace pas la première catégorie');
+        const stocke = JSON.parse(localStorage.getItem(cle) || 'null');
+        if (!stocke || stocke.budget.categories[1] !== premiere) return echec('le nouvel ordre n’est pas enregistré');
+        if ([...corps.querySelectorAll('.cat-ligne')][1]?.dataset.cat !== premiere) return echec('la feuille ne montre pas le nouvel ordre');
+        const f = document.activeElement;
+        if (f?.dataset.cat !== premiere || f?.dataset.action !== 'descendre-category') return echec('le focus ne reste pas sur la catégorie déplacée');
+        /* Le champ prend le focus, le curseur en fin de nom ; la frappe suit. Le
+           doigt visera ensuite "Retirer" de la meme rangee. */
+        const champ = ligne(premiere).querySelector('input');
+        /* L'application selectionne le contenu d'un champ juste apres le focus :
+           le curseur se pose en fin de nom une fois cette selection faite. */
+        champ.focus(); await pause(120);
+        champ.setSelectionRange(champ.value.length, champ.value.length);
+        const retirer = ligne(premiere).querySelector('[data-action="retirer-category"]');
+        const q = retirer.getBoundingClientRect();
+        window.__doigt = { x: q.left + q.width / 2, y: q.top + q.height / 2 };
+        window.__catsPremiere = premiere;
+        return true;
+        """,
+        "TOUCHE:x",
+        "DOIGT:poser",
+        "DOIGT:lever",
+        r"""
+        const corps = document.querySelector('#modalBody');
+        const ligne = c => [...corps.querySelectorAll('.cat-ligne')].find(l => l.dataset.cat === c);
+        const nouveau = window.__catsPremiere + 'x';
+        let verdict = true;
+        try {
+          if (!await attendre(() => expenseCategories().includes(nouveau))) return 'la frappe dans le nom ne renomme pas la catégorie';
+          if (!await attendre(() => categorieRetiree(nouveau))) return 'l’appui sur « Retirer » après le renommage est perdu';
+          if (!categoriesOuvertes()) return 'la feuille se ferme au renommage';
+          if (!ligne(nouveau)?.classList.contains('cat-retiree')) return 'la rangée renommée ne se dit pas retirée';
+          ligne(nouveau).querySelector('[data-action="reprendre-category"]').click();
+          if (!await attendre(() => !categorieRetiree(nouveau))) return 'reprendre ne la rend pas à la saisie';
+          /* Renoncer a l'ajout par le fond rend la feuille, focus sur l'ajout. */
+          document.querySelector('#modalFoot [data-action="add-category"]').click();
+          if (!await attendre(() => document.querySelector('#txtOk'))) return 'la fenêtre du nom ne s’ouvre pas';
+          document.querySelector('#modal').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+          if (!await attendre(() => categoriesOuvertes())) return 'renoncer par le fond ne rend pas la feuille';
+          if (document.activeElement?.dataset.action !== 'add-category') return 'après le renoncement, le focus n’est pas sur l’ajout';
+          document.querySelector('#modalFoot [data-action="add-category"]').click();
+          if (!await attendre(() => document.querySelector('#txtOk'))) return 'la fenêtre du nom ne se rouvre pas';
+          const saisie = document.querySelector('#modalBody input');
+          saisie.value = 'Parcours';
+          saisie.dispatchEvent(new Event('input', { bubbles: true }));
+          document.querySelector('#txtOk').click();
+          if (!await attendre(() => categoriesOuvertes() && !!ligne('Parcours'))) return 'la feuille ne revient pas avec la catégorie ajoutée';
+          if (document.activeElement?.dataset.cat !== 'Parcours') return 'le focus ne va pas au nom de la catégorie ajoutée';
+          const lignes = [...corps.querySelectorAll('.cat-ligne')];
+          const derniere = lignes[lignes.length - 1];
+          derniere.scrollIntoView({ block: 'nearest' }); await pause(80);
+          if (derniere.getBoundingClientRect().bottom > document.querySelector('#modalFoot').getBoundingClientRect().top + 1)
+            return 'la dernière catégorie reste sous le pied de la feuille';
+          document.querySelector('#modalFoot [data-action="fermer-categories"]').click();
+          if (!await attendre(() => !categoriesOuvertes())) return '« Terminé » ne ferme pas la feuille';
+          const porteHaut = () => document.querySelector('#view .hero-actes [data-action="gerer-categories"]');
+          if (document.activeElement !== porteHaut()) return 'la fermeture ne rend pas le focus à la porte';
+          /* Fermer par le fond passe par la sortie de la feuille : son etat
+             s'efface et le focus revient a la porte. */
+          porteHaut().blur(); porteHaut().click();
+          if (!await attendre(() => categoriesOuvertes())) return 'la porte ne rouvre pas la feuille';
+          document.querySelector('#modal').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+          if (!await attendre(() => !categoriesOuvertes())) return 'le fond ne ferme pas la feuille';
+          if (feuilleCourante !== null || document.querySelector('#modalClose').onclick !== null)
+            return 'fermée par le fond, la feuille laisse son état';
+          if (document.activeElement !== porteHaut()) verdict = 'fermée par le fond, la feuille ne rend pas le focus à la porte';
+        } finally {
+          if (!await window.__catsFin()) verdict = 'la chaîne brute n’est pas revenue à l’identique';
+        }
+        return verdict;
+        """],
+    ),
+    (
         "Le relevé du mois reprend les montants actuels et s'enregistre",
         "#/history", "overview", 390,
         r"""
@@ -498,9 +610,12 @@ _chargements = 0
 def _touche(onglet, nom):
     """Une vraie touche, enfoncee puis relachee, dans l'element qui a le focus.
     Le caractere porte par l'enfoncement (`text`) est ce qui active un bouton :
-    sans lui, Chrome voit la touche mais ne la tape pas."""
+    sans lui, Chrome voit la touche mais ne la tape pas. Un nom d'un seul
+    caractere tape ce caractere : une saisie faite ainsi est une vraie frappe,
+    et le champ emettra `change` en perdant le focus, ce qu'une valeur posee
+    en JS ne fait pas."""
     codes = {"Enter": (13, "\r"), "Space": (32, " "), "Tab": (9, "")}
-    vk, texte = codes.get(nom, (0, ""))
+    vk, texte = codes.get(nom, (ord(nom.upper()), nom) if len(nom) == 1 else (0, ""))
     touche = " " if nom == "Space" else nom
     onglet.envoie("Input.dispatchKeyEvent", type="keyDown", key=touche, code=nom,
                   windowsVirtualKeyCode=vk, text=texte, unmodifiedText=texte)

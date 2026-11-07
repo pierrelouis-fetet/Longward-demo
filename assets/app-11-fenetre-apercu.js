@@ -183,6 +183,8 @@ function majApercu() {
 }
 
 function closeApercu() {
+  if (annulerFenetre) { const a = annulerFenetre; annulerFenetre = null; a(); apercuOuvert = null; return; }
+  if (feuilleCourante) { fermerFeuille(); apercuOuvert = null; return; }
   /* `masquerModal` degele le fond et remet le defilement ou il etait. Fermer en
      posant `hidden` a la main laisserait le corps fige, donc la page bloquee. */
   masquerModal($('#modal'));
@@ -1225,6 +1227,7 @@ function bindGlobal() {
     }
     Store.save(); render();
     toast(`${guill(ancien)} ${trad('renommée')} ${guill(nouveau)}`);
+    renommerDansFeuille(ancien, nouveau);
   });
 
   document.addEventListener('change', e => {
