@@ -625,6 +625,7 @@ function sheetHistory() {
 
 function sheetSales() {
   const ventes = (Store.state.sales || [])
+    .filter(v => !estReglementCreance(v))
     .slice()
     .sort((a, b) => String(a.date).localeCompare(String(b.date)));
   const st = salesStats('all');
@@ -664,6 +665,27 @@ function sheetSales() {
             st.fiables ? round2(st.invested) : null,
             st.fiables ? round2(st.realised) : null,
             st.pct == null ? null : round2(st.pct), '', ''],
+  };
+}
+
+function sheetCreances() {
+  const ops = (Store.state.sales || [])
+    .filter(estReglementCreance)
+    .slice()
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  return {
+    name: 'Opérations sur créances',
+    cols: [
+      { h: 'Date', t: 'date', w: 12 }, { h: 'Créance', t: 'text', w: 26 },
+      { h: 'Opération', t: 'text', w: 26 }, { h: 'Montant réglé', t: 'eur', w: 15 },
+      { h: 'Reçu', t: 'eur', w: 14 }, { h: 'Écart', t: 'eur', w: 14 },
+      { h: 'Crédité sur', t: 'text', w: 18 }, { h: 'Note', t: 'text', w: 40 },
+    ],
+    rows: ops.map(v => [
+      v.date, v.name, libelleReglement(v).operation,
+      round2(num(v.sortie)), round2(num(v.gross)), round2(libelleReglement(v).montant),
+      ACC[v.cashAccount]?.label || '', v.note || '',
+    ]),
   };
 }
 
@@ -814,6 +836,8 @@ const EXEMPLE_PLACEMENT = {
   crypto:      'ex. Bitcoin',
 };
 
+const AIDE_VL = 'La valeur liquidative (VL) est le prix d’une part que le fonds publie, à sa cadence : chaque mois, chaque trimestre ou chaque semestre. Ta valeur est ce prix multiplié par tes parts, à la date de cette VL. Tu la trouves sur ton relevé ou dans l’espace en ligne de ta plateforme, à côté du nombre de parts, et dans les documents que le fonds envoie.';
+
 const AIDE_VALEUR_PARTS = 'Tes parts au prix que publie la société de gestion : le prix de retrait pour une SCPI à capital variable, le dernier prix d’exécution pour une SCPI à capital fixe. Une valeur indicative : le prix et le délai d’une vraie sortie peuvent différer. À capital variable, le prix de retrait est plus bas que le prix de souscription, qui comprend les frais d’entrée : un achat récent affiche donc un écart négatif, sans que rien ne soit faux.';
 
 function champsPlacement(classe, l = null, prete = false, type = null) {
@@ -853,18 +877,22 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
      gestion ; leur date est celle d'une verification. */
   const retrait = valeurAuPrixDeRetrait(type);
   const datee = estime || publiee || releve || retrait;
+  const creance = !!(type && type.creance);
   return [
     { cle: 'libelle', label: 'Intitulé', type: 'texte', requis: true, max: NOM_LIGNE_MAX,
       valeur: l ? (l.libelle || '') : '',
-      exemple: EXEMPLE_PLACEMENT[classe] || 'ex. Projet Bordeaux' },
+      exemple: creance ? (echeancier ? 'ex. Prêt à un ami' : 'ex. Caution de l’appartement')
+        : EXEMPLE_PLACEMENT[classe] || 'ex. Projet Bordeaux' },
     ...(type && type.parts ? [{ cle: 'parts', label: trad('Nombre de parts'),
       type: 'nombre', valeur: l ? (num(l.parts) || '') : '', exemple: '0',
       aide: trad('il se déduit du montant investi, et commande la valeur du jour') }] : []),
     ...(type && type.parts ? [{ cle: 'section_valeur', label: estime ? 'Valeur estimée' : 'Valeur actuelle', type: 'section' }] : []),
     { cle: 'valeur',
-      label: `${estime ? 'Valeur estimée' : releve ? 'Dernière valeur connue' : retrait ? 'Valeur des parts' : 'Valeur aujourd’hui'} ({dev})`, type: 'nombre',
+      label: creance ? 'Montant dû ({dev})'
+        : `${estime ? 'Valeur estimée' : releve ? 'Dernière valeur connue' : retrait ? 'Valeur des parts' : 'Valeur aujourd’hui'} ({dev})`, type: 'nombre',
       valeur: l ? num(l.valeur) : '', exemple: '0',
-      aide: estime ? 'ton estimation du jour : ce n’est pas un prix de vente, le produit réel se saisit à la cession'
+      aide: creance ? 'ce qu’un tiers te doit : la somme versée ou prêtée. Ce qui revient vraiment se saisit le jour où il revient'
+          : estime ? 'ton estimation du jour : ce n’est pas un prix de vente, le produit réel se saisit à la cession'
           : publiee ? 'la dernière valeur liquidative publiée, pour les parts que tu détiens'
           : releve ? 'celle que donne ton dernier relevé de l’assureur ou du teneur de compte : elle date du jour de ce relevé'
           : retrait ? AIDE_VALEUR_PARTS
@@ -874,7 +902,7 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
       ...(type && type.parts
         ? { parPart: 'parts', parPartLabel: retrait ? 'Valeur retenue par part ({dev})' : 'Prix de la part aujourd’hui ({dev})' } : {}) },
     ...(type && type.parts ? [{ cle: 'section_invest', label: 'Coût d’achat', type: 'section' }] : []),
-    { cle: 'prixDeRevient', label: trad('Montant investi ({dev})'), type: 'nombre',
+    ...(creance ? [] : [{ cle: 'prixDeRevient', label: trad('Montant investi ({dev})'), type: 'nombre',
       /* Le COUT EFFECTIF, et non le seul champ legacy : une ligne creee avec
          prix, frais et travaux (un ancien bien de valeur) montrerait ici un
          champ vide, et ce qu'on y taperait ne changerait rien --
@@ -885,11 +913,11 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
       ...(type && type.parts
         ? { parPart: 'parts', parPartLabel: retrait ? 'Coût moyen payé par part ({dev})' : 'Prix d’achat de la part ({dev})',
             parPartSous: 'il donne le nombre de parts',
-            parPartDeduitParts: true } : {}) },
-    { cle: 'dateAcquisition', label: trad('Date d’entrée'), type: 'date',
+            parPartDeduitParts: true } : {}) }]),
+    { cle: 'dateAcquisition', label: trad(creance ? 'Date du versement' : 'Date d’entrée'), type: 'date',
       valeur: l ? (l.dateAcquisition || '') : todayISO() },
     ...(datee ? [{ cle: 'estimeLe',
-      label: trad(publiee ? 'VL du' : releve || retrait ? 'Valeur au' : 'Estimée le'), type: 'date',
+      label: trad(publiee ? 'Date de la valeur (VL)' : releve || retrait ? 'Valeur au' : 'Estimée le'), type: 'date',
       valeur: l ? (l.estimeLe || '') : todayISO(),
       /* ELLE NE PROMET PAS LA CLOCHE. Une valeur perimee (`valeurPerimee()`)
          se rappelle dans la carte "A mettre a jour" d'Actifs et avant un
@@ -897,7 +925,7 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
          mentirait, et le mensonge se propagerait a chaque type qu'on ajoute.
          Elle dit donc ce que la date EST : le jour ou ce chiffre a ete etabli,
          ou celui du document qui le donne. */
-      aide: trad(publiee ? 'la date de la dernière valeur liquidative publiée'
+      aide: trad(publiee ? AIDE_VL
                  : releve ? 'la date de ce relevé : corrige-la s’il est plus ancien qu’aujourd’hui'
                  : retrait ? 'le jour où tu as lu ce prix'
                  : 'le jour où tu as établi ce chiffre') }] : []),
@@ -916,12 +944,13 @@ function champsPlacement(classe, l = null, prete = false, type = null) {
         valeur: l ? statutLigne(l) : 'encours',
         aide: trad('à déclarer : une échéance dépassée ne veut pas dire en retard') },
     ] : []),
+    ...(creance ? [] : [
     { cle: 'projet', label: trad('Réservé à un projet'), type: 'case',
       valeur: l ? !!l.projet : false,
       aide: trad('cet argent est déjà promis : la projection le porte à plat au lieu de le faire travailler') },
     { cle: 'projetLe', label: trad('Pour quand ?'), type: 'date',
       valeur: l ? (l.projetLe || '') : '',
-      aide: trad('facultatif, sans effet sur les calculs') },
+      aide: trad('facultatif, sans effet sur les calculs') }]),
   ];
 }
 

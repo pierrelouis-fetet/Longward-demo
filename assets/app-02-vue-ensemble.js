@@ -1310,8 +1310,10 @@ function viewObjective() {
                : trad('Ton immobilier net'),
         value: biensNets, couleur: couleurClasse('immobilier'), apercu: 'immobilierNet', arg: 'biens',
         aide: trad('Aucun rendement ne lui est appliqué : la projection le porte tel quel') }] : []),
+      { label: trad('Tes créances'), value: num(p.poches && p.poches.creances), couleur: couleurClasse('creance'),
+        aide: trad('Ce qu’un tiers te doit : la projection le porte à son montant d’aujourd’hui, sans rendement.') },
       { label: aDesBiens ? trad('Tes autres crédits') : trad('Tes crédits'),
-        value: plat - (aDesBiens ? biensNets : 0), couleur: 'var(--muted)',
+        value: plat - (aDesBiens ? biensNets : 0) - num(p.poches && p.poches.creances), couleur: 'var(--muted)',
         apercu: 'immobilierNet', arg: 'autres',
         aide: trad('Ces crédits ne financent aucun bien détenu en direct : un prêt pour des parts de société, un prêt personnel, une dette sans destination connue. La projection les porte à leur montant, sans rendement.') },
       { label: trad('Ce que tu verses'), value: verses, couleur: S1(), apercu: 'horizon' },
@@ -1591,7 +1593,10 @@ function viewObjective() {
         const phraseAutres = autres <= 0.005 ? ''
           : `${aDesBiens ? trad('Tes autres crédits sont portés à leur montant d’aujourd’hui,')
                          : trad('Tes crédits sont portés à leur montant d’aujourd’hui,')} ${fmtEUR0(autres)}.`;
-        const tete = [phraseBiens, phraseAutres].filter(Boolean).join(' ');
+        const creances = num(p.poches && p.poches.creances);
+        const phraseCreances = creances <= 0.005 ? ''
+          : `${trad('Tes créances sont portées à leur montant d’aujourd’hui,')} ${fmtEUR0(creances)}.`;
+        const tete = [phraseBiens, phraseAutres, phraseCreances].filter(Boolean).join(' ');
         return note(tete ? `${tete}${dette}` : (dette || ' ').slice(1));
       })()}
     </div>

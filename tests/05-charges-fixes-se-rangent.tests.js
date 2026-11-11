@@ -241,7 +241,7 @@ suite('Fonds non coté : une valeur publiée, pas estimée', () => {
 
   test('le champ de date porte le nom de ce qu’il date', () => {
     const app = lireSource('assets/app.js');
-    vrai(/label: trad\(publiee \? 'VL du' : releve \|\| retrait \? 'Valeur au' : 'Estimée le'\)/.test(app),
+    vrai(/label: trad\(publiee \? 'Date de la valeur \(VL\)' : releve \|\| retrait \? 'Valeur au' : 'Estimée le'\)/.test(app),
       'le champ porte le nom de ce qu’il date');
     /* Il ne parait que sur ce qui porte une valeur datee : un pret n'en a pas,
        son nominal ne bouge pas. */
@@ -1408,8 +1408,9 @@ suite('Pièges de source', () => {
        plein de titres se lit vert, un livret bleu, et jamais l'inverse. */
     vrai(/teinteDominante\(/.test(source),
       'chaque groupe reçoit la couleur de ce qu’il contient');
-    /* Les trois groupes de la page Actifs -- un etablissement, le hors-contenant,
-       une enveloppe -- plus les deux en-tetes de fiche. Le compte est fait sur les
+    /* Les quatre groupes de la page Actifs -- un etablissement, le
+       hors-contenant, les creances, une enveloppe -- plus les deux en-tetes de
+       fiche. Le compte est fait sur les
        appels reels et non sur les mentions : deux commentaires la nomment. */
     const appels = source.slice(source.indexOf('function viewAccounts'),
                                 source.indexOf('function mountAccounts'));
@@ -1419,8 +1420,8 @@ suite('Pièges de source', () => {
        autrement, et c'est ca qu'on verifie. */
     const parClasse = (appels.match(/teinteDominante\(/g) || []).length;
     const parFamille = (appels.match(/teinteEtab\(/g) || []).length;
-    eq(parClasse + parFamille, 3,
-      'les trois groupes de la page passent par l’une des deux : aucun ne se '
+    eq(parClasse + parFamille, 4,
+      'les quatre groupes de la page passent par l’une des deux : aucun ne se '
       + 'peint autrement');
     eq(parFamille, 1, 'un seul groupe est un établissement');
   });

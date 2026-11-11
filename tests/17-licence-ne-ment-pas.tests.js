@@ -371,7 +371,7 @@ suite('La page Allocation dit la base qu’elle emploie', () => {
     const mappees = Object.keys(Object.fromEntries(
       [...bloc.slice(0, bloc.indexOf('SERIES_PATRIMOINE'))
         .matchAll(/(\w+):\s*'(\w+)'/g)].map(m => [m[1], m[2]])));
-    eq(cles.length, 7, `sept poches attendues, trouvées : ${cles.join(', ')}`);
+    eq(cles.length, 8, `huit poches attendues, trouvées : ${cles.join(', ')}`);
     for (const k of cles)
       vrai(mappees.includes(k), `la poche « ${k} » doit avoir sa classe dans POCHE_CLASSE`);
   });

@@ -241,8 +241,11 @@ async function demanderTypePerso() {
   return id;
 }
 
+/* `focus` : la clef du champ ou poser le curseur, quand on arrive par un geste
+   qui vise ce champ-la (le bouton "Dater la valeur" d'une fiche). Sans elle,
+   le premier champ, comme toujours. */
 function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore = '',
-                   valide = null }) {
+                   valide = null, focus = null }) {
   return new Promise(resolve => {
     const m = $('#modal');
     apercuOuvert = null;
@@ -538,8 +541,12 @@ function askForm({ titre, sous = '', champs, ok = 'Ajouter', lie = null, encore 
       versUnite();
     }
 
-    const premier = $('#modalBody').querySelector('input, select');
+    const vise = focus ? $(`#f_${focus}`) : null;
+    const premier = vise || $('#modalBody').querySelector('input, select');
     focusChamp(premier);
+    /* Au doigt, `focusChamp` ne pose pas le curseur (il ouvrirait le clavier) :
+       le champ vise vient donc au moins sous les yeux. */
+    if (vise) vise.scrollIntoView({ block: 'center' });
 
     const fermer = v => {
       masquerModal(m);      $('#modalClose').onclick = null;
@@ -968,16 +975,20 @@ function askCession(compteId, index) {
 
     const aParts = !!t.parts && num(l.parts) > 0;
     const prete = !!t.prete;
+    const creance = !!t.creance;
+    const restitution = creance && !prete;
     const valeur = num(l.valeur) * (partDetention(l) || 1);
     const pierre = !!t.bienImmo;
     const fluxLies = pierre ? fluxDuBien(c.id) : [];
     const aCredit = pierre && creditsDuBien(c).some(d => num(d.montant) > 0);
     const videraLeCompte = (c.lignes || []).length === 1 && !(c.cash || []).some(e => num(e.montant));
 
-    $('#modalTitle').textContent = trad(prete ? 'Remboursement ou défaut'
+    $('#modalTitle').textContent = trad(restitution ? 'Restitution du dépôt de garantie'
+      : prete ? 'Remboursement ou défaut'
       : aParts ? 'Céder des parts' : 'Vendre ce placement');
-    $('#modalSub').textContent = trad(prete
-      ? 'Le résultat est calculé sur ce que tu avais prêté'
+    $('#modalSub').textContent = trad(restitution ? 'Ce qui n’est pas rendu est une retenue'
+      : creance ? 'L’écart se lit sur ce qui t’est dû'
+      : prete ? 'Le résultat est calculé sur ce que tu avais prêté'
       : 'Le résultat est calculé sur ton prix de revient');
 
     $('#modalBody').innerHTML = `
@@ -999,9 +1010,10 @@ function askCession(compteId, index) {
         <div class="field" data-cession="remboursement"><label>${trad('Capital remboursé ({dev})')}</label>
           <input type="number" step="any" id="ceCapital" value="${round2(valeur)}" autocomplete="off">
           <span class="hint">${trad('le nominal qui revient, hors intérêts : laisse le total pour un remboursement final')}</span></div>`}
-        <div class="field"><label>${trad('Montant reçu ({dev})')}</label>
+        <div class="field"><label>${trad(restitution ? 'Montant rendu ({dev})' : 'Montant reçu ({dev})')}</label>
           <input type="number" step="any" id="ceProduit" value="${round2(valeur)}" autocomplete="off">
-          <span class="hint">${trad(prete
+          <span class="hint">${trad(restitution ? 'tel qu’il est arrivé sur ton compte, retenue déduite'
+            : prete
             ? 'capital et intérêts compris, tel qu’il est arrivé sur ton compte'
             : 'net de frais, tel qu’il est arrivé sur ton compte')}</span></div>
         <div class="field"><label>${trad('Date')}</label>
@@ -1016,7 +1028,7 @@ function askCession(compteId, index) {
           <p class="hint">${trad('les lignes du budget qui visent ce placement : décochée, elles restent au budget, détachées de lui')}</p>
         </div>`}
         <div class="field"><label>${trad('Note')}</label>
-          <input id="ceNote" placeholder="${trad('Pourquoi cette cession ?')}" autocomplete="off"></div>
+          <input id="ceNote" placeholder="${trad(creance ? 'Une précision ?' : 'Pourquoi cette cession ?')}" autocomplete="off"></div>
       </div>
       <div id="ceApercu" style="margin-top:4px"></div>`;
     $('#modalFoot').innerHTML =
@@ -1024,7 +1036,7 @@ function askCession(compteId, index) {
        <button class="btn" id="ceOk" type="button">${trad('Enregistrer')}</button>`;
     montrerModal(m);
 
-    const nature = () => (prete ? $('#ceNature').value : 'vente');
+    const nature = () => (prete ? $('#ceNature').value : restitution ? 'restitution' : 'vente');
     const saisie = () => ({
       parts: aParts ? num($('#ceParts').value) : undefined,
       produit: num($('#ceProduit').value),
@@ -1056,11 +1068,25 @@ function askCession(compteId, index) {
         return;
       }
       const gain = a.realised;
+      if ($('#ceFluxChamp')) $('#ceFluxChamp').hidden = !(a.totale && videraLeCompte);
+      if (creance) {
+        const m = libelleReglement({ cession: nature(), realised: gain, soldee: a.totale });
+        const nul = m.absolu < 0.005;
+        const resteC = a.totale ? trad('La créance est soldée.')
+          : trad('Il reste {r} à récupérer.').replace('{r}', fmtEUR(round2(valeur - a.sortie)));
+        $('#ceApercu').innerHTML = `<div class="note" style="${nul ? '' : m.montant > 0
+          ? 'background:color-mix(in oklab, var(--good) 12%, var(--surface-1)); border-color:color-mix(in oklab, var(--good) 38%, transparent)'
+          : 'background:color-mix(in oklab, var(--critical) 10%, var(--surface-1)); border-color:color-mix(in oklab, var(--critical) 34%, transparent)'}">
+            <span><b>${nul ? trad(m.ecart) : `${trad(m.ecart)} ${trad('de')} ${fmtEUR(m.absolu)}`}</b><br>
+            ${trad('Sur {m} dus.').replace('{m}', fmtEUR(a.investi))} ${esc(resteC)}<br>
+            ${esc(phraseEffetCession({ credite: !!lireDestination('ce'), produit: a.produit, sortie: a.sortie }))}</span>
+          </div>`;
+        return;
+      }
       const inconnu = gain === null;
       const bon = inconnu || gain >= 0;
       const mot = trad(inconnu ? 'Produit encaissé' : prete && nature() === 'defaut' ? 'Perte'
         : bon ? 'Plus-value réalisée' : 'Moins-value réalisée');
-      if ($('#ceFluxChamp')) $('#ceFluxChamp').hidden = !(a.totale && videraLeCompte);
       const reste = a.totale ? trad('Le placement sort du patrimoine.')
         : trad('Il reste {r}.').replace('{r}',
             (aParts ? `${fmtNombre(a.partsRestantes)} ${trad('parts')}, ` : '')

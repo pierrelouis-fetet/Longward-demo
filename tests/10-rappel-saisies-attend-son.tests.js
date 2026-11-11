@@ -937,7 +937,7 @@ suite('Une fiche se valide ou s’annule, et rien ne se saisit sans borne', () =
     vrai(!/data-action="go-performance"/.test(vue),
       'et son bouton avec lui');
     /* Le journal lui-meme n'a pas bouge : c'est le renvoi qui partait. */
-    vrai(/Journal des ventes/.test(src), 'le journal existe toujours, dans Performance');
+    vrai(/trad\('Journal des opérations'\)/.test(src), 'le journal existe toujours, dans Performance');
   });
 });
 
@@ -1096,11 +1096,18 @@ suite('La page Actifs range ce qu’on tient chez un tiers et ce qu’on tient s
     vrai(src, 'assets/app.js doit être lisible pour ce contrôle');
 
     /* Un seul titre ne range rien, il ajoute une ligne : les intertitres ne
-       paraissent que si les deux sections existent vraiment. */
-    vrai(/sectionsAffichees = !!chezUnTiers\.trim\(\) && !!enDirect\.trim\(\)/.test(src),
-      'les titres se décident sur le contenu réel des deux sections');
-    eq((src.match(/sectionsAffichees \? titreSection\(/g) || []).length, 3,
-      'et les trois disparaissent ensemble, sous le même drapeau');
+       paraissent que si deux sections au moins existent vraiment, et une
+       section vide ne pose pas le sien. */
+    vrai(/sectionsAffichees = \[chezUnTiers, enDirect, dues\]\.filter\(x => x\.trim\(\)\)\.length > 1/.test(src),
+      'les titres se décident sur le contenu réel des sections');
+    eq((src.match(/sectionsAffichees(?: && [^?]+)? \? titreSection\(/g) || []).length, 4,
+      'et les quatre disparaissent ensemble, sous le même drapeau');
+    /* Sans etablissement, un bien et une creance font deux sections : la
+       premiere, vide, ne pose pas de titre au-dessus de rien. */
+    for (const [mot, section] of [['Comptes', 'chezUnTiers'], ['Biens et espèces', 'enDirect']])
+      vrai(new RegExp(`sectionsAffichees && ${section}\\.trim\\(\\) \\? titreSection\\('${mot}'`).test(src),
+        `l’intertitre « ${mot} » ne se pose que sur une section qui a du contenu`);
+    vrai(/sectionsAffichees && dues \? titreSection\('Créances'/.test(src), 'celui des créances non plus');
 
     /* Le groupe des comptes archives se rend hors du if/else, tout en bas :
        sans son propre titre il tombait sous "Biens et especes", qui ne le
@@ -1108,7 +1115,7 @@ suite('La page Actifs range ce qu’on tient chez un tiers et ce qu’on tient s
     vrai(/sectionsAffichees \? titreSection\('Archivés'/.test(src),
       'les archivés portent leur propre étiquette, sous le même drapeau');
 
-    for (const mot of ['Comptes', 'Biens et espèces', 'Archivés']) {
+    for (const mot of ['Comptes', 'Biens et espèces', 'Créances', 'Archivés']) {
       vrai(new RegExp(`titreSection\\('${mot}'`).test(src), `l’intertitre « ${mot} »`);
     }
     /* Le groupe sans contenant a change de nom en meme temps : "Hors

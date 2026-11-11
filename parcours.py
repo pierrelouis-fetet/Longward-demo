@@ -541,6 +541,87 @@ PARCOURS = [
         """],
     ),
     (
+        "Une VL sans date se pose depuis la fiche, curseur sur la date",
+        "#/accounts", "accounts", 375,
+        r"""
+        /* Un fonds a une ligne, sans date de VL, pose le temps du geste : l'etat
+           revient tel quel a la fin, stockage compris. */
+        const avant = JSON.stringify(Store.state.comptes);
+        const id = 'c_parcours_fonds';
+        try {
+          Store.state.comptes.push({ id, etabId: (ETABS()[0] || {}).id || null, type: 'fondsNonCote', statut: 'ouvert',
+            ouvertLe: '2024-01-01', numero: '', notes: '', libelle: 'Fonds parcours', court: 'Fonds parcours', alloc: '',
+            cash: [], lignes: [{ id: 'l_parcours', classe: 'nonCote', libelle: 'Fonds parcours', valeur: 1000, parts: 10,
+                                quantite: 1, dateAcquisition: '2024-01-01', estimeLe: '' }] });
+          refreshAccounts();
+          location.hash = '#/compte/' + id;
+          if (!await attendre(() => document.querySelector('#view .maj-valeur'))) return 'la fiche ne propose pas de dater la valeur';
+          const b = document.querySelector('#view .maj-valeur');
+          if (b.textContent.trim() !== trad('Dater la valeur')) return `le bouton dit « ${b.textContent.trim()} »`;
+          if (!document.querySelector('#view .date-valeur')?.textContent.includes(trad('valeur non datée')))
+            return 'la date manquante ne se dit pas « valeur non datée »';
+          const r = b.getBoundingClientRect();
+          if (r.right > innerWidth + 0.5) return 'le bouton déborde à 375 px';
+          if (document.documentElement.scrollWidth > innerWidth + 0.5) return 'la fiche déborde à 375 px';
+          const halo = parseFloat(getComputedStyle(b, '::after').height);
+          if (!(halo >= 44)) return `la zone tactile fait ${halo} px, pas 44`;
+          b.click();
+          if (!await attendre(() => document.querySelector('#modalBody #f_estimeLe'))) return 'la fenêtre du placement ne s’ouvre pas sur sa date';
+          const champ = document.querySelector('#modalBody #f_estimeLe');
+          if (!POINTEUR_TACTILE && document.activeElement !== champ) return 'le curseur n’est pas sur la date';
+          /* La fenetre s'ouvre par une transition : la mesure attend qu'elle
+             soit posee. */
+          const sousLesYeux = () => { const x = champ.getBoundingClientRect(); return x.top >= 0 && x.bottom <= innerHeight; };
+          if (!await attendre(sousLesYeux, 2000)) {
+            const x = champ.getBoundingClientRect();
+            return `la date n’est pas sous les yeux (${Math.round(x.top)} à ${Math.round(x.bottom)}, fenêtre de ${innerHeight})`;
+          }
+          document.querySelector('#frmCancel').click();
+          /* La fenetre se cache, son contenu reste jusqu'a la suivante. */
+          if (!await attendre(() => document.querySelector('#modal').hidden)) return 'la fenêtre ne se referme pas';
+          return true;
+        } finally {
+          Store.state.comptes = JSON.parse(avant); refreshAccounts(); Store.save();
+          location.hash = '#/accounts';
+        }
+        """,
+    ),
+    (
+        "Une caution se crée sans prix d'achat ni date de valeur",
+        "#/accounts", "accounts", 390,
+        r"""
+        const avant = JSON.stringify(Store.state.comptes);
+        const brut = nowByGroup().creances || 0;
+        try {
+          if (!cliquerVisible('[data-action="ajouter-compte"]:not([data-type])')) return 'aucun bouton visible n’ajoute un actif';
+          if (!await attendre(() => document.querySelector('#modalBody #f_type'))) return 'le choix du type ne s’ouvre pas';
+          const type = document.querySelector('#modalBody #f_type');
+          if (![...type.options].some(o => o.value === 'depotGarantie')) return 'le dépôt de garantie manque à la liste des types';
+          type.value = 'depotGarantie';
+          type.dispatchEvent(new Event('change', { bubbles: true }));
+          document.querySelector('#frmOk').click();
+          if (!await attendre(() => document.querySelector('#modalBody #f_valeur'))) return 'la fenêtre de la créance ne s’ouvre pas';
+          if (document.querySelector('#modalBody #f_prixDeRevient')) return 'une créance demande un prix d’achat';
+          if (document.querySelector('#modalBody #f_estimeLe')) return 'une créance demande une date de valeur';
+          const poser = (cle, v) => { const e = document.querySelector('#modalBody #f_' + cle); e.value = v;
+            e.dispatchEvent(new Event('input', { bubbles: true })); e.dispatchEvent(new Event('change', { bubbles: true })); };
+          poser('libelle', 'Caution parcours');
+          poser('valeur', '900');
+          document.querySelector('#frmOk').click();
+          const cree = () => Store.state.comptes.find(c => c.type === 'depotGarantie' && c.libelle === 'Caution parcours');
+          if (!await attendre(cree)) return 'la caution n’est pas créée';
+          const l = cree().lignes[0];
+          if (l.classe !== 'creance' || num(l.valeur) !== 900) return 'la ligne ne porte pas la créance de 900';
+          if (l.prixDeRevient != null) return 'un prix de revient s’est glissé dans la créance';
+          if (Math.abs((nowByGroup().creances || 0) - brut - 900) > 0.005) return 'la poche des créances ne la compte pas';
+          return true;
+        } finally {
+          Store.state.comptes = JSON.parse(avant); refreshAccounts(); Store.save();
+          location.hash = '#/accounts';
+        }
+        """,
+    ),
+    (
         "Sans graine fictive, la démonstration ne s'ouvre pas et ne touche à rien",
         "#/data", "data", 1280,
         r"""

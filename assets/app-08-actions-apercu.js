@@ -33,6 +33,10 @@ function litPlacement(v, base, t) {
   if (DETAIL.some(k => estDeclare(base[k])) && tape !== coutAcquisition(base)) {
     for (const k of DETAIL) delete ligne[k];
   }
+  if (t && t.creance) {
+    ligne.prixDeRevient = null;
+    for (const k of DETAIL) delete ligne[k];
+  }
   return ligne;
 }
 

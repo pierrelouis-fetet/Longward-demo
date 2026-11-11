@@ -43,7 +43,7 @@ nothing is lost, and the guide picks up exactly where you left it.
 
 | | |
 |---|---|
-| **Net worth** | Gross and net, every account and loan, sorted into five liquidity tiers, from cash in hand to a property that takes months to sell |
+| **Net worth** | Gross and net, every account and loan, sorted into six liquidity tiers, from cash in hand to a property that takes months to sell |
 | **Allocation** | By asset class, by account type, by availability. Targets per class and a rebalancing plan that says exactly what to sell and what to buy |
 | **Markets** | Live quotes for listed positions, day moves, unrealized gains, and a journal of realized sales |
 | **Budget** | Income, fixed costs with their billing cycle, spending by category and month, and what is left to live on |

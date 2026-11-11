@@ -275,10 +275,12 @@ suite('Mettre à jour sans hésiter : le geste et sa validation, ensemble', () =
     vrai(/function ligneCompte\(c, avecEtab = true, nomRepete = false\)/.test(s)
       && /nomRepete \? trad\(typeCompte\(c\.type\)\.label\) : nomCompteV2\(c\)/.test(s), 'la ligne sait le faire');
     const branche = s.slice(s.indexOf("compteVue === 'banque'"), s.indexOf("compteVue === 'type'"));
-    vrai(/sansContenant\.every\(c => typeCompte\(c\.type\)\.interne && !valeurCompte\(c\)\)/.test(branche),
+    vrai(/sansIntermediaire\.every\(c => typeCompte\(c\.type\)\.interne && !valeurCompte\(c\)\)/.test(branche),
       'des espèces internes à zéro, seules, sont reconnues');
-    vrai(/sansContenant\.length && !especesSeules/.test(branche), 'et ne font pas le groupe « Sans intermédiaire »');
-    vrai(/data-action="fiche-compte"\s*data-id="\$\{esc\(sansContenant\[0\]\.id\)\}"/.test(branche), 'mais gardent leur porte');
+    vrai(/sansIntermediaire\.length && !especesSeules/.test(branche), 'et ne font pas le groupe « Sans intermédiaire »');
+    vrai(/data-action="fiche-compte"\s*data-id="\$\{esc\(sansIntermediaire\[0\]\.id\)\}"/.test(branche), 'mais gardent leur porte');
+    vrai(/const creances = sansContenant\.filter\(c => typeCompte\(c\.type\)\.creance\)/.test(branche),
+      'les créances quittent le groupe des espèces et des objets pour leur propre section');
     vrai(/enveloppeGroupes\(enDirect\) \+ especesVides/.test(branche), 'en fin de liste');
     for (const k of ['rien de déclaré', 'Déclarer des espèces']) vrai(!!I18N.en[k], k + ' se traduit');
   });

@@ -650,7 +650,13 @@ function viewFicheCompte(id) {
         .filter(Boolean).join(' · '))}</span>
       ${c.statut === 'archive' ? '' : (() => {
         const dates = datesDuCompte(c).map(phraseDateValeur).filter(Boolean);
-        return dates.length ? `<p class="hint date-valeur">${dates.join(' · ')}</p>` : '';
+        const bulle = datesDuCompte(c).some(x => x.genre === 'vl') ? aide(trad(AIDE_VL)) : '';
+        return dates.length ? `<p class="hint date-valeur">${dates.join(' · ')}${bulle}</p>` : '';
+      })()}
+      ${c.statut === 'archive' ? '' : (() => {
+        const g = gesteDateValeur(c);
+        return !g ? '' : `<button type="button" class="btn sm ghost maj-valeur" data-action="editer-placement"
+          data-id="${esc(c.id)}" data-i="0" data-focus="estimeLe">${trad(g)}</button>`;
       })()}
       ${c.statut === 'archive' || !carteSolde || !(c.cash || []).length ? ''
         : `<button type="button" class="btn sm maj-solde" data-action="maj-solde">${trad('Mettre à jour le solde')}</button>`}

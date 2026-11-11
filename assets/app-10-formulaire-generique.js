@@ -364,7 +364,7 @@ function blocFraicheur() {
       : x.genre === 'credit' ? (d ? trad('capital restant dû vérifié le {d}').replace('{d}', d)
                                   : trad('capital restant dû jamais vérifié'))
       : x.releve ? (d ? trad('valeur au {d}').replace('{d}', d) : trad('valeur sans date'))
-      : x.publiee ? (d ? trad('VL du {d}').replace('{d}', d) : trad('sans date de VL'))
+      : x.publiee ? (d ? trad('VL du {d}').replace('{d}', d) : trad('valeur non datée'))
       : (d ? trad('estimée le {d}').replace('{d}', d) : trad('sans date d’estimation'));
     return `${esc(guill(x.nom))}${deuxPoints()} ${quoi}`;
   };
@@ -1117,10 +1117,12 @@ const APERCUS = {
           const dp = partPlateDetail();
           const aDesBiens = num(dp.biens) > 0.005 || num(dp.dettesBiens) > 0.005;
           const biensNets = aDesBiens ? num(dp.biensNets) : 0;
+          const creances = num(p.poches && p.poches.creances);
           return [
             ...(Math.abs(biensNets) > 0.005 ? [{ label: trad('Ton immobilier net'), meta: A_PLAT, valeur: biensNets }] : []),
-            ...(Math.abs(plat - biensNets) > 0.005 ? [{ label: aDesBiens ? trad('Tes autres crédits') : trad('Tes crédits'),
-                                                        meta: A_PLAT, valeur: plat - biensNets }] : []),
+            ...(creances > 0.005 ? [{ label: trad('Tes créances'), meta: A_PLAT, valeur: creances }] : []),
+            ...(Math.abs(plat - biensNets - creances) > 0.005 ? [{ label: aDesBiens ? trad('Tes autres crédits') : trad('Tes crédits'),
+                                                        meta: A_PLAT, valeur: plat - biensNets - creances }] : []),
           ];
         })(),
         { label: trad('Ce que tu verses'),
@@ -1405,6 +1407,30 @@ const APERCUS = {
     const coutConnu = v.invested != null && (r.fiable || v.declaree || (v.cession && r.raison !== 'prixDeRevient'));
     const depuis = v.account ? (ACC[v.account]?.label || '') : '';
     const vers = v.cashAccount ? (ACC[v.cashAccount]?.label || '') : '';
+    if (estReglementCreance(v)) {
+      const m = libelleReglement(v);
+      const nul = m.absolu < 0.005;
+      return {
+        titre: v.name || trad(m.operation),
+        sous: [fmtDate(v.date), trad(m.operation)].join(' · '),
+        total: num(v.gross),
+        totalNote: nul ? trad(m.ecart) : `${trad(m.ecart)} ${trad('de')} ${fmtEUR(m.absolu)}`,
+        html: `
+        <dl class="kv">
+          <dt>${trad('Montant réglé')}</dt><dd>${fmtEUR(num(v.sortie))}</dd>
+          <dt>${trad('Reçu')}</dt><dd>${fmtEUR(num(v.gross))}</dd>
+          <dt>${trad('Écart')}</dt><dd class="${nul ? 'muted' : cls(m.montant)}">${nul
+            ? trad(m.ecart) : `${trad(m.ecart)} ${trad('de')} ${fmtEUR(m.absolu)}`}</dd>
+          ${vers ? `<dt>${trad('Encaissé sur')}</dt><dd>${esc(vers)}</dd>` : ''}
+          ${v.note ? `<dt>${trad('Note')}</dt><dd>${esc(v.note)}</dd>` : ''}
+        </dl>
+        <div class="row" style="margin-top:12px">
+          <button class="btn sm" data-action="edit-sale" data-i="${idx}">${trad('Modifier')}</button>
+          <button class="btn ghost sm" data-action="del-sale" data-i="${idx}">${trad('Annuler l’opération')}</button>
+        </div>`,
+        vue: 'positions', ancre: 'ventes', cta: trad('Rester ici'),
+      };
+    }
     return {
       titre: v.name || trad('Vente'),
       sous: [fmtDate(v.date), v.declaree ? trad('déclarée, pour mémoire') : '']

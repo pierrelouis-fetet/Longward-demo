@@ -275,6 +275,7 @@ function nowByGroup() {
     immo: p.classes.immobilier,
     biens: p.classes.bienValeur,
     garanti: p.classes.garanti,
+    creances: p.classes.creance,
   };
 }
 
@@ -385,6 +386,7 @@ const POCHE_EVOLUTION_DE_CLASSE = {
   nonCote: 'pe',
   immobilier: 'immo',
   bienValeur: 'biens',
+  creance: 'creances',
 };
 
 function partsDuReleve(v) {

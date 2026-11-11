@@ -503,9 +503,9 @@ const serieHorsFinancier = cle => SERIES_HORS_FINANCIER.includes(cle);
    dessin porteraient deux listes ecrites a la main, et deux listes finissent
    par diverger : la poche ajoutee d'un seul cote compte dans un total sans
    avoir de bande, ou l'inverse. */
-const POCHES_EVOLUTION = ['cash', 'bourse', 'crypto', 'pe', 'immo', 'biens', 'garanti'];
+const POCHES_EVOLUTION = ['cash', 'bourse', 'crypto', 'pe', 'immo', 'biens', 'garanti', 'creances'];
 
-const CASCADE_DETTES = ['immo', 'biens', 'pe', 'crypto', 'bourse', 'garanti', 'cash'];
+const CASCADE_DETTES = ['immo', 'biens', 'creances', 'pe', 'crypto', 'bourse', 'garanti', 'cash'];
 
 function pochesEvolution({ financier = false } = {}) {
   return POCHES_EVOLUTION.filter(cle => !financier || !serieHorsFinancier(cle));
@@ -925,6 +925,7 @@ function refreshAccounts() {
                     ni emetteur ni parts -- le mensonge que CLASSES_ACTIFS
                     refuse deja. Sa poche d'affichage lui appartient. */
                  : t.classes.includes('bienValeur') ? 'biens'
+                 : t.classes.includes('creance') ? 'creances'
                  : t.groupe;
       const nom = nomCompteV2(c), etab = nomEtabDe(c);
       /* UN SEUL NOM, ET C'EST CELUI QU'ON A TAPE.

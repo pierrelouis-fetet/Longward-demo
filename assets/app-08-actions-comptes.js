@@ -434,7 +434,7 @@ Object.assign(ACTIONS, {
         : ch.cle === 'valeur' ? { ...ch, requis: true } : ch);
 
     const e3 = await askForm({
-      titre: placementTiers ? trad(t.prete ? 'Le prêt' : 'Le placement')
+      titre: placementTiers ? trad(t.prete ? 'Le prêt' : titreActif(t))
            : bien ? (estDetenuEnDirect(t) ? 'Valeur estimée'
                   : trad(valeurAuPrixDeRetrait(t) ? 'Tes parts et leur valeur'
                          : t.classes.includes('nonCote') ? 'Valeur de la participation' : 'Valeur du bien'))
@@ -442,7 +442,8 @@ Object.assign(ACTIONS, {
                   : `${BASES.liquidites.nom} ${trad('sur ce compte')}`,
       sous: (suite => etapes > 1
         ? `${trad('Étape')} ${etapes} ${trad('sur.etape', 'sur')} ${etapes}${suite ? `, ${suite}` : ''}`
-        : majuscule(suite))(placementTiers ? trad('ce que tu y as mis, et ce que cela vaut aujourd’hui')
+        : majuscule(suite))(placementTiers ? trad(t.creance ? 'ce qu’un tiers te doit, et depuis quand'
+                                                 : 'ce que tu y as mis, et ce que cela vaut aujourd’hui')
           : bien ? trad('la valeur actuelle se compare au coût d’acquisition')
           : t.sansCash ? trad('sa valeur viendra des supports que tu y ajouteras') : ''),
       ok: 'Créer',
@@ -1217,7 +1218,14 @@ Object.assign(ACTIONS, {
     else render();
     const mot = v.nature === 'defaut' ? trad('Défaut enregistré')
       : v.nature === 'remboursement' ? trad('Remboursement enregistré')
+      : v.nature === 'restitution' ? trad('Restitution enregistrée')
       : trad('Cession enregistrée');
+    if (typeCompte(c.type).creance) {
+      const m = libelleReglement({ cession: v.nature, realised: a.realised, soldee: a.totale });
+      toast(m.absolu < 0.005 ? mot
+        : `${mot}${deuxPoints()} ${trad(m.ecart).toLowerCase()} ${trad('de')} ${fmtEUR(m.absolu)}`);
+      return;
+    }
     toast(`${mot}${deuxPoints()} ${a.realised === null
       ? `${fmtEUR(a.produit)} ${trad('encaissés')}` : fmtSigned(a.realised)}`);
   },
@@ -1248,6 +1256,7 @@ Object.assign(ACTIONS, {
       titre: l.libelle || 'Placement',
       sous: `${CLASSES_ACTIFS[l.classe] || l.classe} · ${nomCompteV2(c)}`,
       ok: 'Enregistrer',
+      focus: btn.dataset.focus || null,
       champs: [...champsPlacement(l.classe, l, typeCompte(c.type).prete, typeCompte(c.type)),
         ...champsSociete(c, l),
         ...(typeCompte(c.type).bienImmo ? [] : [{ cle: 'supprimer', label: trad('Retirer ce placement'), type: 'case',

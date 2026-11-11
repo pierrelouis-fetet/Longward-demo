@@ -660,7 +660,7 @@ function viewAllocation() {
   <section class="alloc-angle${entreeAngle}" data-anchor="disponibilite">
     <p class="tete-legende">${mentionBase(baseAvoirsAlloc(), valeurAvoirsAlloc())}${aide(allocFinancier
       ? trad("Le délai vient de la classe de la ligne et du type de compte qui la porte, jamais d’une supposition sur ton projet. Tes murs et tes objets de valeur sont écartés de cette vue, et c’est ce qui fait disparaître le palier du logement que tu habites.")
-      : trad("Le délai vient de la classe de la ligne et du type de compte qui la porte, jamais d’une supposition sur ton projet. Le logement que tu habites et ce qui est bloqué jusqu’à une échéance figurent ici parce qu’ils font partie de tes avoirs, mais la réserve de sécurité de l’accueil les écarte de son cumul : elle compte ce sur quoi tu peux vivre, pas ce que tu possèdes."))}</p>
+      : trad("Le délai vient de la classe de la ligne et du type de compte qui la porte, jamais d’une supposition sur ton projet. Le logement que tu habites, ce qui est bloqué jusqu’à une échéance et ce qu’un tiers te doit figurent ici parce qu’ils font partie de tes avoirs, mais la réserve de sécurité de l’accueil les écarte de son cumul : elle compte ce sur quoi tu peux vivre, pas ce que tu possèdes."))}</p>
     <div class="anneau-tableau">
       <div class="anneau-col"><div class="chart" id="aDispo"></div></div>
       ${tbl(dispo, baseAvoirsAlloc().nom, dispo.reduce((s, i) => s + i.value, 0))}

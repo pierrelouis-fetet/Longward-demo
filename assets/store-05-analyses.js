@@ -16,6 +16,7 @@ function runway() {
   const lent       = p.mobilisable.lent;
   const habite     = p.mobilisable.habite;
   const bloque     = p.mobilisable.bloque;
+  const aRecuperer = p.mobilisable.aRecuperer;
 
   const contenants = trad('comptes courants, livrets, espèces');
   /* Les libelles viennent de `MOBILISABLE_LABEL`, ils ne se reecrivent pas ici.
@@ -36,6 +37,8 @@ function runway() {
     ...(habite > 0.005 ? [{ label: trad(MOBILISABLE_LABEL.habite), value: habite,
         note: trad('le vendre veut dire te reloger'), horsCumul: true }] : []),
     { label: trad(MOBILISABLE_LABEL.bloque), value: bloque, note: trad('bloqué jusqu’à son échéance'), horsCumul: true },
+    ...(aRecuperer > 0.005 ? [{ label: trad(MOBILISABLE_LABEL.aRecuperer), value: aRecuperer,
+        note: trad('montant et date non garantis : ni dans la réserve, ni dans le cumul'), horsCumul: true }] : []),
   ];
   let cum = 0;
   for (const t of tiers) {
@@ -629,7 +632,8 @@ function apercuCession(l, t, { parts, produit, capital } = {}) {
      `|| 0` en ferait un cout nul, et la cession de parts dont personne n'a
      jamais saisi le prix d'achat inscrirait tout le produit en plus-value. Un
      cout nul DECLARE (prix, frais et travaux a zero) vaut zero, lui. */
-  const coutEntier = coutAcquisition(l);
+  const creance = !!(t && t.creance);
+  const coutEntier = creance ? valeurEntiere : coutAcquisition(l);
   const partsTotal = num(l && l.parts);
   const aParts = !!(t && t.parts) && partsTotal > 0;
 
@@ -652,9 +656,35 @@ function apercuCession(l, t, { parts, produit, capital } = {}) {
     investi,
     sortie,
     realised: investi === null ? null : round2(g - investi),
-    pct: investi > 0 ? (g / investi - 1) * 100 : null,
+    pct: !creance && investi > 0 ? (g / investi - 1) * 100 : null,
     totale,
   };
+}
+
+const estReglementCreance = v => !!(v && v.creance);
+
+/* Les mots d'une operation de creance : ce qu'elle est, et ce que dit son
+   ecart (recu moins montant regle). Un ecart positif n'a de nature connue que
+   sur un pret, ou le formulaire separe le capital du recu : ailleurs, il se dit
+   tel quel. Rend des clefs de `trad()`.
+
+   SOLDEE OU PARTIELLE. Une operation enregistree porte la ligne entiere
+   (`v.ligne`) quand elle a solde la creance ; un apercu le dit par `soldee`.
+   Un remboursement partiel sans ecart n'est donc jamais dit "solde".
+
+   `montant` garde le signe, pour l'export ; `absolu` se lit apres le mot, qui
+   dit deja le sens : "Retenue de 200", jamais "Retenue de -200". */
+function libelleReglement(v) {
+  const pret = v.cession !== 'restitution';
+  const soldee = !!(v.ligne || v.soldee) || v.cession !== 'remboursement';
+  const operation = v.cession === 'restitution' ? 'Dépôt de garantie restitué'
+    : v.cession === 'defaut' ? 'Prêt soldé en défaut'
+    : soldee ? 'Prêt remboursé' : 'Remboursement partiel';
+  const e = estNombre(v.realised) ? round2(Number(v.realised)) : 0;
+  const ecart = Math.abs(e) < 0.005 ? (soldee ? 'Soldé sans écart' : 'Sans écart')
+    : e < 0 ? (pret ? 'Perte' : 'Retenue')
+    : (pret ? 'Intérêts reçus' : 'Reçu en plus');
+  return { operation, ecart, montant: e, absolu: Math.abs(e), soldee };
 }
 
 /* Applique la cession : journalise, credite le cash, reduit ou retire la ligne.
@@ -709,6 +739,7 @@ function cederPlacement({ compteId, index, nature = 'vente', parts, produit,
          la defaire. `sortie` n'est pas `gross` : c'est la valeur retiree du
          patrimoine, et l'annulation la rend telle quelle. */
       cession: nature, ligneIndex: index,
+      ...(t.creance ? { creance: true } : {}),
       ...champsCession({ actifId: l.id, typeActif: 'placement', source: c.id,
                          destination: cashAccount, credite, produit: a.produit, sortie: a.sortie }),
       ...(a.totale ? { ligne: structuredClone(l) } : {}),
@@ -1214,6 +1245,9 @@ const encaisseNetVente = v => (v && v.typeActif === 'bien' ? num(v.encaisse) : n
 function resultatVente(v) {
   const non = raison => ({ montant: null, fiable: false, raison });
   if (!v) return non('resultat');
+  /* Une restitution ou un remboursement de creance n'est pas un resultat de
+     vente : ses ecrans disent son ecart avec ses mots (`libelleReglement`). */
+  if (estReglementCreance(v)) return non('creance');
   const sansCout = !v.declaree && (v.cession ? v.invested == null : !(num(v.buyPrice) > 0));
   if (sansCout) return non('prixDeRevient');
   if (!estNombre(v.realised)) return non('resultat');
@@ -1227,6 +1261,12 @@ function resultatVente(v) {
 }
 
 function statsDesVentes(ventes) {
+  /* `sales` garde tout le journal, operations de creance comprises ; les
+     agregats, eux, ne portent que sur les ventes. Une caution restituee avec
+     une retenue n'est pas une moins-value de placement, et la courbe du
+     patrimoine porte deja ce qu'elle a fait sortir. */
+  const journal = ventes;
+  ventes = journal.filter(v => !estReglementCreance(v));
   /* Les sommes ne portent que sur les ventes fiables : une vente sans base ne
      compte ni pour zero ni pour son produit. `partiel` le dit. */
   const fiables = ventes.filter(v => resultatVente(v).fiable);
@@ -1235,7 +1275,7 @@ function statsDesVentes(ventes) {
   const grossFiables = fiables.reduce((s, v) => s + num(v.gross), 0);
   const encaisseFiables = fiables.reduce((s, v) => s + encaisseNetVente(v), 0);
   return {
-    sales: ventes, count: ventes.length,
+    sales: journal, count: ventes.length,
     realised, invested,
     fiables: fiables.length, nonFiables: ventes.length - fiables.length, grossFiables, encaisseFiables,
     partiel: fiables.length < ventes.length,
@@ -1284,14 +1324,20 @@ function journalVentes({ range, tri = 'date', requete = '' } = {}) {
   const rang = new Map(toutes.map((v, i) => [v, i]));
   const periode = salesStats(range).sales;
   const retenues = periode.filter(v => nomCorrespond(v.name, requete));
+  /* Par montant, les ventes sans resultat fiable vont en fin : elles n'ont pas
+     de rang dans un classement de resultats. Une operation de creance non plus :
+     `resultatVente()` ne lui en connait pas. */
   const cle = v => { const r = resultatVente(v); return r.fiable ? r.montant : -Infinity; };
   const lignes = tri === 'montant'
     ? retenues.slice().sort((a, b) => (cle(b) - cle(a)) || rang.get(a) - rang.get(b))
     : retenues.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))
                                       || rang.get(a) - rang.get(b));
   const groupes = tri === 'montant' ? null : grouperParMois(lignes, v => v.date).map(g => {
-    const fiables = g.lignes.filter(v => resultatVente(v).fiable);
-    return { ...g, partiel: fiables.length < g.lignes.length,
+    /* Le sous-total et `partiel` ne lisent que les ventes : une operation de
+       creance ne rend jamais un mois partiel. */
+    const ventes = g.lignes.filter(v => !estReglementCreance(v));
+    const fiables = ventes.filter(v => resultatVente(v).fiable);
+    return { ...g, partiel: fiables.length < ventes.length,
              sousTotal: fiables.length ? round2(fiables.reduce((s, v) => s + Number(v.realised), 0)) : null };
   });
   return { lignes, groupes, total: periode.length, rang };
@@ -1887,6 +1933,12 @@ function pochesProjection(t = nowTotals()) {
       return this.marche + this.autres + this.garanti + this.liquidites + this.projet;
     },
     plat: partPlate(t),
+    /* Ce qu'un tiers doit traverse la projection a plat, a cote de la part
+       plate et non dedans : `partPlate()` est exactement ce que le perimetre
+       financier ecarte, moins les dettes, et une creance reste dans ce
+       perimetre. Elle ne capitalise a aucun taux, `autres` compris : le
+       montant du est celui du bail ou du pret. */
+    creances: num(t.creances),
   };
 }
 
@@ -1910,7 +1962,7 @@ function configProjection(opts = {}) {
   const s = Object.assign(projectionSettings(), opts);
   const t = nowTotals();
   const poches = pochesProjection(t);
-  const plat = opts.plat != null ? num(opts.plat) : poches.plat;
+  const plat = opts.plat != null ? num(opts.plat) : poches.plat + poches.creances;
 
   /* `start` est la base qui capitalise, entiere. Imposee, tout va au marche :
      les appelants qui la forcent comptent sur ce comportement. Sinon chaque

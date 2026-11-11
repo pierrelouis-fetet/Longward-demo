@@ -1407,9 +1407,9 @@ suite('Les espèces sont toujours là', () => {
     const debut = src.indexOf("compteVue === 'banque'");
     const branche = src.slice(debut, src.indexOf("compteVue === 'type'", debut));
     /* La borne haute suit la branche : la ligne des especes a zero, la garde
-       de la recherche et la phrase du credit orphelin la font passer 7 000
-       caracteres. */
-    vrai(debut > 0 && branche.length > 500 && branche.length < 9000,
+       de la recherche, la phrase du credit orphelin et la section des creances
+       la font passer 9 000 caracteres. */
+    vrai(debut > 0 && branche.length > 500 && branche.length < 10500,
       'la tranche lue doit être la branche « par établissement » seule');
     vrai(/!c\.etabId/.test(branche),
       'elle doit ramasser les comptes sans établissement');

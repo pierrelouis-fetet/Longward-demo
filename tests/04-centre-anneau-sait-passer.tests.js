@@ -1103,7 +1103,7 @@ suite('Fiche d’une participation : la valeur d’un côté, l’identité de l
       'et une seule porte de sortie, qui n’est pas la même chose');
     /* Un acte se nomme par son acte, et le mot suit la nature : un pret ne se
        vend pas, il se rembourse. */
-    vrai(/trad\(t\.prete \? 'Remboursement' : 'Céder'\)/.test(d),
+    vrai(/trad\(t\.prete \? 'Remboursement' : t\.creance \? 'Restitution' : 'Céder'\)/.test(d),
       'la sortie porte le nom de ce qu’elle fait, dans les mots du type');
     /* Et son nom suit le type : "Parts et valeur" n'aurait rien voulu dire
        sur un pret participatif, qui n'a pas de parts. */

@@ -55,6 +55,7 @@ function memoriserReplies() { Store.save(); }
 const MOBILISABLE_COURT = {
   immediat: 'Immédiat', differe: 'Quelques jours',
   lent: 'Quelques mois', bloque: 'Inaccessible',
+  aRecuperer: 'À récupérer',
 };
 
 function badgeMobilisable(niveau) {
@@ -117,7 +118,7 @@ function phraseDateValeur(x) {
   const d = x.date ? fmtDate(x.date) : '';
   if (x.genre === 'solde') return d ? trad('solde vérifié le {d}').replace('{d}', d) : trad('solde jamais vérifié');
   if (x.genre === 'estimation') return d ? trad('estimée le {d}').replace('{d}', d) : trad('estimation sans date');
-  if (x.genre === 'vl') return d ? trad('VL du {d}').replace('{d}', d) : trad('sans date de VL');
+  if (x.genre === 'vl') return d ? trad('VL du {d}').replace('{d}', d) : trad('valeur non datée');
   if (x.genre === 'cours') return d ? trad('cours du {d}').replace('{d}', d) : trad('cours jamais actualisés');
   if (x.genre === 'releve') return d ? trad('supports au {d}').replace('{d}', d) : trad('supports sans date');
   if (x.genre === 'retrait') return d ? trad('valeur au {d}').replace('{d}', d) : trad('valeur sans date');
@@ -194,10 +195,10 @@ function detailsPlacement(c, idx, t, l) {
       <div class="tete-actes">
         <button class="btn sm ghost" data-action="editer-placement"
                 data-id="${esc(c.id)}" data-i="${l.ref}"
-                >${trad(t.parts ? 'Parts et valeur' : 'Valeur et prix d’achat')}</button>
+                >${t.creance ? trad('Modifier le montant') : trad(t.parts ? 'Parts et valeur' : 'Valeur et prix d’achat')}</button>
         <button class="btn sm ghost" data-action="ceder-placement"
                 data-id="${esc(c.id)}" data-i="${l.ref}"
-                >${trad(t.prete ? 'Remboursement' : 'Céder')}</button>
+                >${trad(t.prete ? 'Remboursement' : t.creance ? 'Restitution' : 'Céder')}</button>
       </div></div>
     <dl class="kv">
       ${ligne(trad('Parts détenues'), u ? fmtNombre(u.parts) : null)}
@@ -206,9 +207,9 @@ function detailsPlacement(c, idx, t, l) {
       ${ligne(trad('Prix d’achat / part'),
               u && u.revient != null ? fmtPart(u.revient)
                 : (u ? nonRenseigne : null))}
-      ${ligne(trad('Prix d’achat'), u ? null
+      ${ligne(trad('Prix d’achat'), u ? null : t.creance ? null
               : (l.prixDeRevient ? fmtEUR(l.prixDeRevient) : nonRenseigne))}
-      ${ligne(estValeurEstimee(t)
+      ${ligne(t.creance ? trad('Montant dû') : estValeurEstimee(t)
           ? trad('Valeur estimée') + aide(trad('Ton estimation, pas un prix de vente : ce que tu encaisserais vraiment ne se connaît qu’à la cession, et « Céder » l’enregistre.'))
           : trad('Valeur actuelle'),
         fmtEUR(l.valeur) + (!estValeurEstimee(t) ? '' : ` <span class="muted">·</span> <span class="muted">${
@@ -216,9 +217,9 @@ function detailsPlacement(c, idx, t, l) {
       ${ligne(t.prete
           ? trad('Écart depuis le prêt') + aide(trad('La valeur d’aujourd’hui moins ce que tu as prêté. Sur un prêt, l’écart vient des intérêts courus ou d’une révision de la valeur : il ne s’encaisse qu’au remboursement, et un défaut peut le ramener à zéro.'))
           : trad('Plus-value latente') + aide(trad('La valeur d’aujourd’hui moins ce que tu as payé. Latente : elle n’est encaissée qu’à la revente, et la valeur d’un placement non coté est une estimation. Aucun impôt n’en est déduit : l’application ne modélise aucun régime fiscal, ici pas plus qu’ailleurs.')),
-              plusValue)}
+              t.creance ? null : plusValue)}
       ${ligne(trad('Taux annoncé'), l.taux ? `${fmtNombre(num(l.taux))} %` : null)}
-      ${ligne(trad('Échéance'), l.echeance ? fmtJourMois(l.echeance) : null)}
+      ${ligne(t.creance ? trad('Échéance prévue') : trad('Échéance'), l.echeance ? fmtJourMois(l.echeance) : null)}
       ${ligne(trad('Statut'), statutLigne(l) === 'encours'
               ? null : trad(STATUTS_LIGNE[statutLigne(l)]))}
       ${ligne(trad('Liquidité'), champMobilite(l, c, true))}
@@ -397,7 +398,7 @@ function carteValeursARevoir() {
     if (x.genre === 'credit') return d ? trad('capital restant dû vérifié le {d}').replace('{d}', d)
                                        : trad('capital restant dû jamais vérifié');
     if (x.releve) return d ? trad('valeur au {d}').replace('{d}', d) : trad('valeur sans date');
-    if (x.publiee) return d ? trad('VL du {d}').replace('{d}', d) : trad('sans date de VL');
+    if (x.publiee) return d ? trad('VL du {d}').replace('{d}', d) : trad('valeur non datée');
     return d ? trad('estimée le {d}').replace('{d}', d) : trad('estimation sans date');
   };
   const contexte = x => {
@@ -548,25 +549,34 @@ function viewAccounts() {
     };
 
     const chezUnTiers = ETABS().filter(e => !estEtabDeBiens(e)).map(groupeEtab).join('');
-    const especesSeules = sansContenant.length > 0
-      && sansContenant.every(c => typeCompte(c.type).interne && !valeurCompte(c));
+    const creances = sansContenant.filter(c => typeCompte(c.type).creance);
+    const sansIntermediaire = sansContenant.filter(c => !typeCompte(c.type).creance);
+    const especesSeules = sansIntermediaire.length > 0
+      && sansIntermediaire.every(c => typeCompte(c.type).interne && !valeurCompte(c));
     const enDirect = ETABS().filter(estEtabDeBiens).map(groupeEtab).join('')
-      + (sansContenant.length && !especesSeules
+      + (sansIntermediaire.length && !especesSeules
         ? groupe('e-sans', trad('Sans intermédiaire'), trad('espèces et objets de valeur'),
-            sansContenant.map(c => ligneCompte(c, false)).join(''),
-            sansContenant.reduce((s, c) => s + valeurCompte(c), 0), '',
-            teinteDominante(sansContenant))
+            sansIntermediaire.map(c => ligneCompte(c, false)).join(''),
+            sansIntermediaire.reduce((s, c) => s + valeurCompte(c), 0), '',
+            teinteDominante(sansIntermediaire))
         : '');
+    const dues = !creances.length ? ''
+      : groupe('e-creances', trad('Dépôts et prêts'), trad('à récupérer auprès d’un tiers'),
+          creances.map(c => ligneCompte(c, false)).join(''),
+          creances.reduce((s, c) => s + valeurCompte(c), 0), '',
+          teinteDominante(creances));
     const especesVides = !especesSeules ? '' : `
       <p class="hint cpt-sans-rien"><b>${trad('Espèces')}</b>${deuxPoints()} ${trad('rien de déclaré')} ·
         <button type="button" class="lien-nu" data-action="fiche-compte"
-                data-id="${esc(sansContenant[0].id)}">${trad('Déclarer des espèces')} ›</button></p>`;
+                data-id="${esc(sansIntermediaire[0].id)}">${trad('Déclarer des espèces')} ›</button></p>`;
 
-    sectionsAffichees = !!chezUnTiers.trim() && !!enDirect.trim();
-    corps = (sectionsAffichees ? titreSection('Comptes', 'chez une banque ou un courtier') : '')
+    sectionsAffichees = [chezUnTiers, enDirect, dues].filter(x => x.trim()).length > 1;
+    corps = (sectionsAffichees && chezUnTiers.trim() ? titreSection('Comptes', 'chez une banque ou un courtier') : '')
           + enveloppeGroupes(chezUnTiers)
-          + (sectionsAffichees ? titreSection('Biens et espèces', 'ce que tu détiens en direct') : '')
-          + enveloppeGroupes(enDirect) + especesVides;
+          + (sectionsAffichees && enDirect.trim() ? titreSection('Biens et espèces', 'ce que tu détiens en direct') : '')
+          + enveloppeGroupes(enDirect) + especesVides
+          + (sectionsAffichees && dues ? titreSection('Créances', 'ce qu’un tiers te doit') : '')
+          + (dues ? enveloppeGroupes(dues) : '');
   } else if (compteVue === 'type') {
     /* Les groupes viennent de `groupesParEnveloppe()`, cote store : un compte
        dont le type ne figure pas dans TYPES_COMPTE y garde un groupe au lieu de

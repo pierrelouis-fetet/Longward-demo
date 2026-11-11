@@ -606,7 +606,7 @@ function barreSousOnglets(vue) {
    le rattachement, et un controle exige qu'elle couvre chaque poche. */
 const POCHE_CLASSE = {
   cash: 'liquidites', bourse: 'actions', crypto: 'crypto', pe: 'nonCote',
-  immo: 'immobilier', biens: 'bienValeur', garanti: 'garanti',
+  immo: 'immobilier', biens: 'bienValeur', garanti: 'garanti', creances: 'creance',
 };
 const SERIES_PATRIMOINE = () => [
   { key: 'cash',   color: S1() },
@@ -616,6 +616,7 @@ const SERIES_PATRIMOINE = () => [
   { key: 'immo',   color: S4() },
   { key: 'biens',  color: Charts.cssv('--series-9') },
   { key: 'garanti', color: Charts.cssv('--series-8') },
+  { key: 'creances', color: Charts.cssv('--series-13') },
 ].map(s => ({ ...s, label: trad(CLASSES_ACTIFS[POCHE_CLASSE[s.key]]) }));
 /* Les bandes que la courbe trace vraiment, donc celles que la legende annonce.
 

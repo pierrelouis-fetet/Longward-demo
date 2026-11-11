@@ -1166,6 +1166,11 @@ table.editable input.bad { border-color: var(--critical); background: color-mix(
 .ptf-pv-sec { margin: 1px 0 0; font-size: var(--font-sm); color: var(--text-secondary); }
 .ptf-jour .jour-plus { margin-top: 10px; }
 .cpt-entete .maj-solde { margin-top: 10px; }
+.cpt-entete .maj-valeur { position: relative; margin-top: 6px; }
+.cpt-entete .maj-valeur::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 50%;
+  height: 44px; transform: translateY(-50%);
+}
 .journal-vide { margin: 16px 2px; }
 .ptf-jour .jour-lignes { margin-top: 6px; }
 

@@ -563,7 +563,7 @@ const NOMS_CARTES_MARCHES = {
   retenir: () => trad('À retenir'),
   titres: () => trad('Lignes de titres'),
   reperes: () => trad('Repères de marché'),
-  ventes: () => trad('Journal des ventes'),
+  ventes: () => trad('Journal des opérations'),
   achats: () => trad('Journal des achats'),
 };
 const CARTES_VENTES = ['ventes'];
@@ -636,12 +636,17 @@ function htmlJournal(cle, j) {
   if (!j.groupes) return tete + `<div class="liste-principale">${j.lignes.map(ligne).join('')}</div>`;
   return tete + j.groupes.map(g => {
     const n = g.lignes.length;
-    const compte = cle === 'ventes' ? `${n} ${n > 1 ? trad('ventes') : trad('vente')}`
+    const nc = cle === 'ventes' ? g.lignes.filter(estReglementCreance).length : 0;
+    const nv = n - nc;
+    const compte = cle === 'ventes'
+      ? [nv ? `${nv} ${nv > 1 ? trad('ventes') : trad('vente')}` : '',
+         !nc ? '' : (nc > 1 ? trad('{n} opérations de créance') : trad('1 opération de créance')).replace('{n}', nc)]
+        .filter(Boolean).join(' · ')
       : (n > 1 ? trad('{n} achats notés') : trad('{n} achat noté')).replace('{n}', n);
     return `
     <section class="journal-mois">
       <div class="journal-mois-tete"><h3 class="journal-mois-nom">${esc(libelleMois(g.mois))}</h3><span
-        class="journal-mois-chiffres">${compte}${cle !== 'ventes' ? '' : ` · ${trad(g.partiel ? 'Sous-total partiel' : 'Sous-total du mois')} ${
+        class="journal-mois-chiffres">${compte}${cle !== 'ventes' || !nv ? '' : ` · ${trad(g.partiel ? 'Sous-total partiel' : 'Sous-total du mois')} ${
         g.sousTotal == null ? trad('non calculable') : `<b class="${cls(g.sousTotal)}">${fmtSigned(g.sousTotal)}</b>`}`}</span></div>
       <div class="liste-principale">${g.lignes.map(ligne).join('')}</div>
     </section>`;
@@ -1055,6 +1060,8 @@ function salesCard() {
   const aVendre = (Store.state.positions || []).length;
 
   const st = salesStats(periodeTransactions());
+  const ventesToutes = toutes.filter(v => !estReglementCreance(v)).length;
+  const creancesPeriode = st.sales.filter(estReglementCreance).length;
 
   /* La carte porte le bouton qui l'alimente, et elle se rend meme vide.
 
@@ -1069,25 +1076,32 @@ function salesCard() {
   return `
   <div class="card" data-anchor="ventes">
     <div class="card-head">
-      <h2>${trad('Journal des ventes')}${(Store.state.sales || []).some(v => v.typeActif === 'bien')
+      <h2>${trad('Journal des opérations')}${toutes.length && !ventesToutes
+        ? aide(trad(PHRASE_CREANCES_JOURNAL))
+        : (Store.state.sales || []).some(v => v.typeActif === 'bien')
         ? aide(`${trad('Résultat brut, avant frais et fiscalité : le traitement fiscal dépend de ce qui est vendu, de l’enveloppe qui le portait et de ta situation.')} ${
-            trad('Un bien vendu compte les frais de son crédit dans ce qu’il encaisse, pas dans son résultat.')}`)
+            trad('Un bien vendu compte les frais de son crédit dans ce qu’il encaisse, pas dans son résultat.')}${
+            ventesToutes < toutes.length ? ` ${trad(PHRASE_CREANCES_JOURNAL)}` : ''}`)
         : aide(trad('Résultat brut, avant frais et fiscalité : '
-        + 'le traitement fiscal dépend de l’enveloppe (PEA, CTO) et de ta situation.'))}</h2>
+        + 'le traitement fiscal dépend de l’enveloppe (PEA, CTO) et de ta situation.')
+          + (ventesToutes < toutes.length ? ` ${trad(PHRASE_CREANCES_JOURNAL)}` : ''))}</h2>
       <button class="btn sm ghost" data-action="sell-position"
               title="${trad('Enregistrer une vente et sa plus-value, ou en déclarer une passée')}">− ${trad('Vendre')}</button>
     </div>
     ${!toutes.length ? `<p class="empty">${trad('Aucune vente enregistrée.')} ${aVendre
       ? trad('Le bouton « Vendre » enregistre la vente, sa plus-value, et crédite le compte de ton choix.')
       : trad('Il faut une ligne de titres avant de pouvoir en vendre une.')}</p>` : `
-    ${st.count ? `<details class="data-view pli-journal" id="pliVentes" ${journalDeroule ? 'open' : ''}>
-      <summary><span class="pli-compte">${st.count} ${st.count > 1 ? trad('ventes') : trad('vente')}${
-        st.count === toutes.length ? '' : ` ${trad('sur.total', 'sur')} ${toutes.length}`}</span><span
+    ${st.sales.length ? `<details class="data-view pli-journal" id="pliVentes" ${journalDeroule ? 'open' : ''}>
+      <summary><span class="pli-compte">${[
+        st.count ? `${st.count} ${st.count > 1 ? trad('ventes') : trad('vente')}${
+          st.count === ventesToutes ? '' : ` ${trad('sur.total', 'sur')} ${ventesToutes}`}` : '',
+        !creancesPeriode ? '' : (creancesPeriode > 1 ? trad('{n} opérations de créance') : trad('1 opération de créance'))
+          .replace('{n}', creancesPeriode)].filter(Boolean).join(' · ')}</span>${!st.count ? '' : `<span
         class="pli-detail">${!st.fiables ? trad('Aucun résultat calculable')
           : `${trad(st.partiel ? 'Résultat net partiel' : 'Résultat net des ventes')} <b class="${cls(st.realised)}">${
           fmtSigned(st.realised)}</b>`}<span class="pli-note">${[trad('avant frais et fiscalité'),
           !st.nonFiables ? '' : (st.nonFiables > 1 ? trad('{n} ventes exclues') : trad('1 vente exclue'))
-            .replace('{n}', st.nonFiables)].filter(Boolean).join(' · ')}</span></span></summary>
+            .replace('{n}', st.nonFiables)].filter(Boolean).join(' · ')}</span></span>`}</summary>
       <div class="segmented seg-mini" style="margin:4px 0 8px">
         <button data-action="tri-ventes" data-tri="date" class="${triVentes === 'date' ? 'on' : ''}"
                 aria-pressed="${triVentes === 'date'}">${trad('Par date')}</button>
@@ -1096,9 +1110,11 @@ function salesCard() {
       </div>
 ${champFiltreJournal('ventes')}
       <div class="journal-corps" data-journal="ventes"></div>
-    </details>` : `<p class="empty">${trad('Aucune vente sur cette période.')}</p>`}`}
+    </details>` : `<p class="empty">${trad('Aucune opération sur cette période.')}</p>`}`}
   </div>`;
 }
+
+const PHRASE_CREANCES_JOURNAL = 'Les restitutions et remboursements de tes créances y figurent à leur date. Ils ne comptent pas dans le résultat des ventes.';
 
 /* Les lignes du journal des ventes, pour le journal que `journalVentes` a
    retenu : chaque vente, sa porte, et la barre de son ampleur. */
@@ -1113,11 +1129,13 @@ function lignesJournalVentes(j) {
   /* Barres et pourcentages sur les seules ventes fiables, la regle de
      `resultatVente` : une vente sans base n'a ni ampleur ni taux. */
   const plusGrand = j.lignes.reduce((m, v) => {
+    if (estReglementCreance(v)) return m;
     const r = resultatVente(v);
     return r.fiable ? Math.max(m, Math.abs(r.montant)) : m;
   }, 0);
   return v => {
     const dev = v.currency || 'EUR';
+    if (estReglementCreance(v)) return ligneOperationCreance(v, j);
     const r = resultatVente(v);
     const pct = r.fiable && num(v.invested) ? r.montant / num(v.invested) * 100 : null;
     const part = r.fiable && plusGrand ? Math.abs(r.montant) / plusGrand * 100 : 0;
@@ -1146,6 +1164,19 @@ function lignesJournalVentes(j) {
         Math.max(2, part).toFixed(1)}%;background:${teinte}"></i></span>` : '',
     });
   };
+}
+
+function ligneOperationCreance(v, j) {
+  const m = libelleReglement(v);
+  return ligneListe({
+    action: 'open-sale', index: j.rang.get(v),
+    titre: v.name,
+    sous: [fmtDate(v.date), trad(m.operation),
+           trad('{m} reçus').replace('{m}', fmtEUR(num(v.gross)))].join(' · '),
+    valeur: m.absolu < 0.005 ? `<span class="muted">${trad(m.soldee ? 'soldée' : 'sans écart')}</span>`
+      : `<span class="${cls(m.montant)}">${trad(m.ecart)} ${fmtEUR(m.absolu)}</span>`,
+    second: '', classeSecond: 'muted', barre: '',
+  });
 }
 
 /* Soleil ou lune, selon que la place cote ou dort. Le cours d'un marche ferme

@@ -273,8 +273,9 @@ const TEINTE_CLASSE = {
      hypothese. */
   garanti: 8,
   bienValeur: 9,
+  creance: 13,
 };
-const TEINTES_DISPONIBLES = 12;
+const TEINTES_DISPONIBLES = 13;
 const TEINTE_SANS_CLASSE = 12;
 const couleurClasse = ac =>
   `var(--series-${TEINTE_CLASSE[CLASSES_ALIAS[ac] || ac] || TEINTE_SANS_CLASSE})`;

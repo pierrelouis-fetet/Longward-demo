@@ -257,13 +257,16 @@ Object.assign(ACTIONS, {
     const v = Store.state.sales?.[i];
     if (!v) return;
     const dev = v.currency || 'EUR';
+    /* Une operation de creance : memes champs, ses mots (`lectureReglement`). */
+    const creance = estReglementCreance(v);
     const saisi = await askForm({
-      titre: trad('Modifier la vente'),
+      titre: trad(creance ? 'Modifier l’opération' : 'Modifier la vente'),
       sous: v.declaree ? trad('déclarée, pour mémoire') : `${fmtDate(v.date)} · ${esc(v.name)}`,
       ok: trad('Enregistrer'),
       champs: [
         { cle: 'date', label: 'Date', type: 'date', valeur: v.date,
-          aide: trad('elle décide de la période où la vente compte, donc de la barre où elle apparaît') },
+          aide: trad(creance ? 'elle décide de la période où l’opération compte'
+                             : 'elle décide de la période où la vente compte, donc de la barre où elle apparaît') },
         { cle: 'name', label: 'Nom', type: 'texte', valeur: v.name, max: NOM_LIGNE_MAX },
         ...(v.declaree ? [
           { cle: 'gross', label: trad('Produit encaissé ({dev})'), type: 'nombre', valeur: num(v.gross) },
@@ -272,10 +275,10 @@ Object.assign(ACTIONS, {
             aide: trad('le prix de revient s’en déduit : produit moins plus-value') },
         ] : [
           { cle: 'lecture_montants', label: trad('Montants'), lecture: true,
-            valeur: (num(v.qty) ? `${num(v.qty)} × ${fmtCur(v.price, dev)} = ` : '')
+            valeur: creance ? lectureReglement(v) : (num(v.qty) ? `${num(v.qty)} × ${fmtCur(v.price, dev)} = ` : '')
               /* Un resultat inconnu se dit tel : `fmtSigned(null)` ecrirait +0. */
               + `${fmtEUR(num(v.gross))}, ${resultatVente(v).fiable ? fmtSigned(v.realised) : trad('non calculable')}`,
-            aide: v.typeActif === 'bien'
+            aide: creance ? trad(v.cashAccount ? AIDE_EDITION_CREANCE : AIDE_EDITION_CREANCE_HORS) : v.typeActif === 'bien'
               ? trad('ils ont soldé ses crédits et archivé le bien le jour de la vente. Pour les corriger : '
                 + 'annuler cette vente, puis la ressaisir')
               : trad('ils ont crédité un compte et réduit une ligne le jour de la vente. Pour les '
@@ -295,7 +298,7 @@ Object.assign(ACTIONS, {
       v.invested = round2(v.gross - v.realised);
     }
     Store.save(); render();
-    toast(trad('Vente modifiée'));
+    toast(trad(creance ? 'Opération modifiée' : 'Vente modifiée'));
   },
   async 'open-position'(btn) {
     const i = +btn.dataset.i;
@@ -423,20 +426,32 @@ async function annulerVenteDeBien(i, v) {
   toast(trad('Vente annulée, le bien revient dans tes actifs'));
 }
 
+function lectureReglement(v) {
+  const m = libelleReglement(v);
+  const ecart = trad(m.ecart).toLowerCase();
+  return `${trad('{m} reçus').replace('{m}', fmtEUR(num(v.gross)))}, ${
+    m.absolu < 0.005 ? ecart : `${ecart} ${trad('de')} ${fmtEUR(m.absolu)}`}`;
+}
+const AIDE_EDITION_CREANCE = 'ils ont crédité un compte et réduit ou soldé la créance ce jour-là. Pour les corriger : annuler l’opération, puis la ressaisir';
+const AIDE_EDITION_CREANCE_HORS = 'ils ont réduit ou soldé la créance ce jour-là, sans créditer de compte suivi. Pour les corriger : annuler l’opération, puis la ressaisir';
+
 async function annulerCessionDePlacement(i, v) {
   const ou = v.cashAccount && round2(num(v.gross))
     ? (compteById(v.cashAccount) && nomCompteV2(compteById(v.cashAccount))) || trad('le cash') : null;
+  const creance = estReglementCreance(v);
   const morceaux = [
-    num(v.qty) ? trad('Les {n} parts reviennent sur leur ligne').replace('{n}', fmtNombre(num(v.qty)))
+    creance ? trad(v.ligne ? 'La créance revient dans tes actifs' : 'La créance retrouve le montant réglé')
+    : num(v.qty) ? trad('Les {n} parts reviennent sur leur ligne').replace('{n}', fmtNombre(num(v.qty)))
                : trad('Le placement revient dans tes actifs'),
     ou ? trad('{m} repartent de {ou}').replace('{m}', fmtEUR(num(v.gross))).replace('{ou}', ou) : '',
     (v.fluxRetires || []).length || (v.fluxDelies || []).length
       ? trad('ses distributions et frais reprennent leur place dans le budget') : '',
   ].filter(Boolean);
-  if (!await askConfirm(`${trad('Annuler cette vente ?')}\n${v.name}, ${fmtDate(v.date)}, ${fmtEUR(num(v.gross))}.\n\n`
-    + `${morceaux.join(', ')}, ${trad('et la vente quitte le journal.')}\n\n`
-    + trad('L’annulation défait cette vente, et elle seule. Réversible avec Ctrl+Z.'),
-    { ok: 'Annuler la vente', danger: true })) return;
+  if (!await askConfirm(`${trad(creance ? 'Annuler cette opération ?' : 'Annuler cette vente ?')}\n${v.name}, ${fmtDate(v.date)}, ${fmtEUR(num(v.gross))}.\n\n`
+    + `${morceaux.join(', ')}, ${trad(creance ? 'et l’opération quitte le journal.' : 'et la vente quitte le journal.')}\n\n`
+    + trad(creance ? 'L’annulation défait cette opération, et elle seule. Réversible avec Ctrl+Z.'
+                   : 'L’annulation défait cette vente, et elle seule. Réversible avec Ctrl+Z.'),
+    { ok: creance ? 'Annuler l’opération' : 'Annuler la vente', danger: true })) return;
   const avant = structuredClone(Store.state);
   const r = annulerVente(i);
   if (!r || r.erreur) { toast((r && r.erreur) || trad('Rien n’a été modifié.')); return; }
@@ -444,7 +459,8 @@ async function annulerCessionDePlacement(i, v) {
   fermerApercuSi('vente');
   refreshAccounts();
   Store.save(); render();
-  toast(trad('Cession annulée, le placement revient dans tes actifs'));
+  toast(trad(creance ? 'Opération annulée, la créance retrouve son montant'
+                     : 'Cession annulée, le placement revient dans tes actifs'));
 }
 
 partieChargee('assets/app-08-actions-marches.js');

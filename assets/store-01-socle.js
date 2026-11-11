@@ -331,6 +331,7 @@ const CLASSES_ACTIFS = {
   nonCote:     trad('Non coté'),
   immobilier:  trad('Immobilier'),
   bienValeur:  trad('Bien de valeur'),
+  creance:     trad('Créances'),
 };
 
 const MOBILISABLE_LABEL = {
@@ -339,6 +340,7 @@ const MOBILISABLE_LABEL = {
   lent:     'Disponible en quelques mois',
   habite:   'Le logement que tu habites',
   bloque:   'Inaccessible avant l’échéance',
+  aRecuperer: 'À récupérer auprès d’un tiers',
 };
 
 /* Le type de compte deduit les classes ajoutables et pre-remplit
@@ -539,6 +541,25 @@ const TYPES_COMPTE = [
      commande les regroupements d'ecran, pas les calculs. */
   { id: 'bienValeur', label: 'Bien de valeur', classes: ['bienValeur'],
     defaut: 'investir', groupe: 'pe', sansEtab: true, direct: true },
+  /* `creance` : une somme due par un tiers. Le compte EST la creance
+     (`terminal`), sans etablissement (un proprietaire ou un proche n'en est
+     pas un), et pas `direct` : on ne detient pas l'objet, on attend un
+     remboursement, donc rien ne s'estime et rien ne sort du perimetre
+     financier. Le drapeau reduit le formulaire au montant du, sans prix
+     d'achat ni plus-value, et fait de la sortie une restitution plutot
+     qu'une vente.
+
+     Groupe `pe`, comme un bien de valeur : ni cash, ni bourse. Le groupe
+     commande les parcours de creation ; la poche d'affichage, elle, est
+     `creances`, et le selecteur les range sous leur rubrique, ou l'on vient
+     les chercher. Le pret a un proche porte aussi `prete` : echeance et taux
+     facultatifs, statut, remboursement partiel ou defaut. */
+  { id: 'depotGarantie', label: 'Dépôt de garantie', classes: ['creance'],
+    defaut: 'investir', groupe: 'pe', sansEtab: true, terminal: true, creance: true,
+    disponibilite: 'aRecuperer', rubrique: 'creances' },
+  { id: 'pretProche', label: 'Argent prêté à un proche', classes: ['creance'],
+    defaut: 'investir', groupe: 'pe', sansEtab: true, terminal: true, creance: true, prete: true,
+    disponibilite: 'aRecuperer', rubrique: 'creances' },
   { id: 'especes', label: 'Espèces',        classes: ['liquidites'], defaut: 'courant', groupe: 'cash',
     sansEtab: true, interne: true },
 ];
@@ -566,10 +587,10 @@ function typesCompteChoix() {
   return [...TYPES_COMPTE.filter(t => !t.interne), ...typesPerso()];
 }
 
-/* LE SELECTEUR SE LIT PAR RUBRIQUES. Dix-sept types en une seule liste, c'est
-   une liste qu'on ne lit plus. Quatre rubriques les rangent, dans l'ordre ou
+/* LE SELECTEUR SE LIT PAR RUBRIQUES. Une vingtaine de types en une seule liste, c'est
+   une liste qu'on ne lit plus. Cinq rubriques les rangent, dans l'ordre ou
    un patrimoine se construit : la banque, les placements, la retraite et
-   l'epargne avantagee, les biens. La rubrique se derive du groupe, sauf la ou
+   l'epargne avantagee, les biens, puis ce qu'on te doit. La rubrique se derive du groupe, sauf la ou
    le type la declare (`rubrique`) : un PER ou un 401(k) est du groupe des
    placements, mais on le cherche a la retraite. Un type personnel suit son
    groupe. Rien ici ne calcule : c'est un rangement d'ecran. */
@@ -578,6 +599,7 @@ const RUBRIQUES_TYPE = [
   ['placements', 'Investissements'],
   ['retraite',   'Retraite et épargne avantagée'],
   ['biens',      'Biens et autres'],
+  ['creances',   'Créances'],
 ];
 const rubriqueDuType = t => t.rubrique
   || (t.groupe === 'cash' ? 'banque' : t.groupe === 'bourse' ? 'placements' : 'biens');
@@ -680,18 +702,21 @@ const compteEstUnPlacement = t => estActifTerminal(t) || valeurAuPrixDeRetrait(t
    ou une assurance-vie, eux, sont des contenants : plusieurs lignes y vivent, et
    c'est tout leur objet. */
 const estActifTerminal = t => !!t && (!!t.direct || !!t.terminal);
-const motDateCompte = t => trad(estUnBien(t) ? 'Date d’achat' : 'Date d’ouverture');
+const motDateCompte = t => trad(t && t.creance ? 'Date du versement'
+  : estUnBien(t) ? 'Date d’achat' : 'Date d’ouverture');
 
 /* Le mot de ce dont on parle : bien, placement, compte, contrat ou plan.
 
    Il se derive des drapeaux du type (`direct`, `terminal`, `melange`) et
    de son contenant, pour qu'un type ajoute demain n'ait qu'une chose a
    declarer. */
-const motCompte = t => trad(estDetenuEnDirect(t) ? 'bien'
+const motCompte = t => trad(t && t.creance ? (t.prete ? 'prêt' : 'dépôt')
+  : estDetenuEnDirect(t) ? 'bien'
   : estActifTerminal(t) ? 'placement'
   : t && t.melange ? (enContrat(t) ? 'contrat' : 'plan') : 'compte');
 
-const titreActif = t => estDetenuEnDirect(t) ? 'Le bien' : 'Le placement';
+const titreActif = t => t && t.creance ? (t.prete ? 'Le prêt' : 'Le dépôt')
+  : estDetenuEnDirect(t) ? 'Le bien' : 'Le placement';
 
 /* `contenu` : le mot pour ce que le contenant abrite.
 
@@ -1596,6 +1621,26 @@ function datesDuCompte(c) {
     out.push({ genre: 'retrait', date: plusAncienne(lignes.map(l => l.estimeLe || null)) });
   }
   return out;
+}
+
+/* Le geste que l'en-tete d'une fiche propose pour dater sa valeur, ou `null`.
+
+   Sur toute fiche faite d'une seule ligne datable, sans cash a cote : un
+   fonds, une part de societe, une SCPI, le support unique d'un contrat. C'est
+   la que la fenetre du placement et la fiche parlent de la meme chose. Une
+   creance ne se date pas, un bien detenu en direct a sa propre carte, et un
+   compte a plusieurs lignes laisse chaque ligne porter son bouton. Le libelle
+   rendu est une clef de `trad()`. */
+function gesteDateValeur(c) {
+  const t = c && typeCompte(c.type);
+  if (!t || t.direct || t.creance) return null;
+  if (!(estValeurEstimee(t) || t.vl || valeurDeReleve(t) || valeurAuPrixDeRetrait(t))) return null;
+  const lignes = c.lignes || [];
+  if (lignes.length !== 1 || (c.cash || []).some(e => num(e.montant))) return null;
+  const l = lignes[0];
+  if (!estDeclare(l.valeur) || num(l.valeur) === 0) return null;
+  if (!l.estimeLe) return 'Dater la valeur';
+  return valeurPerimee(l, t) ? 'Mettre à jour la valeur' : null;
 }
 
 function ageAnnees(iso) {

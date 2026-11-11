@@ -1872,8 +1872,8 @@ suite('Deux réglages, deux questions, et ils ne se marchent pas dessus', () => 
        ecrits separement finiraient par annoncer en legende une bande absente du
        dessin, ou l'inverse. */
     Fixture.poser();
-    eq(pochesEvolution({ financier: true }).join(','), 'cash,bourse,crypto,pe,garanti',
-      'la vue financière garde cinq poches, dans l’ordre de la pile');
+    eq(pochesEvolution({ financier: true }).join(','), 'cash,bourse,crypto,pe,garanti,creances',
+      'la vue financière garde six poches, dans l’ordre de la pile : une créance est un actif financier');
     eq(pochesEvolution().join(','), POCHES_EVOLUTION.join(','),
       'et la vue globale les garde toutes');
     const src = lireSource('assets/app.js');
