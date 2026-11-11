@@ -15,6 +15,14 @@ const serveurNeuf = async () =>
 const requeteServeur = (chemin, ip = '203.0.113.7') =>
   new Request('https://longward.test' + chemin, { headers: { 'CF-Connecting-IP': ip } });
 const assetsFactices = { fetch: async () => new Response('application', { status: 200 }) };
+/* La porte que cette instance declare, lue dans le Worker. Le test de la porte
+   ne s'y fie pas : il deduit l'attendu de la graine (une graine fictive veut
+   une vitrine ouverte, une graine videe une instance fermee) et verifie que le
+   drapeau lui correspond. Les tests de la passerelle de marche l'ouvrent par
+   `ALLOW_PUBLIC`, pour mesurer le frein et non le verrou, la meme mesure sur
+   toute instance. */
+const portePublique = () => /const DEMO_PUBLIQUE = true;/.test(lireSource('_worker.js') || '');
+const PASSERELLE = { ALLOW_PUBLIC: '1' };
 
 /* Un fournisseur qui compte ses appels et ne connait rien. */
 async function avecFournisseurFactice(faire) {
@@ -25,9 +33,21 @@ async function avecFournisseurFactice(faire) {
 }
 
 suite('L’ouverture publique se réserve au site sans comptes', () => {
-  test('sans mot de passe ni comptes, l’application est servie', async () => {
+  test('sans mot de passe ni comptes, la porte suit la nature de l’instance', async () => {
+    const ouverte = exempleDisponible();
+    eq(portePublique(), ouverte,
+      'une graine fictive ouvre la vitrine, une graine vidée la ferme : le drapeau du Worker le dit');
     const w = await serveurNeuf();
     const r = await w.fetch(requeteServeur('/'), { ASSETS: assetsFactices });
+    if (!ouverte) {
+      /* Une instance fermee refuse visiblement, plutot que de s'ouvrir, et sa
+         passerelle de marche aussi. */
+      eq(r.status, 403, 'la porte fermée refuse');
+      vrai((await r.text()) !== 'application', 'et l’application n’est pas servie');
+      eq((await w.fetch(requeteServeur('/api/search?q=ab'), {})).status, 403,
+        'une requête anonyme à la passerelle est refusée');
+      return;
+    }
     eq(r.status, 200, 'la démonstration est ouverte');
     eq(await r.text(), 'application', 'et c’est l’application qui répond');
   });
@@ -50,27 +70,27 @@ suite('La passerelle de marché a un frein', () => {
       /* 6 lots de 40 cotations (6 x 120 = 720), 10 ISIN (130), 50 recherches
          (50) : 900, tout passe. */
       for (let i = 0; i < 6; i++) {
-        const r = await w.fetch(requeteServeur('/api/quotes?symbols=' + quarante), {});
+        const r = await w.fetch(requeteServeur('/api/quotes?symbols=' + quarante), PASSERELLE);
         if (r.status === 429) { vrai(false, `le lot ${i + 1} est refusé trop tôt`); return; }
       }
       for (let i = 0; i < 10; i++) {
-        const r = await w.fetch(requeteServeur('/api/isin?code=FR000000000' + i), {});
+        const r = await w.fetch(requeteServeur('/api/isin?code=FR000000000' + i), PASSERELLE);
         if (r.status === 429) { vrai(false, `l’ISIN ${i + 1} est refusé trop tôt`); return; }
       }
       for (let i = 0; i < 50; i++) {
-        const r = await w.fetch(requeteServeur('/api/search?q=ab' + i), {});
+        const r = await w.fetch(requeteServeur('/api/search?q=ab' + i), PASSERELLE);
         if (r.status === 429) { vrai(false, `la recherche ${i + 1} est refusée trop tôt`); return; }
       }
       const avant = appels.n;
       vrai(avant > 0, 'les fournisseurs ont bien été appelés jusque-là');
       for (const chemin of ['/api/search?q=cd', '/api/isin?code=FR0000000099', '/api/quotes?symbols=A']) {
-        const r = await w.fetch(requeteServeur(chemin), {});
+        const r = await w.fetch(requeteServeur(chemin), PASSERELLE);
         eq(r.status, 429, `${chemin.split('?')[0]} : le plafond partagé est atteint`);
         const attente = +r.headers.get('Retry-After');
         vrai(attente >= 1 && attente <= 60, `Retry-After dit quand revenir : ${attente}`);
       }
       eq(appels.n, avant, 'et rien ne sort une fois le plafond atteint');
-      const autre = await w.fetch(requeteServeur('/api/search?q=ef', '198.51.100.9'), {});
+      const autre = await w.fetch(requeteServeur('/api/search?q=ef', '198.51.100.9'), PASSERELLE);
       vrai(autre.status !== 429, `une autre adresse passe le frein (${autre.status} : le fournisseur factice ne connaît rien)`);
     });
   });
@@ -78,14 +98,14 @@ suite('La passerelle de marché a un frein', () => {
   test('la table se fait de la place sans libérer un client freiné, ni un quota épuisé', async () => {
     const w = await serveurNeuf();
     /* `q` d'une lettre : la recherche rend une liste vide sans rien appeler. */
-    for (let i = 0; i < 901; i++) await w.fetch(requeteServeur('/api/search?q=a', '192.0.2.1'), {});
-    eq((await w.fetch(requeteServeur('/api/search?q=a', '192.0.2.1'), {})).status, 429, 'ce client est freiné');
+    for (let i = 0; i < 901; i++) await w.fetch(requeteServeur('/api/search?q=a', '192.0.2.1'), PASSERELLE);
+    eq((await w.fetch(requeteServeur('/api/search?q=a', '192.0.2.1'), PASSERELLE)).status, 429, 'ce client est freiné');
     /* Celui-ci a consomme exactement son quota : son prochain appel est le refus. */
-    for (let i = 0; i < 900; i++) await w.fetch(requeteServeur('/api/search?q=a', '192.0.2.2'), {});
-    for (let i = 0; i < 5200; i++) await w.fetch(requeteServeur('/api/search?q=a', `10.${i >> 16 & 255}.${i >> 8 & 255}.${i & 255}`), {});
-    eq((await w.fetch(requeteServeur('/api/search?q=a', '192.0.2.1'), {})).status, 429,
+    for (let i = 0; i < 900; i++) await w.fetch(requeteServeur('/api/search?q=a', '192.0.2.2'), PASSERELLE);
+    for (let i = 0; i < 5200; i++) await w.fetch(requeteServeur('/api/search?q=a', `10.${i >> 16 & 255}.${i >> 8 & 255}.${i & 255}`), PASSERELLE);
+    eq((await w.fetch(requeteServeur('/api/search?q=a', '192.0.2.1'), PASSERELLE)).status, 429,
       'cinq mille deux cents adresses plus tard, le freiné l’est toujours');
-    eq((await w.fetch(requeteServeur('/api/search?q=a', '192.0.2.2'), {})).status, 429,
+    eq((await w.fetch(requeteServeur('/api/search?q=a', '192.0.2.2'), PASSERELLE)).status, 429,
       'et le quota épuisé n’est pas remis à zéro');
   });
 
@@ -110,7 +130,7 @@ suite('La passerelle de marché a un frein', () => {
           return new Response('{}', { status: 404 });
         };
         const w = await serveurNeuf();
-        const r = await w.fetch(requeteServeur('/api/isin?code=ZZ0000000008'), {});
+        const r = await w.fetch(requeteServeur('/api/isin?code=ZZ0000000008'), PASSERELLE);
         vrai(r.status !== 429, `${cas} : la résolution passe le frein`);
         vrai(n >= 2 && n <= 13, `${cas} : ${n} appels sortants, treize au plus`);
       }
@@ -126,7 +146,7 @@ suite('La passerelle de marché a un frein', () => {
         run: async () => { vus.push({ sql, purge: true }); return {}; },
         bind: (...args) => ({ first: async () => { vus.push({ sql, args }); return { count: 901, reset_at: maintenant + 42 }; } }),
       }) };
-      const r = await w.fetch(requeteServeur('/api/quotes?symbols=A,B,C'), { DB });
+      const r = await w.fetch(requeteServeur('/api/quotes?symbols=A,B,C'), { ...PASSERELLE, DB });
       eq(r.status, 429, 'au-delà du plafond, refusé');
       const attente = +r.headers.get('Retry-After');
       vrai(attente >= 40 && attente <= 43, `Retry-After suit la remise à zéro de la base : ${attente}`);

@@ -554,11 +554,14 @@ suite('Un état local illisible n’est plus écrasé', () => {
       eq(localStorage.getItem(cleStockage()), '{pas du json', 'la chaîne brute est intacte');
       eq(envois(), 0, 'et rien ne part en ligne');
       eq(Store.texteIllisible(), '{pas du json', 'elle se télécharge depuis la clef principale');
-      /* Le mode exemple ecrit sa propre clef : il n'est pas bloque. */
-      setModeDemo(true);
-      eq(Store.illisibleActif(), null, 'en exemple, aucun verrou');
-      eq(Store.ecrireLocal(), true, 'la clef d’exemple s’écrit');
-      setModeDemo(false);
+      /* Le mode exemple ecrit sa propre clef : il n'est pas bloque. Une
+         instance sans graine fictive n'a pas ce mode. */
+      if (exempleDisponible()) {
+        setModeDemo(true);
+        eq(Store.illisibleActif(), null, 'en exemple, aucun verrou');
+        eq(Store.ecrireLocal(), true, 'la clef d’exemple s’écrit');
+        setModeDemo(false);
+      }
       eq(localStorage.getItem(cleStockage()), '{pas du json', 'la chaîne réelle n’a toujours pas bougé');
     });
   });
@@ -655,6 +658,11 @@ suite('Un état local illisible n’est plus écrasé', () => {
   });
 
   test('un échec en exemple ne touche pas la copie des données réelles', () => {
+    if (!exempleDisponible()) {
+      setModeDemo(true);
+      try { vrai(!modeDemo(), 'sans graine fictive, pas de mode exemple : rien à isoler'); } finally { setModeDemo(false); }
+      return;
+    }
     avecStockagePreserve(() => {
       setModeDemo(false);
       localStorage.removeItem(cleIllisible());

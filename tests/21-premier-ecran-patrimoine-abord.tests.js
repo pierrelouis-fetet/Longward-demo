@@ -661,6 +661,15 @@ suite('Premier lancement : Longward prend vie sous les yeux', () => {
     vrai(/if \(typeof CloudSync !== 'undefined' && !modeDemo\(\) && !verrou\) \{\s*if \(opts\.differe\) CloudSync\.schedulePush\(\); else CloudSync\.push\(\);/.test(st),
       'et rien ne part au cloud en mode démonstration');
     vrai(/const cloud = modeDemo\(\) \? \{ available: false \} : await CloudSync\.init\(\);/.test(s), 'ni à l’ouverture');
+    if (!exempleDisponible()) {
+      /* Sans graine fictive, ni mode ni bandeau visible : la clef reste la
+         vraie. La page peut porter le bandeau, cache tant que le mode est
+         eteint, et il l'est pour de bon. */
+      vrai(/bandeau\.hidden = !modeDemo\(\);/.test(s) && !modeDemo(), 'le bandeau reste caché, le mode ne s’allume pas');
+      setModeDemo(true);
+      try { eq(cleStockage(), 'wealth-dashboard:v1', 'poser le mode ne déplace rien'); } finally { setModeDemo(false); }
+      return;
+    }
     const html = lireSource('index.html');
     vrai(/id="bandeauDemo"[^>]*hidden/.test(html) && /data-i18n="demo.badge"/.test(html) && /data-action="quitter-demo"/.test(html),
       'le bandeau dit que c’est fictif et offre la sortie');
@@ -1831,7 +1840,9 @@ suite('Remplacer tout dit la copie en ligne', () => {
       globalThis.CloudSync = { isAvailable: () => true };
       vrai(phraseCopieEnLigne().includes(trad(PHRASE)), 'synchronisation branchée : la phrase');
       setModeDemo(true);
-      eq(phraseCopieEnLigne(), '', 'en exemple, rien ne part en ligne');
+      /* Sans graine fictive, le mode exemple n'existe pas : la phrase reste. */
+      if (exempleDisponible()) eq(phraseCopieEnLigne(), '', 'en exemple, rien ne part en ligne');
+      else vrai(!modeDemo() && phraseCopieEnLigne().includes(trad(PHRASE)), 'sans exemple possible, le réel parle toujours');
     } finally {
       setModeDemo(demo0);
       if (cs0) Object.defineProperty(globalThis, 'CloudSync', cs0); else delete globalThis.CloudSync;

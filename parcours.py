@@ -469,6 +469,9 @@ PARCOURS = [
         "Le relevé du mois reprend les montants actuels et s'enregistre",
         "#/history", "overview", 390,
         r"""
+        /* Un patrimoine vierge (la graine videe d'une instance a comptes) n'a
+           rien a relever : le geste se joue la ou des comptes existent. */
+        if (!Store.state.comptes.some(c => c.statut !== 'archive' && !typeCompte(c.type).interne)) return 'SAUTE';
         const cle = currentMonthKey();
         const i = Store.state.monthly.findIndex(x => x.date === cle);
         if (i >= 0) {
@@ -502,6 +505,9 @@ PARCOURS = [
         "Les rappels du mois forment une carte, et chaque rangée garde ses gestes",
         "#/overview", "overview", 390,
         [r"""
+        /* Sans aucun compte, ni releve ni depenses a rappeler : le geste se
+           joue sur un patrimoine deja saisi. */
+        if (!Store.state.comptes.some(c => c.statut !== 'archive' && !typeCompte(c.type).interne)) return 'SAUTE';
         const cle = currentMonthKey();
         Store.state.meta.rappelsMasques = {};
         Store.state.meta.jourRappel = 1;
@@ -590,6 +596,9 @@ PARCOURS = [
         "Une caution se crée sans prix d'achat ni date de valeur",
         "#/accounts", "accounts", 390,
         r"""
+        /* Le geste part de la liste des actifs d'un patrimoine deja saisi ; une
+           instance a la graine videe n'en a pas, il s'y saute. */
+        if (!Store.state.comptes.some(c => c.statut !== 'archive' && !typeCompte(c.type).interne)) return 'SAUTE';
         const avant = JSON.stringify(Store.state.comptes);
         const brut = nowByGroup().creances || 0;
         try {
